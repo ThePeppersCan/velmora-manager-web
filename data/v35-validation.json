@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "test": "test_v35_interface.cjs",
+      "status": "PASS",
+      "seconds": 12.5
+    },
+    {
+      "test": "test_v35_clauses.cjs",
+      "status": "PASS",
+      "seconds": 2.3
+    },
+    {
+      "test": "test_v34_storage.cjs",
+      "status": "PASS",
+      "seconds": 0.2
+    },
+    {
+      "test": "test_v34_deals.cjs",
+      "status": "PASS",
+      "seconds": 1.6
+    },
+    {
+      "test": "test_v34_expansion.cjs",
+      "status": "PASS",
+      "seconds": 93.7
+    },
+    {
+      "test": "test_career_integrity.cjs",
+      "status": "PASS",
+      "seconds": 4.0
+    },
+    {
+      "test": "test_v32_career_market_saves.cjs",
+      "status": "PASS",
+      "seconds": 2.6
+    }
+  ],
+  "scope": "Model, storage and JSDOM event checks; omitted artwork not visually verified."
+}

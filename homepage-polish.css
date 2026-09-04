@@ -1,0 +1,1197 @@
+/* V51 — Professional Central visual direction.
+   A quieter editorial dashboard wrapped around the cinematic fixture card. */
+
+body.v20-ui #screenCentral {
+  --home-navy: #17364d;
+  --home-navy-deep: #10283a;
+  --home-blue: #396d89;
+  --home-blue-hover: #2f607a;
+  --home-teal: #4f8b8d;
+  --home-gold: #b99447;
+  --home-text: #1b2935;
+  --home-text-soft: #536371;
+  --home-muted: #7b8893;
+  --home-line: #dfe5e9;
+  --home-line-soft: #e9edef;
+  --home-surface: #ffffff;
+  --home-surface-soft: #f7f9fa;
+  --home-bg: #f2f5f6;
+  background: var(--home-bg) !important;
+  color: var(--home-text) !important;
+  font-family: "Segoe UI", Inter, Arial, sans-serif !important;
+}
+
+body.v20-ui #screenCentral *,
+body.v20-ui #screenCentral button {
+  font-family: "Segoe UI", Inter, Arial, sans-serif !important;
+}
+
+/* Navigation: calm, text-led and clearly hierarchical. */
+body.v20-ui :is(#screenCentral,#screenMatchday) > .career-topbar {
+  border-bottom-color: var(--home-line) !important;
+  background: rgba(252, 253, 253, .985) !important;
+  box-shadow: 0 .12cqw .5cqw rgba(24, 43, 57, .045) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs {
+  gap: .28cqw !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button {
+  border-radius: .32cqw !important;
+  color: #5d6b77 !important;
+  font-size: clamp(11px, .44cqw, 14px) !important;
+  font-weight: 600 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button:hover {
+  background: #f1f4f6 !important;
+  color: var(--home-navy) !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button.is-current,
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button[aria-current="page"] {
+  background: #eaf0f3 !important;
+  color: var(--home-navy) !important;
+  font-weight: 700 !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button.is-current::after,
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-tabs button[aria-current="page"]::after {
+  left: 35% !important;
+  right: 35% !important;
+  height: 2px !important;
+  background: var(--home-teal) !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-util-btn {
+  border-color: var(--home-line) !important;
+  border-radius: .38cqw !important;
+  background: #fbfcfc !important;
+  color: #536471 !important;
+  font-size: clamp(10px, .68cqw, 16px) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-util-btn:hover {
+  border-color: #cbd6dc !important;
+  background: #f2f5f6 !important;
+  color: var(--home-navy) !important;
+  transform: none !important;
+}
+
+body.v20-ui :is(#screenCentral,#screenMatchday) .career-util-btn.v20-text-util {
+  font-size: clamp(8px, .3cqw, 10px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .035em !important;
+}
+
+/* Main page and shared card surfaces. */
+body.v20-ui #screenCentral::before,
+body.v20-ui #screenCentral::after {
+  display: none !important;
+}
+
+body.v20-ui #screenCentral .central-side-panel,
+body.v20-ui #screenCentral .central-manager-briefing,
+body.v20-ui #screenCentral .central-season-snapshot,
+body.v20-ui #screenCentral .central-advance-panel {
+  border-color: var(--home-line) !important;
+  border-radius: .6cqw !important;
+  background: var(--home-surface) !important;
+  box-shadow: 0 .18cqw .7cqw rgba(27, 48, 63, .055) !important;
+}
+
+body.v20-ui #screenCentral .central-side-panel:hover,
+body.v20-ui #screenCentral .central-side-panel.is-actionable:hover {
+  border-color: #d4dde2 !important;
+  box-shadow: 0 .24cqw .82cqw rgba(27, 48, 63, .075) !important;
+  transform: none !important;
+}
+
+body.v20-ui #screenCentral .central-panel-header {
+  height: 2.15cqw !important;
+  gap: .46cqw !important;
+  padding: 0 .72cqw !important;
+  border-bottom-color: var(--home-line-soft) !important;
+  background: #fff !important;
+  color: #2d3f4d !important;
+  font-size: clamp(11px, .41cqw, 14px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui #screenCentral .central-panel-glyph {
+  width: 1.28cqw !important;
+  height: 1.28cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid #dce4e7 !important;
+  border-radius: .3cqw !important;
+  background: #f0f4f5 !important;
+  color: #426879 !important;
+  font-size: .55cqw !important;
+}
+
+body.v20-ui #screenCentral .central-panel-glyph svg {
+  width: .7cqw !important;
+  height: .7cqw !important;
+  stroke-width: 1.75 !important;
+}
+
+body.v20-ui #screenCentral .central-panel-link {
+  color: var(--home-blue) !important;
+  font-size: clamp(9px, .31cqw, 11px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui #screenCentral .central-panel-link:hover {
+  color: var(--home-navy) !important;
+}
+
+body.v20-ui #screenCentral .central-panel-body {
+  height: calc(100% - 2.15cqw) !important;
+  padding: .58cqw !important;
+}
+
+/* Calendar: one dark anchor and a much softer active-day treatment. */
+body.v20-ui #screenCentral .central-advance-panel {
+  overflow: hidden !important;
+}
+
+body.v20-ui #screenCentral .central-advance-actions,
+body.v20-ui #screenCentral .central-advance-action,
+body.v20-ui #screenCentral .central-advance-next {
+  background: var(--home-navy) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action:hover,
+body.v20-ui #screenCentral .central-advance-next:hover {
+  background: var(--home-navy-deep) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action::before {
+  background: var(--home-teal) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action .advance-kicker,
+body.v20-ui #screenCentral .central-advance-next span {
+  color: #a9c4cd !important;
+  font-weight: 600 !important;
+  letter-spacing: .09em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action strong,
+body.v20-ui #screenCentral .central-advance-next strong {
+  color: #fff !important;
+  font-weight: 700 !important;
+  letter-spacing: .02em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action small {
+  color: #c8d6dc !important;
+  font-weight: 450 !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header {
+  border-color: var(--home-line-soft) !important;
+  background: #fbfcfc !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header span {
+  color: #354a58 !important;
+  font-size: clamp(11px, .43cqw, 14px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header strong {
+  color: var(--home-navy) !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day {
+  border-color: var(--home-line-soft) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day.is-today {
+  background: #edf3f5 !important;
+  box-shadow: inset 0 -2px var(--home-teal) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day strong,
+body.v20-ui #screenCentral .central-advance-day b {
+  color: var(--home-text) !important;
+  font-weight: 650 !important;
+}
+
+/* Attention cards: priority is shown with one slim accent, not a blue block. */
+body.v20-ui #screenCentral .central-attention-count {
+  background: var(--home-navy) !important;
+  font-weight: 650 !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .central-inbox-list {
+  gap: .34cqw !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .central-task-row {
+  border: 1px solid var(--home-line-soft) !important;
+  border-radius: .4cqw !important;
+  background: #fbfcfc !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .central-task-row::before {
+  width: 2px !important;
+  background: #91a1ab !important;
+}
+
+body.v20-ui #screenCentral .central-task-row.is-important::before {
+  background: var(--home-blue) !important;
+}
+
+body.v20-ui #screenCentral .central-task-row.is-urgent::before {
+  background: #b95853 !important;
+}
+
+body.v20-ui #screenCentral .central-task-row:hover {
+  border-color: #d5dfe4 !important;
+  background: #f8fafb !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body.v20-ui #screenCentral .central-task-priority {
+  border: 0 !important;
+  border-radius: .24cqw !important;
+  background: #eef2f4 !important;
+  color: #62727e !important;
+  font-size: clamp(8px, .28cqw, 10px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .045em !important;
+}
+
+body.v20-ui #screenCentral .central-task-row.is-important .central-task-priority {
+  background: #eaf0f3 !important;
+  color: #315f78 !important;
+}
+
+body.v20-ui #screenCentral .central-task-copy small,
+body.v20-ui #screenCentral .central-task-copy p {
+  color: var(--home-muted) !important;
+  font-weight: 450 !important;
+  letter-spacing: .015em !important;
+}
+
+body.v20-ui #screenCentral .central-task-copy strong {
+  color: var(--home-text) !important;
+  font-size: clamp(11px, .43cqw, 14px) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+body.v20-ui #screenCentral .v45-task-controls button {
+  border-color: var(--home-line) !important;
+  background: #fff !important;
+  color: #75838e !important;
+  font-weight: 600 !important;
+}
+
+/* News: editorial rows, calmer metadata and circular club marks. */
+body.v20-ui #screenCentral .central-news-list {
+  gap: 0 !important;
+}
+
+body.v20-ui #screenCentral .news-row.central-news-row {
+  padding: .55cqw .18cqw !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--home-line-soft) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .news-row.central-news-row:last-child {
+  border-bottom: 0 !important;
+}
+
+body.v20-ui #screenCentral .news-row.central-news-row:hover {
+  border-color: var(--home-line-soft) !important;
+  background: #f7f9fa !important;
+  transform: none !important;
+}
+
+body.v20-ui #screenCentral .central-news-row .news-avatar {
+  border-color: var(--home-line) !important;
+  border-radius: 50% !important;
+  background: #f3f6f7 !important;
+}
+
+body.v20-ui #screenCentral .central-news-row .news-copy strong {
+  color: var(--home-text) !important;
+  font-size: clamp(11px, .43cqw, 14px) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+body.v20-ui #screenCentral .central-news-row .news-copy small.central-news-category {
+  color: var(--home-blue) !important;
+  font-size: clamp(8px, .27cqw, 10px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .055em !important;
+}
+
+body.v20-ui #screenCentral .central-news-row .news-copy span {
+  color: var(--home-muted) !important;
+  font-size: clamp(8px, .26cqw, 10px) !important;
+  font-weight: 500 !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+}
+
+/* Objectives: remove nested boxes and reserve colour for progress. */
+body.v20-ui #screenCentral .central-objectives {
+  padding: 0 !important;
+}
+
+body.v20-ui #screenCentral .objective-row.central-objective-row {
+  padding: .55cqw .36cqw !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--home-line-soft) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .objective-row.central-objective-row:last-child {
+  border-bottom: 0 !important;
+}
+
+body.v20-ui #screenCentral .objective-row.central-objective-row:hover {
+  background: #f8fafb !important;
+}
+
+body.v20-ui #screenCentral .objective-icon {
+  color: var(--home-gold) !important;
+  font-size: clamp(14px, .72cqw, 20px) !important;
+}
+
+body.v20-ui #screenCentral .objective-copy strong {
+  color: var(--home-text) !important;
+  font-size: clamp(11px, .42cqw, 14px) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+body.v20-ui #screenCentral .objective-meta span,
+body.v20-ui #screenCentral .objective-meta b {
+  color: var(--home-muted) !important;
+  font-size: clamp(8px, .26cqw, 10px) !important;
+  font-weight: 550 !important;
+  letter-spacing: .035em !important;
+}
+
+body.v20-ui #screenCentral .progress {
+  height: .22cqw !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #e8edef !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui #screenCentral .progress i {
+  border-radius: 999px !important;
+  background: var(--home-blue) !important;
+}
+
+/* Finance and pulse: neutral data display with a single subdued accent. */
+body.v20-ui #screenCentral .central-finances {
+  gap: .62cqw !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .finance-budget {
+  border-color: var(--home-line-soft) !important;
+  border-radius: .42cqw !important;
+  background: var(--home-surface-soft) !important;
+}
+
+body.v20-ui #screenCentral .finance-label {
+  color: var(--home-muted) !important;
+  font-weight: 600 !important;
+  letter-spacing: .045em !important;
+}
+
+body.v20-ui #screenCentral .finance-value {
+  color: var(--home-navy) !important;
+  font-weight: 720 !important;
+  letter-spacing: -.02em !important;
+}
+
+body.v20-ui #screenCentral .finance-budget small,
+body.v20-ui #screenCentral .finance-status {
+  color: var(--home-muted) !important;
+  font-weight: 500 !important;
+}
+
+body.v20-ui #screenCentral .finance-grid {
+  stroke: #e4e9ec !important;
+}
+
+body.v20-ui #screenCentral .finance-line {
+  stroke: #6a899a !important;
+  stroke-width: 1.7 !important;
+}
+
+body.v20-ui #screenCentral .finance-dot {
+  fill: #6a899a !important;
+}
+
+body.v20-ui #screenCentral .finance-status strong {
+  color: #39745f !important;
+  font-weight: 650 !important;
+}
+
+body.v20-ui #screenCentral .finance-status button {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--home-blue) !important;
+  font-weight: 650 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason {
+  gap: .46cqw !important;
+  padding: .62cqw .7cqw !important;
+  border-radius: .4cqw !important;
+  background: #fafcfc !important;
+  box-shadow: inset 2px 0 var(--home-teal) !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason > header span,
+body.v20-ui #screenCentral .v2080-central-facts small {
+  color: var(--home-muted) !important;
+  font-weight: 550 !important;
+  letter-spacing: .055em !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason > header strong,
+body.v20-ui #screenCentral .v2080-central-programme b,
+body.v20-ui #screenCentral .v2080-central-facts b {
+  color: var(--home-text) !important;
+  font-weight: 650 !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason > header em {
+  color: var(--home-blue) !important;
+  font-weight: 600 !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-programme {
+  background: #eef3f4 !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-facts > span {
+  border-color: var(--home-line-soft) !important;
+  background: #fff !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason > button {
+  border: 1px solid #cad8dd !important;
+  background: #edf3f5 !important;
+  color: var(--home-navy) !important;
+  font-weight: 650 !important;
+  letter-spacing: .025em !important;
+}
+
+body.v20-ui #screenCentral .v2080-central-preseason > button:hover {
+  background: #e5edef !important;
+  filter: none !important;
+}
+
+/* Weekly summary: restrained labels, readable titles, no miniature CTA styling. */
+body.v20-ui #screenCentral .central-manager-briefing .central-panel-header {
+  height: 1.8cqw !important;
+}
+
+body.v20-ui #screenCentral .central-manager-briefing-body {
+  height: calc(100% - 1.8cqw) !important;
+  padding: .4cqw .7cqw !important;
+}
+
+body.v20-ui #screenCentral .central-week-card {
+  background: transparent !important;
+  color: var(--home-text) !important;
+}
+
+body.v20-ui #screenCentral .central-week-card:hover:not(:disabled) {
+  background: #f7f9fa !important;
+}
+
+body.v20-ui #screenCentral .central-week-card > span {
+  color: var(--home-muted) !important;
+  font-weight: 600 !important;
+  letter-spacing: .045em !important;
+}
+
+body.v20-ui #screenCentral .central-manager-briefing-body strong {
+  color: var(--home-text) !important;
+  font-size: clamp(10px, .36cqw, 13px) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0 !important;
+}
+
+body.v20-ui #screenCentral .central-manager-briefing-body p {
+  color: var(--home-muted) !important;
+  font-size: clamp(8px, .27cqw, 10px) !important;
+  font-weight: 450 !important;
+  letter-spacing: 0 !important;
+}
+
+/* Snapshot: fewer nested borders and less saturated key figures. */
+body.v20-ui #screenCentral .central-season-snapshot {
+  padding: .72cqw .8cqw !important;
+}
+
+body.v20-ui #screenCentral .central-season-snapshot > header {
+  margin: 0 0 .42cqw !important;
+  color: #3d505e !important;
+  font-size: clamp(10px, .35cqw, 12px) !important;
+  font-weight: 650 !important;
+  letter-spacing: .035em !important;
+}
+
+body.v20-ui #screenCentral .snapshot-grid {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .snapshot-grid > div {
+  border-color: var(--home-line-soft) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .living-snapshot strong {
+  color: #2e5e78 !important;
+  font-weight: 720 !important;
+  letter-spacing: -.015em !important;
+}
+
+body.v20-ui #screenCentral .living-snapshot span {
+  color: var(--home-muted) !important;
+  font-weight: 550 !important;
+  letter-spacing: .04em !important;
+}
+
+body.v20-ui #screenCentral .central-manager-security-strip {
+  border-color: var(--home-line-soft) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .central-manager-security-strip span,
+body.v20-ui #screenCentral .central-manager-security-strip small {
+  color: var(--home-muted) !important;
+  font-weight: 500 !important;
+}
+
+body.v20-ui #screenCentral .central-manager-security-strip strong {
+  color: #3f7a70 !important;
+  font-weight: 650 !important;
+}
+
+/* The cinematic fixture remains the focal point, but its chrome is quieter. */
+body.v20-ui #screenCentral .central-match-hero.vm27-match-card {
+  border-color: #334a56 !important;
+  border-radius: .68cqw !important;
+  box-shadow: 0 .42cqw 1.3cqw rgba(19, 34, 42, .16) !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-broadcast-backdrop {
+  filter: saturate(.62) contrast(1.03) brightness(.8) !important;
+}
+
+body.v20-ui #screenCentral .central-matchup-title .central-nameplate {
+  font-family: "Arial Narrow", "Segoe UI", Arial, sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -.015em !important;
+  text-shadow: 0 .12cqw .35cqw rgba(0, 0, 0, .62) !important;
+}
+
+body.v20-ui #screenCentral .central-match-summary .central-team-side-label,
+body.v20-ui #screenCentral .central-hero-eyebrow,
+body.v20-ui #screenCentral .central-lineup-block > span,
+body.v20-ui #screenCentral .central-captain-credit {
+  letter-spacing: .09em !important;
+  font-weight: 650 !important;
+}
+
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list strong,
+body.v20-ui #screenCentral .central-captain-credit strong {
+  font-weight: 600 !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-continue {
+  border-color: rgba(159, 208, 185, .52) !important;
+  background: #176d58 !important;
+  box-shadow: 0 .22cqw .65cqw rgba(0, 0, 0, .26) !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-continue:hover {
+  background: #125f4d !important;
+  transform: none !important;
+}
+
+/* Club plate is branding, not another competing panel. */
+body.v20-ui #screenCentral .central-club-plate {
+  background: var(--home-navy-deep) !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .central-club-plate strong {
+  font-weight: 650 !important;
+  letter-spacing: .055em !important;
+}
+
+body.v20-ui #screenCentral .central-club-plate small {
+  color: #9eb2bc !important;
+  font-weight: 500 !important;
+  letter-spacing: .07em !important;
+}
+
+@media (max-width: 1400px) {
+  body.v20-ui #screenCentral .central-panel-header {
+    font-size: 11px !important;
+  }
+
+  body.v20-ui #screenCentral .central-panel-glyph {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  body.v20-ui #screenCentral .central-panel-glyph svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.v20-ui #screenCentral * {
+    transition: none !important;
+  }
+}
+
+/* ========================================================================== */
+/* V63 — REMOVE HOMEPAGE VS PILL                                              */
+/* The badge / VS / badge fixture spine clashes with the large club-name and  */
+/* captain presentation. Remove this element from the Central homepage hero   */
+/* entirely, rather than relying on the game-day state class.                  */
+/* ========================================================================== */
+body.v20-ui #screenCentral .central-match-hero .central-versus-core.vm27-fixture-spine{
+  display:none!important;
+}
+
+/* Use the freed space for the club names and captains on the hero poster. */
+body.v20-ui #screenCentral .central-match-hero .central-matchup-title{
+  top:clamp(24px,4.8cqw,52px)!important;
+}
+body.v20-ui #screenCentral .central-match-hero .central-captain-pair{
+  top:clamp(35px,6.5cqw,70px)!important;
+}
+
+/* ========================================================================== */
+/* V65 — HOMEPAGE PRIORITY UX / CLUB PULSE                                    */
+/* Category gives each decision its identity; urgency remains a separate cue. */
+/* ========================================================================== */
+body.v20-ui #screenCentral .central-inbox-list.v2077-task-list {
+  gap: .38cqw !important;
+  padding: .46cqw !important;
+}
+
+body.v20-ui #screenCentral .central-task-row {
+  --task-accent: #5c7586;
+  --task-ink: #203442;
+  --task-wash: #f1f5f7;
+  --task-surface: #fbfcfd;
+  position: relative !important;
+  display: block !important;
+  min-width: 0 !important;
+  min-height: 4.35cqw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #dfe6e9 !important;
+  border-radius: .46cqw !important;
+  background: linear-gradient(112deg, var(--task-wash) 0, var(--task-surface) 42%, #fff 100%) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.84), 0 .14cqw .42cqw rgba(24,43,57,.055) !important;
+  cursor: default !important;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease !important;
+}
+
+body.v20-ui #screenCentral .central-task-row::before {
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: max(3px,.18cqw) !important;
+  border-radius: 0 !important;
+  background: var(--task-accent) !important;
+}
+
+body.v20-ui #screenCentral .central-task-row::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto 0;
+  height: 1.48cqw;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--task-wash), transparent 82%);
+  opacity: .72;
+}
+
+body.v20-ui #screenCentral .central-task-row.is-category-transfer { --task-accent:#c25c3f; --task-ink:#633326; --task-wash:#fff1ec; --task-surface:#fff9f6; }
+body.v20-ui #screenCentral .central-task-row.is-category-contract { --task-accent:#b48122; --task-ink:#5d471e; --task-wash:#fff7df; --task-surface:#fffdf7; }
+body.v20-ui #screenCentral .central-task-row.is-category-squad { --task-accent:#6655a7; --task-ink:#403765; --task-wash:#f2effc; --task-surface:#fbfaff; }
+body.v20-ui #screenCentral .central-task-row.is-category-medical { --task-accent:#b84646; --task-ink:#612f31; --task-wash:#fceeee; --task-surface:#fff9f9; }
+body.v20-ui #screenCentral .central-task-row.is-category-board { --task-accent:#a98135; --task-ink:#5b481f; --task-wash:#f8f1df; --task-surface:#fffdf7; }
+body.v20-ui #screenCentral .central-task-row.is-category-admin { --task-accent:#26867f; --task-ink:#285d5b; --task-wash:#eaf7f5; --task-surface:#f8fdfc; }
+body.v20-ui #screenCentral .central-task-row.is-category-scouting { --task-accent:#3478a5; --task-ink:#2d536d; --task-wash:#eaf3f9; --task-surface:#f8fbfd; }
+body.v20-ui #screenCentral .central-task-row.is-category-discipline { --task-accent:#be6236; --task-ink:#673721; --task-wash:#fff1e8; --task-surface:#fffaf7; }
+body.v20-ui #screenCentral .central-task-row.is-category-career { --task-accent:#586a9c; --task-ink:#374364; --task-wash:#eef1f8; --task-surface:#fafbfe; }
+body.v20-ui #screenCentral .central-task-row.is-category-season { --task-accent:#397f82; --task-ink:#31595b; --task-wash:#eaf5f4; --task-surface:#f8fcfc; }
+
+body.v20-ui #screenCentral .central-task-row.is-urgency-today,
+body.v20-ui #screenCentral .central-task-row.is-urgency-critical,
+body.v20-ui #screenCentral .central-task-row.is-urgency-urgent {
+  border-color: #ddbbb1 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.84), 0 0 0 1px rgba(173,68,50,.08), 0 .22cqw .7cqw rgba(139,56,42,.10) !important;
+}
+
+body.v20-ui #screenCentral .central-task-row:hover {
+  border-color: var(--task-accent) !important;
+  background: linear-gradient(112deg, var(--task-wash) 0, #fff 62%) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.9), 0 .32cqw .82cqw rgba(22,45,60,.11) !important;
+  transform: translateY(-1px) !important;
+}
+
+body.v20-ui #screenCentral .central-inbox-list.v45-task-list .v45-task-main {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 4.35cqw !important;
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) auto !important;
+  grid-template-rows: auto minmax(0,1fr) !important;
+  gap: .24cqw .42cqw !important;
+  align-content: center !important;
+  padding: .48cqw max(3.15cqw,86px) .48cqw .72cqw !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+body.v20-ui #screenCentral .central-task-kicker {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .3cqw;
+}
+
+body.v20-ui #screenCentral .central-task-category {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .25cqw;
+  color: var(--task-accent);
+}
+
+body.v20-ui #screenCentral .central-task-category i {
+  flex: 0 0 auto;
+  width: max(14px,.72cqw);
+  height: max(14px,.72cqw);
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: .22cqw;
+  background: rgba(255,255,255,.7);
+  opacity: .92;
+}
+
+body.v20-ui #screenCentral .central-task-category svg {
+  width: max(9px,.44cqw);
+  height: max(9px,.44cqw);
+}
+
+body.v20-ui #screenCentral .central-task-category b {
+  min-width: 0;
+  overflow: hidden;
+  color: currentColor;
+  font-size: clamp(8px,.27cqw,10px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .075em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .central-task-urgency {
+  flex: 0 0 auto;
+  margin-left: .08cqw;
+  padding: .19cqw .32cqw;
+  border: 1px solid #d5dfe3;
+  border-radius: 999px;
+  background: rgba(255,255,255,.88);
+  color: #647782;
+  font-size: clamp(7px,.23cqw,9px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .central-task-urgency.is-today,
+body.v20-ui #screenCentral .central-task-urgency.is-critical,
+body.v20-ui #screenCentral .central-task-urgency.is-urgent {
+  border-color: #d9907e;
+  background: #a94736;
+  color: #fff;
+  box-shadow: 0 .1cqw .32cqw rgba(143,53,39,.18);
+}
+
+body.v20-ui #screenCentral .central-task-urgency.is-soon {
+  border-color: #deb967;
+  background: #fff5d9;
+  color: #785917;
+}
+
+body.v20-ui #screenCentral .central-task-urgency.is-watch,
+body.v20-ui #screenCentral .central-task-urgency.is-important {
+  border-color: #c9d8df;
+  background: #edf3f5;
+  color: #3e6574;
+}
+
+body.v20-ui #screenCentral .central-task-copy {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  display: block !important;
+}
+
+body.v20-ui #screenCentral .central-task-copy strong {
+  display: block !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: var(--task-ink) !important;
+  font-size: clamp(10px,.41cqw,14px) !important;
+  font-weight: 700 !important;
+  line-height: 1.12 !important;
+  letter-spacing: -.008em !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.v20-ui #screenCentral .central-task-copy p {
+  display: -webkit-box !important;
+  margin: .18cqw 0 0 !important;
+  overflow: hidden !important;
+  color: #6f7e88 !important;
+  font-size: clamp(8px,.28cqw,10px) !important;
+  font-weight: 500 !important;
+  line-height: 1.25 !important;
+  letter-spacing: .005em !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+body.v20-ui #screenCentral .central-task-chevron {
+  position: absolute;
+  right: .5cqw;
+  bottom: .42cqw;
+  display: block !important;
+  color: var(--task-accent) !important;
+  font-size: clamp(14px,.76cqw,22px) !important;
+  font-weight: 450 !important;
+  line-height: 1 !important;
+  opacity: .7;
+}
+
+body.v20-ui #screenCentral .v45-task-controls {
+  right: .42cqw !important;
+  top: .42cqw !important;
+  gap: .16cqw !important;
+}
+
+body.v20-ui #screenCentral .v45-task-controls > button {
+  min-width: max(22px,.74cqw) !important;
+  height: max(22px,.74cqw) !important;
+  border-color: rgba(104,124,135,.24) !important;
+  background: rgba(255,255,255,.84) !important;
+  color: #667985 !important;
+  box-shadow: 0 1px 2px rgba(25,43,53,.04) !important;
+}
+
+body.v20-ui #screenCentral .v45-task-controls > button:hover {
+  border-color: var(--task-accent) !important;
+  background: #fff !important;
+  color: var(--task-accent) !important;
+}
+
+body.v20-ui #screenCentral .v45-task-main:focus-visible {
+  outline: 2px solid var(--task-accent) !important;
+  outline-offset: -3px !important;
+  border-radius: .4cqw !important;
+}
+
+body.v20-ui #screenCentral .central-task-row.is-tracked::before {
+  background: linear-gradient(180deg,#b78b32 0 22%,var(--task-accent) 22% 100%) !important;
+}
+
+/* Club Pulse is a first-frame executive status, never a scrolling mini page. */
+body.v20-ui #screenCentral .central-calendar-panel {
+  top: 69.35% !important;
+  height: 16.85% !important;
+}
+
+body.v20-ui #screenCentral .central-club-pulse {
+  height: calc(100% - 2.15cqw) !important;
+  padding: .4cqw !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui #screenCentral .v65-club-pulse {
+  height: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0,1fr) auto;
+  gap: .34cqw;
+  padding: .48cqw .5cqw .42cqw;
+  overflow: hidden;
+  border: 1px solid #dce5e8;
+  border-radius: .4cqw;
+  background: linear-gradient(145deg,#f8fbfc,#fff 56%,#f5f8f9);
+  box-shadow: inset 2px 0 #4f8b8d;
+  box-sizing: border-box;
+}
+
+body.v20-ui #screenCentral .v65-club-pulse.is-runin { box-shadow: inset 2px 0 #b78a32; }
+body.v20-ui #screenCentral .v65-club-pulse.is-final { box-shadow: inset 2px 0 #b64b46; }
+body.v20-ui #screenCentral .v65-club-pulse.is-market { box-shadow: inset 2px 0 #347e91; }
+body.v20-ui #screenCentral .v65-club-pulse.is-crown,
+body.v20-ui #screenCentral .v65-club-pulse.is-cup,
+body.v20-ui #screenCentral .v65-club-pulse.is-playoff { box-shadow: inset 2px 0 #6958a4; }
+
+body.v20-ui #screenCentral .v65-pulse-lead {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5cqw;
+}
+
+body.v20-ui #screenCentral .v65-pulse-lead > div { min-width: 0; }
+body.v20-ui #screenCentral .v65-pulse-lead span {
+  display: block;
+  overflow: hidden;
+  color: #4f7d80;
+  font-size: clamp(7px,.24cqw,9px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .12em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-lead strong {
+  display: block;
+  margin-top: .16cqw;
+  overflow: hidden;
+  color: #183347;
+  font-size: clamp(10px,.49cqw,16px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-lead em {
+  flex: 0 0 auto;
+  max-width: 42%;
+  padding: .18cqw .3cqw;
+  overflow: hidden;
+  border: 1px solid #d5e0e4;
+  border-radius: 999px;
+  background: #fff;
+  color: #526b79;
+  font-size: clamp(6px,.21cqw,8px);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .055em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-metrics {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: .28cqw;
+}
+
+body.v20-ui #screenCentral .v65-pulse-metrics article {
+  --pulse: #637987;
+  --pulse-bg: #f2f5f6;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  grid-template-rows: minmax(0,1fr) auto;
+  gap: .12cqw .22cqw;
+  align-items: center;
+  padding: .32cqw .34cqw;
+  overflow: hidden;
+  border: 1px solid #e1e7ea;
+  border-radius: .32cqw;
+  background: var(--pulse-bg);
+}
+
+body.v20-ui #screenCentral .v65-pulse-metrics article.is-positive { --pulse:#35765f; --pulse-bg:#edf7f2; }
+body.v20-ui #screenCentral .v65-pulse-metrics article.is-neutral { --pulse:#426c82; --pulse-bg:#eff5f7; }
+body.v20-ui #screenCentral .v65-pulse-metrics article.is-warning { --pulse:#9a7326; --pulse-bg:#fbf5e7; }
+body.v20-ui #screenCentral .v65-pulse-metrics article.is-critical { --pulse:#a64642; --pulse-bg:#faeeee; }
+
+body.v20-ui #screenCentral .v65-pulse-icon {
+  grid-row: 1;
+  width: max(15px,.78cqw);
+  height: max(15px,.78cqw);
+  display: grid;
+  place-items: center;
+  border-radius: .24cqw;
+  background: rgba(255,255,255,.72);
+  color: var(--pulse);
+}
+
+body.v20-ui #screenCentral .v65-pulse-icon svg { width: 68%; height: 68%; }
+body.v20-ui #screenCentral .v65-pulse-metrics article > div { min-width: 0; }
+body.v20-ui #screenCentral .v65-pulse-metrics article > div span {
+  display: block;
+  overflow: hidden;
+  color: #7b8991;
+  font-size: clamp(6px,.2cqw,8px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .07em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-metrics article > div strong {
+  display: block;
+  margin-top: .13cqw;
+  overflow: hidden;
+  color: var(--pulse);
+  font-size: clamp(8px,.31cqw,11px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-trend {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: .14cqw;
+  overflow: hidden;
+  color: #75858e;
+  font-size: clamp(6px,.2cqw,8px);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-pulse-trend b { color: var(--pulse); font-size: 1.12em; }
+body.v20-ui #screenCentral .v65-pulse-trend em { margin-left: auto; color: #839099; font-style: normal; font-weight: 700; }
+
+body.v20-ui #screenCentral .v65-club-pulse > footer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: .42cqw;
+}
+
+body.v20-ui #screenCentral .v65-club-pulse > footer p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #74828b;
+  font-size: clamp(7px,.22cqw,9px);
+  font-weight: 500;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.v20-ui #screenCentral .v65-club-pulse > footer button {
+  padding: .17cqw .05cqw;
+  border: 0;
+  background: transparent;
+  color: #386b80;
+  font-size: clamp(6px,.21cqw,8px);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .055em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+body.v20-ui #screenCentral .v65-club-pulse > footer button:hover { color: #173f55; }
+body.v20-ui #screenCentral .v65-club-pulse > footer button:focus-visible { outline: 2px solid rgba(57,109,137,.35); outline-offset: 2px; }
+
+@media (max-width: 1180px) {
+  body.v20-ui #screenCentral .v65-pulse-trend em { display: none; }
+  body.v20-ui #screenCentral .v65-pulse-lead em { max-width: 36%; }
+}
+
+@media (max-width: 980px) {
+  body.v20-ui #screenCentral .central-inbox-list.v45-task-list .v45-task-main { padding-right: 68px !important; }
+  body.v20-ui #screenCentral .v45-task-controls { right: 4px !important; top: 4px !important; gap: 2px !important; }
+  body.v20-ui #screenCentral .v45-task-controls > button { min-width: 20px !important; width: 20px !important; height: 20px !important; padding: 0 !important; }
+  body.v20-ui #screenCentral .central-task-urgency.is-important,
+  body.v20-ui #screenCentral .central-task-urgency.is-routine { display: none; }
+  body.v20-ui #screenCentral .v65-pulse-trend { font-size: 0; }
+  body.v20-ui #screenCentral .v65-pulse-trend b { font-size: 9px; }
+  body.v20-ui #screenCentral .v65-club-pulse > footer p { max-width: 13cqw; }
+}
+
+@media (max-width: 900px) {
+  body.v20-ui #screenCentral .v65-pulse-metrics {
+    grid-template-columns: minmax(0,1fr);
+    gap: 2px;
+  }
+  body.v20-ui #screenCentral .v65-pulse-metrics article {
+    grid-template-columns: auto minmax(0,1fr) auto;
+    grid-template-rows: minmax(0,1fr);
+    gap: 3px;
+    padding: 2px 4px;
+  }
+  body.v20-ui #screenCentral .v65-pulse-icon { grid-row: 1; }
+  body.v20-ui #screenCentral .v65-pulse-trend { grid-column: 3; grid-row: 1; }
+}

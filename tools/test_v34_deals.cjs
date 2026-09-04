@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),{runtime}=require('./career_test_runtime.cjs');
+const r=runtime(),q=r.q,x=r.context.VELMORA_EXPANSION,c=r.context.VELMORA_CLUBS.find(c=>c.id==='redwick');r.d.assignClubForTest(c);q.initializeCareerLifecycle();c.budget='£100000000';q.v25ClubFinance(c).wageBudget=1000000;
+const seller=q.state().clubs.find(t=>t.id!==c.id&&t.tier===c.tier&&t.world===c.world);seller.budget='£100000000';q.v25ClubFinance(seller).wageBudget=1000000;
+const p=q.getSquad(seller).find(p=>!p.captain),swap=q.getSquad(c).find(p=>!p.captain),before=q.getSquad(c).length,sellerBefore=q.getSquad(seller).length;
+const t={fee:q.livingPlayerMarketValue(p)*4,wage:q.expectedWage(p)*2,bonus:1000,years:3,role:'Rotation',sellOn:20,releaseClause:0,swapId:swap.id,wageShare:100,optionFee:0};
+const offer=x.proposeDeal(p.id,'SWAP',t);assert(offer.ok,offer.message);const done=x.confirmDeal(offer.offer.id);assert(done.ok,done.message);assert.equal(p.clubId,c.id);assert.equal(swap.clubId,seller.id);assert.equal(q.getSquad(c).length,before);assert.equal(q.getSquad(seller).length,sellerBefore);assert.equal(p.v34SellOn.beneficiary,seller.id);assert(!x.confirmDeal(offer.offer.id).ok);
+// A counter-offer does not reserve cash or move either player.
+const next=q.getSquad(seller).find(x=>!x.captain&&x.id!==swap.id),balance=c.budget,rosters=JSON.stringify(q.getSquad(c).map(p=>p.id));const rejected=x.proposeDeal(next.id,'TRANSFER',{...t,fee:0,sellOn:0,swapId:null});assert(!rejected.ok);assert.equal(c.budget,balance);assert.equal(JSON.stringify(q.getSquad(c).map(p=>p.id)),rosters);
+const outgoing=q.getSquad(c).find(p=>!p.captain&&p.id!==next.id),buyer=q.state().clubs.find(b=>b.id!==c.id&&b.id!==seller.id);buyer.budget='£100000000';q.v25ClubFinance(buyer).wageBudget=1000000;
+while(q.getSquad(buyer).length>=8)q.getSquad(buyer).pop();
+const incoming={id:'V34-SALE-TEST',sellerClubId:c.id,buyerClubId:buyer.id,playerId:outgoing.id,currentFee:1000000,status:'OPEN',createdDate:q.currentCareerISO(),expiresDate:'2026-08-10',marketContext:{}};q.state().livingSquad.incomingOffers.push(incoming);
+assert(x.quoteSale(incoming.id,20).ok);const sale=x.state().saleQuotes.at(-1);assert.equal(sale.fee,900000);assert(x.confirmSale(sale.id).ok);assert.equal(outgoing.clubId,buyer.id);assert.equal(outgoing.v34SellOn.beneficiary,c.id);assert.equal(outgoing.v34SellOn.percent,20);assert(!x.confirmSale(sale.id).ok);
+console.log(JSON.stringify({status:'PASS',checks:['cash plus player exchange changes both rosters once','sell-on terms survive an exchange','rejected negotiation leaves budgets and ownership unchanged','incoming currentFee converts to explicit discounted sale','user retains future transfer share after sale','repeat confirmations are rejected']},null,2));

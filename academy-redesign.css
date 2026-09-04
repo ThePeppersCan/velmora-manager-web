@@ -1,0 +1,137 @@
+/* Academy inherits the squad theme only while its pane is active. */
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) {--ac-bg:#0a1711;--ac-panel:#10231a;--ac-raised:#172e22;--ac-line:#2c4435;--ac-text:#edf4ed;--ac-muted:#a4b7a9;--ac-green:#80e49e;--ac-gold:#e2c57d}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #youthSquadView.is-active {display:flex!important;flex-direction:column!important;gap:18px!important;height:100%!important;min-width:0!important;min-height:0!important;padding:22px!important;overflow:auto!important;background:var(--ac-bg)!important;color:var(--ac-text)!important;scrollbar-width:thin;scrollbar-color:#355c43 transparent}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #youthSquadView>* {flex-shrink:0!important;min-width:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero {display:flex!important;align-items:center!important;justify-content:space-between!important;gap:20px!important;min-height:110px!important;padding:14px 20px!important;border:1px solid var(--ac-line)!important;border-radius:10px!important;background:linear-gradient(110deg,#163322,#10231a)!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero .roster-kicker {color:var(--ac-green)!important;font:700 10px/1.4 Arial,sans-serif!important;letter-spacing:.13em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero h3 {margin:5px 0 8px!important;color:var(--ac-text)!important;font:800 clamp(22px,1.5cqw,32px)/1.1 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero p {margin:0!important;max-width:620px!important;color:var(--ac-muted)!important;font:400 12px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview {flex:none;min-width:150px!important;padding:8px 16px!important;border:1px solid #456148!important;border-radius:7px!important;background:#132c1f!important;box-shadow:none!important;text-align:right!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview span {color:var(--ac-muted)!important;font:600 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview strong {margin:5px 0!important;color:var(--ac-gold)!important;font:700 24px/1.1 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview small {color:var(--ac-muted)!important;font:400 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-section-nav {margin:0!important;border-bottom:1px solid var(--ac-line)!important;gap:8px!important;overflow-x:auto!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-section-nav button {padding:14px 16px!important;color:var(--ac-muted)!important;background:none!important;border:0!important;border-bottom:3px solid transparent!important;font:600 11px/1.4 Arial,sans-serif!important;letter-spacing:.03em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-section-nav button.is-active {color:var(--ac-green)!important;background:#142c1e!important;border-bottom-color:var(--ac-green)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-section-nav button:hover {color:#fff!important;background:#183322!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #youthAcademyGrid {display:flex!important;flex:0 0 auto!important;flex-direction:column!important;gap:18px!important;height:auto!important;min-height:0!important;padding:0!important;margin:0!important;overflow:visible!important;background:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #youthAcademyGrid[hidden],body.v20-ui #screenSquad:has(#youthSquadView.is-active) #v35AcademyWorkspace[hidden],body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-footer-note[hidden] {display:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard {display:grid!important;grid-template-columns:1.4fr repeat(3,minmax(0,1fr))!important;gap:12px!important;min-height:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard article,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard article:first-child {min-height:105px!important;min-width:0!important;padding:15px!important;background:var(--ac-panel)!important;border:1px solid var(--ac-line)!important;border-radius:8px!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard article:first-child {border-left:3px solid #5ace83!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard span {color:var(--ac-muted)!important;font:600 10px/1.35 Arial,sans-serif!important;letter-spacing:.07em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard strong {margin:7px 0!important;color:var(--ac-text)!important;font:700 24px/1.1 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard small {display:block!important;margin:0!important;color:var(--ac-muted)!important;font:400 11px/1.4 Arial,sans-serif!important;white-space:normal!important;-webkit-line-clamp:unset!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-list-grid {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important;align-content:start!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card.academy-card-v2 {position:relative!important;display:grid!important;grid-template-columns:clamp(94px,7.5cqw,160px) minmax(0,1fr)!important;min-width:0!important;width:100%!important;height:auto!important;min-height:205px!important;padding:0!important;text-align:left!important;background:var(--ac-panel)!important;color:var(--ac-text)!important;border:1px solid var(--ac-line)!important;border-radius:9px!important;overflow:hidden!important;box-shadow:none!important;transform:none!important;transition:border-color .15s ease,background .15s ease!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card.academy-card-v2:hover {border-color:#719c7b!important;background:#142b1e!important;box-shadow:none!important;transform:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card.academy-card-v2.is-selected {border:2px solid #74db97!important;background:#172f22!important;box-shadow:0 0 0 2px #75de9720!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card.academy-card-v2.needs-decision {border-color:var(--ac-gold)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-avatar {position:relative!important;inset:auto!important;display:grid!important;place-items:center!important;min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;padding:14px 8px!important;border-right:1px solid var(--ac-line)!important;background:radial-gradient(ellipse at center,#2e5339,#142b1d 75%)!important;overflow:hidden!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-avatar img.smart-avatar {position:static!important;inset:auto!important;display:block!important;width:100%!important;height:175px!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;transform:none!important;filter:drop-shadow(0 5px 4px #0005)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-copy {display:flex!important;flex-direction:column!important;gap:6px!important;min-width:0!important;padding:32px 16px 12px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-topline {display:flex!important;flex-wrap:wrap!important;gap:5px!important;padding:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-copy h4 {margin:0!important;color:var(--ac-text)!important;font:700 clamp(15px,.95cqw,20px)/1.25 Arial,sans-serif!important;white-space:normal!important;overflow-wrap:anywhere}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-copy p {margin:0!important;color:var(--ac-muted)!important;font:400 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-role-pill,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-tier-pill,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-tag-row span,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-profile-tags span {display:inline-flex!important;align-items:center!important;min-height:22px!important;max-width:100%!important;padding:3px 7px!important;border:1px solid #3c5845!important;border-radius:4px!important;background:#1c3526!important;color:#bdd9c4!important;font:500 9px/1.3 Arial,sans-serif!important;letter-spacing:.02em!important;white-space:normal!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-tier-pill {border-color:#625b37!important;color:var(--ac-gold)!important;background:#2d301e!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-tag-row {display:flex!important;flex-wrap:wrap!important;gap:5px!important;min-height:0!important;margin:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-ranges {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-top:auto!important;padding-top:9px!important;border-top:1px solid var(--ac-line)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-ranges>div {padding:9px 10px!important;background:#0c1c13!important;border:1px solid var(--ac-line)!important;border-radius:5px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-ranges small {display:block!important;color:var(--ac-muted)!important;font:600 9px/1.3 Arial,sans-serif!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-ranges strong {display:block!important;margin-top:4px!important;color:var(--ac-green)!important;font:700 18px/1.2 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-ranges>div:last-child strong {color:var(--ac-gold)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-flag {position:absolute!important;top:10px!important;right:12px!important;padding:3px 6px!important;background:#21382a!important;color:#b5cabd!important;border:1px solid #385340!important;border-radius:4px!important;font:600 9px/1.2 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card-flag.is-alert {background:#3e3420!important;color:#f6d18b!important;border-color:#a78747!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-footer-note {display:flex!important;align-items:flex-start!important;gap:14px!important;margin:4px 0 0!important;min-height:0!important;padding:14px 16px!important;background:var(--ac-panel)!important;border:1px solid var(--ac-line)!important;border-radius:7px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-footer-note b {flex:none;color:var(--ac-gold)!important;font:600 10px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-footer-note span {color:var(--ac-muted)!important;font:400 11px/1.5 Arial,sans-serif!important;white-space:normal!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-empty,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .dossier-empty {padding:25px!important;background:var(--ac-panel)!important;border:1px dashed #486650!important;border-radius:8px!important;color:var(--ac-muted)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-empty strong,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .dossier-empty h3 {color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-empty span,body.v20-ui #screenSquad:has(#youthSquadView.is-active) .dossier-empty p {font:400 13px/1.6 Arial,sans-serif!important;color:var(--ac-muted)!important;max-width:none!important}
+/* Prospect dossier: estimates stay ranges, separate from senior rating tiers. */
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile {background:linear-gradient(160deg,#11251a,#0a1811)!important;padding:20px 24px 95px!important;color:var(--ac-text)!important;overflow-x:hidden!important;overflow-y:auto!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-topline {color:var(--ac-muted)!important;font-size:10px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-hero {display:grid!important;grid-template-columns:minmax(0,31%) minmax(0,1fr)!important;gap:16px!important;min-height:185px!important;margin:14px 0 6px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-avatar-stage {height:180px!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-hero-copy {min-width:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-overall.youth-estimate {display:flex!important;align-items:baseline!important;flex-direction:row!important;justify-content:flex-start!important;gap:9px!important;width:auto!important;max-width:100%!important;margin:0 0 12px!important;padding:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .youth-estimate strong {font:700 clamp(24px,1.6cqw,34px)/1.1 Arial,sans-serif!important;color:var(--ac-green)!important;white-space:nowrap!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .youth-estimate small {font:600 9px/1.4 Arial,sans-serif!important;color:var(--ac-muted)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-hero-copy h3 {font-size:clamp(15px,1cqw,21px)!important;color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-club-line {display:flex!important;align-items:center!important;gap:8px!important;color:var(--ac-muted)!important;margin:9px 0!important;font:400 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-club-line>div {width:22px!important;height:24px!important;min-width:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-club-line img {width:22px!important;height:24px!important;object-fit:contain!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-tags {gap:5px!important;margin-top:10px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-report {padding:15px 0!important;margin:0!important;border-bottom:1px solid var(--ac-line)!important;background:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-report>span {color:var(--ac-muted)!important;font:600 9px/1.5 Arial,sans-serif!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-report>strong {margin:7px 0!important;color:var(--ac-gold)!important;font:700 17px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-report>p {margin:0!important;color:#c2d0c6!important;font:400 12px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-traits {padding:14px!important;margin:14px 0!important;background:var(--ac-panel)!important;border:1px solid var(--ac-line)!important;border-radius:7px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-traits h4 {color:var(--ac-muted)!important;font-size:10px!important;margin-bottom:8px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-traits h4 span,body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-trait p {color:var(--ac-muted)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-trait strong {color:var(--ac-text)!important;font-size:12px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-trait small,body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-trait>svg {color:var(--ac-green)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .v48-trait .trait-hex {fill:#193f29!important;stroke:#417950!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-detail-grid {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:1px!important;margin:14px 0!important;padding:1px!important;border:1px solid var(--ac-line)!important;border-radius:7px!important;background:var(--ac-line)!important;overflow:hidden!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-detail-grid>div {padding:12px!important;border:0!important;background:var(--ac-panel)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-detail-grid span {color:var(--ac-muted)!important;font:600 9px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-detail-grid strong {display:block!important;margin-top:5px!important;color:var(--ac-text)!important;font:600 16px/1.2 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-insight-grid {grid-template-columns:minmax(0,1fr)!important;gap:10px!important;margin:14px 0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-insight-card {padding:13px!important;border:1px solid var(--ac-line)!important;border-radius:7px!important;background:var(--ac-panel)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-section-title {display:flex!important;justify-content:space-between!important;gap:10px!important;flex-wrap:wrap!important;color:var(--ac-muted)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-section-title span,body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-section-title small {color:var(--ac-muted)!important;font:600 9px/1.4 Arial,sans-serif!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-insight-card ul {padding-left:16px!important;margin:8px 0 0!important;gap:6px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-insight-card li {color:#c2d0c6!important;font:400 11px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-section {padding:14px!important;background:var(--ac-panel)!important;border:1px solid var(--ac-line)!important;border-radius:7px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stats {display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;margin-top:14px!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stat {display:grid!important;grid-template-columns:34px minmax(0,1fr) 48px!important;gap:10px!important;color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stat span,body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stat strong {color:var(--ac-text)!important;font:600 11px/1.2 Arial,sans-serif!important;white-space:nowrap!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stat > div {background:#2a3e31!important;border:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .profile-stat > div i {background:linear-gradient(90deg,#2e9155,#86dca3)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-actions-v2 {position:static!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:16px 0 0!important;padding:0!important;background:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-actions-v2 button {position:static!important;min-width:0!important;min-height:40px!important;height:auto!important;margin:0!important;padding:10px 12px!important;border:1px solid #46614e!important;border-radius:5px!important;background:#193323!important;color:#ddece1!important;box-shadow:none!important;font:600 11px/1.3 Arial,sans-serif!important;letter-spacing:.02em!important;cursor:pointer}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile #promoteYouth {grid-column:1/-1!important;background:#278448!important;border-color:#54b774!important;color:#fff!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile #releaseYouth {background:transparent!important;border-color:#77514b!important;color:#eca99b!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile .academy-profile-actions-v2 button:disabled {opacity:.45!important;cursor:not-allowed!important}
+/* Recruitment and competition use the full available workspace. */
+body.v20-ui #screenSquad:has(#youthSquadView.is-active).v35-academy-wide .squad-shell {grid-template-columns:minmax(0,1fr)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active).v35-academy-wide #playerProfile {display:none!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) #v35AcademyWorkspace {min-width:0!important;color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace {color:var(--ac-text)!important;font-family:Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace .v34-content {padding:0!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(.v34-card,.v34-summary>div,.v34-youth-picks label,.v34-table-wrap) {background:var(--ac-panel)!important;border-color:var(--ac-line)!important;box-shadow:none!important;color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(h3,.v34-summary strong,.v34-facts b,.v34-fixture b,.v34-section) {color:var(--ac-text)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(p,small,.v34-facts span,.v34-form label) {color:var(--ac-muted)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace .v34-summary>div {border-top-color:#4fb775!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(button,input,select) {background:#183323!important;color:var(--ac-text)!important;border-color:#46614e!important;font-family:Arial,sans-serif!important;accent-color:#69d68d}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace .v34-form button {background:#278448!important;border-color:#54b774!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace .v34-empty {color:var(--ac-muted)!important;border-color:#46614e!important;background:#12251a!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(th,td,.v34-fixture,.v34-facts) {border-color:var(--ac-line)!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace th {background:#193323!important;color:#b5d2be!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace tr.is-own {background:#20482e!important;color:#9bedb4!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace .v34-feedback {background:#20482e!important;color:#d2efd9!important;border-color:#67cb85!important}
+body.v20-ui #screenSquad:has(#youthSquadView.is-active) :is(button,input,select):focus-visible {outline:2px solid #9defb6!important;outline-offset:3px!important}
+@media(max-width:1200px) {
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-list-grid {grid-template-columns:minmax(0,1fr)!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) #playerProfile {padding-inline:16px!important}
+}
+@media(min-width:901px) and (max-width:1100px) {
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active):not(.v35-academy-wide) .squad-shell {grid-template-columns:minmax(0,1fr) 310px!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active):not(.v35-academy-wide) #playerProfile {display:block!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero {flex-wrap:wrap!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview {width:100%!important;text-align:left!important}
+}
+@media(max-width:900px) {
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .squad-shell {display:block!important;overflow:auto!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .squad-workspace {height:auto!important;min-height:650px!important;grid-template-rows:80px minmax(550px,auto)!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active):not(.v35-academy-wide) #playerProfile {display:block!important;height:auto!important;min-height:0!important;border-top:1px solid var(--ac-line)!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) #youthSquadView.is-active {height:auto!important;overflow:visible!important;padding:14px!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-hero {flex-wrap:wrap!important;padding:16px!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-overview {width:100%!important;text-align:left!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-dashboard {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-card.academy-card-v2 {grid-template-columns:95px minmax(0,1fr)!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .academy-footer-note {flex-direction:column!important;gap:6px!important}
+  body.v20-ui #screenSquad:has(#youthSquadView.is-active) .v35-workspace :is(.v34-form,.v34-columns,.v34-summary) {grid-template-columns:minmax(0,1fr)!important}
+}

@@ -1,0 +1,38 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const {runtime}=require('./career_test_runtime.cjs');
+const r=runtime(),{q,d}=r;
+const own=r.context.VELMORA_CLUBS.find(c=>c.id==='caldria-4-riva-sola');
+d.assignClubForTest(own);q.initializeCareerLifecycle();
+const fixture=q.state().fixtures.find(f=>!f.played&&f.type==='LEAGUE'&&(f.homeClubId===own.id||f.awayClubId===own.id));
+assert(fixture);
+q.set('fixtures',[fixture]);
+q.setCareerDate(q.addDaysISO(fixture.date,-1));
+q.renderMatchday();
+assert.equal(r.node('matchWatch').disabled,true,'Watch must stay disabled before matchday');
+assert.equal(r.node('matchQuick').disabled,true,'Quick Sim must stay disabled before matchday');
+q.setCareerDate(fixture.date);
+const unavailable=q.activeStarters(own)[0];unavailable.injured=true;unavailable.injuryDaysRemaining=4;
+q.renderMatchday();
+assert(r.node('screenMatchday').classList.contains('has-lineup-warning'),'The real lineup problem must be reflected by the warning');
+assert(r.node('matchdayActionStatus').textContent.includes(unavailable.name));
+assert.equal(r.node('matchWatch').disabled,false,'An available substitute must allow the existing automatic repair');
+const ownSide=fixture.homeClubId===own.id?'Home':'Away';
+assert.notEqual(r.node('matchday'+ownSide+'Featured').src,q.v262StandingSprite(unavailable),'Do not feature an unavailable starter when an eligible one exists');
+assert(r.node('matchday'+ownSide+'Lineup').innerHTML.includes('INJURED'));
+for(const side of ['Home','Away']){
+  const src=r.node('matchday'+side+'Featured').src.split('?')[0];
+  assert(fs.existsSync(path.resolve(__dirname,'..',src)),'Featured player must use a supplied standing asset');
+}
+const opponent=q.clubById(fixture.homeClubId===own.id?fixture.awayClubId:fixture.homeClubId);
+assert.equal(q.matchdayClubOvrText(opponent),'UNSCOUTED','Presentation must preserve the scouting restriction');
+const recommendation=q.matchStaffRecommendation(opponent);
+q.applyMatchStaffRecommendation();
+assert.equal(q.state().careerPreferences.tactics.attacking,recommendation.attacking);
+assert.equal(q.state().careerPreferences.tactics.defensive,recommendation.defensive);
+assert(q.prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false}).ready);
+q.renderMatchday();
+assert(!r.node('screenMatchday').classList.contains('has-lineup-warning'));
+assert(!q.activeStarters(own).some(p=>p.id===unavailable.id));
+assert.equal(q.activeStarters(own).length,3);
+console.log('PASS: V47 future/live fixture states, unavailable-player warning, eligible portrait selection, real asset paths, scouting privacy, staff tactics, and automatic lineup repair.');

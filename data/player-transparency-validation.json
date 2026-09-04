@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "asset_revision": "alpha-3",
+  "mode": "apply",
+  "standing_files_checked": 1609,
+  "standing_files_changed": 1609,
+  "edge_matte_pixels_repaired": 177324,
+  "frame_dimensions": "unchanged",
+  "alpha_rule": "decreased only on detected white-matte edge pixels",
+  "backup": "C:\\Users\\Isaac\\Desktop\\Velmora Manager\\_archive\\standing-alpha-2-pre-defringe-20260903"
+}

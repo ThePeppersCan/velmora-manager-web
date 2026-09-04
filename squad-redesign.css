@@ -1,0 +1,520 @@
+/* V66 — Squad Management
+   A single-render, pitch-first workspace inspired by a modern sporting operations room. */
+
+body.v20-ui #screenSquad{
+  --v66-ink:#07110d;
+  --v66-panel:#0b1913;
+  --v66-panel-2:#10241b;
+  --v66-line:rgba(188,211,191,.15);
+  --v66-text:#eef4ed;
+  --v66-muted:#91a097;
+  --v66-green:#4fd477;
+  --v66-green-deep:#19773d;
+  color:var(--v66-text)!important;
+  background:
+    radial-gradient(circle at 64% 2%,rgba(44,111,68,.16),transparent 32%),
+    linear-gradient(135deg,#08140f 0%,#0a1812 44%,#06100c 100%)!important;
+  font-family:Arial,sans-serif!important;
+}
+body.v20-ui #screenSquad>.career-topbar{display:none!important}
+body.v20-ui #screenSquad .squad-bg,
+body.v20-ui #screenSquad .squad-shade{display:none!important}
+
+body.v20-ui #screenSquad .squad-shell{
+  position:absolute!important;inset:0!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) 24.6cqw!important;
+  gap:0!important;padding:0!important;
+  background:transparent!important;color:var(--v66-text)!important;
+}
+body.v20-ui #screenSquad .squad-workspace{
+  min-width:0!important;min-height:0!important;height:100%!important;
+  display:grid!important;grid-template-columns:7.15cqw minmax(0,1fr)!important;
+  grid-template-rows:6.35cqw minmax(0,1fr)!important;
+  gap:0!important;padding:0!important;overflow:hidden!important;
+  border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+
+/* Club header */
+body.v20-ui #screenSquad .squad-heading{
+  position:relative!important;inset:auto!important;grid-column:1/-1!important;grid-row:1!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  min-width:0!important;width:auto!important;height:auto!important;margin:0!important;
+  padding:.72cqw 1.55cqw .72cqw 1.42cqw!important;
+  color:var(--v66-text)!important;background:rgba(8,19,14,.92)!important;
+  border:0!important;border-bottom:1px solid var(--v66-line)!important;border-radius:0!important;
+  box-shadow:0 .5cqw 2cqw rgba(0,0,0,.18)!important;
+}
+body.v20-ui #screenSquad .squad-club-lockup{display:flex!important;align-items:center!important;gap:1.05cqw!important;min-width:0!important}
+body.v20-ui #screenSquad .squad-heading-badge{
+  width:4.05cqw!important;height:4.05cqw!important;flex:0 0 4.05cqw!important;padding:.2cqw!important;
+  background:linear-gradient(160deg,rgba(44,88,58,.35),rgba(10,22,16,.5))!important;
+  border:1px solid rgba(207,181,91,.34)!important;border-radius:.3cqw!important;box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.25)!important;
+}
+body.v20-ui #screenSquad .squad-heading-badge img{width:100%!important;height:100%!important;object-fit:contain!important}
+body.v20-ui #screenSquad .squad-heading .eyebrow{
+  display:block!important;color:var(--v66-green)!important;font:900 .55cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important;
+}
+body.v20-ui #screenSquad .squad-heading h2{
+  display:block!important;margin:.33cqw 0 0!important;color:#f2f4ef!important;
+  font:900 1.38cqw/.9 Arial,sans-serif!important;letter-spacing:.035em!important;
+}
+body.v20-ui #screenSquad .squad-heading p{
+  margin:.42cqw 0 0!important;color:#a6b1aa!important;font:700 .64cqw/1 Arial,sans-serif!important;letter-spacing:.03em!important;
+}
+body.v20-ui #screenSquad .squad-heading-metrics{
+  display:grid!important;grid-template-columns:repeat(3,7.25cqw)!important;height:3.65cqw!important;
+  align-self:center!important;border:1px solid rgba(187,210,190,.09)!important;border-radius:.4cqw!important;
+  overflow:hidden!important;background:rgba(18,38,28,.54)!important;
+}
+body.v20-ui #screenSquad .squad-heading-metrics>div{
+  display:grid!important;place-content:center!important;text-align:center!important;background:transparent!important;
+  border:0!important;border-left:1px solid var(--v66-line)!important;
+}
+body.v20-ui #screenSquad .squad-heading-metrics>div:first-child{border-left:0!important}
+body.v20-ui #screenSquad .squad-heading-metrics span{
+  color:#a4afa8!important;font:800 .48cqw/1 Arial,sans-serif!important;letter-spacing:.09em!important;
+}
+body.v20-ui #screenSquad .squad-heading-metrics strong{
+  margin-top:.35cqw!important;color:#f3f5f0!important;font:900 1.35cqw/.9 Arial,sans-serif!important;
+}
+body.v20-ui #screenSquad .squad-heading-metrics>div:last-child strong{color:var(--v66-green)!important}
+
+/* Left navigation rail */
+body.v20-ui #screenSquad #squadSubnav.squad-subnav{
+  position:relative!important;inset:auto!important;grid-column:1!important;grid-row:2!important;
+  width:auto!important;height:100%!important;min-height:0!important;padding:0 0 4.7cqw!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:0!important;
+  background:rgba(6,17,12,.94)!important;border:0!important;border-right:1px solid var(--v66-line)!important;border-radius:0!important;
+  box-shadow:.45cqw 0 1.3cqw rgba(0,0,0,.18)!important;overflow:visible!important;
+}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav::before,
+body.v20-ui #screenSquad #squadSubnav.squad-subnav::after{display:none!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button{
+  position:relative!important;display:flex!important;flex:0 0 5.65cqw!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;gap:.38cqw!important;width:100%!important;height:5.65cqw!important;
+  padding:.25cqw .35cqw!important;color:#94a39a!important;background:transparent!important;border:0!important;
+  border-bottom:1px solid rgba(193,214,195,.055)!important;border-radius:0!important;
+  font:800 .47cqw/1.25 Arial,sans-serif!important;letter-spacing:.08em!important;text-align:center!important;
+  overflow:visible!important;white-space:normal!important;transition:background .15s ease,color .15s ease!important;
+}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button:hover{color:#e8f2e9!important;background:rgba(55,132,78,.12)!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button.is-active{
+  color:#f1f7f1!important;background:linear-gradient(90deg,rgba(44,155,78,.22),rgba(32,104,55,.08))!important;
+}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button.is-active::after{
+  content:""!important;position:absolute!important;left:0!important;right:auto!important;top:0!important;bottom:0!important;width:.22cqw!important;height:auto!important;
+  background:var(--v66-green)!important;box-shadow:0 0 .8cqw rgba(79,212,119,.5)!important;
+}
+body.v20-ui #screenSquad #squadSubnav .squad-nav-icon{
+  display:grid!important;place-items:center!important;width:1.55cqw!important;height:1.55cqw!important;min-width:0!important;margin:0!important;
+  color:#9ca8a1!important;background:transparent!important;border:0!important;border-radius:0!important;
+  font:700 1.2cqw/1 Arial,sans-serif!important;
+}
+body.v20-ui #screenSquad #squadSubnav button.is-active .squad-nav-icon{color:var(--v66-green)!important;background:transparent!important}
+body.v20-ui #screenSquad #squadSubnav .squad-nav-label{display:block!important;margin:0!important;color:inherit!important;background:transparent!important;border:0!important;font:inherit!important}
+body.v20-ui #screenSquad #squadSubnav .squad-nav-count{
+  position:absolute!important;right:.72cqw!important;top:.78cqw!important;display:grid!important;place-items:center!important;
+  min-width:1.28cqw!important;height:1.28cqw!important;margin:0!important;padding:0 .2cqw!important;
+  color:#06110c!important;background:var(--v66-green)!important;border:0!important;border-radius:.28cqw!important;font:900 .52cqw/1 Arial,sans-serif!important;
+}
+body.v20-ui #screenSquad .squad-season-chip{
+  position:absolute!important;left:0!important;right:0!important;bottom:0!important;height:4.65cqw!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.35cqw!important;
+  color:#9aa79f!important;background:rgba(13,29,21,.92)!important;border-top:1px solid var(--v66-line)!important;
+}
+body.v20-ui #screenSquad .squad-season-chip span{font:800 .42cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important}
+body.v20-ui #screenSquad .squad-season-chip strong{color:#e5ece6!important;font:900 .55cqw/1.2 Arial,sans-serif!important;text-align:center!important}
+
+/* Main squad pane */
+body.v20-ui #screenSquad .squad-view{
+  grid-column:2!important;grid-row:2!important;margin:0!important;min-width:0!important;min-height:0!important;
+  color:var(--v66-text)!important;background:#0a1711!important;border:0!important;border-radius:0!important;
+}
+body.v20-ui #screenSquad .squad-view:not(.is-active){display:none!important}
+body.v20-ui #screenSquad #seniorSquadView.squad-view.is-active{
+  display:flex!important;flex-direction:column!important;gap:0!important;height:100%!important;padding:0!important;overflow:hidden!important;
+}
+body.v20-ui #screenSquad .swap-banner{
+  position:absolute!important;z-index:20!important;left:8.2cqw!important;right:25.6cqw!important;top:6.9cqw!important;
+  min-height:0!important;padding:.65cqw .9cqw!important;color:#eaf7ec!important;background:rgba(17,63,36,.96)!important;
+  border:1px solid rgba(83,213,123,.45)!important;border-radius:.35cqw!important;box-shadow:0 .7cqw 2cqw rgba(0,0,0,.3)!important;
+}
+body.v20-ui #screenSquad .swap-banner:not(.is-active){display:none!important}
+
+/* Pitch */
+body.v20-ui #screenSquad .v51-st3-panel{
+  position:relative!important;isolation:isolate!important;flex:1 1 auto!important;min-height:0!important;margin:0!important;
+  padding:1.35cqw 1.6cqw 1.15cqw!important;overflow:hidden!important;color:var(--v66-text)!important;
+  background:
+    linear-gradient(90deg,rgba(6,16,11,.58),transparent 20%,transparent 80%,rgba(6,16,11,.58)),
+    radial-gradient(ellipse at 50% 48%,rgba(57,103,55,.55),rgba(18,47,29,.9) 66%,#0a1a11 100%)!important;
+  border:0!important;border-bottom:1px solid var(--v66-line)!important;border-radius:0!important;box-shadow:none!important;
+}
+body.v20-ui #screenSquad .v51-st3-panel::before{
+  content:""!important;position:absolute!important;z-index:-1!important;left:3.5%!important;right:3.5%!important;top:23%!important;bottom:14%!important;
+  border:1px solid rgba(190,203,166,.4)!important;border-radius:50%!important;
+  background:
+    radial-gradient(circle at 50% 50%,transparent 0 11%,rgba(191,204,168,.23) 11.3% 11.8%,transparent 12.2%),
+    linear-gradient(90deg,transparent 49.85%,rgba(191,204,168,.26) 50%,transparent 50.15%),
+    repeating-linear-gradient(100deg,rgba(255,255,255,.018) 0 3%,rgba(0,0,0,.018) 3% 6%),
+    rgba(49,89,45,.34)!important;
+  box-shadow:inset 0 0 3cqw rgba(0,0,0,.55),0 0 0 .42cqw rgba(31,48,29,.65),0 0 0 .54cqw rgba(154,151,105,.23)!important;
+}
+body.v20-ui #screenSquad .v51-st3-panel::after{
+  content:""!important;position:absolute!important;z-index:-2!important;inset:0!important;opacity:.27!important;
+  background-image:radial-gradient(circle at 20% 15%,rgba(122,171,108,.25) 0 .08cqw,transparent .1cqw)!important;background-size:.6cqw .6cqw!important;
+}
+body.v20-ui #screenSquad .v51-st3-head{
+  position:relative!important;z-index:2!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;
+  gap:1cqw!important;margin:0!important;
+}
+body.v20-ui #screenSquad .v51-st3-head h3{
+  margin:0!important;color:#eef4ed!important;font:900 1.02cqw/1 Arial,sans-serif!important;letter-spacing:.07em!important;text-shadow:none!important;
+}
+body.v20-ui #screenSquad .v51-st3-head h3 span{color:#829188!important;font-size:.75cqw!important}
+body.v20-ui #screenSquad .v51-st3-head p{margin:.45cqw 0 0!important;color:#a5b1a8!important;font:600 .62cqw/1.2 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-formation{
+  display:flex!important;align-items:center!important;gap:1.2cqw!important;min-width:10.8cqw!important;height:2.45cqw!important;padding:0 .85cqw!important;
+  color:#aeb9b1!important;background:rgba(7,20,13,.55)!important;border:1px solid rgba(187,211,190,.2)!important;border-radius:.38cqw!important;
+}
+body.v20-ui #screenSquad .v66-formation span{font:700 .56cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-formation strong{margin-left:auto!important;color:#e7ede8!important;font:800 .6cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-formation i{color:#aeb9b1!important;font-style:normal!important}
+body.v20-ui #screenSquad .v51-st3-row{
+  position:absolute!important;z-index:2!important;left:8%!important;right:8%!important;top:24%!important;bottom:13%!important;
+  display:grid!important;align-items:center!important;
+}
+body.v20-ui #screenSquad .v51-st3-row::before,
+body.v20-ui #screenSquad .v51-st3-row::after{display:none!important}
+body.v20-ui #screenSquad .v51-st3-grid{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;align-items:center!important;justify-items:center!important;gap:3.8cqw!important;
+}
+body.v20-ui #screenSquad .v51-st3-slot{
+  position:relative!important;display:block!important;width:10.15cqw!important;height:14.25cqw!important;
+}
+body.v20-ui #screenSquad .v51-st3-num{
+  position:absolute!important;z-index:6!important;left:.62cqw!important;top:.55cqw!important;display:block!important;
+  color:var(--v66-green)!important;background:transparent!important;font:900 .57cqw/1 Arial,sans-serif!important;letter-spacing:.08em!important;
+}
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card{
+  width:100%!important;height:100%!important;min-height:0!important;padding:0!important;overflow:hidden!important;
+  color:var(--v66-text)!important;background:linear-gradient(155deg,rgba(35,67,42,.94),rgba(8,25,15,.96))!important;
+  border:1px solid rgba(161,193,166,.34)!important;border-radius:.48cqw!important;
+  box-shadow:0 .55cqw 1.4cqw rgba(0,0,0,.42),inset 0 0 1.2cqw rgba(91,159,89,.08)!important;clip-path:none!important;
+}
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card:hover,
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card.is-selected{
+  transform:translateY(-.14cqw)!important;border-color:var(--v66-green)!important;box-shadow:0 .7cqw 1.8cqw rgba(0,0,0,.48),0 0 0 1px rgba(79,212,119,.2)!important;
+}
+body.v20-ui #screenSquad .v51-st3-grid .v51-badge{display:none!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-info{
+  position:absolute!important;z-index:5!important;left:.62cqw!important;right:.45cqw!important;bottom:.55cqw!important;width:auto!important;height:auto!important;padding:0!important;
+  display:flex!important;flex-wrap:wrap!important;align-items:flex-end!important;gap:.16cqw .35cqw!important;text-align:left!important;
+}
+body.v20-ui #screenSquad .v51-st3-grid .v51-role{order:3!important;width:100%!important;color:#b3beb6!important;font:700 .48cqw/1 Arial,sans-serif!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr{order:1!important;display:flex!important;align-items:flex-end!important;gap:.18cqw!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr strong{color:#fff!important;font:500 1.1cqw/.9 Georgia,serif!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr small{color:#98a69d!important;font:800 .36cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-name{order:4!important;width:100%!important;margin:.12cqw 0 0!important;color:#f1f4ef!important;font:900 .6cqw/1.1 Arial,sans-serif!important;letter-spacing:.02em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-origin,
+body.v20-ui #screenSquad .v51-st3-grid .v51-stats{display:none!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-portrait{
+  position:absolute!important;z-index:3!important;left:.55cqw!important;right:.35cqw!important;top:.55cqw!important;bottom:2.55cqw!important;width:auto!important;height:auto!important;
+  display:grid!important;place-items:center!important;filter:none!important;
+}
+body.v20-ui #screenSquad .v51-st3-grid .v51-portrait img{max-width:100%!important;max-height:100%!important;object-fit:contain!important;filter:drop-shadow(0 .42cqw .32cqw rgba(0,0,0,.42))!important}
+body.v20-ui #screenSquad .v51-st3-foot{
+  position:absolute!important;z-index:2!important;left:1.6cqw!important;right:1.6cqw!important;bottom:1cqw!important;
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;height:auto!important;padding:0!important;border:0!important;
+}
+body.v20-ui #screenSquad .v51-sub-note{display:flex!important;align-items:center!important;gap:.65cqw!important;color:#b3bdb5!important}
+body.v20-ui #screenSquad .v51-sub-note>span{color:#8fa398!important;font-size:1cqw!important}
+body.v20-ui #screenSquad .v51-sub-note strong{display:block!important;color:#d7ded8!important;font:700 .58cqw/1 Arial,sans-serif!important;letter-spacing:.03em!important}
+body.v20-ui #screenSquad .v51-sub-note small{display:block!important;margin-top:.22cqw!important;color:#7f8f85!important;font:600 .48cqw/1 Arial,sans-serif!important}
+
+/* Compact substitutes + depth dock — players shown exactly once outside the pitch. */
+body.v20-ui #screenSquad .v66-legacy-starters{display:none!important}
+body.v20-ui #screenSquad .v66-depth-section{
+  flex:0 0 14.4cqw!important;min-height:0!important;margin:0!important;padding:.9cqw 1cqw 1cqw!important;
+  color:var(--v66-text)!important;background:linear-gradient(180deg,#0b1a13,#08140f)!important;border:0!important;border-radius:0!important;overflow:hidden!important;
+}
+body.v20-ui #screenSquad .v66-depth-head{display:flex!important;align-items:center!important;justify-content:space-between!important;height:2.15cqw!important;margin:0!important}
+body.v20-ui #screenSquad .v66-depth-head h3{margin:0!important;color:#eef3ed!important;font:900 .78cqw/1 Arial,sans-serif!important;letter-spacing:.05em!important}
+body.v20-ui #screenSquad .v66-depth-head p{margin:.3cqw 0 0!important;color:#8f9d94!important;font:600 .5cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-actions{display:flex!important;align-items:center!important;gap:.45cqw!important}
+body.v20-ui #screenSquad .v66-depth-actions>span{display:flex!important;align-items:center!important;height:1.85cqw!important;padding:0 .7cqw!important;color:#a6b2aa!important;background:#0c1b14!important;border:1px solid var(--v66-line)!important;border-radius:.34cqw!important;font:700 .48cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-actions b{margin-right:.5cqw!important;color:#e8eee8!important;font-weight:800!important}
+body.v20-ui #screenSquad .v66-depth-scroll{
+  display:flex!important;gap:.4cqw!important;width:100%!important;height:10.2cqw!important;padding:.45cqw 0 .25cqw!important;
+  overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin!important;scrollbar-color:rgba(84,140,99,.5) transparent!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll>section{display:block!important;flex:0 0 auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,
+body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{
+  display:flex!important;grid-template-columns:none!important;gap:.4cqw!important;width:auto!important;height:9.25cqw!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card,
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot.v51-card{
+  position:relative!important;flex:0 0 6.72cqw!important;width:6.72cqw!important;height:9.25cqw!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;
+  color:var(--v66-text)!important;background:linear-gradient(155deg,rgba(27,50,35,.98),rgba(10,26,17,.98))!important;
+  border:1px solid rgba(172,197,174,.2)!important;border-radius:.42cqw!important;box-shadow:0 .35cqw .75cqw rgba(0,0,0,.28)!important;clip-path:none!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card:hover,
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card.is-selected{
+  transform:translateY(-.12cqw)!important;border-color:var(--v66-green)!important;box-shadow:0 .45cqw 1cqw rgba(0,0,0,.36),0 0 0 1px rgba(79,212,119,.13)!important;
+}
+body.v20-ui #screenSquad .player-card.v51-card::before,
+body.v20-ui #screenSquad .player-card.v51-card::after{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-badge{
+  position:absolute!important;z-index:7!important;right:.48cqw!important;top:.48cqw!important;display:grid!important;place-items:center!important;
+  width:1.2cqw!important;height:1.2cqw!important;color:#9eaaa1!important;background:rgba(4,13,8,.48)!important;border:0!important;border-radius:50%!important;clip-path:none!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-badge span{color:inherit!important;font:700 .55cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-info{
+  position:absolute!important;z-index:6!important;left:.5cqw!important;right:.4cqw!important;bottom:.42cqw!important;width:auto!important;height:auto!important;padding:0!important;text-align:left!important;
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:.14cqw!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-role{order:2!important;display:block!important;width:100%!important;color:#a6b3aa!important;font:700 .39cqw/1 Arial,sans-serif!important;letter-spacing:.05em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr{position:static!important;order:1!important;display:flex!important;align-items:end!important;gap:.14cqw!important;margin-bottom:.02cqw!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr strong{color:#f2f5f0!important;font:500 .95cqw/.9 Georgia,serif!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr small{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-name{order:3!important;width:100%!important;margin:0!important;color:#f0f4ee!important;font:900 .53cqw/1.1 Arial,sans-serif!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-origin{order:4!important;display:block!important;margin-top:.08cqw!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-club{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-age{display:block!important;color:#93a198!important;font:600 .43cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-stats{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait{
+  position:absolute!important;z-index:3!important;left:.28cqw!important;right:.25cqw!important;top:.35cqw!important;bottom:3.05cqw!important;width:auto!important;height:auto!important;
+  display:grid!important;place-items:center!important;
+}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait img{max-width:100%!important;max-height:100%!important;object-fit:contain!important;filter:drop-shadow(0 .32cqw .25cqw rgba(0,0,0,.4))!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot>div{display:grid!important;place-content:center!important;height:100%!important;padding:.6cqw!important;text-align:center!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot span{color:#738078!important;font-size:.4cqw!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot strong{margin:.3cqw 0!important;color:#a8b3ab!important;font-size:.55cqw!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot small{color:#66746b!important;font-size:.38cqw!important}
+body.v20-ui #screenSquad .squad-summary{display:none!important}
+body.v20-ui #screenSquad .v66-mobile-confirm{display:none!important}
+
+/* Selected player rail */
+body.v20-ui #screenSquad .player-profile{
+  position:relative!important;display:block!important;height:100%!important;min-height:0!important;padding:1.25cqw 1.35cqw 1.05cqw!important;overflow:auto!important;
+  color:var(--v66-text)!important;background:linear-gradient(155deg,#0d1d16,#07120d)!important;
+  border:0!important;border-left:1px solid var(--v66-line)!important;border-radius:0!important;box-shadow:-.55cqw 0 1.7cqw rgba(0,0,0,.22)!important;
+  scrollbar-width:thin!important;scrollbar-color:rgba(80,142,98,.45) transparent!important;
+}
+body.v20-ui #screenSquad .player-profile .profile-accent{position:absolute!important;left:0!important;right:0!important;top:0!important;height:.18cqw!important;background:var(--v66-green)!important;opacity:.78!important}
+body.v20-ui #screenSquad .player-profile .profile-topline{display:flex!important;justify-content:space-between!important;color:#7f8d84!important;font:800 .46cqw/1 Arial,sans-serif!important;letter-spacing:.09em!important}
+body.v20-ui #screenSquad .player-profile .profile-hero{
+  position:relative!important;display:grid!important;grid-template-columns:6.7cqw minmax(0,1fr) 3.4cqw!important;align-items:center!important;gap:.8cqw!important;
+  min-height:7.25cqw!important;margin:.55cqw 0 .65cqw!important;padding:0!important;color:var(--v66-text)!important;background:transparent!important;border:0!important;
+}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage{
+  width:6.7cqw!important;height:6.7cqw!important;display:grid!important;place-items:center!important;overflow:hidden!important;
+  background:radial-gradient(circle,rgba(59,115,72,.28),transparent 68%)!important;border:0!important;border-radius:0!important;
+}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage img{max-width:100%!important;max-height:100%!important;object-fit:contain!important;filter:drop-shadow(0 .4cqw .32cqw rgba(0,0,0,.46))!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy{min-width:0!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy h3{display:flex!important;align-items:center!important;gap:.45cqw!important;margin:0!important;color:#f2f5f1!important;font:900 .82cqw/1.1 Arial,sans-serif!important;text-transform:uppercase!important;white-space:normal!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy p{margin:.52cqw 0 0!important;color:#adb8b0!important;font:700 .55cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy small{display:block!important;margin-top:.48cqw!important;color:#87968c!important;font:600 .5cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .player-profile .profile-overall{position:static!important;text-align:center!important}
+body.v20-ui #screenSquad .player-profile .profile-overall strong{display:block!important;color:#f4f6f2!important;font:500 1.65cqw/.9 Georgia,serif!important}
+body.v20-ui #screenSquad .player-profile .profile-overall small{display:block!important;margin-top:.26cqw!important;color:#85948a!important;font:800 .42cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important}
+body.v20-ui #screenSquad .v66-profile-captain{display:grid!important;place-items:center!important;width:1.1cqw!important;height:1.1cqw!important;color:#07110c!important;background:#f0bd39!important;border-radius:50%!important;font:900 .46cqw/1 Arial,sans-serif!important;font-style:normal!important}
+body.v20-ui #screenSquad .v66-profile-tabs{
+  display:grid!important;grid-template-columns:repeat(2,1fr)!important;height:2.8cqw!important;margin:0!important;border:0!important;border-bottom:1px solid var(--v66-line)!important;background:transparent!important;
+}
+body.v20-ui #screenSquad .v66-profile-tabs button{
+  position:relative!important;color:#7f8d84!important;background:transparent!important;border:0!important;font:800 .54cqw/1 Arial,sans-serif!important;letter-spacing:.07em!important;
+}
+body.v20-ui #screenSquad .v66-profile-tabs button.is-active{color:var(--v66-green)!important;background:transparent!important}
+body.v20-ui #screenSquad .v66-profile-tabs button.is-active::after{content:""!important;position:absolute!important;left:10%!important;right:10%!important;bottom:-1px!important;height:.16cqw!important;background:var(--v66-green)!important}
+body.v20-ui #screenSquad .v66-profile-view{padding:0!important;color:var(--v66-text)!important;background:transparent!important;border:0!important}
+body.v20-ui #screenSquad .v66-profile-overview>section,
+body.v20-ui #screenSquad .v66-profile-attributes>section{padding:1.05cqw 0!important;border-bottom:1px solid var(--v66-line)!important}
+body.v20-ui #screenSquad .v66-profile-overview section>span,
+body.v20-ui #screenSquad .v66-profile-attributes>span,
+body.v20-ui #screenSquad .v66-profile-attributes section>span{display:block!important;color:#819087!important;font:800 .47cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important}
+body.v20-ui #screenSquad .v66-profile-block strong{display:block!important;margin-top:.48cqw!important;color:#f0f4ef!important;font:800 .7cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-block p{margin:.45cqw 0 0!important;color:#9ba89f!important;font:500 .58cqw/1.45 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-signal>strong{display:flex!important;align-items:center!important;gap:.55cqw!important;margin-top:.7cqw!important;color:#e9efea!important;font:700 .73cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-signal>strong>i{color:var(--v66-green)!important;font-style:normal!important}
+body.v20-ui #screenSquad .v66-profile-signal>strong>small{margin-left:auto!important;color:#9aa89f!important;font:600 .45cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-signal>b{display:block!important;height:.27cqw!important;margin-top:.65cqw!important;overflow:hidden!important;background:rgba(157,181,161,.13)!important;border-radius:1cqw!important}
+body.v20-ui #screenSquad .v66-profile-signal>b>i{display:block!important;height:100%!important;background:linear-gradient(90deg,#299555,var(--v66-green))!important;border-radius:inherit!important}
+body.v20-ui #screenSquad .v66-profile-form{display:grid!important;grid-template-columns:1fr auto!important;align-items:center!important;gap:.55cqw!important}
+body.v20-ui #screenSquad .v66-profile-form>strong{font:700 .6cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-form>div{grid-column:1/-1!important;display:flex!important;gap:.7cqw!important;margin-top:.15cqw!important}
+body.v20-ui #screenSquad .v66-profile-form>div i{display:block!important;width:2.3cqw!important;height:.6cqw!important;background:#36423b!important;border-radius:.08cqw!important}
+body.v20-ui #screenSquad .v66-profile-form>div i[class*=tone]{background:linear-gradient(90deg,#2b9f58,var(--v66-green))!important}
+body.v20-ui #screenSquad .v66-profile-stats>div{display:grid!important;grid-template-columns:repeat(4,1fr)!important;margin-top:.85cqw!important}
+body.v20-ui #screenSquad .v66-profile-stats b{display:block!important;color:#f0f3ef!important;font:500 1cqw/1 Georgia,serif!important}
+body.v20-ui #screenSquad .v66-profile-stats small{display:block!important;margin-top:.38cqw!important;color:#829087!important;font:800 .43cqw/1 Arial,sans-serif!important;letter-spacing:.06em!important}
+body.v20-ui #screenSquad .v66-profile-attributes{padding-top:.9cqw!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div{display:grid!important;grid-template-columns:1.6cqw 1fr 1.5cqw!important;align-items:center!important;gap:.55cqw!important;margin:.72cqw 0!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>b{color:#98a69d!important;font:800 .47cqw/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>i{height:.34cqw!important;overflow:hidden!important;background:rgba(161,183,164,.14)!important;border-radius:1cqw!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>i>em{display:block!important;height:100%!important;background:linear-gradient(90deg,#25894d,var(--v66-green))!important;border-radius:inherit!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>strong{color:#e9eeea!important;font:800 .55cqw/1 Arial,sans-serif!important;text-align:right!important}
+body.v20-ui #screenSquad .v66-profile-attributes section strong{display:block!important;margin-top:.5cqw!important;color:#eaf0eb!important;font:800 .67cqw/1.15 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-attributes section small{display:block!important;margin-top:.45cqw!important;color:#8f9d94!important;font:500 .53cqw/1.35 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:.45cqw!important;margin-top:.85cqw!important}
+body.v20-ui #screenSquad .v66-profile-actions button{height:2.1cqw!important;color:#a9b6ad!important;background:#0c2116!important;border:1px solid var(--v66-line)!important;border-radius:.32cqw!important;font:800 .47cqw/1 Arial,sans-serif!important;letter-spacing:.06em!important}
+body.v20-ui #screenSquad .v66-profile-actions button:hover{color:#e8f2e9!important;border-color:rgba(79,212,119,.45)!important}
+body.v20-ui #screenSquad .v66-confirm-selection{
+  display:flex!important;align-items:center!important;justify-content:center!important;gap:.7cqw!important;width:100%!important;height:4cqw!important;margin-top:1cqw!important;
+  color:#eef8ef!important;background:linear-gradient(135deg,#2f9a51,#247b3e)!important;border:1px solid rgba(99,221,132,.45)!important;border-radius:.42cqw!important;
+  box-shadow:0 .65cqw 1.4cqw rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.12)!important;font:900 .72cqw/1 Arial,sans-serif!important;letter-spacing:.08em!important;
+}
+body.v20-ui #screenSquad .v66-confirm-selection:hover{filter:brightness(1.1)!important;transform:translateY(-1px)!important}
+body.v20-ui #screenSquad .v66-confirm-selection span{font-size:1.1cqw!important}
+body.v20-ui #screenSquad .v66-confirm-note{display:block!important;margin-top:.55cqw!important;color:#809087!important;font:600 .48cqw/1 Arial,sans-serif!important;text-align:center!important}
+body.v20-ui #screenSquad .tone-good{color:var(--v66-green)!important}
+body.v20-ui #screenSquad .tone-neutral{color:#d1d9d2!important}
+body.v20-ui #screenSquad .tone-bad{color:#ef746a!important}
+
+/* Preserve the other squad tools inside the same dark, professional shell. */
+body.v20-ui #screenSquad.is-tactics-view .squad-shell{grid-template-columns:minmax(0,1fr)!important}
+body.v20-ui #screenSquad.is-tactics-view .squad-workspace{grid-template-columns:7.15cqw minmax(0,1fr)!important}
+body.v20-ui #screenSquad.is-tactics-view .player-profile{display:none!important}
+body.v20-ui #screenSquad .squad-view:not(#seniorSquadView){padding:1cqw!important;overflow:auto!important;background:#f6f7f5!important;color:#151a16!important}
+
+@media(max-width:1100px){
+  body.v20-ui #screenSquad .squad-shell{grid-template-columns:minmax(0,1fr)!important}
+  body.v20-ui #screenSquad .player-profile{display:none!important}
+  body.v20-ui #screenSquad .squad-heading-metrics{grid-template-columns:repeat(3,7.8cqw)!important}
+  body.v20-ui #screenSquad .v51-st3-grid{gap:2.8cqw!important}
+  body.v20-ui #screenSquad .v51-st3-slot{width:10.5cqw!important;height:14cqw!important}
+  body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card,
+  body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot.v51-card{flex-basis:8.4cqw!important;width:8.4cqw!important}
+}
+
+@media(max-width:760px){
+  body.v20-ui #screenSquad .squad-workspace{grid-template-columns:8.8cqw minmax(0,1fr)!important;grid-template-rows:8.2cqw minmax(0,1fr)!important}
+  body.v20-ui #screenSquad .squad-heading{padding:.7cqw 1.5cqw!important}
+  body.v20-ui #screenSquad .squad-heading-badge{width:5.5cqw!important;height:5.5cqw!important;flex-basis:5.5cqw!important}
+  body.v20-ui #screenSquad .squad-heading h2{font-size:2cqw!important}
+  body.v20-ui #screenSquad .squad-heading .eyebrow{font-size:.75cqw!important}
+  body.v20-ui #screenSquad .squad-heading p{font-size:.8cqw!important}
+  body.v20-ui #screenSquad .squad-heading-metrics{display:none!important}
+  body.v20-ui #screenSquad #squadSubnav.squad-subnav button{flex-basis:7cqw!important;height:7cqw!important;font-size:.62cqw!important}
+  body.v20-ui #screenSquad #squadSubnav .squad-nav-icon{font-size:1.7cqw!important}
+  body.v20-ui #screenSquad .squad-view{grid-column:2!important}
+  body.v20-ui #screenSquad .v51-st3-panel{min-height:41cqw!important;padding:2cqw!important}
+  body.v20-ui #screenSquad .v51-st3-head h3{font-size:1.45cqw!important}
+  body.v20-ui #screenSquad .v51-st3-head p{font-size:.85cqw!important}
+  body.v20-ui #screenSquad .v66-formation{display:none!important}
+  body.v20-ui #screenSquad .v51-st3-row{left:4%!important;right:4%!important;top:25%!important}
+  body.v20-ui #screenSquad .v51-st3-grid{gap:1.2cqw!important}
+  body.v20-ui #screenSquad .v51-st3-slot{width:15.7cqw!important;height:21cqw!important}
+  body.v20-ui #screenSquad .v51-st3-num{font-size:.78cqw!important}
+  body.v20-ui #screenSquad .v51-st3-grid .v51-name{font-size:.82cqw!important}
+  body.v20-ui #screenSquad .v51-st3-grid .v51-role{font-size:.63cqw!important}
+  body.v20-ui #screenSquad .v51-st3-grid .v51-ovr strong{font-size:1.65cqw!important}
+  body.v20-ui #screenSquad .v51-sub-note small{display:none!important}
+  body.v20-ui #screenSquad .v66-depth-section{flex-basis:20cqw!important;padding:1.1cqw!important}
+  body.v20-ui #screenSquad .v66-depth-head{height:3.2cqw!important}
+  body.v20-ui #screenSquad .v66-depth-head h3{font-size:1.15cqw!important}
+  body.v20-ui #screenSquad .v66-depth-head p{font-size:.72cqw!important}
+  body.v20-ui #screenSquad .v66-depth-actions{display:none!important}
+  body.v20-ui #screenSquad .v66-depth-scroll{height:15cqw!important}
+  body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,
+  body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{height:14cqw!important}
+  body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card,
+  body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot.v51-card{flex-basis:10.8cqw!important;width:10.8cqw!important;height:14cqw!important}
+  body.v20-ui #screenSquad .v66-depth-scroll .v51-name{font-size:.8cqw!important}
+  body.v20-ui #screenSquad .v66-depth-scroll .v51-role,
+  body.v20-ui #screenSquad .v66-depth-scroll .v51-age{font-size:.6cqw!important}
+  body.v20-ui #screenSquad .v66-mobile-confirm{display:none!important}
+}
+
+/* V67 — shared career navigation, complete portraits and explicit squad roles. */
+body.v20-ui #screenSquad {--squad-nav-height:clamp(60px,4.7cqw,104px)}
+body.v20-ui #screenSquad>.career-topbar {display:flex!important;position:absolute!important;inset:0 0 auto!important;height:var(--squad-nav-height)!important;z-index:40!important}
+body.v20-ui #screenSquad .squad-shell {inset:var(--squad-nav-height) 0 0!important;min-height:0!important}
+body.v20-ui #screenSquad .squad-workspace {grid-template-rows:clamp(80px,5.2cqw,125px) minmax(0,1fr)!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav {overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:65px!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button {flex:1 0 58px!important;height:auto!important;max-height:100px!important;font-size:clamp(9px,.47cqw,12px)!important}
+body.v20-ui #screenSquad .squad-season-chip {position:sticky!important;bottom:0!important;min-height:52px!important;margin-top:auto!important}
+body.v20-ui #screenSquad #seniorSquadView.squad-view.is-active {overflow-y:auto!important;overflow-x:hidden!important}
+body.v20-ui #screenSquad .v51-st3-panel {min-height:clamp(310px,24cqw,610px)!important}
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card {border-top:3px solid #4fd477!important}
+body.v20-ui #screenSquad .v51-st3-num {font-size:clamp(10px,.57cqw,15px)!important}
+body.v20-ui #screenSquad .squad-slot-status {position:absolute;z-index:7;top:8px;left:10px;max-width:calc(100% - 36px);color:#84efa2;font:700 clamp(8px,.45cqw,11px)/1 Arial,sans-serif;letter-spacing:.04em;text-align:left}
+body.v20-ui #screenSquad .is-sub .squad-slot-status {color:#88c6ff}
+body.v20-ui #screenSquad .is-reserve .squad-slot-status {color:#c3b4e3}
+body.v20-ui #screenSquad .v51-st3-grid .v51-portrait {top:26px!important}
+body.v20-ui #screenSquad .player-card.is-sub {border-top:3px solid #65aee9!important}
+body.v20-ui #screenSquad .player-card.is-reserve {border-top:3px solid #a696c6!important;background:linear-gradient(150deg,#1c2427,#0e1817)!important}
+body.v20-ui #screenSquad .player-card.is-selected {outline:2px solid #e6f0e9!important;outline-offset:2px!important}
+body.v20-ui #screenSquad .player-card.is-swap-source {opacity:.65!important}
+body.v20-ui #screenSquad .player-card.is-swap-target:hover,body.v20-ui #screenSquad .player-card.is-drag-over {outline:2px solid #76e89b!important;outline-offset:3px!important;background:#234a32!important}
+body.v20-ui #screenSquad .player-card {transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease!important}
+body.v20-ui #screenSquad .v66-depth-section {flex:0 0 auto!important;min-height:clamp(216px,15cqw,360px)!important;padding:12px 18px!important;overflow:visible!important}
+body.v20-ui #screenSquad .v66-depth-head {height:auto!important;min-height:40px!important;gap:12px!important}
+body.v20-ui #screenSquad .v66-depth-head h3 {font-size:clamp(12px,.78cqw,20px)!important}
+body.v20-ui #screenSquad .v66-depth-head p {font-size:clamp(10px,.5cqw,13px)!important;line-height:1.3!important}
+body.v20-ui #screenSquad .v66-depth-scroll {height:auto!important;max-height:none!important;padding:8px 4px 10px!important;gap:22px!important;overflow-x:auto!important;align-items:stretch!important}
+body.v20-ui #screenSquad .squad-group-title {display:flex;align-items:center;gap:12px;color:#88c6ff;font:700 clamp(10px,.5cqw,13px)/1.3 Arial,sans-serif;letter-spacing:.04em;margin:0 0 8px;padding:0}
+body.v20-ui #screenSquad .squad-group-title small {color:#8b9a95;font:400 clamp(9px,.43cqw,11px) Arial,sans-serif;letter-spacing:0}
+body.v20-ui #screenSquad .reserves-section .squad-group-title {color:#c3b4e3}
+body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid {height:clamp(145px,9.6cqw,240px)!important;gap:9px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card,body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot.v51-card {width:clamp(108px,6.8cqw,172px)!important;flex-basis:clamp(108px,6.8cqw,172px)!important;height:100%!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait {top:25px!important;bottom:57px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-info {bottom:8px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-name {font-size:clamp(10px,.53cqw,14px)!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-role,body.v20-ui #screenSquad .v66-depth-scroll .v51-age {font-size:clamp(8px,.43cqw,11px)!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr strong {font:700 clamp(17px,.95cqw,24px)/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot strong {font-size:clamp(11px,.55cqw,14px)!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot small {font-size:clamp(9px,.38cqw,11px)!important;line-height:1.3!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot span {font-size:clamp(8px,.4cqw,10px)!important}
+body.v20-ui #screenSquad .squad-rating-key {display:flex;gap:12px;flex-wrap:wrap;font:600 clamp(9px,.45cqw,12px)/1.2 Arial,sans-serif}
+body.v20-ui #screenSquad .tier-gold {--squad-rating:#f2cb67}
+body.v20-ui #screenSquad .tier-silver {--squad-rating:#d4e2f1}
+body.v20-ui #screenSquad .tier-bronze {--squad-rating:#d99d71}
+body.v20-ui #screenSquad .player-card.v51-card .v51-ovr strong,body.v20-ui #screenSquad .player-profile .profile-overall strong,body.v20-ui #screenSquad .player-profile .profile-overall small,body.v20-ui #screenSquad .squad-rating-key span {color:var(--squad-rating)!important}
+body.v20-ui #screenSquad .player-profile {padding:18px clamp(16px,1.35cqw,34px) 88px!important;scroll-padding-bottom:80px!important}
+body.v20-ui #screenSquad .player-profile .profile-topline {gap:10px!important;align-items:center!important;min-height:25px!important;font-size:clamp(9px,.46cqw,12px)!important;line-height:1.4!important}
+body.v20-ui #screenSquad .squad-profile-status {padding:5px 8px;background:#183924;color:#8be8a5;border-radius:4px}
+body.v20-ui #screenSquad .squad-profile-status.status-bench {background:#142e40;color:#98d1fb}
+body.v20-ui #screenSquad .squad-profile-status.status-reserve {background:#29253b;color:#d1c3f0}
+body.v20-ui #screenSquad .player-profile .profile-hero {grid-template-columns:minmax(0,30%) minmax(0,1fr) 42px!important;gap:12px!important;min-height:140px!important;height:auto!important;margin:12px 0!important;overflow:visible!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage {position:relative!important;inset:auto!important;width:100%!important;height:clamp(132px,8.5cqw,210px)!important;min-width:0!important;max-width:100%!important;min-height:0!important;max-height:none!important;overflow:hidden!important;margin:0!important;padding:0!important;transform:none!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage img.smart-avatar {position:static!important;inset:auto!important;display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;margin:0!important;padding:0!important;object-fit:contain!important;object-position:center!important;transform:none!important;clip-path:none!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage:before,body.v20-ui #screenSquad .player-profile .profile-avatar-stage:after {display:none!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy h3 {font-size:clamp(12px,.82cqw,20px)!important;line-height:1.2!important;overflow-wrap:anywhere}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy p,body.v20-ui #screenSquad .player-profile .profile-hero-copy small {font-size:clamp(10px,.5cqw,13px)!important;line-height:1.35!important}
+body.v20-ui #screenSquad .player-profile .profile-overall strong {font:700 clamp(25px,1.65cqw,40px)/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad .player-profile .profile-overall small {font-size:9px!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad .v66-profile-tabs {height:42px!important}
+body.v20-ui #screenSquad .v66-profile-tabs button {font-size:clamp(10px,.54cqw,14px)!important}
+body.v20-ui #screenSquad .v66-profile-overview>section,body.v20-ui #screenSquad .v66-profile-attributes>section {padding:14px 0!important}
+body.v20-ui #screenSquad .v66-profile-overview section>span,body.v20-ui #screenSquad .v66-profile-attributes>span {font-size:clamp(9px,.47cqw,12px)!important}
+body.v20-ui #screenSquad .v66-profile-block strong,body.v20-ui #screenSquad .v66-profile-signal>strong {font-size:clamp(12px,.7cqw,18px)!important}
+body.v20-ui #screenSquad .v66-profile-block p {font-size:clamp(11px,.58cqw,15px)!important}
+body.v20-ui #screenSquad .v66-profile-actions {grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:16px!important}
+body.v20-ui #screenSquad .v66-profile-actions button {display:flex!important;align-items:center!important;justify-content:center!important;position:static!important;inset:auto!important;width:100%!important;min-width:0!important;height:36px!important;min-height:36px!important;margin:0!important;padding:0 10px!important;border:1px solid #344b3d!important;border-radius:5px!important;background:transparent!important;box-shadow:none!important;color:#d5e0d8!important;font:600 11px/1.2 Arial,sans-serif!important;letter-spacing:0!important;cursor:pointer}
+body.v20-ui #screenSquad .v66-confirm-selection {position:static!important;width:100%!important;height:42px!important;min-height:42px!important;margin:10px 0 0!important;padding:0 14px!important;gap:8px!important;background:#28864a!important;border:1px solid #43a666!important;border-radius:5px!important;box-shadow:none!important;font:600 12px/1 Arial,sans-serif!important;letter-spacing:.02em!important;cursor:pointer}
+body.v20-ui #screenSquad .v66-confirm-selection span {font-size:18px!important}
+body.v20-ui #screenSquad .v66-confirm-note {font:400 10px/1.4 Arial,sans-serif!important;margin:8px 0 0!important}
+body.v20-ui #screenSquad .player-profile.profile-refresh {animation:none!important}
+@media(max-width:1100px) {
+  body.v20-ui #screenSquad .squad-rating-key {display:none}
+}
+@media(max-width:760px) {
+  body.v20-ui #screenSquad>.career-topbar .career-brand {display:none!important}
+  body.v20-ui #screenSquad>.career-topbar .career-tabs {overflow-x:auto!important}
+  body.v20-ui #screenSquad .squad-workspace {grid-template-columns:66px minmax(0,1fr)!important}
+  body.v20-ui #screenSquad .v66-depth-head {align-items:flex-start!important}
+  body.v20-ui #screenSquad .v51-st3-panel {min-height:320px!important}
+  body.v20-ui #screenSquad .squad-slot-status {font-size:8px;left:5px;top:5px}
+}
+@media(prefers-reduced-motion:reduce) {body.v20-ui #screenSquad .player-card {transition:none!important}}
+body.v20-ui #screenSquad>.career-topbar {display:grid!important}
+body.v20-ui #screenSquad .v51-st3-grid .squad-slot-status {display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card.is-sub {border-top:3px solid #65aee9!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card.is-reserve {border-top:3px solid #a696c6!important;background:linear-gradient(150deg,#1c2427,#0e1817)!important}
+body.v20-ui #screenSquad .player-card.v51-card .squad-slot-status {color:#88c6ff!important;font:700 clamp(8px,.45cqw,11px)/1 Arial,sans-serif!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad .player-card.v51-card.is-reserve .squad-slot-status {color:#c3b4e3!important}
+body.v20-ui #screenSquad .player-profile .profile-overall {display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;width:42px!important;min-width:0!important;max-width:100%!important;inset:auto!important;transform:none!important;padding:0!important;margin:0!important}
+body.v20-ui #screenSquad .player-profile .profile-overall small {display:block!important;margin:0!important}

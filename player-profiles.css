@@ -1,0 +1,1039 @@
+/* V48 — light, spacious player profiles with the standing sprite behind the cards. */
+.v48-name{cursor:pointer;border-bottom:1px dotted currentColor;text-underline-offset:3px;transition:color .15s}
+.v48-name:hover,.v48-name:focus-visible{color:#007ead;outline:2px solid #00bce5;outline-offset:3px;border-radius:2px}
+.v48-open-profile{width:calc(100% - 28px);margin:8px 14px 12px;padding:11px;border:1px solid #bfcfe5;border-radius:7px;color:#073782;background:#f8fbff;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.v48-profile-open{overflow:hidden!important}
+#v48PlayerProfile{--ink:#081d45;--muted:#59677d;--blue:#064ac5;--teal:#17b9ad;position:fixed;inset:0;z-index:15000;display:flex;flex-direction:column;background:#f1f4f8;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;text-align:left;isolation:isolate}
+#v48PlayerProfile *{box-sizing:border-box}
+#v48PlayerProfile button{cursor:pointer;font-family:inherit}
+#v48PlayerProfile button:disabled{opacity:.5;cursor:default}
+#v48PlayerProfile button:focus-visible{outline:3px solid #00a5df;outline-offset:3px}
+#v48PlayerProfile [hidden]{display:none!important}
+#v48PlayerProfile .v48-topbar{display:flex;align-items:center;min-height:86px;background:#fff;border-bottom:1px solid #e1e7ef;flex-shrink:0}
+#v48PlayerProfile .v48-wordmark{width:24%;padding:0 3%;font-size:28px;font-weight:950;letter-spacing:-1.8px;font-style:italic;line-height:.94;text-shadow:1px 2px 0 #c2d0e1;color:#072453}
+#v48PlayerProfile .v48-wordmark::after{content:'';display:inline-block;width:8px;height:22px;background:#d42b29;transform:skew(-22deg);position:relative;top:-26px;left:128px}
+#v48PlayerProfile .v48-wordmark span{display:block;font-size:9px;letter-spacing:7px;line-height:1.9;padding-left:5px;text-shadow:none}
+#v48PlayerProfile .v48-topbar nav{display:flex;align-items:center;justify-content:space-around;flex:1;align-self:stretch;border-left:1px solid #e9edf3}
+#v48PlayerProfile .v48-topbar nav button{background:transparent;border:0;font-size:12px;font-weight:750;text-transform:uppercase;color:#40516c;padding:12px 20px}
+#v48PlayerProfile .v48-topbar nav button:hover{background:#f0f5fc;color:#003eb2}
+#v48PlayerProfile .v48-toolbar{height:52px;display:flex;align-items:center;gap:22px;padding:0 3%;background:#ffffffd9;border-bottom:1px solid #e7ecf2;flex-shrink:0}
+#v48PlayerProfile .v48-toolbar>.v48-button{margin:0 auto 0 0;width:auto;border:0;background:none;color:#52627b;font-weight:500;padding-left:0}
+#v48PlayerProfile .v48-toolbar>span{font-size:12px;font-weight:750;letter-spacing:.4px}
+#v48PlayerProfile .v48-close{border:0;background:none;font-size:26px;font-weight:300;color:#334762;padding:6px 0 6px 12px}
+#v48PlayerProfile .v48-profile-scroll{overflow:auto;overscroll-behavior:contain;flex:1;padding:18px 2.8% 24px;background:radial-gradient(ellipse at 55% 30%,#fbfcfd,#edf1f6 76%)}
+#v48PlayerProfile .v48-profile-shell{max-width:1900px;min-height:calc(100vh - 185px);margin:0 auto;display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px;padding:30px 24px 18px;border:1px solid white;border-radius:24px;background:linear-gradient(115deg,#f8f9fb88,#eaf0f544);box-shadow:0 15px 35px #0928490d}
+#v48PlayerProfile .v48-profile-nav{align-self:start;position:sticky;top:0;background:#ffffffeb;border:1px solid #fff;border-radius:14px;box-shadow:0 5px 14px #152f4e08;padding:16px;min-height:530px;display:flex;flex-direction:column;gap:9px}
+#v48PlayerProfile .v48-profile-nav button{display:flex;align-items:center;gap:14px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--ink);font-size:14px;text-align:left;padding:12px 8px;white-space:nowrap}
+#v48PlayerProfile .v48-profile-nav button span{font-size:22px;line-height:18px;min-width:20px;text-align:center}
+#v48PlayerProfile .v48-profile-nav button[aria-current]{background:linear-gradient(130deg,#102c62,#001430);color:#fff;border-color:#33507a;box-shadow:0 2px 0 #e8eff7}
+#v48PlayerProfile .v48-profile-nav button:hover{box-shadow:inset 0 0 0 1px #c8d8ee}
+#v48PlayerProfile .v48-knowledge{margin-top:auto;padding:26px 7px 2px;display:grid;gap:7px;color:#687a90;font-size:9px;letter-spacing:.6px}
+#v48PlayerProfile .v48-knowledge strong{font-size:10px;color:#056586}
+#v48PlayerProfile .v48-profile-main{min-width:0;outline:none}
+#v48PlayerProfile .v48-overview{display:grid;grid-template-columns:minmax(220px,.97fr) minmax(150px,.95fr) minmax(150px,.95fr) minmax(240px,1.05fr);grid-template-rows:minmax(295px,1fr) minmax(225px,.75fr) auto auto;gap:20px 24px;position:relative;isolation:isolate}
+#v48PlayerProfile .v48-name-watermark{position:absolute;top:30px;left:11%;right:0;overflow:hidden;font-size:clamp(90px,10vw,190px);letter-spacing:-8px;font-weight:900;line-height:1;color:#0d2b5604;z-index:-2;pointer-events:none;text-transform:uppercase;white-space:nowrap}
+#v48PlayerProfile .v48-portrait{position:absolute;top:-32px;left:24%;width:49%;height:530px;pointer-events:none;z-index:-1}
+#v48PlayerProfile .v48-portrait img{width:100%;height:100%;object-fit:contain;object-position:center top;image-rendering:pixelated;filter:drop-shadow(0 18px 12px #122e5322);position:relative;z-index:1}
+#v48PlayerProfile .v48-portrait-floor{position:absolute;bottom:8px;left:14%;right:14%;height:18px;background:#29446315;filter:blur(10px);border-radius:50%}
+#v48PlayerProfile .v48-card{background:#ffffffeb;border:1px solid #fff;border-radius:14px;padding:20px 22px;box-shadow:0 5px 15px #19335208;min-width:0;backdrop-filter:blur(4px)}
+#v48PlayerProfile .v48-card h3,.v48-traits h4{font:750 10px/1.4 Arial,sans-serif;color:#1c3555;text-transform:uppercase;letter-spacing:.35px;margin:0 0 18px}
+#v48PlayerProfile .v48-card h3:before{content:'•';margin-right:10px;color:#002b67}
+#v48PlayerProfile .v48-identity{grid-area:1/1/2/2}
+#v48PlayerProfile .v48-identity>h3{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+#v48PlayerProfile .v48-identity-head{display:flex;justify-content:space-between;gap:10px;margin:0 0 19px}
+#v48PlayerProfile .v48-identity-head>div:first-child{min-width:0}
+#v48PlayerProfile .v48-identity-head span{color:#526079;font-size:13px;text-transform:uppercase}
+#v48PlayerProfile .v48-identity h2{font-size:clamp(18px,1.55vw,28px);line-height:1.12;overflow-wrap:anywhere;text-transform:uppercase;margin:3px 0 0;font-weight:800;letter-spacing:-.5px}
+#v48PlayerProfile .v48-ovr{text-align:center;flex-shrink:0}
+#v48PlayerProfile .v48-ovr strong{display:block;color:#0a2b86;font-size:27px;line-height:1.1}
+#v48PlayerProfile .v48-ovr span{font-size:11px}
+#v48PlayerProfile .v48-fact{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #edf1f6;font-size:12px;min-height:32px}
+#v48PlayerProfile .v48-fact>span{color:var(--muted);flex-shrink:0}
+#v48PlayerProfile .v48-fact strong{text-align:right;font-size:12px;font-weight:650;overflow-wrap:anywhere}
+#v48PlayerProfile .v48-club{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+#v48PlayerProfile .v48-club img,#v48PlayerProfile .v48-club svg{width:26px;height:26px;object-fit:contain}
+#v48PlayerProfile .v48-button{border:1px solid #dbe3ee;border-radius:6px;background:#fff;color:#102c56;min-height:34px;line-height:1.3;padding:9px 10px;margin:10px 0 0;width:100%;font-size:11px;font-weight:650;box-shadow:0 2px 3px #20385606}
+#v48PlayerProfile .v48-button:hover{border-color:#8baedb;background:#f5f9ff}
+#v48PlayerProfile .v48-button.is-primary{background:linear-gradient(180deg,#263b91,#031634);border-color:#193478;color:#fff;text-transform:uppercase;min-height:40px}
+#v48PlayerProfile .v48-attributes{grid-area:2/1/3/2}
+#v48PlayerProfile .v48-attribute-bars{display:grid;gap:13px;padding-top:2px}
+#v48PlayerProfile .v48-attribute-bars>div{display:grid;grid-template-columns:80px minmax(20px,1fr) 31px;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+#v48PlayerProfile .v48-attribute-bars strong{text-align:right;font-size:12px;color:var(--ink)}
+#v48PlayerProfile .v48-attribute-bars i{height:4px;display:block;background:#edf1f7;border-radius:4px;overflow:hidden}
+#v48PlayerProfile .v48-attribute-bars b{display:block;height:100%;background:linear-gradient(90deg,#041540,#263b78);border-radius:4px}
+#v48PlayerProfile .v48-fitness{grid-area:1/4/2/5;position:relative;width:min(100%,260px);aspect-ratio:1;align-self:center;justify-self:center;border-radius:50%;background:#ffffffb8;box-shadow:0 10px 24px #30456208,inset 0 0 0 12px #ffffff99}
+#v48PlayerProfile .v48-fitness svg{width:100%;height:100%;transform:rotate(-90deg)}
+#v48PlayerProfile .v48-fitness circle{fill:none;stroke-width:6;stroke-linecap:round}
+#v48PlayerProfile .v48-ring-track{stroke:#f0f4f5}
+#v48PlayerProfile .v48-ring-value{stroke:var(--teal)}
+#v48PlayerProfile .v48-fitness>div{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:36px;text-align:center}
+#v48PlayerProfile .v48-fitness strong{font-size:50px;line-height:1.15;letter-spacing:-2px}
+#v48PlayerProfile .v48-fitness strong small{font-size:25px}
+#v48PlayerProfile .v48-fitness span{font-size:11px;margin:6px 0 18px}
+#v48PlayerProfile .v48-fitness div>small{font-size:10px;color:#008c8b;max-width:170px;line-height:1.35}
+#v48PlayerProfile .v48-condition{grid-area:2/2/3/3;align-self:end}
+#v48PlayerProfile .v48-development{grid-area:2/3/3/4;align-self:end}
+#v48PlayerProfile .v48-contract{grid-area:2/4/3/5;align-self:end}
+#v48PlayerProfile .v48-condition-track{height:3px;background:#e5f4f1;margin:0 0 4px}
+#v48PlayerProfile .v48-condition-track i{display:block;height:100%;background:#12b8b1}
+#v48PlayerProfile .v48-season{grid-area:3/1/4/5;padding-top:17px;padding-bottom:18px}
+#v48PlayerProfile .v48-season h3{margin-bottom:12px}
+#v48PlayerProfile .v48-season-stats{display:grid;grid-template-columns:repeat(4,1fr);text-align:center}
+#v48PlayerProfile .v48-season-stats>div{display:flex;flex-direction:column;gap:5px;border-right:1px solid #e8edf5}
+#v48PlayerProfile .v48-season-stats>div:last-child{border:0}
+#v48PlayerProfile .v48-season-stats strong{font-size:21px}
+#v48PlayerProfile .v48-season-stats span{font-size:11px;color:var(--muted)}
+#v48PlayerProfile .v48-overview-traits{grid-area:4/1/5/5;display:flex;align-items:center;gap:20px;background:#ffffffc9;border:1px solid white;border-radius:14px;padding:12px 18px}
+#v48PlayerProfile .v48-overview-traits>.v48-traits{flex:1;margin:0;padding:0;border:0;background:none}
+#v48PlayerProfile .v48-overview-traits>.v48-button{width:auto;margin:0}
+.v48-traits{padding:16px;margin:10px 14px;border:1px solid #dce7ef;border-radius:10px;background:#f7fbfd;color:#082146;text-align:left}
+.v48-traits h4{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+.v48-traits h4 span{font-size:8px;font-weight:500;color:#60738b;letter-spacing:.5px}
+.v48-trait-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.v48-trait{display:flex;gap:13px;align-items:center;min-width:0;background:#fff;border:1px solid #e6edf4;border-radius:9px;padding:13px}
+.v48-trait>svg{width:45px;height:50px;flex-shrink:0;color:#035774}
+.v48-trait .trait-hex{fill:#e6f4f4;stroke:#badbdd;stroke-width:1}
+.v48-trait strong{display:block;font:750 14px/1.3 Arial,sans-serif;color:#08284b}
+.v48-trait small{display:block;text-transform:uppercase;font:600 8px/1.6 Arial,sans-serif;color:#008782;letter-spacing:.5px}
+.v48-trait p{font:400 12px/1.6 Arial,sans-serif;color:#52647b;margin:5px 0 0}
+.v48-traits.is-compact .v48-trait-grid{display:flex;flex-wrap:wrap;gap:9px}
+.v48-traits.is-compact .v48-trait{padding:4px 8px;gap:7px;border:0;background:transparent}
+.v48-traits.is-compact .v48-trait>svg{width:30px;height:34px}
+.v48-traits.is-compact .v48-trait strong{font-size:11px}
+.v48-locked{font:400 12px/1.5 Arial,sans-serif;color:#66758c;margin:6px 0}
+#v48PlayerProfile .v48-muted{font-size:12px;color:#69778e;line-height:1.6;margin:14px 0 0}
+#v48PlayerProfile .v48-detail-head{display:flex;align-items:center;gap:24px;padding:0 22px 22px;border-bottom:1px solid #dce5ef;margin-bottom:24px}
+#v48PlayerProfile .v48-detail-head img{height:120px;width:100px;object-fit:contain;image-rendering:pixelated}
+#v48PlayerProfile .v48-detail-head h1{font-size:32px;line-height:1.15;margin:6px 0}
+#v48PlayerProfile .v48-detail-head span,#v48PlayerProfile .v48-detail-head p{font-size:12px;color:#5a6e89}
+#v48PlayerProfile .v48-detail-head>b{margin-left:auto;font-size:40px;color:#11367d}
+#v48PlayerProfile .v48-detail-head>b small{display:block;font-size:11px;text-align:center}
+#v48PlayerProfile .v48-detail-body{max-width:1120px}
+#v48PlayerProfile .v48-detail-body>.v48-traits{margin:20px 0}
+#v48PlayerProfile .v48-detail-body>.v48-card{margin-bottom:20px}
+#v48PlayerProfile .v48-detail-body .v48-attribute-bars{gap:20px;padding:10px 0}
+#v48PlayerProfile .v48-section-intro{padding:10px 4px 16px;max-width:720px}
+#v48PlayerProfile .v48-section-intro>span{font-size:10px;font-weight:700;color:#008893;letter-spacing:1px}
+#v48PlayerProfile .v48-section-intro h2{font-size:32px;margin:9px 0}
+#v48PlayerProfile .v48-section-intro p{color:#60708a;line-height:1.7}
+/* Preserve the existing development, contract and career controls in the new shell. */
+#v48PlayerProfile .living-profile-panel,#v48PlayerProfile .v43-career-statistics{padding:24px;border:1px solid white;border-radius:14px;background:#fffffff0;color:#112c4f;box-shadow:0 5px 14px #19335208}
+#v48PlayerProfile .living-profile-panel header{margin-bottom:20px}
+#v48PlayerProfile .living-growth-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px}
+#v48PlayerProfile .living-growth-facts>div{padding:15px;background:#f3f7fb;border:1px solid #e1e9f3;border-radius:8px}
+#v48PlayerProfile .living-growth-facts span{display:block;font-size:10px;color:#60728a}
+#v48PlayerProfile .living-growth-facts strong{font-size:17px;color:#0a2b5e}
+#v48PlayerProfile .living-plan-grid,#v48PlayerProfile .living-contract-actions{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0}
+#v48PlayerProfile .living-plan-grid button,#v48PlayerProfile .living-contract-actions button,#v48PlayerProfile [data-role-conversion],#v48PlayerProfile [data-role-deployment],#v48PlayerProfile [data-role-conversion-cancel],#v48PlayerProfile [data-set-asking-price]{background:#f6f9fd;color:#102f5c;border:1px solid #cfdbeb;padding:13px;border-radius:8px;min-height:40px;font-size:12px}
+#v48PlayerProfile .living-plan-grid button{flex:1 1 160px;text-align:left}
+#v48PlayerProfile .living-plan-grid button span,#v48PlayerProfile .living-plan-grid button small{display:block;margin-top:8px;font-size:11px;line-height:1.5}
+#v48PlayerProfile .living-plan-grid .is-active,#v48PlayerProfile .living-contract-actions .is-primary{background:#0b2e67;color:white;border-color:#0b2e67}
+#v48PlayerProfile .profile-release-btn{margin-top:24px;color:#ab2636;border:1px solid #edd2d8;background:#fff7f7;padding:13px;border-radius:8px;font-size:12px}
+@media(min-width:1600px){#v48PlayerProfile .v48-profile-shell{grid-template-columns:202px minmax(0,1fr);gap:24px;padding:34px 24px 22px}#v48PlayerProfile .v48-profile-nav{min-height:565px}#v48PlayerProfile .v48-overview{grid-template-rows:295px 250px auto auto}#v48PlayerProfile .v48-portrait{height:535px}}
+@media(max-width:1250px){#v48PlayerProfile .v48-profile-shell{grid-template-columns:150px minmax(0,1fr);gap:15px;padding:20px 15px}#v48PlayerProfile .v48-profile-nav{padding:10px}#v48PlayerProfile .v48-profile-nav button{font-size:12px;gap:8px}#v48PlayerProfile .v48-overview{grid-template-columns:minmax(190px,1fr) minmax(130px,.8fr) minmax(130px,.8fr) minmax(200px,1fr);gap:15px 12px}#v48PlayerProfile .v48-card{padding:16px 13px}#v48PlayerProfile .v48-fact{gap:6px;font-size:11px}#v48PlayerProfile .v48-fact strong{font-size:11px}#v48PlayerProfile .v48-topbar nav button{padding:10px}}
+@media(max-width:1050px){#v48PlayerProfile .v48-profile-shell{display:block}#v48PlayerProfile .v48-profile-nav{position:static;min-height:0;flex-direction:row;flex-wrap:wrap;margin-bottom:24px;padding:8px;gap:3px}#v48PlayerProfile .v48-knowledge{display:none}#v48PlayerProfile .v48-profile-nav button{flex:1;justify-content:center}#v48PlayerProfile .v48-portrait{top:0;height:475px}#v48PlayerProfile .v48-overview{grid-template-columns:1fr 1fr 1fr;grid-template-rows:310px auto auto auto auto}#v48PlayerProfile .v48-identity{grid-area:1/1/2/2}#v48PlayerProfile .v48-fitness{grid-area:1/3/2/4;width:200px}#v48PlayerProfile .v48-attributes{grid-area:2/1/3/2}#v48PlayerProfile .v48-condition{grid-area:2/2/3/3}#v48PlayerProfile .v48-development{grid-area:2/3/3/4}#v48PlayerProfile .v48-contract{grid-area:3/1/4/4}#v48PlayerProfile .v48-season{grid-area:4/1/5/4}#v48PlayerProfile .v48-overview-traits{grid-area:5/1/6/4}}
+@media(max-width:700px){#v48PlayerProfile .v48-topbar{min-height:90px;display:block;padding:10px 12px}#v48PlayerProfile .v48-wordmark{height:30px;font-size:21px;width:auto;padding:0}#v48PlayerProfile .v48-wordmark span{font-size:6px;letter-spacing:5px}#v48PlayerProfile .v48-wordmark::after{display:none}#v48PlayerProfile .v48-topbar nav{border:0;gap:2px;flex-wrap:wrap;margin-top:6px}#v48PlayerProfile .v48-topbar nav button{font-size:9px;padding:9px 5px}#v48PlayerProfile .v48-toolbar{padding:0 16px;height:44px;gap:12px}#v48PlayerProfile .v48-toolbar>span{font-size:10px}#v48PlayerProfile .v48-profile-scroll{padding:12px}#v48PlayerProfile .v48-profile-shell{padding:12px 9px;border-radius:16px}#v48PlayerProfile .v48-profile-nav{gap:4px}#v48PlayerProfile .v48-profile-nav button{flex:1 1 28%;padding:10px 4px;font-size:11px}#v48PlayerProfile .v48-profile-nav button span{font-size:18px;min-width:15px}#v48PlayerProfile .v48-overview{grid-template-columns:1fr 1fr;grid-template-rows:240px auto auto auto auto auto auto;gap:14px}#v48PlayerProfile .v48-portrait{top:-10px;left:20%;width:68%;height:290px}#v48PlayerProfile .v48-name-watermark{font-size:74px;letter-spacing:-3px}#v48PlayerProfile .v48-identity{grid-area:2/1/3/3}#v48PlayerProfile .v48-fitness{grid-area:1/2/2/3;width:125px;align-self:end;justify-self:end;background:#fffdfdf2;z-index:1}#v48PlayerProfile .v48-fitness strong{font-size:30px}#v48PlayerProfile .v48-fitness strong small{font-size:15px}#v48PlayerProfile .v48-fitness>div{padding:18px}#v48PlayerProfile .v48-fitness span{font-size:8px;margin:3px 0 4px}#v48PlayerProfile .v48-fitness div>small{font-size:7px}#v48PlayerProfile .v48-attributes{grid-area:3/1/4/3}#v48PlayerProfile .v48-condition{grid-area:4/1/5/2}#v48PlayerProfile .v48-development{grid-area:4/2/5/3}#v48PlayerProfile .v48-contract{grid-area:5/1/6/3}#v48PlayerProfile .v48-season{grid-area:6/1/7/3}#v48PlayerProfile .v48-overview-traits{grid-area:7/1/8/3;display:block}#v48PlayerProfile .v48-overview-traits>.v48-button{margin-top:10px}#v48PlayerProfile .v48-card{padding:18px 14px}#v48PlayerProfile .v48-season-stats{gap:12px;grid-template-columns:1fr 1fr}#v48PlayerProfile .v48-detail-head{gap:12px;padding:0 0 15px}#v48PlayerProfile .v48-detail-head img{width:60px;height:90px}#v48PlayerProfile .v48-detail-head h1{font-size:22px}#v48PlayerProfile .v48-detail-head>b{font-size:27px}#v48PlayerProfile .v48-detail-head span{font-size:10px}.v48-trait-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.v48-name{transition:none}}
+.v48-lineup-traits{display:flex;gap:5px;margin-top:4px;height:22px;color:#06677f}
+.v48-lineup-traits>span{display:block;width:19px;height:22px}
+.v48-lineup-traits svg{width:19px;height:22px}
+.v48-lineup-traits .trait-hex{fill:#e4f4f5;stroke:#a8d9e0;stroke-width:1}
+/* Older panels use very small container units; normalize them within this profile only. */
+#v48PlayerProfile .v48-detail-body .living-profile-panel p,#v48PlayerProfile .v48-detail-body .living-profile-panel button{font-size:12px!important;line-height:1.6!important}
+#v48PlayerProfile .v48-detail-body .living-profile-panel small{font-size:11px!important;line-height:1.5!important}
+#v48PlayerProfile .v48-detail-body .living-profile-panel span{font-size:11px!important;line-height:1.5!important}
+#v48PlayerProfile .v48-detail-body .living-profile-panel strong{font-size:14px!important;line-height:1.5!important}
+#v48PlayerProfile .v48-detail-body .living-growth-facts strong{font-size:20px!important}
+#v48PlayerProfile .v48-detail-body :is(.v2075-dev-progress,.v2075-pathway-card,.v2075-role-conversion,.v2075-renewal-state,.v44-role-versatility,.living-market-pulse,.contract-advice){padding:18px!important;margin:16px 0!important;border-radius:10px!important}
+#v48PlayerProfile .v48-detail-body :is(.v2075-dev-progress,.v2075-pathway-card,.v2075-role-conversion,.v2075-renewal-state) p{margin-top:10px!important}
+#v48PlayerProfile .v48-detail-body .v2075-dev-progress>i,#v48PlayerProfile .v48-detail-body .v2075-conversion-progress{height:6px!important;margin:12px 0!important}
+#v48PlayerProfile .v48-detail-body .v2075-conversion-options{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+#v48PlayerProfile .v48-detail-body .living-asking-price input{font-size:15px;min-height:40px;padding:8px;color:#08254e}
+#v48PlayerProfile .v48-detail-body .v43-career-statistics :is(span,small){font-size:11px!important;line-height:1.6!important}
+#v48PlayerProfile .v48-detail-body .v43-career-statistics strong{font-size:14px!important;line-height:1.5!important}
+#v48PlayerProfile .v48-detail-body .v43-career-statistics .v43-career-comp{padding:12px!important}
+
+/* V49: scouting uncertainty, trait provenance and a deliberate empty state. */
+.v49-trait-hint,.v49-no-traits{font:400 12px/1.65 Arial,sans-serif;color:#52647b;margin:8px 0}
+.v49-trait-hint{padding-left:10px;border-left:2px solid #17a5af}
+.v49-trait-origin{display:block;margin-top:9px;font:600 10px/1.5 Arial,sans-serif;color:#267178}
+.v48-trait .v49-trait-reason{font-size:10px;margin-top:3px}
+.v49-more-traits summary{cursor:pointer;color:#124774;font:600 11px/1.5 Arial,sans-serif;padding:10px 0}
+.v49-more-traits summary:focus-visible{outline:2px solid #147aca;outline-offset:3px}
+.v49-trait-milestone{border-left:2px solid #16a5af;padding:0 0 0 14px;margin:15px 0}
+.v49-trait-milestone strong{font-size:14px}.v49-trait-milestone small{display:block;color:#52647b;margin-top:4px}
+.v49-trait-milestone p{font-size:12px;color:#52647b;line-height:1.6}
+
+
+/* ============================================================
+   V51.2 — Senior Squad rebuild.
+   Chamfered cream player cards with the portrait held to the
+   right half and the text column to the left, so nothing
+   overlaps. Starting Three sits at the top of the pane as a
+   dark navy showcase strip. The old .starter-grid/.subs-grid
+   are collapsed with display:contents so their cards flow into
+   one shared 4-up grid; every drag/drop and click binding in
+   app.js still targets #startersGrid / #subsGrid / #reservesGrid
+   / #startingThreeShowcase by id, untouched.
+   ============================================================ */
+
+#screenSquad #squadSubnav{position:relative;z-index:3}
+
+/* ---------- shared card shell ---------- */
+#screenSquad .player-card.v51-card{
+  --ch:.62cqw;
+  position:relative!important;
+  display:block!important;
+  height:10.9cqw!important;
+  min-height:10.9cqw!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:linear-gradient(150deg,#e6d7ae,#bda478)!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  cursor:pointer!important;
+  text-align:left!important;
+  filter:drop-shadow(0 .2cqw .34cqw rgba(38,32,16,.24));
+  clip-path:polygon(var(--ch) 0,calc(100% - var(--ch)) 0,100% var(--ch),100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,var(--ch) 100%,0 calc(100% - var(--ch)),0 var(--ch));
+  transition:transform .16s ease,filter .16s ease!important;
+}
+#screenSquad .player-card.v51-card::before{
+  content:""!important;
+  position:absolute!important;
+  left:.14cqw!important;right:.14cqw!important;top:.14cqw!important;bottom:.14cqw!important;
+  width:auto!important;height:auto!important;opacity:1!important;z-index:0!important;
+  background:
+    radial-gradient(circle at 1px 1px,rgba(74,62,36,.07) 1px,transparent 1.7px) 0 0/.5cqw .5cqw,
+    linear-gradient(158deg,#fffdf7 0%,#f8f2e4 56%,#efe6d1 100%)!important;
+  clip-path:polygon(var(--ch) 0,calc(100% - var(--ch)) 0,100% var(--ch),100% calc(100% - var(--ch)),calc(100% - var(--ch)) 100%,var(--ch) 100%,0 calc(100% - var(--ch)),0 var(--ch));
+}
+#screenSquad .player-card.v51-card::after{content:none!important;display:none!important}
+#screenSquad .player-card.v51-card.is-selected,
+#screenSquad .player-card.v51-card.is-swap-source,
+#screenSquad .player-card.v51-card.is-swap-target{transform:none!important}
+#screenSquad .player-card.v51-card:hover{transform:translateY(-.16cqw)!important;filter:drop-shadow(0 .34cqw .6cqw rgba(38,32,16,.3))!important}
+
+/* edge colours by state */
+#screenSquad .player-card.v51-card.is-selected{background:linear-gradient(150deg,#7fc4f0,#0d5a97)!important}
+#screenSquad .player-card.v51-card.is-swap-source{background:linear-gradient(150deg,#f4dc9b,#a67f22)!important}
+#screenSquad .player-card.v51-card.is-swap-target,
+#screenSquad .player-card.v51-card.is-drag-over{background:linear-gradient(150deg,#6fded0,#0e7f75)!important}
+#screenSquad .player-card.v51-card.is-unregistered{background:linear-gradient(150deg,#f0c67e,#b4791a)!important}
+#screenSquad .player-card.v51-card.is-dragging{opacity:.42!important}
+
+/* ---------- corner badge ---------- */
+#screenSquad .v51-badge{
+  position:absolute;top:0;right:0;z-index:4;
+  display:grid;place-items:center;
+}
+#screenSquad .v51-badge.is-number{
+  width:2.35cqw;height:2cqw;
+  background:linear-gradient(158deg,#1d3f68,#0c2138);
+  clip-path:polygon(0 0,100% 0,100% 100%,.6cqw 100%,0 calc(100% - .6cqw));
+  color:#fdf8ec;font:900 .78cqw/1 Georgia,serif;
+  padding-left:.3cqw;
+}
+
+/* ---------- text column ---------- */
+#screenSquad .v51-info{
+  position:relative;z-index:2;
+  width:55%;height:100%;
+  display:flex;flex-direction:column;
+  padding:.78cqw 0 .8cqw .85cqw;
+  min-width:0;
+}
+#screenSquad .v51-role{
+  display:flex;align-items:center;gap:.3cqw;
+  font:900 .33cqw/1 Arial,sans-serif;letter-spacing:.13em;
+  color:#8c8468;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#screenSquad .player-card.v51-card.is-unregistered .v51-role{color:#a2701a}
+#screenSquad .v51-captain{
+  font-style:normal;flex:0 0 auto;
+  display:inline-grid;place-items:center;
+  width:.8cqw;height:.8cqw;border-radius:50%;
+  background:linear-gradient(160deg,#f0d488,#c19a3c);
+  color:#16304f;font:900 .36cqw/1 Arial,sans-serif;
+}
+#screenSquad .v51-ovr{margin-top:.26cqw;display:flex;align-items:baseline;gap:.22cqw}
+#screenSquad .v51-ovr strong{font:900 1.85cqw/.9 Georgia,serif;color:#14100a;letter-spacing:-.01em}
+#screenSquad .v51-ovr small{font:900 .32cqw/1 Arial,sans-serif;color:#9a9276;letter-spacing:.1em}
+#screenSquad .v51-name{
+  margin:.3cqw 0 0;
+  font:900 .69cqw/1.02 Arial,sans-serif;letter-spacing:.01em;
+  color:#171207;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#screenSquad .v51-origin{margin-top:.42cqw;display:flex;flex-direction:column;gap:.16cqw;min-width:0}
+#screenSquad .v51-club{display:flex;align-items:center;gap:.3cqw;min-width:0}
+#screenSquad .v51-club img{width:.82cqw;height:.82cqw;object-fit:contain;flex:0 0 auto}
+#screenSquad .v51-club .v34-club-crest{width:.82cqw;height:.82cqw;flex:0 0 auto;font-size:.28cqw}
+#screenSquad .v51-club b{
+  font:900 .33cqw/1 Arial,sans-serif;letter-spacing:.1em;color:#6f6851;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#screenSquad .v51-age{font:900 .31cqw/1 Arial,sans-serif;letter-spacing:.12em;color:#a89f80;padding-left:1.12cqw}
+#screenSquad .v51-stats{margin-top:auto;display:flex;flex-direction:column;gap:.4cqw}
+#screenSquad .v51-stat{display:flex;flex-direction:column;align-items:flex-start;gap:.1cqw;min-width:0}
+#screenSquad .v51-stat span{font:900 .3cqw/1 Arial,sans-serif;letter-spacing:.13em;color:#a89f80}
+#screenSquad .v51-stat strong{font:900 .44cqw/1 Arial,sans-serif;letter-spacing:.06em;color:#171207;text-transform:uppercase;white-space:nowrap}
+#screenSquad .v51-stat strong.tone-good{color:#12784f}
+#screenSquad .v51-stat strong.tone-bad{color:#bb4034}
+#screenSquad .v51-stat strong.tone-neutral{color:#5f5949}
+
+/* ---------- portrait, right half only ---------- */
+#screenSquad .v51-portrait{
+  position:absolute;z-index:1;
+  right:.1cqw;bottom:.05cqw;top:0;width:44%;
+  pointer-events:none;
+}
+#screenSquad .v51-portrait img{
+  width:100%;height:100%;
+  object-fit:contain;object-position:center bottom;
+  filter:drop-shadow(0 .2cqw .3cqw rgba(30,24,10,.26));
+}
+
+/* ---------- empty senior slot ---------- */
+#screenSquad .empty-player-slot.v51-card{background:linear-gradient(150deg,#ddd4bb,#b7ad91)!important}
+#screenSquad .empty-player-slot.v51-card::before{
+  background:repeating-linear-gradient(135deg,#faf7ee 0 .5cqw,#f3efe2 .5cqw 1cqw)!important;
+}
+#screenSquad .empty-player-slot.v51-card>div{
+  position:relative;z-index:2;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.22cqw;
+  padding:.7cqw;text-align:center;
+}
+#screenSquad .empty-player-slot span{font:900 .29cqw Arial,sans-serif;letter-spacing:.13em;color:#a89f80}
+#screenSquad .empty-player-slot strong{font:900 .52cqw Arial,sans-serif;letter-spacing:.06em;color:#3b3524;text-transform:uppercase}
+#screenSquad .empty-player-slot small{font:700 .29cqw/1.4 Arial,sans-serif;color:#a89f80;max-width:80%}
+
+/* ============================================================
+   Starting Three showcase — now the first block in the pane.
+   ============================================================ */
+#screenSquad .v51-st3-panel{
+  position:relative;
+  flex:0 0 auto!important;
+  margin:0!important;
+  padding:1.05cqw 1.25cqw 1.15cqw!important;
+  border:0!important;border-radius:0!important;
+  background:
+    repeating-linear-gradient(118deg,rgba(255,255,255,.028) 0 .3cqw,transparent .3cqw 1.6cqw),
+    linear-gradient(180deg,#15324f 0%,#0c2038 62%,#091a2f 100%)!important;
+  box-shadow:none!important;
+  clip-path:polygon(1cqw 0,calc(100% - 1cqw) 0,100% 1cqw,100% calc(100% - 1cqw),calc(100% - 1cqw) 100%,1cqw 100%,0 calc(100% - 1cqw),0 1cqw);
+}
+#screenSquad .v51-st3-head{display:flex;align-items:center;justify-content:center;gap:.7cqw;margin-bottom:.95cqw}
+#screenSquad .v51-st3-head h3{
+  margin:0;font:900 .86cqw/1 Arial,sans-serif;letter-spacing:.28em;
+  color:#eccb74;text-shadow:0 .08cqw .2cqw rgba(0,0,0,.45);
+}
+#screenSquad .v51-orn{color:#c19a3c;font-size:.52cqw;letter-spacing:0}
+#screenSquad .v51-st3-row{position:relative}
+#screenSquad .v51-st3-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25cqw}
+#screenSquad .v51-st3-slot{position:relative;display:grid;grid-template-columns:3cqw minmax(0,1fr);align-items:stretch}
+#screenSquad .v51-st3-num{
+  display:grid;place-items:center;
+  font:900 2.35cqw/1 Georgia,serif;color:#eccb74;
+  background:linear-gradient(165deg,#1c3f66,#0a1c31);
+  clip-path:polygon(0 .85cqw,.85cqw 0,100% 0,100% 100%,.85cqw 100%,0 calc(100% - .85cqw));
+  text-shadow:0 .08cqw .2cqw rgba(0,0,0,.55);
+}
+#screenSquad .v51-st3-grid .player-card.v51-card{height:10.4cqw!important;min-height:10.4cqw!important}
+#screenSquad .v51-st3-grid .player-card.v51-card{background:linear-gradient(150deg,#f0d795,#b98f2f)!important}
+#screenSquad .v51-st3-grid .v51-badge{display:none!important}
+#screenSquad .v51-st3-grid .v51-info{width:54%;padding:.85cqw 0 .88cqw 1cqw}
+#screenSquad .v51-st3-grid .v51-ovr strong{font-size:2.05cqw}
+#screenSquad .v51-st3-grid .v51-name{font-size:.75cqw}
+#screenSquad .v51-st3-grid .v51-role{font-size:.35cqw}
+#screenSquad .v51-st3-grid .v51-club b,#screenSquad .v51-st3-grid .v51-age{font-size:.34cqw}
+#screenSquad .v51-st3-grid .v51-stat span{font-size:.32cqw}
+#screenSquad .v51-st3-grid .v51-stat strong{font-size:.46cqw}
+#screenSquad .v51-st3-grid .v51-portrait{width:45%;right:.1cqw;top:-.25cqw;bottom:.05cqw}
+
+
+#screenSquad .v51-st3-foot{
+  margin-top:1.1cqw;padding-top:.9cqw;
+  border-top:1px solid rgba(236,203,116,.18);
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:1cqw;
+}
+#screenSquad .v51-sub-note{display:flex;align-items:center;gap:.55cqw;min-width:0}
+#screenSquad .v51-sub-note>span{font-size:1.05cqw;line-height:1;color:#8fa6bd;flex:0 0 auto}
+#screenSquad .v51-sub-note strong{display:block;font:900 .42cqw Arial,sans-serif;letter-spacing:.16em;color:#5fd3c6}
+#screenSquad .v51-sub-note small{display:block;margin-top:.14cqw;font:800 .32cqw Arial,sans-serif;letter-spacing:.1em;color:#7b8fa6;text-transform:uppercase}
+#screenSquad .v51-confirm-btn{
+  justify-self:center;
+  background:linear-gradient(180deg,#f4dc9d 0%,#dcb659 45%,#c19a3c 100%)!important;
+  border:0!important;border-radius:0!important;
+  color:#16304f!important;
+  font:900 .62cqw/1 Arial,sans-serif!important;letter-spacing:.16em!important;
+  padding:.75cqw 2.6cqw!important;
+  display:flex!important;align-items:center!important;gap:1cqw!important;
+  cursor:pointer!important;
+  clip-path:polygon(.62cqw 0,calc(100% - .62cqw) 0,100% 50%,calc(100% - .62cqw) 100%,.62cqw 100%,0 50%);
+  filter:drop-shadow(0 .2cqw .4cqw rgba(0,0,0,.42));
+  transition:filter .15s ease,transform .15s ease!important;
+}
+#screenSquad .v51-confirm-btn:hover{filter:brightness(1.07) drop-shadow(0 .28cqw .5cqw rgba(0,0,0,.48))!important;transform:translateY(-.05cqw)!important}
+#screenSquad .v51-confirm-btn span{font-size:.86cqw!important;opacity:.9;line-height:1}
+#screenSquad .v51-legend{display:flex;gap:.95cqw;justify-content:flex-end}
+#screenSquad .v51-legend-item{
+  display:flex;align-items:center;gap:.32cqw;white-space:nowrap;
+  font:900 .32cqw Arial,sans-serif;letter-spacing:.13em;color:#9fb3c8;
+}
+#screenSquad .v51-legend-item svg{width:.92cqw;height:.92cqw;flex:0 0 auto}
+#screenSquad .v51-legend-item.tone-good{color:#e0c86a}
+#screenSquad .v51-legend-item.tone-neutral{color:#93a4b6}
+#screenSquad .v51-legend-item.tone-bad{color:#dd6f63}
+
+/* ============================================================
+   The 4-up roster grid (starters + substitutes in one flow)
+   and the reserves grid below it.
+   ============================================================ */
+#screenSquad .v51-roster-flow{
+  flex:0 0 auto!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:.95cqw!important;
+  margin:0!important;
+}
+#screenSquad .v51-roster-flow>.roster-section,
+#screenSquad .v51-roster-flow .starter-grid,
+#screenSquad .v51-roster-flow .subs-grid{display:contents!important}
+
+#screenSquad .reserves-section{background:transparent!important;border:0!important;padding:0!important}
+#screenSquad .reserves-section .roster-title{display:flex!important;align-items:baseline!important;gap:.6cqw!important;margin-bottom:.6cqw!important;background:transparent!important;padding:0!important}
+#screenSquad .reserves-section .roster-kicker{font:900 .3cqw Arial,sans-serif!important;letter-spacing:.18em!important;color:#a89f80!important}
+#screenSquad .reserves-section .roster-title h3{font:900 .62cqw Arial,sans-serif!important;letter-spacing:.14em!important;color:#16304f!important}
+#screenSquad .reserves-section .roster-title p{font:700 .34cqw Arial,sans-serif!important;color:#8c8468!important;margin:0!important}
+#screenSquad .reserves-grid{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:.95cqw!important;
+  height:auto!important;min-height:0!important;padding:0!important;
+}
+
+/* ============================================================
+   V51 — Team Tactics screen restyled to match the same
+   navy / gold / cream language as the Senior Squad redesign.
+   Layout/functionality unchanged (tactics-profile-card, tactic
+   pills, meters, summary sidebar) — visuals only.
+   ============================================================ */
+#screenSquad .squad-tactics-content{background:transparent!important}
+#screenSquad .squad-tactics-layout{display:grid!important;grid-template-columns:minmax(0,1fr) 15.5cqw!important;gap:.95cqw!important;align-items:start!important}
+#screenSquad .tactics-profile-card{
+  background:
+    repeating-linear-gradient(118deg,rgba(255,255,255,.028) 0 .3cqw,transparent .3cqw 1.6cqw),
+    linear-gradient(180deg,#15324f 0%,#0c2038 62%,#091a2f 100%)!important;
+  border:0!important;border-radius:0!important;
+  padding:1cqw 1.2cqw!important;
+  box-shadow:none!important;
+  display:flex!important;gap:1.1cqw!important;align-items:center!important;
+  color:#e7edf4!important;
+  clip-path:polygon(.9cqw 0,calc(100% - .9cqw) 0,100% .9cqw,100% calc(100% - .9cqw),calc(100% - .9cqw) 100%,.9cqw 100%,0 calc(100% - .9cqw),0 .9cqw);
+}
+#screenSquad .tactics-mini-pitch{flex:0 0 auto!important}
+#screenSquad .tactics-profile-copy{flex:1 1 auto!important;min-width:0!important}
+#screenSquad .tactic-profile-meters{max-width:30cqw!important}
+#screenSquad .tactics-profile-copy>span{font:800 .32cqw Arial,sans-serif!important;letter-spacing:.14em!important;color:#c9a13d!important}
+#screenSquad .tactics-profile-copy h3{margin:.22cqw 0!important;font:900 .82cqw Arial,sans-serif!important;color:#e7c46a!important}
+#screenSquad .tactics-profile-copy p{margin:0 0 .5cqw!important;font:700 .38cqw/1.5 Arial,sans-serif!important;color:#9fb2c9!important}
+#screenSquad .tactic-profile-meter>span{color:#9fb2c9!important}
+#screenSquad .tactic-profile-meter>strong{color:#e7edf4!important}
+#screenSquad .tactic-profile-meter>i{background:rgba(255,255,255,.22)!important;height:.4cqw!important;border-radius:999px!important}
+#screenSquad .tactic-profile-meter>i>b{background:linear-gradient(90deg,#2bb3a6,#eccb74)!important;box-shadow:0 0 .3cqw rgba(236,203,116,.3)!important}
+#screenSquad .tactics-mini-pitch{background:radial-gradient(ellipse at center,#173a2b,#0e2419)!important;border:1px solid #245c3f!important}
+#screenSquad .tactics-mini-pitch::before{background:rgba(231,237,244,.22)!important}
+#screenSquad .tactics-mini-pitch::after,#screenSquad .tactics-mini-pitch .pitch-circle{border-color:rgba(231,237,244,.3)!important}
+#screenSquad .tactic-dot{background:#c9a13d!important;color:#132845!important;border-color:#0e2419!important}
+#screenSquad .squad-tactic-group{
+  background:linear-gradient(180deg,#fffdf8,#faf6ec)!important;
+  border:1px solid #e3dcc4!important;
+  border-radius:.7cqw!important;
+  box-shadow:0 .25cqw .5cqw rgba(20,24,16,.12)!important;
+}
+#screenSquad .squad-tactic-group header span{color:#8a8267!important}
+#screenSquad .squad-tactic-group header strong{color:#0e7f75!important}
+#screenSquad .squad-tactic-option{
+  background:#fff!important;border:1px solid #e3dcc4!important;color:#3a3524!important;
+  border-radius:.4cqw!important;
+}
+#screenSquad .squad-tactic-option:hover{border-color:#c9a13d!important;box-shadow:0 .24cqw .6cqw rgba(20,24,16,.14)!important}
+#screenSquad .squad-tactic-option small{color:#8a8267!important}
+#screenSquad .squad-tactic-option.is-selected{background:linear-gradient(180deg,#fdf5dd,#f8ecc8)!important;border-color:#d8b962!important;box-shadow:inset 0 .18cqw #c9a13d!important}
+#screenSquad .squad-tactic-option.is-selected b{color:#8e6a1f!important}
+#screenSquad .squad-tactic-option.is-selected::after{background:#c9a13d!important}
+#screenSquad .squad-tactics-summary{
+  background:linear-gradient(180deg,#132845,#0b1c33)!important;
+  border:1px solid #24406a!important;
+  border-radius:.85cqw!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 .3cqw .65cqw rgba(0,0,0,.28)!important;
+}
+#screenSquad .squad-tactics-summary>span{color:#c9a13d!important}
+#screenSquad .squad-tactics-summary h3{color:#e7c46a!important}
+#screenSquad .tactics-summary-desc{color:#9fb2c9!important}
+#screenSquad .squad-tactics-summary small{color:#7f92a8!important}
+#screenSquad .squad-tactics-summary strong{color:#e7edf4!important}
+#screenSquad .squad-tactics-summary button{
+  background:linear-gradient(180deg,#f3d78e,#c9a13d)!important;
+  border:1px solid #8e6a1f!important;color:#132845!important;
+}
+#screenSquad .squad-tactics-summary button:hover{filter:brightness(1.06)!important;background:linear-gradient(180deg,#f3d78e,#c9a13d)!important}
+#screenSquad .tactics-identity-badge{color:#e7edf4!important}
+#screenSquad .tactics-identity-badge strong{color:#e7c46a!important}
+
+/* ============================================================
+   V52 — Central (home) screen redesign.
+   Light broadcast-desk dashboard: white cards on a near-white
+   ground, hairline rules instead of boxes, navy icon chips on
+   every panel header, and a confident number scale. The
+   cinematic fixture card in the middle is deliberately left
+   untouched, as is the top navigation bar.
+   ============================================================ */
+
+#screenCentral{
+  --nav:#0e2340; --nav-2:#17335a; --ink:#131a24; --mute:#7b8794;
+  --line:#e4e8ee; --gold:#c9a13d; --teal:#149c92; --blue:#1a5cb0;
+  background:#fbfcfd!important;
+}
+#screenCentral .central-template{display:none!important}
+#screenCentral .central-center-clean{display:none!important}
+
+/* ---------- shared panel shell ---------- */
+#screenCentral .central-side-panel,
+#screenCentral .central-manager-briefing,
+#screenCentral .central-season-snapshot,
+#screenCentral .central-advance-calendar{
+  background:#fff!important;
+  border:1px solid var(--line)!important;
+  border-radius:.55cqw!important;
+  box-shadow:0 .1cqw .3cqw rgba(19,26,36,.05)!important;
+  overflow:hidden!important;
+  padding:0!important;
+}
+
+/* ---------- panel headers with navy icon chips ---------- */
+#screenCentral .central-panel-header{
+  display:flex!important;align-items:center!important;gap:.55cqw!important;
+  height:2.1cqw!important;min-height:2.1cqw!important;
+  padding:0 .8cqw!important;margin:0!important;
+  border:0!important;border-bottom:1px solid var(--line)!important;
+  background:#fff!important;
+}
+#screenCentral .central-panel-header>span:not(.central-panel-glyph){
+  font:900 .58cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important;
+  color:var(--nav)!important;text-transform:uppercase!important;flex:1 1 auto!important;
+}
+#screenCentral .central-panel-glyph{
+  flex:0 0 auto!important;
+  width:1.5cqw!important;height:1.5cqw!important;
+  border-radius:.28cqw!important;
+  background:linear-gradient(160deg,var(--nav-2),var(--nav))!important;
+  color:#e9c86f!important;
+  display:grid!important;place-items:center!important;
+  font-size:0!important;border:0!important;box-shadow:none!important;
+}
+#screenCentral .central-panel-glyph svg{width:.92cqw;height:.92cqw;display:block}
+#screenCentral .central-attention-count{
+  flex:0 0 auto!important;
+  min-width:1.25cqw!important;height:1.25cqw!important;padding:0 .25cqw!important;
+  border-radius:999px!important;border:0!important;
+  background:var(--nav)!important;color:#fff!important;
+  display:grid!important;place-items:center!important;
+  font:900 .5cqw/1 Arial,sans-serif!important;
+}
+#screenCentral .central-attention-count.has-urgent{background:#c8452f!important}
+#screenCentral .central-panel-link{
+  flex:0 0 auto!important;border:0!important;background:transparent!important;
+  color:var(--blue)!important;font:900 .46cqw Arial,sans-serif!important;
+  letter-spacing:.12em!important;cursor:pointer!important;padding:0!important;
+}
+#screenCentral .central-panel-body{
+  padding:.7cqw .8cqw!important;background:#fff!important;border:0!important;
+  height:auto!important;overflow:auto!important;
+}
+
+/* ---------- needs your attention ---------- */
+#screenCentral .central-task-row{
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:start!important;gap:.5cqw!important;
+  padding:.6cqw .65cqw .6cqw .75cqw!important;margin:0 0 .45cqw!important;
+  background:#f9fbfd!important;border:1px solid var(--line)!important;
+  border-left:.22cqw solid var(--blue)!important;border-radius:.34cqw!important;
+  box-shadow:none!important;position:relative!important;
+}
+#screenCentral .central-task-row.is-urgent{border-left-color:#c8452f!important}
+#screenCentral .central-task-row .v45-task-main{
+  display:block!important;text-align:left!important;padding:0!important;
+  border:0!important;background:transparent!important;cursor:pointer!important;min-width:0!important;
+}
+#screenCentral .central-task-priority{
+  display:inline-block!important;vertical-align:middle!important;
+  padding:.16cqw .4cqw!important;border-radius:.2cqw!important;border:0!important;
+  background:var(--blue)!important;color:#fff!important;
+  font:900 .38cqw/1.25 Arial,sans-serif!important;letter-spacing:.1em!important;
+}
+#screenCentral .central-task-row.is-urgent .central-task-priority{background:#c8452f!important}
+#screenCentral .central-task-copy{display:block!important;min-width:0!important}
+#screenCentral .central-task-copy small{
+  display:inline-block!important;margin-left:.4cqw!important;vertical-align:middle!important;
+  color:var(--mute)!important;font:900 .4cqw/1.25 Arial,sans-serif!important;letter-spacing:.13em!important;
+}
+#screenCentral .central-task-copy strong{
+  display:block!important;margin-top:.38cqw!important;
+  color:var(--ink)!important;font:800 .62cqw/1.2 Arial,sans-serif!important;letter-spacing:0!important;
+}
+#screenCentral .central-task-copy p{
+  margin:.24cqw 0 0!important;color:var(--mute)!important;
+  font:600 .46cqw/1.35 Arial,sans-serif!important;
+}
+#screenCentral .central-task-chevron{display:none!important}
+#screenCentral .v45-task-controls{
+  display:flex!important;gap:.22cqw!important;align-items:center!important;
+  border:0!important;background:transparent!important;padding:0!important;
+}
+#screenCentral .v45-task-controls button{
+  width:1.15cqw!important;height:1.15cqw!important;padding:0!important;
+  border:1px solid var(--line)!important;border-radius:.2cqw!important;
+  background:#fff!important;color:var(--mute)!important;
+  font:900 .4cqw/1 Arial,sans-serif!important;cursor:pointer!important;
+  display:grid!important;place-items:center!important;
+}
+#screenCentral .v45-task-controls button:hover{border-color:var(--nav)!important;color:var(--nav)!important}
+#screenCentral .v45-task-controls button.is-active{background:var(--gold)!important;color:var(--nav)!important;border-color:var(--gold)!important}
+#screenCentral .central-task-empty{
+  padding:1.2cqw!important;text-align:center!important;color:var(--mute)!important;
+  font:700 .48cqw/1.5 Arial,sans-serif!important;background:transparent!important;border:0!important;
+}
+#screenCentral .central-task-empty b{display:block!important;font-size:1.1cqw!important;color:var(--teal)!important;margin-bottom:.25cqw!important}
+#screenCentral .central-task-empty strong{display:block!important;color:var(--ink)!important;font-size:.56cqw!important;letter-spacing:.12em!important;margin-bottom:.2cqw!important}
+
+/* ---------- latest news ---------- */
+#screenCentral .central-news-list{display:block!important;background:#fff!important;padding:0 .8cqw!important}
+#screenCentral .news-row.central-news-row{
+  display:grid!important;grid-template-columns:2.3cqw minmax(0,1fr)!important;
+  gap:.6cqw!important;align-items:center!important;
+  padding:.62cqw 0!important;margin:0!important;
+  background:transparent!important;border:0!important;border-bottom:1px solid var(--line)!important;
+  border-radius:0!important;text-align:left!important;cursor:pointer!important;box-shadow:none!important;
+}
+#screenCentral .news-row.central-news-row:last-child{border-bottom:0!important}
+#screenCentral .central-news-row .news-avatar{
+  width:2.3cqw!important;height:2.3cqw!important;border-radius:50%!important;
+  background:#f2f5f8!important;border:1px solid var(--line)!important;overflow:hidden!important;
+  display:grid!important;place-items:center!important;
+}
+#screenCentral .central-news-row .news-avatar img{width:88%!important;height:88%!important;object-fit:contain!important;transform:none!important}
+#screenCentral .central-news-row .central-news-category{
+  display:block!important;color:var(--blue)!important;
+  font:900 .4cqw/1 Arial,sans-serif!important;letter-spacing:.11em!important;
+}
+#screenCentral .central-news-row .news-copy strong{
+  display:block!important;margin:.24cqw 0 .2cqw!important;color:var(--ink)!important;
+  font:800 .55cqw/1.25 Arial,sans-serif!important;
+}
+#screenCentral .central-news-row .news-copy span{
+  display:block!important;color:var(--mute)!important;
+  font:800 .38cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important;
+}
+
+/* ---------- board expectations ---------- */
+#screenCentral .central-objectives{display:block!important;padding:.2cqw .8cqw!important}
+#screenCentral .objective-row.central-objective-row{
+  display:grid!important;grid-template-columns:1.5cqw minmax(0,1fr)!important;
+  gap:.55cqw!important;align-items:start!important;
+  padding:.62cqw 0!important;margin:0!important;
+  background:transparent!important;border:0!important;border-bottom:1px solid var(--line)!important;
+  border-radius:0!important;text-align:left!important;cursor:pointer!important;box-shadow:none!important;
+}
+#screenCentral .objective-row.central-objective-row:last-child{border-bottom:0!important}
+#screenCentral .central-objective-row .objective-icon{
+  color:var(--gold)!important;font-size:.85cqw!important;line-height:1!important;
+  text-align:center!important;padding-top:.1cqw!important;
+}
+#screenCentral .central-objective-row .objective-copy strong{
+  display:block!important;color:var(--ink)!important;
+  font:800 .55cqw/1.2 Arial,sans-serif!important;
+}
+#screenCentral .central-objective-row .objective-meta{
+  display:flex!important;align-items:baseline!important;justify-content:space-between!important;
+  gap:.4cqw!important;margin:.16cqw 0 .3cqw!important;
+}
+#screenCentral .central-objective-row .objective-meta span{
+  color:var(--mute)!important;font:900 .36cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important;
+}
+#screenCentral .central-objective-row .objective-meta b{
+  color:var(--nav)!important;font:900 .42cqw/1 Arial,sans-serif!important;
+}
+#screenCentral .central-objective-row .progress{
+  height:.2cqw!important;margin:0!important;border:0!important;border-radius:999px!important;
+  background:#eaeef3!important;overflow:hidden!important;
+}
+#screenCentral .central-objective-row .progress i{background:var(--blue)!important;border-radius:999px!important}
+
+/* ---------- club finances ---------- */
+#screenCentral .central-finances{
+  display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;align-items:center!important;
+  gap:.5cqw .7cqw!important;padding:.75cqw .8cqw!important;background:#fff!important;
+}
+#screenCentral .central-finances .finance-budget{
+  border:1px solid var(--line)!important;border-radius:.34cqw!important;
+  padding:.55cqw .65cqw!important;background:#f9fbfd!important;
+}
+#screenCentral .central-finances .finance-label{
+  color:var(--mute)!important;font:900 .4cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important;
+}
+#screenCentral .central-finances .finance-value{
+  margin:.28cqw 0 .2cqw!important;color:var(--nav)!important;
+  font:900 1.35cqw/1 Arial,sans-serif!important;letter-spacing:-.01em!important;
+}
+#screenCentral .central-finances .finance-budget small{
+  display:block!important;color:var(--mute)!important;font:700 .4cqw/1 Arial,sans-serif!important;
+}
+#screenCentral .central-finances .finance-chart{width:100%!important;height:3cqw!important}
+#screenCentral .central-finances .finance-line{fill:none!important;stroke:var(--blue)!important;stroke-width:2!important}
+#screenCentral .central-finances .finance-dot{fill:var(--nav)!important}
+#screenCentral .central-finances .finance-grid{stroke:#eef1f5!important;stroke-width:1!important}
+#screenCentral .central-finances .finance-status{
+  grid-column:1/-1!important;display:flex!important;align-items:center!important;gap:.45cqw!important;
+  padding-top:.55cqw!important;border-top:1px solid var(--line)!important;
+  font:700 .46cqw/1 Arial,sans-serif!important;color:var(--mute)!important;
+}
+#screenCentral .central-finances .finance-status strong{color:var(--ink)!important;font-weight:900!important}
+#screenCentral .central-finances .finance-status button{
+  margin-left:auto!important;border:0!important;background:transparent!important;
+  color:var(--blue)!important;font:900 .44cqw Arial,sans-serif!important;letter-spacing:.1em!important;cursor:pointer!important;
+}
+
+/* ---------- club pulse ---------- */
+#screenCentral .central-club-pulse{padding:.75cqw .8cqw!important;background:#fff!important}
+#screenCentral .v2080-central-preseason,
+#screenCentral .v2073-club-pulse{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#screenCentral .v2080-central-preseason header,
+#screenCentral .v2073-pulse-top{
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:baseline!important;gap:.3cqw!important;background:transparent!important;padding:0!important;border:0!important;
+}
+#screenCentral .v2080-central-preseason header span,
+#screenCentral .v2073-pulse-top span{color:var(--mute)!important;font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important}
+#screenCentral .v2080-central-preseason header strong,
+#screenCentral .v2073-pulse-top strong{
+  grid-column:1!important;color:var(--nav)!important;
+  font:900 .85cqw/1.1 Arial,sans-serif!important;letter-spacing:.02em!important;
+}
+#screenCentral .v2080-central-preseason header em,
+#screenCentral .v2073-pulse-top em{
+  grid-column:2!important;grid-row:2!important;justify-self:end!important;
+  color:var(--mute)!important;font:900 .38cqw/1 Arial,sans-serif!important;font-style:normal!important;letter-spacing:.1em!important;
+}
+#screenCentral .v2080-central-programme{
+  display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:.5cqw!important;
+  margin:.5cqw 0 .55cqw!important;padding:0 0 .55cqw!important;
+  border:0!important;border-bottom:1px solid var(--line)!important;background:transparent!important;
+}
+#screenCentral .v2080-central-programme b{color:var(--ink)!important;font:900 .46cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important}
+#screenCentral .v2080-central-programme span{color:var(--mute)!important;font:800 .38cqw/1 Arial,sans-serif!important;letter-spacing:.08em!important}
+#screenCentral .v2080-central-facts{
+  display:grid!important;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)!important;gap:.6cqw!important;
+}
+#screenCentral .v2080-central-facts>span{background:transparent!important;border:0!important;padding:0!important;min-width:0!important}
+#screenCentral .v2080-central-facts b{
+  display:block!important;color:var(--ink)!important;
+  font:900 .46cqw/1.2 Arial,sans-serif!important;letter-spacing:.06em!important;
+  white-space:normal!important;overflow:visible!important;
+}
+#screenCentral .v2080-central-facts small{
+  display:block!important;margin-top:.2cqw!important;color:var(--mute)!important;
+  font:900 .36cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important;
+}
+#screenCentral .v2080-central-preseason>button{
+  margin-top:.6cqw!important;width:100%!important;
+  border:1px solid var(--line)!important;border-radius:.3cqw!important;
+  background:#f9fbfd!important;color:var(--nav)!important;
+  font:900 .42cqw Arial,sans-serif!important;letter-spacing:.11em!important;
+  padding:.42cqw!important;cursor:pointer!important;
+}
+#screenCentral .v2073-pulse-progress{height:.2cqw!important;margin:.5cqw 0!important;background:#eaeef3!important;border-radius:999px!important;overflow:hidden!important;border:0!important}
+#screenCentral .v2073-pulse-progress i{background:var(--blue)!important}
+#screenCentral .v2073-pulse-stats{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:.4cqw!important;padding:.5cqw 0!important;border-top:1px solid var(--line)!important;border-bottom:1px solid var(--line)!important}
+#screenCentral .v2073-pulse-stats b{display:block!important;color:var(--nav)!important;font:900 .68cqw/1 Arial,sans-serif!important}
+#screenCentral .v2073-pulse-stats span{display:block!important;margin-top:.16cqw!important;color:var(--mute)!important;font:900 .34cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important}
+#screenCentral .v2073-pulse-next{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:.4cqw!important;padding-top:.5cqw!important}
+#screenCentral .v2073-pulse-next span{color:var(--mute)!important;font:900 .34cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important}
+#screenCentral .v2073-pulse-next strong{color:var(--ink)!important;font:900 .44cqw/1 Arial,sans-serif!important}
+
+/* ---------- this week at your club ---------- */
+#screenCentral .central-manager-briefing-body.central-week-grid{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:0!important;padding:0!important;background:#fff!important;
+}
+#screenCentral .central-week-card{
+  display:block!important;text-align:left!important;
+  padding:.7cqw .9cqw!important;margin:0!important;
+  background:#fff!important;border:0!important;border-left:1px solid var(--line)!important;
+  border-radius:0!important;box-shadow:none!important;cursor:pointer!important;min-width:0!important;
+}
+#screenCentral .central-week-card:first-child{border-left:0!important}
+#screenCentral .central-week-card:hover:not(:disabled){background:#f9fbfd!important}
+#screenCentral .central-week-card>span{
+  display:block!important;color:var(--mute)!important;
+  font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.14em!important;
+}
+#screenCentral .central-week-card>strong{
+  display:block!important;margin:.3cqw 0 .24cqw!important;color:var(--nav)!important;
+  font:900 .62cqw/1.15 Arial,sans-serif!important;letter-spacing:.02em!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+#screenCentral .central-week-card>p{
+  margin:0!important;color:var(--mute)!important;
+  font:600 .44cqw/1.35 Arial,sans-serif!important;
+  display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;
+}
+
+/* ---------- club snapshot ---------- */
+#screenCentral .central-season-snapshot{padding:.7cqw .8cqw .6cqw!important;display:flex!important;flex-direction:column!important}
+#screenCentral .central-season-snapshot header{
+  display:block!important;margin:0 0 .55cqw!important;
+  color:var(--mute)!important;font:900 .44cqw/1 Arial,sans-serif!important;letter-spacing:.15em!important;
+  background:transparent!important;border:0!important;padding:0!important;
+}
+#screenCentral .central-season-snapshot .snapshot-grid.living-snapshot{
+  grid-template-columns:repeat(5,1fr)!important;
+  height:auto!important;min-height:0!important;flex:1 1 auto!important;
+  border:0!important;border-radius:0!important;overflow:visible!important;
+}
+#screenCentral .central-season-snapshot .snapshot-grid>div{
+  background:transparent!important;border:0!important;border-right:1px solid var(--line)!important;
+  display:grid!important;place-items:center!important;gap:.24cqw!important;padding:.3cqw .2cqw!important;
+}
+#screenCentral .central-season-snapshot .snapshot-grid>div:last-child{border-right:0!important}
+#screenCentral .central-season-snapshot .snapshot-grid strong{
+  color:var(--blue)!important;font:900 1.35cqw/1 Arial,sans-serif!important;letter-spacing:-.01em!important;
+}
+#screenCentral .central-season-snapshot .snapshot-grid .snapshot-form{font-size:.85cqw!important;letter-spacing:.1em!important}
+#screenCentral .central-season-snapshot .snapshot-grid span{
+  color:var(--mute)!important;font:900 .36cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important;
+}
+#screenCentral .central-manager-security-strip{
+  display:flex!important;align-items:center!important;gap:.55cqw!important;
+  margin-top:.6cqw!important;padding:.5cqw 0 0!important;
+  background:transparent!important;border:0!important;border-top:1px solid var(--line)!important;
+  border-radius:0!important;cursor:pointer!important;text-align:left!important;box-shadow:none!important;
+}
+#screenCentral .central-manager-security-strip>span{color:var(--mute)!important;font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.14em!important}
+#screenCentral .central-manager-security-strip>strong{color:var(--teal)!important;font:900 .5cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important}
+#screenCentral .central-manager-security-strip>small{margin-left:auto!important;color:var(--mute)!important;font:800 .38cqw/1 Arial,sans-serif!important;letter-spacing:.06em!important}
+
+/* ---------- top row: matchday card + career calendar ---------- */
+#screenCentral .central-advance-panel{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+#screenCentral .central-advance-sweep{display:none!important}
+#screenCentral .central-advance-action{
+  display:grid!important;
+  grid-template-columns:2.6cqw 1px minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto auto!important;
+  align-items:center!important;gap:0 .7cqw!important;
+  padding:.75cqw .85cqw!important;text-align:left!important;
+  background:linear-gradient(150deg,#17335a,#0b1e38)!important;
+  border:0!important;border-radius:.55cqw!important;
+  box-shadow:0 .18cqw .45cqw rgba(11,30,56,.28)!important;cursor:pointer!important;
+}
+#screenCentral .central-advance-action::before{
+  content:""!important;grid-column:2!important;grid-row:1/4!important;
+  width:1px!important;height:70%!important;align-self:center!important;background:var(--teal)!important;
+}
+#screenCentral .central-advance-action .advance-kicker{
+  grid-column:3!important;grid-row:1!important;
+  color:#5fd3c6!important;font:900 .42cqw/1 Arial,sans-serif!important;letter-spacing:.16em!important;
+}
+#screenCentral .central-advance-action strong{
+  grid-column:3!important;grid-row:2!important;
+  color:#fff!important;font:900 1.02cqw/1.1 Arial,sans-serif!important;letter-spacing:.02em!important;
+}
+#screenCentral .central-advance-action small{
+  grid-column:3!important;grid-row:3!important;
+  color:#9db3cb!important;font:700 .44cqw/1.2 Arial,sans-serif!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+#screenCentral .central-advance-action i{
+  grid-column:4!important;grid-row:1/4!important;
+  color:#8fa8c4!important;font-style:normal!important;font-size:1cqw!important;
+}
+#screenCentral .central-advance-next{
+  display:flex!important;align-items:center!important;gap:.4cqw!important;
+  background:#fff!important;border:1px solid var(--line)!important;border-radius:.34cqw!important;
+  color:var(--nav)!important;box-shadow:none!important;cursor:pointer!important;padding:.4cqw .7cqw!important;
+}
+#screenCentral .central-advance-next span{color:var(--mute)!important;font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important}
+#screenCentral .central-advance-next strong{color:var(--nav)!important;font:900 .46cqw/1 Arial,sans-serif!important;letter-spacing:.11em!important}
+#screenCentral .central-advance-calendar{position:relative!important;padding:0!important}
+#screenCentral .central-advance-calendar>header{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  padding:.55cqw .9cqw!important;border-bottom:1px solid var(--line)!important;background:#fff!important;
+}
+#screenCentral .central-advance-calendar>header span{color:var(--nav)!important;font:900 .58cqw/1 Arial,sans-serif!important;letter-spacing:.14em!important}
+#screenCentral .central-advance-calendar>header strong{color:var(--nav)!important;font:900 .58cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important}
+#screenCentral .central-advance-nextup{
+  position:absolute!important;left:0!important;top:2cqw!important;bottom:0!important;
+  width:1.15cqw!important;
+  background:linear-gradient(180deg,#17335a,#0b1e38)!important;color:#cfe0f2!important;
+  display:grid!important;place-items:center!important;
+  font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.2em!important;
+  writing-mode:vertical-rl!important;transform:rotate(180deg)!important;
+}
+#screenCentral .central-advance-days{
+  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:0!important;padding:0 0 0 1.15cqw!important;background:#fff!important;height:auto!important;
+}
+#screenCentral .central-advance-day{
+  display:block!important;text-align:left!important;min-width:0!important;
+  padding:.6cqw .7cqw .65cqw!important;
+  background:#fff!important;border:0!important;border-left:1px solid var(--line)!important;
+  border-radius:0!important;cursor:pointer!important;box-shadow:none!important;
+}
+#screenCentral .central-advance-day:first-child{border-left:0!important}
+#screenCentral .central-advance-day.is-today{
+  background:#f7fafd!important;border:1px solid var(--nav)!important;border-radius:.34cqw!important;
+}
+#screenCentral .central-advance-day .advance-day-name{
+  display:block!important;color:var(--mute)!important;
+  font:900 .38cqw/1 Arial,sans-serif!important;letter-spacing:.16em!important;
+}
+#screenCentral .central-advance-day .advance-day-number{
+  display:block!important;margin-top:.2cqw!important;color:var(--nav)!important;
+  font:900 1.05cqw/1 Arial,sans-serif!important;
+}
+#screenCentral .central-advance-day .advance-day-event{
+  display:block!important;margin-top:.25cqw!important;color:var(--mute)!important;
+  font:900 .36cqw/1.2 Arial,sans-serif!important;letter-spacing:.11em!important;
+  background:transparent!important;border:0!important;padding:0!important;
+}
+#screenCentral .central-advance-day .advance-day-event img{max-height:1.15cqw!important;width:auto!important}
+
+/* ---------- club identity plate, bottom-left ---------- */
+#screenCentral .central-club-plate{
+  position:absolute!important;z-index:14!important;
+  left:0!important;bottom:0!important;
+  display:flex!important;align-items:center!important;gap:.7cqw!important;
+  padding:.7cqw 2.4cqw .8cqw 1.6cqw!important;
+  background:linear-gradient(120deg,#17335a,#091a30)!important;
+  clip-path:polygon(0 0,calc(100% - 1.6cqw) 0,100% 100%,0 100%)!important;
+}
+#screenCentral .central-club-plate-badge{width:2.4cqw!important;height:2.4cqw!important;display:grid!important;place-items:center!important}
+#screenCentral .central-club-plate-badge img{max-width:100%!important;max-height:100%!important;object-fit:contain!important}
+#screenCentral .central-club-plate strong{display:block!important;color:#fff!important;font:900 .68cqw/1 Arial,sans-serif!important;letter-spacing:.13em!important}
+#screenCentral .central-club-plate small{display:block!important;margin-top:.22cqw!important;color:#8fa8c4!important;font:800 .4cqw/1 Arial,sans-serif!important;letter-spacing:.16em!important}
+
+/* ---------- V52.1: top row geometry + card details ---------- */
+body.v20-ui #screenCentral>.central-manager-portrait,
+#screenCentral .central-manager-portrait{display:none!important}
+#screenCentral .central-advance-panel{
+  position:absolute!important;z-index:12!important;
+  left:1.8%!important;right:1.8%!important;top:8.4%!important;height:13.2%!important;
+  display:grid!important;grid-template-columns:22.2% minmax(0,1fr)!important;
+  gap:0 1.1%!important;align-items:stretch!important;
+}
+#screenCentral .central-advance-actions{
+  position:relative!important;display:block!important;
+  padding:0!important;margin:0!important;background:transparent!important;border:0!important;gap:0!important;
+}
+#screenCentral .central-advance-action{
+  position:absolute!important;inset:0!important;
+  grid-template-rows:auto auto auto auto!important;
+  align-content:center!important;padding:.7cqw .85cqw 1.85cqw!important;
+}
+#screenCentral .advance-club-badge{
+  grid-column:1!important;grid-row:1/4!important;
+  width:2.6cqw!important;height:2.6cqw!important;
+  display:grid!important;place-items:center!important;
+}
+#screenCentral .advance-club-badge img{max-width:100%!important;max-height:100%!important;object-fit:contain!important}
+#screenCentral .central-advance-next{
+  position:absolute!important;left:4.15cqw!important;bottom:.72cqw!important;z-index:2!important;
+  padding:.24cqw .5cqw!important;gap:.45cqw!important;
+  background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.16)!important;
+  border-radius:.24cqw!important;
+}
+#screenCentral .central-advance-next span{color:#8fa8c4!important;font-size:.36cqw!important}
+#screenCentral .central-advance-next strong{color:#fff!important;font-size:.42cqw!important}
+#screenCentral .central-advance-next:hover{background:rgba(255,255,255,.14)!important}
+
+#screenCentral .central-advance-calendar{
+  position:relative!important;display:block!important;
+  margin:0!important;width:auto!important;height:100%!important;
+}
+#screenCentral .central-advance-nextup{top:2.1cqw!important;bottom:0!important;border-bottom-left-radius:.55cqw!important}
+#screenCentral .central-advance-days{
+  padding:0 12.5cqw 0 1.15cqw!important;
+  height:calc(100% - 2.1cqw)!important;align-items:stretch!important;
+}
+#screenCentral .central-advance-day{display:flex!important;flex-direction:column!important;justify-content:center!important}
+#screenCentral .central-advance-upnext{
+  position:absolute!important;right:.85cqw!important;bottom:.85cqw!important;
+  display:flex!important;align-items:center!important;gap:.45cqw!important;
+  padding:.4cqw .75cqw!important;
+  border:1px solid var(--line)!important;border-radius:.3cqw!important;background:#fff!important;
+  max-width:11cqw!important;
+}
+#screenCentral .central-advance-upnext>span{color:var(--nav)!important;font-size:.6cqw!important;line-height:1!important}
+#screenCentral .central-advance-upnext strong{
+  color:var(--nav)!important;font:900 .44cqw/1 Arial,sans-serif!important;letter-spacing:.11em!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+
+/* this week: keep the body to one clean line so nothing clips */
+#screenCentral .central-week-card>p{-webkit-line-clamp:1!important;font-size:.42cqw!important}
+#screenCentral .central-week-card{padding:.6cqw .85cqw!important}
+
+/* ---------- V52.2: this-week panel fills its box without clipping ---------- */
+#screenCentral .central-manager-briefing{display:flex!important;flex-direction:column!important}
+#screenCentral .central-manager-briefing-body.central-week-grid{
+  flex:1 1 auto!important;align-items:center!important;min-height:0!important;
+}
+#screenCentral .central-week-card{padding:.35cqw .85cqw!important}
+#screenCentral .central-week-card>strong{margin:.26cqw 0 .2cqw!important}
+#screenCentral .central-side-panel .central-panel-body{max-height:none!important}
+body.v20-ui #screenCentral .central-week-card,
+body.v20-ui #screenCentral .central-week-card.is-match,
+body.v20-ui #screenCentral .central-week-card.is-story,
+body.v20-ui #screenCentral .central-week-card.is-attention{
+  border:0!important;border-left:1px solid var(--line)!important;box-shadow:none!important;
+}
+body.v20-ui #screenCentral .central-week-card:first-child{border-left:0!important}
+body.v20-ui #screenCentral .central-week-card::before,
+body.v20-ui #screenCentral .central-week-card::after{content:none!important;display:none!important}
+
+/* ---------- V52.3: give This Week and Club Pulse room to breathe ----------
+   Both panels were overflowing their fixed absolute heights, so the last
+   line of each was being clipped. Slimmer headers, tighter pulse content,
+   and heights that actually fit what the panels render. */
+#screenCentral .central-panel-header{height:1.75cqw!important;min-height:1.75cqw!important;padding:0 .75cqw!important}
+#screenCentral .central-panel-glyph{width:1.3cqw!important;height:1.3cqw!important}
+#screenCentral .central-panel-glyph svg{width:.8cqw;height:.8cqw}
+#screenCentral .central-panel-body{min-height:0!important}
+
+body.v20-ui #screenCentral>.central-manager-briefing,
+#screenCentral .central-manager-briefing{height:10.2%!important}
+#screenCentral .central-week-card{padding:.3cqw .8cqw!important}
+#screenCentral .central-week-card>strong{margin:.22cqw 0 .18cqw!important;font-size:.6cqw!important}
+#screenCentral .central-week-card>p{font-size:.4cqw!important}
+
+body.v20-ui #screenCentral>.central-calendar-panel,
+#screenCentral .central-calendar-panel{height:20.4%!important}
+#screenCentral .central-club-pulse{padding:.6cqw .75cqw!important}
+#screenCentral .v2080-central-preseason header strong,
+#screenCentral .v2073-pulse-top strong{font-size:.78cqw!important}
+#screenCentral .v2080-central-programme{margin:.42cqw 0 .45cqw!important;padding-bottom:.45cqw!important}
+#screenCentral .v2080-central-facts{gap:.5cqw!important}
+#screenCentral .v2080-central-preseason>button{margin-top:.5cqw!important;padding:.36cqw!important;font-size:.4cqw!important}
+#screenCentral .v2073-pulse-stats{padding:.42cqw 0!important}
+#screenCentral .v2073-pulse-stats b{font-size:.62cqw!important}
+#screenCentral .v2073-pulse-next{padding-top:.42cqw!important}
+
+/* keep the calendar strip aligned to the slimmer header */
+#screenCentral .central-advance-calendar>header{padding:.5cqw .9cqw!important}
+#screenCentral .central-advance-nextup{top:1.9cqw!important}
+#screenCentral .central-advance-days{height:calc(100% - 1.9cqw)!important}
+body.v20-ui #screenCentral .central-inbox-list,
+#screenCentral .central-inbox-list{position:static!important;height:auto!important;min-height:0!important;display:block!important;grid-template-rows:none!important}

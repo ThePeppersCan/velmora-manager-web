@@ -1,0 +1,189 @@
+/* Companion panes share the academy/squad palette without altering gameplay. */
+body.v20-ui #screenSquad :is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active > * {flex-shrink:0!important;min-width:0!important}
+body.v20-ui #screenSquad:has(:is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active) {--sp-bg:#0a1711;--sp-panel:#10231a;--sp-raised:#193323;--sp-line:#2c4435;--sp-text:#edf4ed;--sp-muted:#a4b7a9;--sp-green:#80e49e;--sp-gold:#e2c57d}
+body.v20-ui #screenSquad:has(:is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active) :is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active {background:var(--sp-bg)!important;color:var(--sp-text)!important;padding:22px!important;min-width:0!important;min-height:0!important;overflow:auto!important;scrollbar-width:thin;scrollbar-color:#355c43 transparent}
+body.v20-ui #screenSquad:has(:is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active) :is(#squadTacticsView,#squadTrainingView,#legendsSquadView) :is(button,select,input):focus-visible {outline:2px solid #9defb6!important;outline-offset:3px!important}
+body.v20-ui #screenSquad:has(:is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active) :is(#squadTacticsView,#squadTrainingView,#legendsSquadView) select {color-scheme:dark}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-shell,body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .squad-shell {grid-template-columns:minmax(0,1fr)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) #playerProfile,body.v20-ui #screenSquad:has(#squadTrainingView.is-active) #playerProfile {display:none!important}
+/* Tactics: legible choices, visible selection and a matching pitch. */
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-hero {padding:20px!important;min-height:115px!important;gap:20px!important;background:linear-gradient(110deg,#163322,#10231a)!important;border:1px solid var(--sp-line)!important;border-radius:9px!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-hero h3 {font:800 clamp(23px,1.5cqw,32px)/1.1 Arial,sans-serif!important;color:var(--sp-text)!important;margin:6px 0 10px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-hero p {font:400 12px/1.5 Arial,sans-serif!important;color:var(--sp-muted)!important;max-width:720px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-hero .roster-kicker {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-identity-badge {min-width:180px!important;max-width:260px!important;gap:12px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-identity-badge small {color:var(--sp-muted)!important;font:600 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-identity-badge strong {color:var(--sp-green)!important;font:700 15px/1.3 Arial,sans-serif!important;margin-top:5px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-content {margin-top:18px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-layout {grid-template-columns:minmax(0,1fr) clamp(270px,23cqw,390px)!important;gap:18px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-main {gap:16px!important;min-width:0!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) :is(.tactics-profile-card,.squad-tactic-group,.squad-tactics-summary) {background:var(--sp-panel)!important;color:var(--sp-text)!important;border:1px solid var(--sp-line)!important;border-radius:8px!important;padding:18px!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-profile-card {display:grid!important;grid-template-columns:clamp(180px,19cqw,310px) minmax(0,1fr)!important;gap:22px!important;min-height:190px!important;clip-path:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-mini-pitch {width:100%!important;height:150px!important;border-color:#557861!important;background:repeating-linear-gradient(90deg,#1a3e25 0 14%,#204a2c 14% 28%)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-mini-pitch::before {background:#71957c!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-mini-pitch::after,body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-mini-pitch .pitch-circle {border-color:#71957c!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-dot {width:26px!important;height:26px!important;background:#9be6af!important;color:#092212!important;border:2px solid #dff7e5!important;font:700 12px/1 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-profile-copy>span {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-profile-copy h3 {color:var(--sp-text)!important;font:700 23px/1.2 Arial,sans-serif!important;margin:6px 0!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-profile-copy>p {color:var(--sp-muted)!important;font:400 12px/1.5 Arial,sans-serif!important;max-width:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meters {gap:12px 22px!important;margin-top:18px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meter {grid-template-columns:64px minmax(0,1fr) 26px!important;gap:9px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meter>span,body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meter>strong {color:var(--sp-muted)!important;font:600 10px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meter>i {height:6px!important;background:#304735!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meter>i>b {background:linear-gradient(90deg,#32945b,#86dda3)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-group header {margin-bottom:12px!important;gap:10px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-group header span {color:var(--sp-muted)!important;font:700 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-group header strong {color:var(--sp-green)!important;font:700 12px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options {grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options:not(:has(>button:nth-child(4))) {grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option {min-height:115px!important;padding:15px 13px!important;background:#0c1d13!important;border:1px solid #36523e!important;border-radius:6px!important;color:var(--sp-text)!important;box-shadow:none!important;transform:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option b {font:700 12px/1.3 Arial,sans-serif!important;color:var(--sp-text)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option small {margin-top:9px!important;color:var(--sp-muted)!important;font:400 11px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option:hover {background:#193a25!important;border-color:#76b388!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option.is-selected {background:#20482e!important;border-color:#80e49e!important;box-shadow:inset 0 3px #80e49e!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option.is-selected b {color:#a4f2bd!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-option::after {display:none!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary {position:sticky!important;top:0!important;border-top:3px solid #64cf86!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary>span,body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary small {font:600 10px/1.4 Arial,sans-serif!important;color:var(--sp-muted)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary h3 {font:700 24px/1.2 Arial,sans-serif!important;color:var(--sp-text)!important;margin:10px 0 14px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary :is(p,.tactics-effect-note span) {font:400 12px/1.6 Arial,sans-serif!important;color:var(--sp-muted)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary>div {padding:16px 0!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary strong {font:700 15px/1.4 Arial,sans-serif!important;color:var(--sp-text)!important;margin-top:6px!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-effect-note b {font:700 10px/1.5 Arial,sans-serif!important;color:var(--sp-gold)!important}
+body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary button {height:auto!important;min-height:40px!important;padding:10px!important;margin-top:14px!important;border:1px solid #46614e!important;border-radius:5px!important;background:var(--sp-raised)!important;color:var(--sp-text)!important;font:600 11px/1.4 Arial,sans-serif!important}
+/* Training retains its artwork and functional fitness/sharpness colours. */
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) #squadTrainingContent {color:var(--sp-text)!important;font-size:clamp(12px,.78cqw,15px)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-shell {padding:0!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-hero {background:linear-gradient(90deg,#0d2415ed,#0d2415ba),url('assets/career/training-ground.png') center 46%/cover!important;border:1px solid var(--sp-line)!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-eyebrow {color:var(--sp-green)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-toolbar,.tr-player,.tr-detail,.tr-empty) {background:var(--sp-panel)!important;border-color:var(--sp-line)!important;color:var(--sp-text)!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-auto strong,.tr-section-title h3,.tr-player-name h4,.tr-detail h3,.tr-detail-body h4,.tr-day time b,.tr-disclaimer b) {color:var(--sp-text)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-toolbar>label>span,.tr-auto small,.tr-toolbar-note,.tr-section-title span,.tr-player-name>span,.tr-player-name p,.tr-meter strong small,.tr-meter>small,.tr-plan-control small,.tr-player-footer>span,.tr-day time,.tr-day>small,.tr-note p,.tr-disclaimer) {color:var(--sp-muted)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-toolbar select,.tr-plan-control select) {background:#183323!important;color:var(--sp-text)!important;border-color:#46614e!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-auto input {accent-color:#78dc98!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-player.is-selected {border-color:#80e49e!important;box-shadow:0 0 0 1px #80e49e!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-avatar {background:#1b3826!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-state {background:#293d30!important;color:#c3d5c9!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-state.is-good {background:#214c32!important;color:#a0ecb8!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-state.is-warn {background:#443b22!important;color:#edd18b!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-state.is-bad {background:#492b28!important;color:#f2ada1!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-track {background:#304735!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-track .fitness {background:#63cf87!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-track .sharpness {background:#d4b765!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-track>b {background:#ecf5e9!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-meter em {color:#8de5ab!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-meter em.is-down {color:#e7b07e!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-player-footer,.tr-toolbar-note,.tr-day) {border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) :is(.tr-player-footer button,.tr-detail header button) {color:var(--sp-green)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-detail>header {background:linear-gradient(130deg,#234b31,#153522)!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-detail header p {color:#c4d7ca!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-day.is-match {background:#1d422b!important;color:#9eebb6!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-note {background:#192f21!important}
+body.v20-ui #screenSquad:has(#squadTrainingView.is-active) .tr-observe-session {border-color:#7f9964!important;background:#193b25!important;color:#e2dfb0!important}
+/* Career archive: all records, empty states and the manager/legend dossier. */
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #legendsSquadView {font:400 13px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-hero,.archive-feature-card,.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.archive-season-list,.archive-honours-layout>div,.archive-record-book article,.archive-legends-heading,.archive-manager-legacy,.archive-manager-metrics,.archive-season-profile,.archive-profile-awards,.archive-world-season-rail,.archive-world-ledger,.v42-memory-dashboard>header,.v42-memory-timeline,.v42-memory-side>section,.archive-empty,.retired-card) {background:var(--sp-panel)!important;border:1px solid var(--sp-line)!important;border-radius:8px!important;box-shadow:none!important;color:var(--sp-text)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-hero,.archive-feature-card,.archive-season-profile) {background:linear-gradient(110deg,#193c27,#10231a)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero {grid-template-columns:minmax(0,1fr) minmax(290px,.8fr)!important;padding:20px!important;gap:20px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero h3 {font:800 clamp(23px,1.5cqw,32px)/1.2 Arial,sans-serif!important;margin:5px 0 8px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-hero h3,.archive-feature-card h2,.archive-record-book h4,.archive-manager-legacy h2,.archive-season-profile h2,.archive-profile-empty h3,.retired-copy strong) {color:var(--sp-text)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-hero p,.archive-feature-card p,.archive-placeholder-copy,.archive-record-book p,.archive-manager-legacy p,.archive-season-profile p,.archive-legends-heading p,.archive-profile-empty p,.archive-note span) {color:var(--sp-muted)!important;font:400 12px/1.6 Arial,sans-serif!important;max-width:none!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-hero small,.archive-feature-card>span,.archive-record-book article>span,.archive-legends-heading>span,.archive-profile-awards>span,.archive-season-profile>span,.archive-manager-legacy small,.archive-profile-empty span) {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero aside {background:#0e2016!important;border-color:var(--sp-line)!important;border-radius:6px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero aside b {min-height:76px!important;padding:10px 5px!important;font:700 24px/1.2 Arial,sans-serif!important;color:var(--sp-green)!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero aside small {font:600 9px/1.4 Arial,sans-serif!important;color:var(--sp-muted)!important;margin-top:6px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-nav {display:flex!important;gap:4px!important;margin:18px 0!important;border:0!important;border-bottom:1px solid var(--sp-line)!important;background:none!important;overflow-x:auto!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-nav button {flex:1 0 auto!important;min-height:46px!important;padding:12px!important;border:0!important;border-bottom:3px solid transparent!important;background:none!important;color:var(--sp-muted)!important;font:600 10px/1.4 Arial,sans-serif!important;box-shadow:none!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-nav button:is(:hover,.is-active) {background:#193323!important;color:var(--sp-green)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-nav button.is-active {border-bottom-color:var(--sp-green)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-content {margin-top:0!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.career-archive-dashboard,.archive-honours-layout,.archive-record-book,.v42-memory-layout) {gap:16px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-feature-card,.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.archive-honours-layout>div,.archive-record-book article,.archive-legends-heading) {padding:20px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-feature-card h2 {font:700 clamp(22px,1.6cqw,32px)/1.2 Arial,sans-serif!important;margin:10px 0!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-legacy-facts,.archive-record-preview>div,.archive-manager-metrics,.archive-season-profile>div,.archive-facts) {border-color:var(--sp-line)!important;margin-top:18px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-legacy-facts b,.archive-record-preview>div b,.archive-manager-metrics b,.archive-season-profile>div b) {padding:14px 8px!important;font:700 22px/1.2 Arial,sans-serif!important;color:var(--sp-gold)!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-legacy-facts small,.archive-record-preview>div small,.archive-manager-metrics small,.archive-season-profile>div small) {font:500 9px/1.5 Arial,sans-serif!important;color:var(--sp-muted)!important;margin-top:7px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.archive-season-list,.archive-honours-layout>div,.archive-world-season-rail,.archive-world-ledger) header {gap:10px!important;flex-wrap:wrap!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.archive-season-list,.archive-honours-layout>div,.archive-world-season-rail,.archive-world-ledger) header span {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-snapshot,.archive-season-list,.archive-honours-layout>div,.archive-world-season-rail,.archive-world-ledger) header strong {color:var(--sp-muted)!important;font:600 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-recent-honours,.archive-record-preview) header button {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important;padding:6px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-inline-empty,.archive-empty) {padding:22px!important;background:#10231a!important;color:var(--sp-muted)!important;font:400 12px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-empty {min-height:200px!important;grid-column:1/-1!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-empty strong {color:var(--sp-text)!important;font:700 19px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-empty span {color:var(--sp-muted)!important;font:400 12px/1.6 Arial,sans-serif!important;margin-top:10px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-award-mini,.archive-season-list>header,.archive-world-season-rail header,.archive-world-ledger>header,.archive-world-ledger article,.archive-monthly-strip span) {background:#183323!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-honour-row,.archive-world-award,.archive-recent-honours article,.archive-world-ledger>section,.archive-monthly-strip) {border-color:var(--sp-line)!important;padding-block:12px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-award-mini,.archive-honour-row,.archive-world-award,.archive-recent-honours article,.archive-world-ledger article,.archive-season-list>button,.archive-world-season-rail button,.archive-profile-awards) strong {color:var(--sp-text)!important;font:600 13px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-award-mini,.archive-honour-row,.archive-world-award,.archive-recent-honours article,.archive-world-ledger article,.archive-season-list>button,.archive-world-season-rail button,.archive-profile-awards) small {color:var(--sp-muted)!important;font:400 10px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-award-mini>span,.archive-honour-row>span,.archive-world-award>span,.archive-recent-honours article>span,.archive-world-ledger article>span,.archive-season-list>button>span,.archive-monthly-strip b) {color:var(--sp-green)!important;font:600 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-list>button,.archive-world-season-rail button) {background:var(--sp-panel)!important;color:var(--sp-text)!important;border-color:var(--sp-line)!important;padding:15px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-list>button,.archive-world-season-rail button):is(:hover,.is-selected) {background:#20482e!important;box-shadow:inset 3px 0 #80e49e!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-season-list>button b,.archive-world-ledger article>b,.archive-monthly-strip span) {color:var(--sp-gold)!important;font:600 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-world-ledger {max-height:none!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-world-ledger h4 {color:var(--sp-green)!important;font:700 12px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-world-ledger article {padding:12px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-award-mini {min-height:145px!important;padding:12px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-record-book article {min-height:180px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-record-book article>strong {color:var(--sp-gold)!important;font:700 32px/1.2 Arial,sans-serif!important;margin:12px 0!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-record-book h4 {font:600 15px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-legends-heading>strong {color:var(--sp-text)!important;font:700 20px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile {background:linear-gradient(150deg,#11251a,#0a1811)!important;color:var(--sp-text)!important;padding:22px 22px 90px!important;overflow:auto!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-topline {color:var(--sp-muted)!important;font-size:10px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-manager-legacy,.archive-season-profile,.archive-profile-awards) {padding:18px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-manager-legacy {grid-template-columns:minmax(80px,.65fr) minmax(0,1fr)!important;gap:16px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-manager-portrait {height:160px!important;background:radial-gradient(ellipse,#2c5035,#12281b)!important;border-color:var(--sp-line)!important;border-radius:6px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.archive-manager-legacy h2,.archive-season-profile h2) {font:700 clamp(19px,1.3cqw,27px)/1.25 Arial,sans-serif!important;overflow-wrap:anywhere;margin:10px 0!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-note {padding:18px!important;background:#193121!important;border-color:var(--sp-gold)!important;border-radius:0 6px 6px 0!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-note b {color:var(--sp-gold)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-note span {margin-top:10px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-profile-empty {height:auto!important;min-height:300px!important;padding:22px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-profile-empty h3 {font:700 23px/1.3 Arial,sans-serif!important;margin-top:12px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-grid {grid-auto-rows:minmax(175px,auto)!important;overflow:visible!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-card {grid-template-columns:110px minmax(0,1fr)!important;overflow:hidden!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-avatar {background:#193322!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-copy {padding:15px!important;gap:8px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-copy strong {font:700 17px/1.3 Arial,sans-serif!important;white-space:normal!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-copy :is(small,span) {color:var(--sp-muted)!important;font:500 11px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-copy b {color:var(--sp-gold)!important;font:700 12px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-card:is(:hover,.is-selected) {border-color:var(--sp-green)!important;background:#1b3826!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-hero {grid-template-columns:minmax(0,32%) minmax(0,1fr)!important;gap:16px!important;min-height:190px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-overall {width:auto!important;color:var(--sp-gold)!important;margin-bottom:12px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-overall strong {color:var(--sp-gold)!important;font-size:28px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-overall small {color:var(--sp-muted)!important;font-size:10px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-club-line {display:flex!important;align-items:center!important;gap:8px!important;color:var(--sp-muted)!important;font-size:11px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile .profile-club-line>:first-child {width:26px!important;height:28px!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-facts>div {padding:16px!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-facts span {color:var(--sp-muted)!important;font:600 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-facts strong {color:var(--sp-text)!important;font:600 17px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .v42-memory-dashboard>header {padding:20px!important;background:linear-gradient(110deg,#193c27,#10231a)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.v42-memory-dashboard,.v42-memory-section-head,.v42-notable-player) strong {color:var(--sp-text)!important;font:700 15px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .v42-memory-dashboard :is(p,small,.v42-academy-memory span) {color:var(--sp-muted)!important;font:400 11px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.v42-memory-dashboard>header>div>span,.v42-memory-section-head>span) {color:var(--sp-green)!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .v42-memory-dashboard>header aside {background:#10231a!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .v42-memory-dashboard>header aside b {color:var(--sp-gold)!important;font:700 22px/1.4 Arial,sans-serif!important;border-color:var(--sp-line)!important}
+body.v20-ui #screenSquad:has(#legendsSquadView.is-active) :is(.v42-memory-section-head,.v42-memory-timeline article,.v42-notable-player,.v42-academy-memory) {background:transparent!important;border-color:var(--sp-line)!important}
+@media(max-width:1400px) {
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options,body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options:not(:has(>button:nth-child(4))) {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactic-profile-meters {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-hero {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-record-preview>div {grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:1100px) {
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-layout {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactics-summary {position:static!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .squad-shell {grid-template-columns:minmax(0,1fr)!important;overflow:auto!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .squad-workspace {height:auto!important;min-height:650px!important;grid-template-rows:80px minmax(550px,auto)!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #playerProfile {display:block!important;height:auto!important;min-height:0!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) #legendsSquadView {height:auto!important;overflow:visible!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .career-archive-dashboard,body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-honours-layout,body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-record-book {grid-template-columns:1fr!important}
+}
+@media(max-width:700px) {
+ body.v20-ui #screenSquad:has(:is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active) :is(#squadTacticsView,#squadTrainingView,#legendsSquadView).is-active {padding:14px!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-hero {flex-wrap:wrap!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-profile-card {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .tactics-mini-pitch {max-width:310px!important}
+ body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options,body.v20-ui #screenSquad:has(#squadTacticsView.is-active) .squad-tactic-options:not(:has(>button:nth-child(4))) {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .retired-grid {grid-template-columns:1fr!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-world-ledger article {grid-template-columns:55px minmax(0,1fr)!important}
+ body.v20-ui #screenSquad:has(#legendsSquadView.is-active) .archive-world-ledger article>b {grid-column:2!important;text-align:left!important}
+}

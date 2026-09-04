@@ -1,0 +1,446 @@
+{
+  "before": {
+    "runtime": "Actual engine with DOM/audio adapter; simulation functions extracted from actual app",
+    "liveFixtures": [
+      {
+        "scenario": "90 versus 55 across all six attributes, identical tactics/fitness/sharpness, home and away",
+        "matches": 32,
+        "wins": 16,
+        "draws": 4,
+        "losses": 12,
+        "goalsFor": 98,
+        "goalsAgainst": 74,
+        "shots": 167,
+        "opponentShots": 118,
+        "passes": 2350,
+        "completed": 1692,
+        "opponentPasses": 1958,
+        "opponentCompleted": 1261
+      }
+    ],
+    "micro": {
+      "openPlay50": {
+        "attempts": 50000,
+        "goal": 18479,
+        "save": 13241,
+        "post": 6561,
+        "miss": 11719
+      },
+      "openPlay90": {
+        "attempts": 50000,
+        "goal": 18479,
+        "save": 13241,
+        "post": 6561,
+        "miss": 11719
+      },
+      "penalty50": {
+        "attempts": 50000,
+        "goal": 39880,
+        "save": 4120,
+        "post": 3491,
+        "miss": 2509
+      },
+      "penalty90": {
+        "attempts": 50000,
+        "goal": 39880,
+        "save": 4120,
+        "post": 3491,
+        "miss": 2509
+      },
+      "attributes50": {
+        "speed": 0.7483050847457626,
+        "accel": 0.7543050847457626,
+        "turn": 0.7483050847457626,
+        "passing": 0.7483050847457626,
+        "catching": 0.7483050847457626,
+        "shooting": 0.7483050847457626,
+        "interception": 0.7483050847457626,
+        "awareness": 0.7483050847457626,
+        "positioning": 0.7483050847457626,
+        "reaction": 0.7483050847457626,
+        "anticipation": 0.7483050847457626,
+        "decision": 0.7483050847457626,
+        "composure": 0.7483050847457626,
+        "aggression": 0.7333050847457626,
+        "stamina": 0.7683050847457626,
+        "recovery": 0.7672524531668152
+      },
+      "attributes90": {
+        "speed": 0.9415254237288135,
+        "accel": 0.9475254237288135,
+        "turn": 0.9415254237288135,
+        "passing": 0.9415254237288135,
+        "catching": 0.9415254237288135,
+        "shooting": 0.9415254237288135,
+        "interception": 0.9415254237288135,
+        "awareness": 0.9415254237288135,
+        "positioning": 0.9415254237288135,
+        "reaction": 0.9415254237288135,
+        "anticipation": 0.9415254237288135,
+        "decision": 0.9415254237288135,
+        "composure": 0.9415254237288135,
+        "aggression": 0.9265254237288135,
+        "stamina": 0.9615254237288136,
+        "recovery": 0.9604727921498661
+      }
+    },
+    "simulation": [
+      {
+        "scenario": "OVR 90 v 55",
+        "matches": 4000,
+        "wins": 3401,
+        "draws": 419,
+        "losses": 180,
+        "goalsFor": 10768,
+        "goalsAgainst": 1763
+      },
+      {
+        "scenario": "Same OVR 75; all attributes 90 v 50",
+        "matches": 4000,
+        "wins": 1510,
+        "draws": 986,
+        "losses": 1504,
+        "goalsFor": 5316,
+        "goalsAgainst": 5326,
+        "identicalToEqualAttributes": 4000
+      }
+    ]
+  },
+  "after": {
+    "runtime": "Actual engine with DOM/audio adapter; simulation functions extracted from actual app",
+    "liveFixtures": [
+      {
+        "scenario": "90 versus 55 across all six attributes, identical tactics/fitness/sharpness, home and away",
+        "matches": 32,
+        "wins": 31,
+        "draws": 1,
+        "losses": 0,
+        "goalsFor": 145,
+        "goalsAgainst": 33,
+        "shots": 239,
+        "opponentShots": 78,
+        "passes": 2708,
+        "completed": 2026,
+        "opponentPasses": 1523,
+        "opponentCompleted": 944
+      }
+    ],
+    "micro": {
+      "openPlay50": {
+        "attempts": 50000,
+        "goal": 15807,
+        "save": 13158,
+        "post": 6597,
+        "miss": 14438
+      },
+      "openPlay90": {
+        "attempts": 50000,
+        "goal": 20452,
+        "save": 13405,
+        "post": 6601,
+        "miss": 9542
+      },
+      "penalty50": {
+        "attempts": 50000,
+        "goal": 34650,
+        "save": 10318,
+        "post": 2982,
+        "miss": 2050
+      },
+      "penalty90": {
+        "attempts": 50000,
+        "goal": 41489,
+        "save": 3479,
+        "post": 2982,
+        "miss": 2050
+      },
+      "attributes50": {
+        "speed": 0.7483050847457626,
+        "accel": 0.7543050847457626,
+        "turn": 0.7483050847457626,
+        "passing": 0.7483050847457626,
+        "catching": 0.7483050847457626,
+        "shooting": 0.7483050847457626,
+        "interception": 0.7483050847457626,
+        "awareness": 0.7483050847457626,
+        "positioning": 0.7483050847457626,
+        "reaction": 0.7483050847457626,
+        "anticipation": 0.7483050847457626,
+        "decision": 0.7483050847457626,
+        "composure": 0.7483050847457626,
+        "aggression": 0.82,
+        "stamina": 0.7683050847457626,
+        "recovery": 0.7672524531668152
+      },
+      "attributes90": {
+        "speed": 0.9415254237288135,
+        "accel": 0.9475254237288135,
+        "turn": 0.9415254237288135,
+        "passing": 0.9415254237288135,
+        "catching": 0.9415254237288135,
+        "shooting": 0.9415254237288135,
+        "interception": 0.9415254237288135,
+        "awareness": 0.9415254237288135,
+        "positioning": 0.9415254237288135,
+        "reaction": 0.9415254237288135,
+        "anticipation": 0.9415254237288135,
+        "decision": 0.9415254237288135,
+        "composure": 0.9415254237288135,
+        "aggression": 0.82,
+        "stamina": 0.9615254237288136,
+        "recovery": 0.9604727921498661
+      }
+    },
+    "simulation": [
+      {
+        "scenario": "OVR 90 v 55",
+        "matches": 4000,
+        "wins": 3660,
+        "draws": 271,
+        "losses": 69,
+        "goalsFor": 12586,
+        "goalsAgainst": 1207
+      },
+      {
+        "scenario": "Same OVR 75; all attributes 90 v 50",
+        "matches": 4000,
+        "wins": 3545,
+        "draws": 352,
+        "losses": 103,
+        "goalsFor": 11125,
+        "goalsAgainst": 1221,
+        "identicalToEqualAttributes": 348
+      }
+    ]
+  },
+  "balance": {
+    "runtime": "Actual engine with DOM/audio adapter; simulation functions extracted from actual app",
+    "liveFixtures": [
+      {
+        "scenario": "75 versus 75 across all six attributes, identical tactics/fitness/sharpness, home and away",
+        "matches": 32,
+        "wins": 12,
+        "draws": 8,
+        "losses": 12,
+        "goalsFor": 82,
+        "goalsAgainst": 82,
+        "shots": 161,
+        "opponentShots": 161,
+        "passes": 2119,
+        "completed": 1486,
+        "opponentPasses": 2119,
+        "opponentCompleted": 1486
+      },
+      {
+        "scenario": "80 versus 75 across all six attributes, identical tactics/fitness/sharpness, home and away",
+        "matches": 32,
+        "wins": 13,
+        "draws": 7,
+        "losses": 12,
+        "goalsFor": 91,
+        "goalsAgainst": 82,
+        "shots": 164,
+        "opponentShots": 127,
+        "passes": 2311,
+        "completed": 1682,
+        "opponentPasses": 1977,
+        "opponentCompleted": 1398
+      }
+    ],
+    "micro": {
+      "openPlay50": {
+        "attempts": 50000,
+        "goal": 15807,
+        "save": 13158,
+        "post": 6597,
+        "miss": 14438
+      },
+      "openPlay90": {
+        "attempts": 50000,
+        "goal": 20452,
+        "save": 13405,
+        "post": 6601,
+        "miss": 9542
+      },
+      "penalty50": {
+        "attempts": 50000,
+        "goal": 34650,
+        "save": 10318,
+        "post": 2982,
+        "miss": 2050
+      },
+      "penalty90": {
+        "attempts": 50000,
+        "goal": 41489,
+        "save": 3479,
+        "post": 2982,
+        "miss": 2050
+      },
+      "attributes50": {
+        "speed": 0.7483050847457626,
+        "accel": 0.7543050847457626,
+        "turn": 0.7483050847457626,
+        "passing": 0.7483050847457626,
+        "catching": 0.7483050847457626,
+        "shooting": 0.7483050847457626,
+        "interception": 0.7483050847457626,
+        "awareness": 0.7483050847457626,
+        "positioning": 0.7483050847457626,
+        "reaction": 0.7483050847457626,
+        "anticipation": 0.7483050847457626,
+        "decision": 0.7483050847457626,
+        "composure": 0.7483050847457626,
+        "aggression": 0.82,
+        "stamina": 0.7683050847457626,
+        "recovery": 0.7672524531668152
+      },
+      "attributes90": {
+        "speed": 0.9415254237288135,
+        "accel": 0.9475254237288135,
+        "turn": 0.9415254237288135,
+        "passing": 0.9415254237288135,
+        "catching": 0.9415254237288135,
+        "shooting": 0.9415254237288135,
+        "interception": 0.9415254237288135,
+        "awareness": 0.9415254237288135,
+        "positioning": 0.9415254237288135,
+        "reaction": 0.9415254237288135,
+        "anticipation": 0.9415254237288135,
+        "decision": 0.9415254237288135,
+        "composure": 0.9415254237288135,
+        "aggression": 0.82,
+        "stamina": 0.9615254237288136,
+        "recovery": 0.9604727921498661
+      }
+    },
+    "simulation": [
+      {
+        "scenario": "OVR 90 v 55",
+        "matches": 4000,
+        "wins": 3660,
+        "draws": 271,
+        "losses": 69,
+        "goalsFor": 12586,
+        "goalsAgainst": 1207
+      },
+      {
+        "scenario": "Same OVR 75; all attributes 90 v 50",
+        "matches": 4000,
+        "wins": 3545,
+        "draws": 352,
+        "losses": 103,
+        "goalsFor": 11125,
+        "goalsAgainst": 1221,
+        "identicalToEqualAttributes": 348
+      }
+    ]
+  },
+  "behavior": {
+    "status": "PASS",
+    "runtime": "Actual match engine and app functions, DOM/audio adapter",
+    "checks": [
+      "raw stats match career adapter",
+      "substitute retains individual attributes",
+      "explicit OVR fallback",
+      "missing and malformed quality rejected",
+      "passing and handling improve receptions",
+      "defending wins tackles and handling resists them",
+      "pace changes speed and stamina preserves energy",
+      "all six stats affect simulation independently of OVR",
+      "shared quality model for user/background sims",
+      "shooting affects scorer selection"
+    ],
+    "measured": {
+      "PAS50": {
+        "trials": 12000,
+        "completed": 9377
+      },
+      "PAS90": {
+        "trials": 12000,
+        "completed": 9715
+      },
+      "HAN50": {
+        "trials": 12000,
+        "completed": 8768
+      },
+      "HAN90": {
+        "trials": 12000,
+        "completed": 10042
+      },
+      "tackleDEF50": {
+        "trials": 12000,
+        "won": 1324
+      },
+      "tackleDEF90": {
+        "trials": 12000,
+        "won": 2000
+      },
+      "tackleHAN50": {
+        "trials": 12000,
+        "won": 2048
+      },
+      "tackleHAN90": {
+        "trials": 12000,
+        "won": 1518
+      }
+    },
+    "scorers": {
+      "H0": 3880,
+      "H1": 8120
+    },
+    "rejectedPayloads": [
+      "Missing player ratings for H0: supply career stats/OVR or normalized attributes.",
+      "Invalid shooting for H0: engine attributes must be between 0 and 1.",
+      "Invalid SHO for H0: career ratings must be between 0 and 99.",
+      "Invalid fitness for H0: career ratings must be between 0 and 100.",
+      "Invalid PAC for H0: career ratings must be between 0 and 99."
+    ]
+  },
+  "career": {
+    "status": "PASS",
+    "checks": [
+      "substitute appearances, goals, ratings and MVP",
+      "starter-only starts",
+      "minutes and development exposure",
+      "workload-based fitness / unused bench recovery",
+      "no unused substitute appearance or rating",
+      "single fixture commit",
+      "historical report survives reload and transfer",
+      "legacy fixture fallback",
+      "friendly substitute appearances",
+      "injury availability",
+      "SIM MATCH and QUICK SIM execute and save the shared player quality model",
+      "watched results use recorded statistics; quick sims do not invent them"
+    ]
+  },
+  "training": {
+    "status": "PASS",
+    "checks": [
+      "four distinct recovery/sharpness trade-offs",
+      "fatigue protection, matchday taper and medical priority",
+      "assistant adapts daily; manual overrides persist; AI manages its own schedules",
+      "legacy migration, malformed fields and zero fitness",
+      "forecast purity and exact daily parity for 16 medical/manual/assistant scenarios; duplicate-day guards",
+      "year-long bounds; actual minutes; unused bench exclusion; duplicate-match guard",
+      "neutral migration, bounded match effects, unknown medical return and suspension-aware advice",
+      "actual career daily hooks, medical countdown idempotence, preference normalization and round trips, owned-player controls, live technical attributes and career morale vocabulary",
+      "both user and background simulation routes include sharpness"
+    ]
+  },
+  "full-app": {
+    "status": "PASS",
+    "runtime": "Complete application with DOM adapter; no browser rendering",
+    "clubs": 288,
+    "seniorPlayers": 8,
+    "checks": [
+      "complete app bootstrap",
+      "three starters plus three live substitutes with wider senior depth",
+      "actual save/load preserves sharpness, schedules and assistant targets",
+      "legacy v73 migration through actual loader",
+      "fixture and lineup preservation",
+      "real UI render, change events and one-time event binding",
+      "no gains from opening the screen",
+      "once-per-day progression survives save/reload"
+    ]
+  }
+}

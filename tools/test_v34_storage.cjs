@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict');
+const {IDBFactory,IDBDatabase}=require(process.env.VELMORA_TEST_DEPS?process.env.VELMORA_TEST_DEPS+'/fake-indexeddb':'fake-indexeddb');
+const {create}=require('../career-storage.js');
+const PREFIX='velmora-manager-career-v32-slot-',data=new Map(),local={getItem:k=>data.get(k)||null,setItem:(k,v)=>{const bytes=[...data].filter(([key])=>key!==k).reduce((n,[key,value])=>n+(key.length+value.length)*2,0)+(k.length+v.length)*2;if(bytes>5*1024*1024)throw new Error('QuotaExceededError');data.set(k,v)},removeItem:k=>data.delete(k)};
+const codec={decode:x=>x},raw=n=>JSON.stringify({worldSeed:'SAVE-'+n,fixtures:[],squads:{a:[]},payload:'x'.repeat(1500000)});
+(async()=>{
+ const indexedDB=new IDBFactory();local.setItem(PREFIX+1,raw(1));const store=create({indexedDB,localStorage:local,codec});await store.ready;
+ assert.equal(store.getItem(PREFIX+1),raw(1));assert.equal(local.getItem(PREFIX+1),null);
+ for(let i=1;i<=5;i++)store.setItem(PREFIX+i,raw(i));await store.flush();assert.equal(store.status().pending,0);assert.equal(data.size,0);
+ const reopened=create({indexedDB,localStorage:local,codec});await reopened.ready;for(let i=1;i<=5;i++)assert.equal(reopened.getItem(PREFIX+i),raw(i));
+ reopened.setItem(PREFIX+1,raw(4));await reopened.flush();assert(reopened.hasBackup(1));await reopened.recover(1);assert.equal(reopened.getItem(PREFIX+1),raw(1));
+ await assert.rejects(reopened.importSlot(2,'not a save'));assert.equal(reopened.getItem(PREFIX+2),raw(2));await reopened.importSlot(2,raw(5));assert.equal(reopened.exportSlot(2),raw(5));
+ reopened.removeItem(PREFIX+1);await reopened.flush();local.setItem(PREFIX+1,raw(1));const tombstone=create({indexedDB,localStorage:local,codec});await tombstone.ready;assert.equal(tombstone.getItem(PREFIX+1),null);assert.equal(tombstone.getItem(PREFIX+2),raw(5));
+ const originalTransaction=IDBDatabase.prototype.transaction;
+ IDBDatabase.prototype.transaction=function(...args){const tx=originalTransaction.apply(this,args);if(args[1]==='readwrite')queueMicrotask(()=>tx.abort());return tx;};
+ tombstone.setItem(PREFIX+2,raw(6));await assert.rejects(tombstone.flush());assert.equal(tombstone.getItem(PREFIX+2),raw(5));assert.equal(tombstone.exportSlot(2),raw(6));
+ IDBDatabase.prototype.transaction=originalTransaction;
+ const afterFailure=create({indexedDB,localStorage:local,codec});await afterFailure.ready;assert.equal(afterFailure.getItem(PREFIX+2),raw(5));tombstone.setItem(PREFIX+2,raw(7));await tombstone.flush();assert.equal(tombstone.status().error,null);
+ console.log(JSON.stringify({status:'PASS',checks:['migration removes local bytes only after durable commit','five 3 MB careers exceed localStorage quota without failure','all slots survive reopen','previous save recovery','invalid import preserves destination','backup export/import','deleted slots cannot resurrect from legacy bytes','aborted transaction preserves durable save and exports unsaved progress','successful retry clears failure']},null,2));
+})().catch(e=>{console.error(e);process.exitCode=1});

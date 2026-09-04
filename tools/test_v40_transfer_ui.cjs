@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {JSDOM}=require('jsdom'),{runtime}=require('./career_test_runtime.cjs');
+const r=runtime(),q=r.q,x=r.context.VELMORA_EXPANSION,c=r.context.VELMORA_CLUBS.find(c=>c.id==='redwick');
+r.d.assignClubForTest(c);q.initializeCareerLifecycle();c.budget='£50000000';q.v25ClubFinance(c).wageBudget=1000000;
+const dom=new JSDOM(fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8'),{url:'https://velmora.example/'});
+for(const node of r.nodes.values())node.isConnected=false;
+r.context.document=dom.window.document;r.context.FormData=dom.window.FormData;r.context.HTMLElement=dom.window.HTMLElement;r.context.Element=dom.window.Element;const doc=dom.window.document;x.initUI();
+q.setCareerDate('2026-09-10');
+const seller=q.state().clubs.find(t=>t.id!==c.id&&t.tier===c.tier&&t.world===c.world),p=q.getSquad(seller).find(p=>!p.captain);p.releaseClause=200000;
+q.selectTransferPlayer(p.id);assert(!doc.querySelector('#approachTransferPlayer').disabled);assert(doc.querySelector('#approachTransferPlayer').textContent.includes('AGREE FUTURE TRANSFER'));
+doc.querySelector('#approachTransferPlayer').click();assert(doc.querySelector('#negotiationModal.is-open'));assert(doc.querySelector('.v40-arrival-note').textContent.includes('2027'));
+const select=doc.querySelector('#v35AgreementType');assert([...select.options].some(o=>o.value==='PRECONTRACT'&&!o.disabled));select.value='RELEASE';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+const before=q.getSquad(c).length,form=doc.querySelector('[data-v34-form="deal"]');form.querySelector('[name="wage"]').value=String(q.expectedWage(p)*2);form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+assert(doc.querySelector('[data-v34-action="confirm-deal"]'),doc.querySelector('#v35NegotiationTerms').textContent);doc.querySelector('[data-v34-action="confirm-deal"]').click();assert(!p.v34Precontract);doc.querySelector('[data-v34-action="confirm-action"]').click();assert(p.v34Precontract);assert.equal(q.getSquad(c).length,before);assert.equal(p.clubId,seller.id);
+q.renderTransferHub();doc.querySelector('[data-living-hub="future"]').click();assert(doc.querySelector('#v35TransferCommitments').textContent.includes(p.name));assert(doc.querySelector('#v35TransferCommitments').textContent.includes('2027-01-01'));assert(doc.querySelector('#v35TransferCommitments').textContent.includes('set aside'));
+q.selectTransferPlayer(p.id);assert(doc.querySelector('#approachTransferPlayer').disabled);
+console.log(JSON.stringify({status:'PASS',checks:['closed-window dossier opens club negotiation with arrival date','pre-contract option remains available','release agreement submits and confirms through real DOM events','confirmation reserves instead of registering','Future Arrivals displays funds and date','committed player approach is disabled']},null,2));

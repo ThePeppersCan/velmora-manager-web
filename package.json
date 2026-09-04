@@ -1,0 +1,36 @@
+{
+  "name": "velmora-manager",
+  "version": "49.0.0",
+  "private": true,
+  "description": "Velmora Manager V49 Player Trait Identity and Distribution",
+  "scripts": {
+    "build": "node tools/build_v34.cjs",
+    "test:expansion": "node tools/test_v34_expansion.cjs && node tools/test_v34_deals.cjs",
+    "test:storage": "node tools/test_v34_storage.cjs",
+    "test:interface": "node tools/test_v35_interface.cjs",
+    "test:clauses": "node tools/test_v35_clauses.cjs",
+    "test:club-life": "node tools/test_v41_club_life.cjs",
+    "test:persistent-career": "node tools/test_v42_persistent_career_world.cjs",
+    "test:living-stats": "node tools/test_v43_living_statistics.cjs",
+    "test:living-stats:long": "node tools/test_v43_living_statistics_long.cjs",
+    "test:living-world": "node tools/test_v44_living_club_manager_world.cjs",
+    "test:release-grade": "node tools/test_v45_release_grade_career.cjs",
+    "audit:long-career": "node tools/audit_v45_long_career.cjs",
+    "audit:long-career:smoke": "node tools/audit_v45_long_career.cjs --smoke",
+    "test:release-storage": "node tools/test_v45_storage_slots.cjs",
+    "test:matchday-living": "node tools/test_v46_matchday_living_environments.cjs",
+    "test:matchday-readiness": "node tools/test_v46_1_matchday_readiness.cjs",
+    "test:themes": "node tools/test_v46_2_interface_themes.cjs",
+    "dev": "node tools/serve-preview.cjs",
+    "test:matchday-cobalt": "node tools/test_v47_matchday.cjs",
+    "test:player-profiles": "node tools/test_v48_profiles_traits.cjs && node tools/test_v48_name_links.cjs",
+    "test:trait-identity": "node tools/test_v49_trait_identity.cjs",
+    "test:press-conferences": "node tools/test_v56_press_conferences.cjs",
+    "test:homepage": "node tools/test_v65_homepage_priority.cjs",
+    "test:squad": "node tools/test_v66_squad_management.cjs && node tools/test_v67_squad_interaction.cjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "29.0.0"
+  }
+}

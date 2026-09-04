@@ -1,0 +1,82 @@
+/*
+ * VELMORA QUIDDITCH — 3D BROADCAST RENDERER (V49.2)
+ * Presentation-only styling for the 3D canvas layer and, when the game is
+ * opened straight from disk, the DOM rider layer that carries the real
+ * sprite artwork over the 3D pitch.
+ */
+.wcg-3d-canvas{
+  display:none;
+  background:#0d3457;
+}
+#wcWorldCupBroadcast.wcg-render-3d #wcgCanvas{
+  display:none !important;
+}
+#wcWorldCupBroadcast.wcg-render-3d .wcg-3d-canvas{
+  display:block !important;
+}
+#wcWorldCupBroadcast.wcg-render-3d .wcg-scorebar,
+#wcWorldCupBroadcast.wcg-render-3d .wcg-live-chip{
+  text-shadow:0 1px 6px rgba(0,0,0,.55);
+}
+
+/* Rider layer: projected through the same camera as the 3D scene. */
+.v3d-dom-layer{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:2;
+}
+#wcWorldCupBroadcast:not(.wcg-render-3d) .v3d-dom-layer{
+  display:none;
+}
+.v3d-dom-rider{
+  position:absolute;
+  left:0;
+  top:0;
+  will-change:transform;
+}
+.v3d-dom-rider img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));
+  -webkit-user-drag:none;
+  user-select:none;
+}
+.v3d-dom-tag{
+  position:absolute;
+  left:50%;
+  bottom:100%;
+  transform:translate(-50%,-4px);
+  padding:2px 8px;
+  border:1px solid rgba(255,209,102,.75);
+  border-radius:999px;
+  background:rgba(4,14,26,.74);
+  color:#fff;
+  font:700 11px/1.35 Arial,sans-serif;
+  letter-spacing:.05em;
+  white-space:nowrap;
+}
+.v3d-dom-tag[data-team="zafran"]{
+  border-color:rgba(95,208,255,.8);
+}
+
+.wcg-3d-badge{
+  position:absolute;
+  top:14px;
+  left:14px;
+  z-index:6;
+  padding:4px 10px;
+  border:1px solid rgba(0,229,255,.55);
+  border-radius:999px;
+  background:rgba(3,14,26,.55);
+  color:#8fefff;
+  font:900 10px/1 Arial,sans-serif;
+  letter-spacing:.14em;
+  pointer-events:none;
+}
+#wcWorldCupBroadcast:not(.wcg-render-3d) .wcg-3d-badge{
+  display:none;
+}

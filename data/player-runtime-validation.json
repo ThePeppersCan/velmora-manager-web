@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "matchedPlayerIds": 1609,
+  "resolvedImagePaths": 4827,
+  "preparedAvatarBypasses": 1609,
+  "worldPools": {
+    "Velmora": 1105,
+    "Kharova": 168,
+    "Caldria": 168,
+    "Ezuraya": 168
+  },
+  "saveMigration": "PASS",
+  "transferIdentity": "PASS",
+  "invalidIdFallback": "PASS"
+}

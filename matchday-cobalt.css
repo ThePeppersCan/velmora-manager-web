@@ -1,0 +1,390 @@
+/* V47 — Matchday broadcast presentation.
+   All overrides are scoped to Matchday; career state and engine controls stay native. */
+@font-face{font-family:Matchday Condensed;src:url('assets/matchday-cobalt/fonts/matchday-condensed.otf') format('opentype');font-weight:700 900;font-style:normal;font-display:swap}
+body.v20-ui:has(#screenMatchday.is-active),body.v20-ui #gameFrame:has(> #screenMatchday.is-active){overflow:hidden!important}
+
+#screenMatchday{
+  --md-ink:#071a3c;--md-muted:#415577;--md-blue:#0051d9;--md-cyan:#00bdf2;
+  --md-line:#dce5ef;--md-panel:#fbfcfe;--md-soft:#f4f7fb;
+  --md-nav-height:clamp(64px,4.8vw,84px);
+  background:linear-gradient(150deg,#f2f6fa,#fff 72%)!important;
+  color:var(--md-ink)!important;font-family:Arial,Helvetica,sans-serif!important;
+  overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;scrollbar-color:#b6c7db transparent;
+  scroll-padding-top:calc(var(--md-nav-height) + 16px);
+}
+#screenMatchday .matchday-atmosphere{display:none!important}
+#screenMatchday .matchday-topbar{
+  position:sticky!important;inset:0 0 auto!important;width:100%!important;
+  height:var(--md-nav-height)!important;min-height:var(--md-nav-height)!important;
+  grid-template-columns:16% minmax(0,1fr) 19%!important;padding:0 24px!important;
+  gap:16px!important;z-index:70!important;
+}
+#screenMatchday .career-tabs button{font-size:clamp(12px,.75vw,14px)!important;min-width:0!important;padding:0 8px!important}
+#screenMatchday .matchday-brand-fallback{display:block;color:#123777;font:900 italic 27px/1 Arial,sans-serif;letter-spacing:-.07em;text-shadow:1px 1px #d6e3f4}
+#screenMatchday .matchday-brand-fallback small{display:block;margin:4px 0 0 2px;font:700 10px/1 Arial,sans-serif;letter-spacing:.5em;text-shadow:none}
+#screenMatchday .matchday-brand-fallback[hidden],#screenMatchday .career-brand-logo[hidden]{display:none!important}
+#screenMatchday .matchday-shell-v2{
+  position:relative!important;inset:auto!important;width:auto!important;height:auto!important;
+  min-height:calc(100% - var(--md-nav-height))!important;
+  margin:0!important;padding:12px clamp(10px,1vw,22px) 20px!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto auto auto!important;gap:12px!important;
+  overflow:visible!important;background:transparent!important;align-content:start!important;
+}
+#screenMatchday .matchday-heading-v2{
+  min-height:66px!important;padding:12px 28px!important;border:1px solid var(--md-line)!important;
+  background:var(--md-panel)!important;border-radius:12px!important;box-shadow:0 2px 5px #13305407!important;
+  gap:20px!important;flex-wrap:wrap!important;
+}
+#screenMatchday .matchday-heading-v2>div:first-child>span{font:700 12px/1.2 Arial,sans-serif!important;color:#0084a5!important;letter-spacing:.1em!important}
+#screenMatchday .matchday-heading-v2 h2{font:900 26px/1.1 Arial,sans-serif!important;color:var(--md-ink)!important;margin:3px 0 0!important}
+#screenMatchday .matchday-competition{font:700 12px/1.5 Arial,sans-serif!important;color:var(--md-muted)!important;max-width:65%!important;letter-spacing:.06em!important}
+
+/* Three-column team presentation. Portraits are the existing transparent standing sprites. */
+#screenMatchday .matchday-stage-v2{
+  display:grid!important;grid-template-columns:minmax(240px,21%) minmax(0,1fr) minmax(240px,21%)!important;
+  gap:12px!important;min-height:clamp(368px,24vw,454px)!important;height:auto!important;overflow:visible!important;align-items:stretch!important;
+}
+#screenMatchday .matchday-lineup-panel{
+  position:relative!important;display:flex!important;flex-direction:column!important;gap:0!important;
+  padding:16px 18px 14px!important;min-width:0!important;min-height:0!important;
+  border:1px solid var(--md-line)!important;border-radius:12px!important;overflow:hidden!important;
+  background:var(--md-panel)!important;box-shadow:0 2px 5px #123a6608!important;
+}
+#screenMatchday .matchday-lineup-panel:before{content:'';position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#0050d4,#087cff);pointer-events:none}
+#screenMatchday .matchday-panel-kicker{
+  padding:0 0 12px!important;margin:0!important;border-bottom:1px solid var(--md-line)!important;
+  font:700 12px/1.3 Arial,sans-serif!important;letter-spacing:.05em!important;color:var(--md-muted)!important;
+}
+#screenMatchday .matchday-lineup{display:flex!important;flex:1!important;flex-direction:column!important;justify-content:flex-start!important;gap:0!important;overflow:visible!important;min-height:0!important}
+#screenMatchday .match-lineup-player{
+  display:grid!important;grid-template-columns:70px minmax(0,1fr)!important;align-items:center!important;
+  gap:14px!important;min-width:0!important;min-height:98px!important;flex:1 0 auto!important;
+  padding:13px 0!important;border-radius:0!important;border:0!important;border-bottom:1px solid var(--md-line)!important;
+  background:transparent!important;box-shadow:none!important;
+}
+#screenMatchday .match-lineup-player:last-child{border-bottom:0!important}
+#screenMatchday .match-lineup-player:hover{background:var(--md-soft)!important}
+#screenMatchday .matchday-lineup-portrait{
+  width:70px;height:70px;display:grid;place-items:center;overflow:hidden;border:1px solid var(--md-line);
+  border-radius:7px;background:linear-gradient(150deg,#fcfdff,#edf3f9);padding:3px;
+}
+#screenMatchday .match-lineup-player img{
+  display:block!important;width:100%!important;height:100%!important;max-height:64px!important;
+  object-fit:contain!important;object-position:center bottom!important;image-rendering:pixelated;
+  background:none!important;border:0!important;border-radius:0!important;filter:none!important;transform:none!important;
+}
+#screenMatchday .match-lineup-player>div{min-width:0!important;display:flex!important;flex-direction:column!important;gap:4px!important}
+#screenMatchday .match-lineup-player strong{font:700 15px/1.22 Arial,sans-serif!important;white-space:normal!important;overflow:visible!important;color:var(--md-ink)!important;overflow-wrap:anywhere}
+#screenMatchday .match-lineup-player small{font:500 12px/1.4 Arial,sans-serif!important;white-space:normal!important;overflow:visible!important;color:var(--md-muted)!important;letter-spacing:0!important}
+#screenMatchday .match-lineup-player .matchday-player-role{font-weight:700!important;letter-spacing:.04em!important}
+#screenMatchday .match-lineup-player.knowledge-unknown small,#screenMatchday .match-lineup-player.knowledge-limited small{color:#806034!important}
+#screenMatchday .matchday-availability{
+  display:block!important;align-self:flex-start!important;margin:3px 0 0!important;padding:4px 7px!important;
+  font:700 12px/1.2 Arial,sans-serif!important;letter-spacing:.02em!important;white-space:normal!important;
+  color:#a62e37!important;background:#ffe3e5!important;border:1px solid #f3c6cb!important;border-radius:4px!important;
+}
+#screenMatchday .matchday-edit-team{
+  flex:none!important;min-height:42px!important;height:auto!important;margin:9px 0 0!important;padding:10px!important;
+  font:700 13px/1.3 Arial,sans-serif!important;letter-spacing:.055em!important;
+  color:var(--md-blue)!important;background:linear-gradient(#fff,#f2f6ff)!important;
+  border:1px solid #85aaff!important;border-radius:5px!important;white-space:normal!important;cursor:pointer;
+}
+#screenMatchday .matchday-edit-team[hidden]{display:none!important}
+#screenMatchday .matchday-edit-team:hover{background:#eaf2ff!important;border-color:var(--md-blue)!important}
+
+/* Cobalt split hero: real badges and names remain separate from decorative art. */
+#screenMatchday .matchday-centre-card{
+  isolation:isolate;position:relative!important;display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(185px,1fr) auto auto 76px!important;
+  align-items:stretch!important;gap:0!important;padding:0!important;min-width:0!important;
+  border:1px solid #092c51!important;border-radius:14px!important;overflow:hidden!important;
+  background:radial-gradient(ellipse at 55% 45%,#07326055,transparent 60%),linear-gradient(120deg,#001b37,#00132b 65%,#002443)!important;
+  box-shadow:0 3px 10px #051b3a18!important;filter:none!important;
+}
+#screenMatchday .matchday-centre-card:before{display:none!important}
+#screenMatchday .matchday-hero-art{position:absolute;inset:0 0 76px;overflow:hidden;isolation:isolate;z-index:-1;pointer-events:none}
+/* Portrait masks share the lightning's coordinate system. The inner panel
+   conceals the sprite beyond each rail; the rails themselves stay in front. */
+/* Scoped away from .md2-portrait so this legacy sizing/mask system can never
+   collide with the new hero portrait layout in matchday-preview-redesign.css. */
+#screenMatchday .matchday-featured:not(.md2-portrait){position:absolute;top:0;bottom:0;width:30%;overflow:hidden;z-index:3;pointer-events:none}
+#screenMatchday .matchday-featured.home:not(.md2-portrait){left:0;clip-path:none}
+#screenMatchday .matchday-featured.away:not(.md2-portrait){right:0;clip-path:none}
+#screenMatchday .matchday-featured:not(.md2-portrait)>img{
+  position:absolute;width:116%;max-width:none!important;height:148%;max-height:none!important;
+  top:5%;object-fit:contain;object-position:center top;image-rendering:pixelated;
+  filter:drop-shadow(0 0 2px #071224) drop-shadow(0 3px 18px #0095ef33);
+}
+#screenMatchday .matchday-featured.home:not(.md2-portrait)>img{left:-8%}
+#screenMatchday .matchday-featured.away:not(.md2-portrait)>img{right:-28%}
+#screenMatchday .matchday-featured:not(.md2-portrait)>img[hidden]{display:none!important}
+#screenMatchday .matchday-featured.md2-portrait .matchday-ghost-crest{display:none!important}
+#screenMatchday .matchday-ghost-crest{position:absolute;inset:0;opacity:.13;filter:grayscale(1) sepia(1) saturate(5) hue-rotate(158deg)}
+#screenMatchday .matchday-ghost-crest>img{width:115%;height:100%;object-fit:cover;transform:rotate(-12deg) scale(1.15)}
+#screenMatchday .matchday-angle{position:absolute;top:0;bottom:0;width:30%;z-index:2;background:linear-gradient(150deg,#00caff,#009de9);opacity:1}
+#screenMatchday .matchday-angle.home{left:0;clip-path:polygon(98% 0,100% 0,67% 44%,100% 80%,79% 100%,72% 100%,93% 80%,59% 44%)}
+#screenMatchday .matchday-angle.away{right:0;clip-path:polygon(0 0,8% 0,44% 24%,30% 24%,66% 46%,7% 100%,0 100%,59% 46%,22% 29%,37% 29%)}
+#screenMatchday .matchday-hero-competition{position:relative;z-index:2;min-height:48px;padding:22px 24% 4px;text-align:center;color:#f3f8ff;font:700 12px/1.4 Arial,sans-serif;letter-spacing:.1em}
+#screenMatchday .matchday-identity-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr);gap:10px;width:60%;margin:0 auto;align-items:center;z-index:2;min-width:0}
+#screenMatchday .matchday-team{
+  display:grid!important;grid-template-columns:minmax(0,1fr) 66px!important;grid-template-rows:auto auto auto!important;
+  align-items:center!important;justify-items:center!important;align-content:center!important;gap:7px 6px!important;
+  position:relative!important;inset:auto!important;width:auto!important;height:auto!important;min-width:0!important;margin:0!important;transform:none!important;
+}
+#screenMatchday .matchday-team.away{grid-template-columns:66px minmax(0,1fr)!important}
+#screenMatchday .matchday-name{
+  grid-column:1!important;grid-row:1!important;width:100%!important;max-width:none!important;min-width:0!important;
+  color:#fff!important;font:900 clamp(40px,3.65vw,70px)/.95 'Matchday Condensed','Arial Narrow',Impact,sans-serif!important;
+  text-transform:uppercase!important;text-align:left!important;letter-spacing:-.025em!important;overflow-wrap:anywhere!important;
+  text-shadow:0 3px 0 #7d9ac32a,0 3px 20px #0006!important;text-wrap:balance;
+}
+#screenMatchday .matchday-team.away .matchday-name{grid-column:2!important}
+#screenMatchday .matchday-name.is-long-name{font-size:clamp(30px,2.8vw,54px)!important}
+#screenMatchday .matchday-name-word{display:block;width:max-content;max-width:none;white-space:nowrap;transform:scaleX(var(--md-name-scale,.7));transform-origin:left center}
+#screenMatchday .matchday-badge .fitted-shield,#screenMatchday .matchday-badge .fitted-shield-media{box-shadow:none!important;border:0!important;outline:0!important}
+#screenMatchday .matchday-badge{
+  grid-column:2!important;grid-row:1!important;align-self:end!important;
+  width:66px!important;height:90px!important;padding:0!important;
+  background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important;
+}
+#screenMatchday .matchday-team.away .matchday-badge{grid-column:1!important}
+#screenMatchday .matchday-badge .fitted-shield{position:relative!important;inset:auto!important;width:100%!important;height:100%!important;clip-path:none!important;background:none!important;filter:drop-shadow(0 3px 4px #0006);padding:0!important}
+#screenMatchday .matchday-badge .fitted-shield-frame{display:none!important}
+#screenMatchday .matchday-badge .fitted-shield-media{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;clip-path:none!important;background:none!important;transform:none!important}
+#screenMatchday .matchday-badge img{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;transform:scale(2.05)!important;clip-path:none!important;mix-blend-mode:normal!important}
+#screenMatchday .matchday-badge .v34-club-crest{width:100%!important;height:82px!important;font-size:18px!important}
+#screenMatchday .matchday-side-label{grid-column:1/-1!important;grid-row:2!important;padding-top:4px!important;color:#fff!important;font:700 12px/1.3 Arial,sans-serif!important;letter-spacing:.14em!important}
+#screenMatchday .matchday-team-context{grid-column:1/-1!important;grid-row:3!important;min-height:16px!important;color:#a8c5e3!important;font:700 12px/1.4 Arial,sans-serif!important;letter-spacing:.035em!important}
+#screenMatchday .matchday-versus{position:relative!important;inset:auto!important;width:auto!important;height:100%!important;display:grid!important;place-items:center!important;margin:0!important;transform:none!important}
+#screenMatchday .matchday-versus:before{content:'';position:absolute;left:49%;top:7%;height:84%;width:2px;background:linear-gradient(transparent,#00c6ff 30%,#008bed 80%,transparent);transform:skew(-20deg);z-index:-1}
+#screenMatchday .matchday-versus>span{font:900 italic 54px/1 'Matchday Condensed','Arial Narrow',sans-serif!important;color:#fff!important;letter-spacing:-.05em!important;text-shadow:3px 3px #022342,-3px -3px #022342!important}
+#screenMatchday .matchday-round-strip{display:flex;justify-content:center;align-items:center;gap:9px;padding:3px 24% 4px;z-index:2;color:#9dbce0;text-align:center;flex-wrap:wrap}
+#screenMatchday .matchday-round-strip>small{font:700 12px/1.2 Arial,sans-serif;letter-spacing:.06em}
+#screenMatchday .matchday-round-strip>b{padding:3px 7px;border-radius:3px;border:1px solid #277bba;color:#cef3ff;background:#042846;font:700 12px/1.2 Arial,sans-serif}
+#screenMatchday .matchday-venue-ribbon{
+  grid-column:1!important;grid-row:4!important;position:relative!important;inset:auto!important;
+  padding:8px 15% 14px!important;min-height:34px!important;background:transparent!important;border:0!important;
+  color:#e3f2ff!important;font:700 12px/1.5 Arial,sans-serif!important;letter-spacing:.075em!important;z-index:2!important;
+}
+#screenMatchday .matchday-centre-card>.matchday-info{
+  grid-column:1!important;grid-row:5!important;position:relative!important;inset:auto!important;
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:0!important;align-items:center!important;
+  width:100%!important;height:76px!important;margin:0!important;padding:10px 14px!important;
+  border:0!important;border-top:1px solid #46769470!important;border-radius:0!important;
+  background:linear-gradient(135deg,#022345,#00172e)!important;z-index:3!important;
+}
+#screenMatchday .matchday-info>span{min-width:0!important;min-height:42px!important;height:auto!important;gap:5px!important;padding:0 8px!important;background:none!important;border:0!important;border-right:1px solid #7191b6!important}
+#screenMatchday .matchday-info>span:last-child{border:0!important}
+#screenMatchday .matchday-info small{font:700 12px/1.2 Arial,sans-serif!important;color:#d0dff0!important;letter-spacing:.065em!important;text-align:center!important}
+#screenMatchday .matchday-info b{font:900 26px/1 'Matchday Condensed','Arial Narrow',sans-serif!important;color:#fff!important;letter-spacing:.01em!important;text-align:center!important}
+
+/* Opposition and staff report retain every live narrative and competition detail. */
+#screenMatchday .matchday-summary{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)!important;gap:12px!important;min-height:264px!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important}
+#screenMatchday .match-summary-card,#screenMatchday .match-readiness{
+  display:flex!important;flex-direction:column!important;gap:8px!important;position:relative!important;
+  padding:18px 20px!important;min-width:0!important;height:auto!important;overflow:visible!important;
+  border:1px solid var(--md-line)!important;border-radius:12px!important;background:var(--md-panel)!important;
+  color:var(--md-ink)!important;box-shadow:0 2px 5px #123a6607!important;
+}
+#screenMatchday .match-preview-header{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important;margin:0!important;flex-wrap:wrap!important}
+#screenMatchday .match-preview-header>span,#screenMatchday .match-readiness>span{color:#0083a8!important;font:700 12px/1.3 Arial,sans-serif!important;letter-spacing:.1em!important}
+#screenMatchday .match-scout-state{font:700 12px/1.3 Arial,sans-serif!important;letter-spacing:.04em!important;padding:4px 10px!important;border-radius:6px!important;background:#eaf0f7!important;color:#344c72!important;white-space:normal!important}
+#screenMatchday .match-opponent-title{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:9px!important;margin:0!important;min-width:0!important}
+#screenMatchday .match-opponent-title>strong{color:var(--md-ink)!important;font:700 23px/1.15 Arial,sans-serif!important}
+#screenMatchday .match-opponent-title>small{font:700 12px/1.2 Arial,sans-serif!important;color:#315079!important;background:#edf2f8!important;border-radius:5px!important;padding:4px 9px!important}
+#screenMatchday .match-preview-form{display:flex!important;gap:6px!important;margin:0 0 0 auto!important}
+#screenMatchday .match-preview-form b{width:31px!important;height:31px!important;border-radius:6px!important;font:700 14px/1 Arial,sans-serif!important;border:1px solid #00000005}
+#screenMatchday .match-preview-form em{font:500 12px/1.3 Arial,sans-serif!important}
+#screenMatchday .match-opponent-style{display:flex!important;flex-wrap:wrap!important;align-items:baseline!important;gap:6px 10px!important;margin:0 0 3px!important}
+#screenMatchday .match-opponent-style b{font:700 12px/1.5 Arial,sans-serif!important;color:var(--md-ink)!important}
+#screenMatchday .match-opponent-style span{font:400 13px/1.45 Arial,sans-serif!important;color:var(--md-muted)!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-intel-note{
+  display:flex!important;flex-wrap:wrap!important;gap:6px 14px!important;align-items:center!important;
+  margin:0!important;padding:10px 12px!important;min-height:42px!important;
+  background:var(--md-soft)!important;border:1px solid var(--md-line)!important;border-radius:7px!important;
+}
+#screenMatchday .match-intel-note:before{content:'i';display:grid;place-items:center;border:1.5px solid #184887;border-radius:50%;width:16px;height:16px;flex:none;color:#184887;font:700 12px/1 Georgia,serif}
+#screenMatchday .match-intel-note span{font:700 12px/1.3 Arial,sans-serif!important;color:var(--md-muted)!important;letter-spacing:.03em!important}
+#screenMatchday .match-intel-note strong{font:500 12px/1.5 Arial,sans-serif!important;color:var(--md-ink)!important;white-space:normal!important;overflow:visible!important;flex:1 1 270px}
+#screenMatchday .match-opposition-personnel{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)!important;gap:12px!important;margin-top:auto!important;padding-top:2px!important;min-width:0!important}
+#screenMatchday .opponent-manager-card,#screenMatchday .match-opposition-personnel .match-key-player{
+  display:grid!important;grid-template-columns:58px minmax(0,1fr)!important;gap:12px!important;
+  min-height:108px!important;min-width:0!important;margin:0!important;padding:12px!important;align-items:center!important;
+  background:var(--md-soft)!important;border:1px solid var(--md-line)!important;border-radius:7px!important;box-shadow:none!important;
+}
+#screenMatchday .opponent-manager-card{border-left:4px solid #0056e4!important}
+#screenMatchday .opponent-manager-monogram{display:grid!important;place-items:center!important;width:52px!important;height:52px!important;border-radius:50%!important;background:linear-gradient(135deg,#001a35,#005179)!important;color:#fff!important;border:2px solid #c8dde9!important;font:700 20px/1 Arial,sans-serif!important;box-shadow:0 3px 6px #112b4128!important}
+#screenMatchday .opponent-manager-copy{display:grid!important;gap:5px!important;min-width:0!important}
+#screenMatchday .opponent-manager-head{display:flex!important;flex-wrap:wrap!important;gap:4px 8px!important}
+#screenMatchday .opponent-manager-head span,#screenMatchday .match-key-player small{font:500 12px/1.35 Arial,sans-serif!important;color:var(--md-muted)!important;letter-spacing:0!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .opponent-manager-head b{font:700 10px/1.25 Arial,sans-serif!important;padding:2px 5px!important;border-radius:3px!important}
+#screenMatchday .opponent-manager-copy>strong,#screenMatchday .match-key-player strong{font:700 15px/1.25 Arial,sans-serif!important;color:var(--md-ink)!important;white-space:normal!important;overflow:visible!important;margin:0!important}
+#screenMatchday .opponent-manager-tactics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+#screenMatchday .opponent-manager-tactics em{font:700 12px/1.25 Arial,sans-serif!important;white-space:normal!important;overflow:visible!important;border:0!important;border-right:1px solid var(--md-line)!important;background:transparent!important;padding:0 4px 0 0!important;color:var(--md-ink)!important}
+#screenMatchday .opponent-manager-tactics em:last-child{border:0!important}
+#screenMatchday .opponent-manager-tactics em small{display:block!important;font:500 10px/1.3 Arial,sans-serif!important;margin-bottom:3px!important;color:var(--md-muted)!important}
+#screenMatchday .opponent-manager-copy footer{font:400 12px/1.3 Arial,sans-serif!important;color:var(--md-muted)!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-key-player img{width:58px!important;height:80px!important;object-fit:contain!important;image-rendering:pixelated;background:none!important;border:0!important}
+#screenMatchday .match-key-player>span{display:grid!important;gap:5px!important;min-width:0!important}
+#screenMatchday .match-key-player em{font:500 12px/1.4 Arial,sans-serif!important;color:var(--md-muted)!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-readiness>p{font:400 14px/1.6 Arial,sans-serif!important;color:var(--md-ink)!important;margin:0 0 14px!important}
+#screenMatchday .match-tactical-current{display:grid!important;gap:6px!important;margin:auto 0 7px!important;padding:12px!important;min-height:58px!important;text-align:center!important;border:1px solid var(--md-line)!important;border-radius:7px!important;background:var(--md-soft)!important}
+#screenMatchday .match-tactical-current small{font:500 12px/1.2 Arial,sans-serif!important;color:var(--md-muted)!important;letter-spacing:.08em!important}
+#screenMatchday .match-tactical-current strong{font:700 16px/1.3 Arial,sans-serif!important;color:var(--md-ink)!important}
+#screenMatchday .match-readiness>strong{font:700 14px/1.3 Arial,sans-serif!important;color:var(--md-blue)!important;margin:0!important}
+#screenMatchday .match-readiness>button{min-height:48px!important;height:auto!important;margin:0!important;padding:12px!important;color:#fff!important;font:700 18px/1.2 'Matchday Condensed','Arial Narrow',sans-serif!important;background:linear-gradient(120deg,#0048cb,#005bdb)!important;border:1px solid #0a66ef!important;border-radius:6px!important;cursor:pointer;letter-spacing:.02em!important}
+#screenMatchday .match-readiness>button:hover{filter:brightness(1.12)}
+#screenMatchday .match-narrative-context,#screenMatchday .match-occasion,#screenMatchday .cc-match-context{min-width:0!important;height:auto!important;overflow:visible!important;padding:10px 12px!important;margin:0!important;font-size:12px!important;white-space:normal!important}
+#screenMatchday .match-narrative-context{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
+#screenMatchday .match-narrative-context :is(span,small,strong),#screenMatchday .cc-match-context :is(span,small,strong){font-size:12px!important;line-height:1.4!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-occasion-strip{display:flex!important;gap:12px!important;flex-wrap:wrap!important;padding:10px 12px!important;margin:0!important;min-height:0!important;border-radius:5px!important;overflow:visible!important}
+#screenMatchday .match-occasion-strip>div{display:flex!important;flex-wrap:wrap!important;gap:5px 10px!important;align-items:baseline!important;min-width:0!important}
+#screenMatchday .match-occasion-strip :is(span,small,strong,b){font:500 12px/1.4 Arial,sans-serif!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-occasion-strip strong{font-weight:700!important}
+#screenMatchday .match-occasion-strip small{flex-basis:100%}
+#screenMatchday .match-occasion-strip>aside{display:flex!important;gap:5px!important;flex-wrap:wrap!important}
+
+/* Native Watch / Quick Sim buttons, with lightweight transform-only hover motion. */
+#screenMatchday .matchday-actions-v2{
+  position:relative!important;display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,.78fr) minmax(180px,.55fr)!important;
+  align-items:stretch!important;gap:14px!important;padding:10px 12px!important;min-height:148px!important;height:auto!important;
+  border:1px solid var(--md-line)!important;border-left:3px solid #0054e3!important;border-radius:12px!important;
+  background:var(--md-panel)!important;box-shadow:0 3px 10px #1c3b6005!important;overflow:visible!important;
+}
+#screenMatchday .matchday-action-copy{
+  display:grid!important;grid-template-columns:62px minmax(0,1fr)!important;grid-template-rows:auto auto!important;align-content:center!important;
+  align-items:start!important;gap:10px 20px!important;min-width:0!important;padding:12px 8px!important;background:transparent!important;
+  border:0!important;box-shadow:none!important;
+}
+#screenMatchday .matchday-action-copy>span{grid-column:2;grid-row:1;font:700 12px/1.3 Arial,sans-serif!important;letter-spacing:.04em!important;color:var(--md-muted)!important;margin:0!important}
+#screenMatchday .matchday-action-copy>strong{grid-column:2;grid-row:2;font:500 13px/1.7 Arial,sans-serif!important;color:var(--md-ink)!important;white-space:normal!important;overflow:visible!important;margin:0!important}
+#screenMatchday .matchday-action-status-icon{grid-column:1;grid-row:1/3;align-self:center;width:62px;height:68px;padding:14px;color:#2484b3;background:#eaf4fc;border:1px solid #c9e1f1;border-radius:7px}
+#screenMatchday.has-lineup-warning .matchday-action-status-icon{color:#db9000;background:#fff6e4;border-color:#f2d59c}
+#screenMatchday .matchday-actions-v2>.match-action{
+  position:relative!important;isolation:isolate;display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  gap:14px!important;min-width:0!important;min-height:128px!important;height:auto!important;padding:24px 66px 24px 16px!important;
+  border:1px solid #0867a8!important;border-radius:8px!important;overflow:hidden!important;
+  color:#fff!important;text-align:left!important;white-space:normal!important;box-shadow:inset 0 1px #4caffc40,0 2px 4px #00162c1a!important;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important;cursor:pointer;
+}
+#screenMatchday .match-watch{background:#00142e url('assets/matchday-cobalt/watch-match-stadium.png') center/cover no-repeat!important}
+#screenMatchday .match-quick{background:linear-gradient(110deg,#00172e 30%,#00244c)!important}
+#screenMatchday .match-action:before{content:''!important;position:absolute!important;inset:0!important;z-index:-1!important;background:linear-gradient(90deg,#00132a44,#00132a08)!important;pointer-events:none!important;width:auto!important;height:auto!important;transform:none!important;border:0!important}
+#screenMatchday .match-action:after{content:''!important;position:absolute!important;inset:0!important;width:auto!important;height:auto!important;background:linear-gradient(135deg,transparent 95%,#02baf7 95%,#02baf7 96%,transparent 96%)!important;pointer-events:none!important;opacity:1!important;border:0!important;transform:none!important}
+#screenMatchday .match-action-number{
+  position:relative!important;flex:0 0 56px!important;width:56px!important;height:56px!important;display:grid!important;place-items:center!important;
+  padding:0!important;margin:0!important;border:1px solid #00bafa!important;border-radius:50%!important;
+  font:700 30px/1 'Matchday Condensed','Arial Narrow',sans-serif!important;color:#fff!important;background:#001b367a!important;letter-spacing:0!important;
+}
+#screenMatchday .match-watch .match-action-number:before{content:'';position:absolute;left:-6px;top:0;width:8px;height:8px;border-radius:50%;background:#ff263f;box-shadow:0 0 12px #fc204b88}
+#screenMatchday .match-action-label{position:relative!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:7px!important;flex:1 1 auto!important;min-width:0!important;width:auto!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important}
+#screenMatchday .match-action-label>strong{display:block!important;margin:0!important;font:900 clamp(22px,1.55vw,30px)/1.05 'Matchday Condensed','Arial Narrow',sans-serif!important;color:#fff!important;letter-spacing:-.01em!important;white-space:normal!important;overflow:visible!important}
+#screenMatchday .match-action-label>small{display:block!important;font:500 14px/1.4 Arial,sans-serif!important;color:#e4efff!important;letter-spacing:0!important;white-space:normal!important;overflow:visible!important;margin:0!important}
+#screenMatchday .match-action-symbol{position:absolute;right:14px;bottom:20px;width:44px;height:44px;color:#fff;filter:drop-shadow(0 3px 7px #001127);transition:transform .2s ease}
+#screenMatchday .match-sim-lines{position:absolute!important;display:block!important;z-index:-1;right:-12px;top:15px;width:48%!important;height:105px!important;border:1px solid #028ce15c;border-radius:0!important;transform:skew(-24deg);padding:12px;background:repeating-linear-gradient(0deg,transparent 0 18px,#1184f00b 19px 20px)!important}
+#screenMatchday .match-sim-lines>i{display:block;height:5px;margin:7px 0;background:linear-gradient(90deg,#008ce3 14%,transparent 14%,transparent 20%,#1269b5 20%,#1269b5 75%,transparent 75%);opacity:.48}
+#screenMatchday .match-sim-lines>i:nth-child(even){width:80%;margin-left:16%}
+#screenMatchday .match-action:not(:disabled):hover{transform:translateY(-2px)!important;border-color:#00ceff!important;box-shadow:0 7px 22px #006bbb38,inset 0 0 0 1px #00bdfc77!important}
+#screenMatchday .match-action:not(:disabled):hover .match-action-symbol{transform:translateX(4px)}
+#screenMatchday .match-action:not(:disabled):active{transform:translateY(0)!important}
+#screenMatchday .match-action:disabled{opacity:.82!important;filter:saturate(.75)!important;cursor:not-allowed!important;transform:none!important}
+#screenMatchday :is(button,a):focus-visible{outline:3px solid #00a9eb!important;outline-offset:3px!important}
+#screenMatchday.is-no-fixture .matchday-stage-v2,#screenMatchday.is-no-fixture .matchday-summary{display:none!important}
+
+/* Themes remain usable without altering the cobalt broadcast artwork. */
+html:not([data-vm-theme="classic"]) #screenMatchday{--md-ink:var(--vm-text);--md-muted:var(--vm-muted);--md-line:var(--vm-line);--md-panel:var(--vm-surface);--md-soft:var(--vm-surface-soft);--md-blue:var(--vm-accent,#62aeff);background:var(--vm-bg)!important}
+html:not([data-vm-theme="classic"]) #screenMatchday .matchday-shell-v2{background:transparent!important}
+html:not([data-vm-theme="classic"]) #screenMatchday .matchday-edit-team{background:var(--md-soft)!important;color:var(--md-ink)!important}
+html:not([data-vm-theme="classic"]) #screenMatchday .matchday-lineup-portrait{background:var(--md-soft)!important}
+
+@media(min-width:1800px){
+  #screenMatchday .matchday-shell-v2{gap:14px!important}
+  #screenMatchday .matchday-stage-v2{min-height:420px!important}
+  #screenMatchday .match-lineup-player strong{font-size:16px!important}
+  #screenMatchday .match-lineup-player small{font-size:13px!important}
+  #screenMatchday .matchday-lineup-panel{padding:19px 22px 16px!important}
+  #screenMatchday .matchday-badge{width:80px!important;height:104px!important}
+  #screenMatchday .matchday-team{grid-template-columns:minmax(0,1fr) 80px!important}
+  #screenMatchday .matchday-team.away{grid-template-columns:80px minmax(0,1fr)!important}
+}
+@media(max-width:1400px){
+  #screenMatchday .matchday-stage-v2{grid-template-columns:minmax(220px,22%) minmax(0,1fr) minmax(220px,22%)!important}
+  #screenMatchday .matchday-lineup-panel{padding:16px 12px 12px!important}
+  #screenMatchday .match-lineup-player{grid-template-columns:58px minmax(0,1fr)!important;gap:10px!important}
+  #screenMatchday .matchday-lineup-portrait{width:58px;height:68px}
+  #screenMatchday .matchday-identity-row{width:62%;grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr);gap:7px}
+  #screenMatchday .matchday-team,#screenMatchday .matchday-team.away{grid-template-columns:minmax(0,1fr)!important;gap:4px!important}
+  #screenMatchday .matchday-name,#screenMatchday .matchday-team.away .matchday-name{grid-column:1!important;grid-row:1!important;font-size:40px!important;text-align:center!important}
+  #screenMatchday .matchday-name.is-long-name{font-size:32px!important}
+  #screenMatchday .matchday-badge,#screenMatchday .matchday-team.away .matchday-badge{grid-column:1!important;grid-row:2!important;width:54px!important;height:60px!important}
+  #screenMatchday .matchday-side-label{grid-row:3!important}
+  #screenMatchday .matchday-team-context{grid-row:4!important}
+  #screenMatchday .matchday-hero-competition{padding-top:16px;min-height:40px}
+  #screenMatchday .matchday-actions-v2{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.9fr) 160px!important;padding-bottom:10px!important}
+  #screenMatchday .matchday-action-copy{grid-template-columns:44px minmax(0,1fr)!important;gap:8px 12px!important}
+  #screenMatchday .matchday-action-status-icon{width:44px;height:54px;padding:10px}
+  #screenMatchday .matchday-actions-v2>.match-action{padding:18px 48px 18px 12px!important;gap:10px!important}
+  #screenMatchday .match-action-number{width:44px!important;height:44px!important;flex-basis:44px!important;font-size:26px!important}
+  #screenMatchday .match-action-symbol{width:34px;height:34px;right:10px}
+  #screenMatchday .match-opposition-personnel{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)!important}
+}
+@media(max-width:1050px){
+  #screenMatchday .matchday-topbar{grid-template-columns:110px minmax(0,1fr)!important;height:auto!important;min-height:70px!important;padding:8px 12px!important;gap:6px!important}
+  #screenMatchday .matchday-utilities{grid-column:1/-1!important;display:flex!important;justify-content:flex-end!important;gap:7px!important;padding:4px 0!important}
+  #screenMatchday .matchday-date-chip{min-width:130px!important;min-height:38px!important}
+  #screenMatchday .matchday-date-chip span{font-size:10px!important}
+  #screenMatchday .matchday-date-chip strong{font-size:12px!important}
+  #screenMatchday .career-util-btn{width:38px!important;min-width:38px!important;height:38px!important;font-size:13px!important}
+  #screenMatchday .career-tabs button{font-size:12px!important;padding:0 5px!important;min-height:42px!important}
+  #screenMatchday .matchday-stage-v2{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+  #screenMatchday .matchday-centre-card{grid-column:1/-1!important;grid-row:1!important;min-height:360px!important}
+  #screenMatchday .matchday-lineup-panel.home{grid-column:1!important;grid-row:2!important}
+  #screenMatchday .matchday-lineup-panel.away{grid-column:2!important;grid-row:2!important}
+  #screenMatchday .matchday-identity-row{width:58%}
+  #screenMatchday .matchday-name,#screenMatchday .matchday-team.away .matchday-name{font-size:46px!important}
+  #screenMatchday .matchday-summary{grid-template-columns:1fr!important}
+  #screenMatchday .match-opposition-personnel{grid-template-columns:1.2fr 1fr!important}
+  #screenMatchday .match-readiness{min-height:250px!important}
+  #screenMatchday .matchday-actions-v2{grid-template-columns:1fr 1fr!important;padding-bottom:80px!important}
+  #screenMatchday .matchday-action-copy{grid-column:1/-1!important;display:grid!important}
+  #screenMatchday .matchday-actions-v2>.match-action{min-height:130px!important}
+  #screenMatchday .matchday-heading-v2{padding:14px 18px!important}
+}
+@media(max-width:600px){
+  #screenMatchday .matchday-topbar{grid-template-columns:1fr!important;position:relative!important}
+  #screenMatchday .career-brand{display:none!important}
+  #screenMatchday .career-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;width:100%!important}
+  #screenMatchday .matchday-shell-v2{padding:10px 8px 18px!important}
+  #screenMatchday .matchday-competition{max-width:100%!important;text-align:left!important}
+  #screenMatchday .matchday-stage-v2{gap:9px!important}
+  #screenMatchday .matchday-centre-card{min-height:350px!important;grid-template-rows:auto minmax(170px,1fr) auto auto 70px!important}
+  #screenMatchday .matchday-hero-art{bottom:70px}
+  #screenMatchday .matchday-identity-row{width:70%;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);gap:3px}
+  #screenMatchday .matchday-name,#screenMatchday .matchday-team.away .matchday-name{font-size:32px!important}
+  #screenMatchday .matchday-name.is-long-name{font-size:26px!important}
+  #screenMatchday .matchday-featured{width:30%;opacity:.38}
+  #screenMatchday .matchday-featured>img{height:148%;top:12%;width:155%}
+  #screenMatchday .matchday-featured.home>img{left:-27.5%}
+  #screenMatchday .matchday-featured.away>img{right:-47.5%}
+  #screenMatchday .matchday-angle{opacity:1}
+  #screenMatchday .matchday-hero-competition{padding:14px 15% 7px;font-size:12px}
+  #screenMatchday .matchday-round-strip{padding:4px 9%}
+  #screenMatchday .matchday-venue-ribbon{padding:6px 10px 10px!important;letter-spacing:0!important}
+  #screenMatchday .matchday-centre-card>.matchday-info{height:70px!important;padding:8px 3px!important}
+  #screenMatchday .matchday-info small{font-size:10px!important;letter-spacing:0!important}
+  #screenMatchday .matchday-info b{font-size:23px!important}
+  #screenMatchday .matchday-lineup-panel{padding:15px 10px 10px!important}
+  #screenMatchday .matchday-panel-kicker{min-height:47px!important;font-size:11px!important}
+  #screenMatchday .match-lineup-player{grid-template-columns:1fr!important;gap:7px!important;align-content:start!important;min-height:204px!important;padding:11px 0!important}
+  #screenMatchday .match-lineup-player strong{font-size:14px!important}
+  #screenMatchday .match-lineup-player small{font-size:12px!important}
+  #screenMatchday .matchday-edit-team{font-size:12px!important;min-height:50px!important}
+  #screenMatchday .match-summary-card,#screenMatchday .match-readiness{padding:16px 12px!important}
+  #screenMatchday .match-opposition-personnel{grid-template-columns:1fr!important}
+  #screenMatchday .matchday-actions-v2{grid-template-columns:1fr!important;gap:12px!important;padding-bottom:78px!important}
+  #screenMatchday .matchday-actions-v2>.match-action{min-height:132px!important}
+  #screenMatchday .match-action-label>strong{font-size:28px!important}
+  #screenMatchday .match-preview-form{margin:2px 0!important}
+}
+@media(prefers-reduced-motion:reduce){#screenMatchday *,#screenMatchday *:before,#screenMatchday *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

@@ -1,0 +1,269 @@
+{
+  "before-results": {
+    "finance": {
+      "wagesBefore": 31152,
+      "ceilingBefore": 38700,
+      "wagesAfter": 53352,
+      "ceilingAfter": 66200,
+      "healthBefore": 77,
+      "healthAfter": 77
+    },
+    "transfer": {
+      "fee": 100000,
+      "sellerBefore": 19000000,
+      "sellerAfter": 19000000,
+      "ok": true
+    },
+    "loan": {
+      "strongestSelected": false,
+      "appsBefore": 0,
+      "appsAfterNoFixtures": 3
+    },
+    "save": {
+      "freshCharacters": 7540434,
+      "freshBytes": 7541010,
+      "failureReturnedFalse": true,
+      "lastSavedTimestampSetBeforeFailedWrite": true
+    },
+    "season": {
+      "error": "ReferenceError: rtgDivisionMeta is not defined",
+      "route": "generatePromotionPlayoffSemis"
+    }
+  },
+  "integrity-results": {
+    "status": "PASS",
+    "checks": [
+      "compressed save round trip including legacy JSON, with real 288-club data",
+      "save succeeds within a 5 MiB quota; failure preserves the old save and its timestamp",
+      "wage ceiling stays fixed and excessive offers are rejected before commitment",
+      "permanent purchase credits seller, debits buyer once, and transfers one player identity",
+      "failed transfer leaves accepted talks and player registration unchanged",
+      "stale free-agent offers cannot create duplicate registered players",
+      "loaned player can start for borrower; wage sharing follows the agreed percentage",
+      "loan reports cannot create appearances; actual fixtures drive loan records",
+      "loan return restores unique ownership and salary commitments",
+      "quick sim rejects injured starters without committing a fixture",
+      "budget chart uses observed balances; finance state survives save/load",
+      "monthly development is bounded and processes each month once"
+    ],
+    "measurements": {
+      "save": {
+        "rawCharacters": 7573223,
+        "storedCharacters": 1003943,
+        "estimatedUTF16Bytes": 2007886
+      },
+      "wageCeiling": 38700,
+      "transfer": {
+        "fee": 100000,
+        "buyerDebit": 105000,
+        "sellerCredit": 100000
+      },
+      "loan": {
+        "actualAppearances": 1,
+        "reportedStarts": 1
+      }
+    }
+  },
+  "season-final-results": {
+    "ok": true,
+    "resolved": 5219,
+    "guard": 47,
+    "integrity": {
+      "clubCount": 288,
+      "divisionCount": 16,
+      "all18": true
+    },
+    "status": "COMPLETED",
+    "date": "2027-04-18",
+    "seconds": 34.571,
+    "remaining": 0,
+    "rollover": true,
+    "seasonBefore": "2026-27",
+    "seasonAfter": "2027-28",
+    "divisions": {
+      "rsl": 18,
+      "championship": 18,
+      "league-one": 18,
+      "league-two": 18,
+      "kharova-guild-league": 18,
+      "kharova-iron-division": 18,
+      "kharova-foundry-league": 18,
+      "kharova-regional-league": 18,
+      "caldria-prima-corona": 18,
+      "caldria-serie-argento": 18,
+      "caldria-lega-terza": 18,
+      "caldria-campionato-popolare": 18,
+      "ezuraya-sky-league": 18,
+      "ezuraya-horizon-division": 18,
+      "ezuraya-rising-league": 18,
+      "ezuraya-island-conference": 18
+    },
+    "saved": true,
+    "saveCharacters": 1440087,
+    "rawCharacters": 10719492,
+    "reloaded": true,
+    "historySeasons": 1
+  },
+  "static-call-results": {
+    "status": "PASS",
+    "unresolvedBareFunctionCalls": []
+  },
+  "test_training": {
+    "status": "PASS",
+    "checks": [
+      "four distinct recovery/sharpness trade-offs",
+      "fatigue protection, matchday taper and medical priority",
+      "assistant adapts daily; manual overrides persist; AI manages its own schedules",
+      "legacy migration, malformed fields and zero fitness",
+      "forecast purity and exact daily parity for 16 medical/manual/assistant scenarios; duplicate-day guards",
+      "year-long bounds; actual minutes; unused bench exclusion; duplicate-match guard",
+      "neutral migration, bounded match effects, unknown medical return and suspension-aware advice",
+      "actual career daily hooks, medical countdown idempotence, preference normalization and round trips, owned-player controls, live technical attributes and career morale vocabulary",
+      "both user and background simulation routes include sharpness"
+    ]
+  },
+  "test_training_career": {
+    "status": "PASS",
+    "runtime": "Complete application with DOM adapter; no browser rendering",
+    "clubs": 288,
+    "seniorPlayers": 8,
+    "checks": [
+      "complete app bootstrap",
+      "three starters plus three live substitutes with wider senior depth",
+      "actual save/load preserves sharpness, schedules and assistant targets",
+      "legacy v73 migration through actual loader",
+      "fixture and lineup preservation",
+      "real UI render, change events and one-time event binding",
+      "no gains from opening the screen",
+      "once-per-day progression survives save/reload"
+    ]
+  },
+  "test_matchday_career": {
+    "status": "PASS",
+    "checks": [
+      "substitute appearances, goals, ratings and MVP",
+      "starter-only starts",
+      "minutes and development exposure",
+      "workload-based fitness / unused bench recovery",
+      "no unused substitute appearance or rating",
+      "single fixture commit",
+      "historical report survives reload and transfer",
+      "legacy fixture fallback",
+      "friendly substitute appearances",
+      "injury availability",
+      "SIM MATCH and QUICK SIM execute and save the shared player quality model",
+      "watched results use recorded statistics; quick sims do not invent them"
+    ]
+  },
+  "test_matchday_engine": {
+    "status": "PASS",
+    "runtime": "Actual engine with DOM/audio adapter; no browser",
+    "checks": [
+      "12-player squad / six active entities",
+      "pause / heartbeat clock rebase / Escape resumes safely",
+      "live tactics / pressing energy cost",
+      "queued substitutions / no re-entry / ownership",
+      "halftime stop / two halves",
+      "natural and skipped full time",
+      "home and away management",
+      "depleted bench / unused substitute exclusion",
+      "270 player-minutes per team",
+      "outgoing scorer retained beyond feed expiry",
+      "single completion callback",
+      "knockout shootout"
+    ]
+  },
+  "test_player_quality": {
+    "status": "PASS",
+    "runtime": "Actual match engine and app functions, DOM/audio adapter",
+    "checks": [
+      "raw stats match career adapter",
+      "substitute retains individual attributes",
+      "explicit OVR fallback",
+      "missing and malformed quality rejected",
+      "passing and handling improve receptions",
+      "defending wins tackles and handling resists them",
+      "pace changes speed and stamina preserves energy",
+      "all six stats affect simulation independently of OVR",
+      "shared quality model for user/background sims",
+      "shooting affects scorer selection"
+    ],
+    "measured": {
+      "PAS50": {
+        "trials": 12000,
+        "completed": 9377
+      },
+      "PAS90": {
+        "trials": 12000,
+        "completed": 9715
+      },
+      "HAN50": {
+        "trials": 12000,
+        "completed": 8768
+      },
+      "HAN90": {
+        "trials": 12000,
+        "completed": 10042
+      },
+      "tackleDEF50": {
+        "trials": 12000,
+        "won": 1324
+      },
+      "tackleDEF90": {
+        "trials": 12000,
+        "won": 2000
+      },
+      "tackleHAN50": {
+        "trials": 12000,
+        "won": 2048
+      },
+      "tackleHAN90": {
+        "trials": 12000,
+        "won": 1518
+      }
+    },
+    "scorers": {
+      "H0": 3880,
+      "H1": 8120
+    },
+    "rejectedPayloads": [
+      "Missing player ratings for H0: supply career stats/OVR or normalized attributes.",
+      "Invalid shooting for H0: engine attributes must be between 0 and 1.",
+      "Invalid SHO for H0: career ratings must be between 0 and 99.",
+      "Invalid fitness for H0: career ratings must be between 0 and 100.",
+      "Invalid PAC for H0: career ratings must be between 0 and 99."
+    ]
+  },
+  "test_player_sprites": {
+    "status": "PASS",
+    "matchedPlayerIds": 1609,
+    "resolvedImagePaths": 4827,
+    "preparedAvatarBypasses": 1609,
+    "worldPools": {
+      "Velmora": 1105,
+      "Kharova": 168,
+      "Caldria": 168,
+      "Ezuraya": 168
+    },
+    "saveMigration": "PASS",
+    "transferIdentity": "PASS",
+    "invalidIdFallback": "PASS"
+  },
+  "test_club_stadiums": {
+    "status": "PASS",
+    "clubs": 288,
+    "installedClubStadiums": 36,
+    "clubsUsingFallback": 252,
+    "actualCareerLaunchesChecked": 576,
+    "checks": [
+      "home and away fixtures select fixture home club",
+      "all 36 mappings resolve to installed assets",
+      "all other clubs retain their home-ground names with fallback artwork",
+      "promotion/relegation retains stadium",
+      "shared hoop/floor coordinates preserved",
+      "consecutive fixtures replace previous stadium",
+      "missing registered image falls back once",
+      "fallback fixture completes and reports the correct venue"
+    ]
+  }
+}
