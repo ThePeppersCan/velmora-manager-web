@@ -30,7 +30,8 @@
     "test:press-conferences": "node tools/test_v56_press_conferences.cjs",
     "test:homepage": "node tools/test_v65_homepage_priority.cjs",
     "test:squad": "node tools/test_v66_squad_management.cjs && node tools/test_v67_squad_interaction.cjs",
-    "test:release-candidate": "node tools/test_v68_release_candidate.cjs"
+    "test:release-candidate": "node tools/test_v68_release_candidate.cjs",
+    "test:matchday-layout": "node tools/test_v68_matchday_layout.cjs"
   },
   "devDependencies": {
     "fake-indexeddb": "6.2.5",

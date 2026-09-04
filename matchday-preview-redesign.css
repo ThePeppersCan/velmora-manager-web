@@ -17,8 +17,19 @@
 #screenMatchday.md2 .md2-date-chip span{font:700 .42cqw Arial,sans-serif;letter-spacing:.12em;color:var(--md2-muted)}
 #screenMatchday.md2 .md2-date-chip strong{font:800 .68cqw Arial,sans-serif;color:var(--md2-ink)}
 
+/* Matchday header containment.
+   The utility cluster includes a dynamic Quick Access button as well as the
+   competition, date and three utility controls. The shared 17.5% utility
+   track was too small and allowed that cluster to draw over the Office tab. */
+#screenMatchday.md2 .matchday-topbar{grid-template-columns:minmax(9cqw,14%) minmax(0,1fr) minmax(34cqw,38%)!important;gap:.6cqw!important;overflow:hidden!important}
+#screenMatchday.md2 .career-brand,#screenMatchday.md2 .career-tabs,#screenMatchday.md2 .md2-utilities{min-width:0!important}
+#screenMatchday.md2 .md2-utilities{width:100%!important;overflow:hidden!important}
+#screenMatchday.md2 .md2-meta{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#screenMatchday.md2 .md2-date-chip,#screenMatchday.md2 .md2-utilities>.career-util-btn{flex:0 0 auto}
+
 /* ---- shell grid ---- */
-#screenMatchday.md2 .matchday-shell-v2.md2-shell{position:absolute!important;top:5.6cqw!important;left:2.25%!important;right:auto!important;bottom:auto!important;width:95.5%!important;height:calc(100% - 6.7cqw)!important;max-width:95.5%!important;display:grid!important;grid-template-columns:minmax(0,1fr) 19.5cqw!important;grid-template-rows:26.5cqw auto auto auto!important;grid-template-areas:"hero side" "teams teams" "footer footer" "detail detail"!important;gap:.85cqw!important;background:transparent!important;padding:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;box-sizing:border-box!important}
+#screenMatchday.md2 .matchday-shell-v2.md2-shell{position:absolute!important;top:5.6cqw!important;left:2.25%!important;right:2.25%!important;bottom:auto!important;width:auto!important;height:calc(100% - 6.7cqw)!important;max-width:none!important;min-width:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) 19.5cqw!important;grid-template-rows:26.5cqw auto auto auto!important;grid-template-areas:"hero side" "teams teams" "footer footer" "detail detail"!important;gap:.85cqw!important;background:transparent!important;padding:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:thin;box-sizing:border-box!important}
+#screenMatchday.md2 .matchday-shell-v2.md2-shell>*{min-width:0!important;max-width:100%}
 
 /* ---- hero ---- */
 #screenMatchday.md2 .md2-hero{grid-area:hero!important;position:relative!important;overflow:hidden!important;height:26.5cqw!important;max-height:26.5cqw!important;border-radius:.85cqw;background:linear-gradient(180deg,var(--md2-surface-2),var(--md2-surface) 55%);border:1px solid var(--md2-line);box-shadow:0 .4cqw 1.1cqw rgba(16,38,66,.06);display:flex;flex-direction:column;min-height:0}
@@ -40,8 +51,8 @@
 #screenMatchday.md2 .matchday-featured.md2-portrait.away{right:0!important;left:auto!important}
 #screenMatchday.md2 .matchday-featured.md2-portrait .matchday-ghost-crest{display:none!important}
 #screenMatchday.md2 .matchday-featured.md2-portrait img{position:absolute!important;inset:auto 0 0 0!important;height:22.5cqw!important;max-height:22.5cqw!important;width:21cqw!important;max-width:21cqw!important;min-width:0!important;min-height:0!important;object-fit:contain!important;object-position:bottom center!important;filter:drop-shadow(0 .5cqw .6cqw rgba(10,26,48,.18))}
-#screenMatchday.md2 .matchday-featured.md2-portrait.home img{object-position:bottom left!important;left:0!important;right:auto!important}
-#screenMatchday.md2 .matchday-featured.md2-portrait.away img{object-position:bottom right!important;right:0!important;left:auto!important}
+#screenMatchday.md2 .matchday-featured.md2-portrait.home img{object-position:bottom left!important;left:0!important;right:auto!important;transform:scaleX(-1)!important;transform-origin:center bottom!important}
+#screenMatchday.md2 .matchday-featured.md2-portrait.away img{object-position:bottom right!important;right:0!important;left:auto!important;transform:scaleX(1)!important;transform-origin:center bottom!important}
 #screenMatchday.md2 .matchday-featured.md2-portrait[hidden],#screenMatchday.md2 .matchday-featured.md2-portrait img[hidden]{display:none!important}
 
 #screenMatchday.md2 .md2-hero-body{position:relative;z-index:3;margin:auto 0 0;padding:0 12cqw 1.15cqw;text-align:center}
@@ -121,6 +132,11 @@
 #screenMatchday.md2 .matchday-summary.md2-detail{grid-area:detail!important;position:static!important;width:auto!important;height:auto!important}
 
 /* ---- narrow-frame fallback (small game-frame widths) ---- */
+@container (max-width:960px){
+  #screenMatchday.md2 .matchday-topbar{grid-template-columns:minmax(86px,13cqw) minmax(0,1fr) auto!important}
+  #screenMatchday.md2 .md2-meta{display:none!important}
+}
+
 @container (max-width:640px){
   #screenMatchday.md2 .matchday-shell-v2.md2-shell{grid-template-columns:1fr!important;grid-template-rows:none!important;grid-template-areas:"hero" "side" "teams" "footer" "detail"!important}
   #screenMatchday.md2 .md2-teams{grid-template-columns:1fr}
