@@ -31,7 +31,7 @@
   const careerWorldCount = new Set(clubs.map(c=>(c?.world || 'Velmora'))).size;
   const managerManifest = window.VELMORA_MANAGER_ASSETS || {assets:[],defaults:{},hairPalettes:{},outfitPalettes:{}};
   const managerSpecialAssets=[
-    {id:'outfit_special_liverpool_third',name:'Liverpool Third-Kit T-Shirt',category:'outfit',styleTags:['streetwear','football-shirt','short-sleeve'],presentationTags:['unrestricted'],brand:'Liverpool',path:'outfits/outfit_special_liverpool_third.png',layerPosition:4,compatibleColourPalettes:[],previewThumbnail:'outfits/outfit_special_liverpool_third.png',unlockState:'unlocked',defaultAvailable:true}
+    {id:'outfit_special_liverpool_third',name:'Liverpool Third-Kit T-Shirt',category:'outfit',styleTags:['streetwear','sports-shirt','short-sleeve'],presentationTags:['unrestricted'],brand:'Liverpool',path:'outfits/outfit_special_liverpool_third.png',layerPosition:4,compatibleColourPalettes:[],previewThumbnail:'outfits/outfit_special_liverpool_third.png',unlockState:'unlocked',defaultAvailable:true}
   ];
   managerSpecialAssets.forEach(asset=>{if(!managerManifest.assets.some(existing=>existing.id===asset.id))managerManifest.assets.push(asset);});
   const managerAssetsByCategory = managerManifest.assets.reduce((acc,a)=>{(acc[a.category]||(acc[a.category]=[])).push(a);return acc;},{});
@@ -3321,7 +3321,7 @@
       'One thing is certain: this won’t be the last anyone hears of it.',
       'Whatever comes next, it’ll be judged out on the pitch, not in the papers.',
       'The training ground will move on quickly. Whether the fans do is another matter.',
-      'For the players, the message from the dressing room is simple: let the football do the talking.',
+      'For the players, the message from the dressing room is simple: let their play do the talking.',
       'The next scoreline will do more to settle this than any amount of speculation.',
       'Until the next whistle blows, this is where things stand.',
       'The club will be hoping the next few weeks give everyone something else to talk about.',

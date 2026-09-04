@@ -55,7 +55,7 @@ async function main(){
   const lower=Traits.attributes({shooting:.74},['long_arc','hoop_artist'],{progress:.7});assert(lower.shooting<.94);
   const root=path.resolve(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.html'),'utf8');
   assert(html.indexOf('player-traits.js')<html.indexOf('career-bootstrap.js'));assert(html.includes('player-profiles.css'));
-  const css=fs.readFileSync(path.join(root,'matchday-cobalt.css'),'utf8');assert(css.includes('overflow:hidden;z-index:3;pointer-events:none'));assert(css.includes('.matchday-featured.home{left:0;clip-path:none}'));
+  const css=fs.readFileSync(path.join(root,'matchday-cobalt.css'),'utf8');assert(css.includes('overflow:hidden;z-index:3;pointer-events:none'));assert(css.includes('#screenMatchday .matchday-featured.home:not(.md2-portrait){left:0;clip-path:none}'));
   console.log('PASS: 24 diverse persistent traits; scouting/privacy; all six profile tabs; development permissions; free agents/academy/loans; save reload; simulated attack/defence; live passing/acceleration/endurance; leadership cap; bench traits; safe match pause; base rating dominance; portrait layering.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

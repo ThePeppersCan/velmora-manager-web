@@ -74,7 +74,7 @@ assert(css.includes('.v46-facility-prop'));
 assert(css.includes('.v46-stadium-module'));
 assert(css.includes('.v46-first24-manager'));
 assert(index.includes('v46-1-matchday-stability'));
-assert(bootstrap.includes('v60-manager-media'));
+assert(bootstrap.includes('v68-release-candidate'));
 
 for(const file of [
   'assets/career/training-ground.png',

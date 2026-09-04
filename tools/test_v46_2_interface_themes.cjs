@@ -3,7 +3,7 @@ const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'themes.css'),'utf8');
-const build=fs.readFileSync(path.join(root,'tools','build_v34.cjs'),'utf8');
+const {runtimeFiles}=require('./release_manifest.cjs');
 const checks=[];
 function ok(name,fn){fn();checks.push(name);}
 ok('theme stylesheet loaded after AAA career pass',()=>{
@@ -32,6 +32,6 @@ ok('theme choice is persistent but not part of career saves',()=>{
   assert(app.includes("localStorage.setItem(VM_INTERFACE_THEME_KEY,theme)"));
   assert(app.includes("localStorage.getItem(VM_INTERFACE_THEME_KEY)"));
 });
-ok('static production build copies theme CSS',()=>assert(build.includes("'themes.css'")));
+ok('static production build copies theme CSS',()=>assert(runtimeFiles.includes('themes.css')));
 console.log(`V46.2 interface theme checks: ${checks.length} passed`);
 checks.forEach(x=>console.log(' ✓',x));

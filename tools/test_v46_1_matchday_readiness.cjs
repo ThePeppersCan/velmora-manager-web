@@ -45,11 +45,12 @@ assert.deepEqual(Array.from(integrity.matchChoices),['WATCH MATCH','QUICK SIM'])
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'aaa-career-pass.css'),'utf8');
+const previewCss=fs.readFileSync(path.join(root,'matchday-preview-redesign.css'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
-assert(html.includes('class="match-action-number">01</span><span class="match-action-label"><strong>WATCH MATCH</strong>'),'Watch action must use explicit structured label markup');
-assert(html.includes('class="match-action-number">02</span><span class="match-action-label"><strong>QUICK SIM</strong>'),'Quick Sim action must use explicit structured label markup');
+assert.match(html,/id="matchWatch"[^>]*class="md2-btn md2-btn-primary"[^>]*>[\s\S]*?<span>PLAY MATCH<\/span>/,'Play Match action must use the current structured button markup');
+assert.match(html,/id="matchQuick"[^>]*class="md2-btn md2-btn-secondary"[^>]*>[\s\S]*?<span>QUICK SIM<\/span>/,'Quick Sim action must use the current structured button markup');
 assert(css.includes('V46.1 — MATCHDAY STABILITY + ACTION CARD REPAIR'));
-assert(css.includes('.match-action-label > strong'));
+assert(previewCss.includes('.md2-btn-primary'));
 assert(app.includes('prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:true})'));
 assert(!app.includes("showToast('Both clubs need three available starters before Watch Match can begin')"),'Generic false-looking Watch Match blocker should be removed');
 

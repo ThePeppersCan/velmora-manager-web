@@ -3,8 +3,8 @@ const root=path.resolve(__dirname,'..'),read=name=>fs.readFileSync(path.join(roo
 const app=read('app.js'),css=read('homepage-polish.css'),index=read('index.html'),bootstrap=read('career-bootstrap.js');
 
 assert.match(index,/homepage-polish\.css\?v=v65-homepage-priority-pulse/,'homepage stylesheet cache key');
-assert.match(index,/career-bootstrap\.js\?v=v66-squad-management/,'bootstrap cache key');
-assert.match(bootstrap,/app\.js\?v=v66-squad-management/,'app cache key');
+assert.match(index,/career-bootstrap\.js\?v=v68-release-candidate/,'bootstrap cache key');
+assert.match(bootstrap,/app\.js\?v=v68-release-candidate/,'app cache key');
 
 for(const key of ['transfer','contract','squad','medical','board','admin','scouting','discipline','career','season']){
   assert.match(css,new RegExp(`is-category-${key}`),`category style: ${key}`);

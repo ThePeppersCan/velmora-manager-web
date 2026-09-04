@@ -44,7 +44,7 @@ const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'aaa-career-pass.css'),'utf8');
 const liveText=['app.js','velmora-quidditch-engine.js','index.html'].map(file=>fs.readFileSync(path.join(root,file),'utf8')).join('\n');
-assert(html.includes('THIS WEEK AT YOUR CLUB'));
+for(const id of ['centralWeekMatch','centralWeekStory','centralWeekAttention'])assert(html.includes(`id="${id}"`),`Central club-life mount missing: ${id}`);
 assert(/aaa-career-pass\.css\?v=/.test(html));
 assert(css.includes('.central-week-card'));
 assert(css.includes('.office-routine-toggle'));

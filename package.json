@@ -1,10 +1,12 @@
 {
   "name": "velmora-manager",
-  "version": "49.0.0",
+  "version": "68.0.0",
   "private": true,
-  "description": "Velmora Manager V49 Player Trait Identity and Distribution",
+  "description": "Velmora Manager V68 Release Candidate",
   "scripts": {
     "build": "node tools/build_v34.cjs",
+    "test": "node tools/run_release_suite.cjs",
+    "verify": "npm run build && npm test",
     "test:expansion": "node tools/test_v34_expansion.cjs && node tools/test_v34_deals.cjs",
     "test:storage": "node tools/test_v34_storage.cjs",
     "test:interface": "node tools/test_v35_interface.cjs",
@@ -27,7 +29,8 @@
     "test:trait-identity": "node tools/test_v49_trait_identity.cjs",
     "test:press-conferences": "node tools/test_v56_press_conferences.cjs",
     "test:homepage": "node tools/test_v65_homepage_priority.cjs",
-    "test:squad": "node tools/test_v66_squad_management.cjs && node tools/test_v67_squad_interaction.cjs"
+    "test:squad": "node tools/test_v66_squad_management.cjs && node tools/test_v67_squad_interaction.cjs",
+    "test:release-candidate": "node tools/test_v68_release_candidate.cjs"
   },
   "devDependencies": {
     "fake-indexeddb": "6.2.5",

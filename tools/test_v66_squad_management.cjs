@@ -2,9 +2,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.resolve(__dirname,'..'),read=name=>fs.readFileSync(path.join(root,name),'utf8');
 const app=read('app.js'),css=read('squad-redesign.css'),index=read('index.html'),bootstrap=read('career-bootstrap.js');
 
-assert.match(index,/squad-redesign\.css\?v=v67-squad-refinement/,'squad stylesheet cache key');
-assert.match(index,/career-bootstrap\.js\?v=v67-squad-refinement/,'bootstrap cache key');
-assert.match(bootstrap,/app\.js\?v=v67-squad-refinement/,'app cache key');
+assert.match(index,/squad-redesign\.css\?v=v68-release-candidate/,'squad stylesheet cache key');
+assert.match(index,/career-bootstrap\.js\?v=v68-release-candidate/,'bootstrap cache key');
+assert.match(bootstrap,/app\.js\?v=v68-release-candidate/,'app cache key');
 
 assert.equal((index.match(/id="startingThreeShowcase"/g)||[]).length,1,'one authoritative starter presentation');
 assert.match(index,/id="startersGrid"[^>]*hidden[^>]*aria-hidden="true"/,'legacy starter mount remains inert for compatibility');
@@ -19,7 +19,7 @@ assert.ok((app.match(/refreshSeniorSquadUI\(\{save:true\}\)/g)||[]).length>=2,'c
 assert.match(app,/target\.addEventListener\('dragover',[\s\S]*dropEffect='move';\}\}\)/,'dragover avoids repeated class writes');
 
 for(const marker of ['grid-template-columns:7.15cqw minmax(0,1fr)','v66-depth-scroll','v66-profile-tabs','v66-confirm-selection','--v66-green'])assert.ok(css.includes(marker),`professional squad layout marker: ${marker}`);
-for(const label of ['SQUAD MANAGEMENT','STARTING THREE','SUBSTITUTES &amp; RESERVES','CONFIRM SELECTION'])assert.ok(index.includes(label)||app.includes(label),`reference layout label: ${label}`);
+for(const label of ['SQUAD MANAGEMENT','STARTING THREE','SUBSTITUTES &amp; DEPTH','CONFIRM SELECTION'])assert.ok(index.includes(label)||app.includes(label),`reference layout label: ${label}`);
 assert.match(css,/@media\(max-width:1100px\)/,'narrow desktop layout');
 assert.match(css,/@media\(max-width:760px\)/,'compact layout');
 

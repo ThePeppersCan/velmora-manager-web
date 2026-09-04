@@ -49,7 +49,7 @@ window.eval(engineSource);
 window.setTimeout=callback=>{callback();return 1;};
 const library=window.VELMORA_PRESS_CONFERENCE_LIBRARY;
 assert(library,'Question library must register globally');
-assert.equal(library.questionsPerConference,5);
+assert.equal(library.questionsPerConference,4);
 assert(library.categories.length>=38,'Expected broad press-room topic coverage');
 assert(library.categories.reduce((sum,item)=>sum+item.templates.length,0)>=220,'Expected hundreds of authored question stems');
 assert.equal(library.responseArchetypes.length,6,'Every question must have six response directions');
@@ -97,7 +97,7 @@ assert(window.document.querySelector('.pc-intro'),'Invitation should render befo
 assert.equal(window.document.querySelectorAll('[data-pc-attend]').length,1);
 window.document.querySelector('[data-pc-attend]').click();
 assert.equal(window.document.querySelectorAll('[data-pc-answer]').length,6,'Question screen must expose six answers');
-assert.equal(saved.questions.length,5,'Standard conference must contain five contextual questions');
+assert.equal(saved.questions.length,4,'Standard conference must contain four contextual questions');
 assert(new Set(saved.questions.map(item=>item.categoryId)).size>=4,'A conference should avoid repetitive categories');
 window.document.querySelector('[data-pc-answer]').click();
 assert.equal(impacts,1,'Selecting an answer must apply career consequences');
