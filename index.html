@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="player-profiles.css?v=v49-trait-identity" />
   <link rel="stylesheet" href="homepage-polish.css?v=v65-homepage-priority-pulse" />
   <link rel="stylesheet" href="matchday-polish.css?v=v63-scope-fix" />
-  <link rel="stylesheet" href="matchday-preview-redesign.css?v=v68-matchday-layout-hotfix" />
+  <link rel="stylesheet" href="matchday-preview-redesign.css?v=v68-matchday-reference-restore" />
   <link rel="stylesheet" href="press-conference.css?v=v60-manager-media" />
   <link rel="stylesheet" href="results-cinematic.css?v=v57-full-time-review" />
   <link rel="stylesheet" href="league-table-cinematic.css?v=v59-standings-depth" />
@@ -942,7 +942,7 @@
           <div class="md2-teams">
             <section class="matchday-lineup-panel home md2-team-card">
               <div class="md2-team-head">
-                <div id="matchdayHomePanelTitle" class="matchday-panel-kicker">HOME TEAM</div>
+                <div class="md2-team-identity"><div id="matchdayHomeTeamBadge" class="matchday-badge md2-team-badge"></div><div id="matchdayHomePanelTitle" class="matchday-panel-kicker">HOME TEAM</div></div>
                 <button type="button" class="matchday-edit-team md2-edit-btn" data-matchday-edit-home data-career-nav="squad">EDIT TEAM &amp; TACTICS</button>
               </div>
               <div id="matchdayHomeLineup" class="matchday-lineup matchday-home-lineup md2-lineup"></div>
@@ -950,7 +950,7 @@
 
             <section class="matchday-lineup-panel away md2-team-card">
               <div class="md2-team-head">
-                <div id="matchdayAwayPanelTitle" class="matchday-panel-kicker">AWAY TEAM</div>
+                <div class="md2-team-identity"><div id="matchdayAwayTeamBadge" class="matchday-badge md2-team-badge"></div><div id="matchdayAwayPanelTitle" class="matchday-panel-kicker">AWAY TEAM</div></div>
                 <button type="button" class="matchday-edit-team md2-edit-btn" data-matchday-edit-away data-career-nav="squad">EDIT TEAM &amp; TACTICS</button>
               </div>
               <div id="matchdayAwayLineup" class="matchday-lineup matchday-away-lineup md2-lineup"></div>
@@ -964,7 +964,7 @@
             <button type="button" class="md2-footer-settings" data-art-action="settings" aria-label="Settings">⚙<small>Settings</small></button>
           </footer>
 
-          <aside id="matchdaySummary" class="matchday-summary md2-detail"></aside>
+          <details class="md2-report"><summary>OPPOSITION REPORT &amp; STAFF MATCH PLAN</summary><aside id="matchdaySummary" class="matchday-summary md2-detail"></aside></details>
         </main>
       </section>
 

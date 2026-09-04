@@ -10030,7 +10030,7 @@
     if(!fixture){
       if(screen){screen.classList.remove('is-champions-crown','is-preview-mode','is-live-mode');screen.classList.add('is-no-fixture');}
       $('#matchdayCompetition').textContent='NO FIXTURE SCHEDULED';$('#matchdayActionStatus').textContent='Return to Central and advance the career calendar.';
-      ['matchdayHomeLineup','matchdayAwayLineup','matchdayInfo','matchdaySummary','matchdayHomeGhost','matchdayAwayGhost','matchdayHomeBadge','matchdayAwayBadge'].forEach(id=>{const el=$(`#${id}`);if(el)el.innerHTML='';});
+      ['matchdayHomeLineup','matchdayAwayLineup','matchdayInfo','matchdaySummary','matchdayHomeGhost','matchdayAwayGhost','matchdayHomeBadge','matchdayAwayBadge','matchdayHomeTeamBadge','matchdayAwayTeamBadge'].forEach(id=>{const el=$(`#${id}`);if(el)el.innerHTML='';});
       ['matchdayHomeName','matchdayAwayName','matchdayHomeContext','matchdayAwayContext','matchdayRoundLabel','matchdayVersusStatus','matchdayVenueRibbon','matchdayHeroCompetition','matchdayHomeForm','matchdayH2H','matchdayLastMeeting'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent='';});
       ['Home','Away'].forEach(side=>{const el=$(`#matchday${side}Featured`);if(el){el.hidden=true;el.removeAttribute('src');}});
       ['matchWatch','matchQuick'].forEach(id=>{const b=$(`#${id}`);if(b)b.disabled=true;});
