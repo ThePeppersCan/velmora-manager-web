@@ -1,0 +1,65 @@
+.velmora-cloud-status {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 999970;
+  color: #eaf8ff;
+  font-family: Inter, Arial, sans-serif;
+  transition: opacity .2s ease;
+}
+.velmora-cloud-status[data-mode="local-only"],
+.velmora-cloud-status[data-mode="synced"] { opacity: 0; pointer-events: none; }
+.velmora-cloud-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(107,225,236,.5);
+  border-radius: 4px;
+  background: rgba(4,24,37,.94);
+  box-shadow: 0 12px 38px rgba(0,0,0,.28);
+  color: inherit;
+  letter-spacing: .12em;
+  font-size: 10px;
+  cursor: pointer;
+}
+.velmora-cloud-chip:hover,
+.velmora-cloud-chip:focus-visible { border-color: #76edf2; background: #082f43; outline: none; }
+.velmora-cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: #65e7ca; box-shadow: 0 0 12px rgba(101,231,202,.8); }
+.velmora-cloud-status[data-mode="connecting"] .velmora-cloud-dot,
+.velmora-cloud-status[data-mode="syncing"] .velmora-cloud-dot,
+.velmora-cloud-status[data-mode="saving"] .velmora-cloud-dot { background: #f1cc63; animation: velmora-cloud-pulse 1s ease-in-out infinite; }
+.velmora-cloud-status[data-mode="local-only"] .velmora-cloud-dot,
+.velmora-cloud-status[data-mode="offline"] .velmora-cloud-dot { background: #a6b8c5; box-shadow: none; }
+.velmora-cloud-panel {
+  position: absolute;
+  left: 0;
+  bottom: 48px;
+  width: min(390px,calc(100vw - 30px));
+  padding: 0;
+  border: 1px solid rgba(105,210,224,.38);
+  background: linear-gradient(150deg,#071d2b,#06131f 72%);
+  box-shadow: 0 24px 70px rgba(0,0,0,.48);
+}
+.velmora-cloud-panel[hidden] { display: none; }
+.velmora-cloud-panel header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid rgba(139,203,218,.18); }
+.velmora-cloud-panel header div { display: grid; gap: 3px; }
+.velmora-cloud-panel header small { color: #70dce5; font-size: 9px; font-weight: 800; letter-spacing: .2em; }
+.velmora-cloud-panel header strong { font-size: 17px; letter-spacing: .08em; }
+.velmora-cloud-panel header button { border: 0; background: transparent; color: #b7cad4; font-size: 25px; cursor: pointer; }
+.velmora-cloud-panel > p,
+.velmora-cloud-panel dl,
+.velmora-cloud-panel footer { margin: 0; padding: 16px 20px; }
+.velmora-cloud-panel > p { color: #c1d0d8; font-size: 13px; line-height: 1.55; }
+.velmora-cloud-panel dl { display: grid; gap: 10px; border-block: 1px solid rgba(139,203,218,.13); }
+.velmora-cloud-panel dl div { display: flex; justify-content: space-between; gap: 18px; }
+.velmora-cloud-panel dt { color: #7895a3; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.velmora-cloud-panel dd { margin: 0; color: #fff; font-size: 11px; font-weight: 700; text-align: right; }
+.velmora-cloud-panel .velmora-cloud-note { padding-top: 13px; color: #879eaa; font-size: 11px; }
+.velmora-cloud-panel footer { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.velmora-cloud-panel footer button,
+.velmora-cloud-panel footer a { flex: 1; padding: 11px 12px; border: 1px solid #53cbd7; background: #0d4054; color: #fff; font: 800 10px/1 Inter,Arial,sans-serif; letter-spacing: .08em; text-align: center; text-decoration: none; cursor: pointer; }
+.velmora-cloud-panel footer button:disabled { opacity: .5; cursor: wait; }
+@keyframes velmora-cloud-pulse { 50% { opacity: .4; transform: scale(.75); } }
+@media (max-width:650px) { .velmora-cloud-status { left: 10px; bottom: 10px; } .velmora-cloud-panel { bottom: 46px; } }
