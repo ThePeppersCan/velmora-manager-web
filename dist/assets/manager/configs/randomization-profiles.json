@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "globalRules": {
+    "genderRestricted": false,
+    "respectCompatibility": true,
+    "avoidDuplicateSelection": true,
+    "seedable": true
+  },
+  "profiles": [
+    {
+      "id": "professional",
+      "name": "Professional",
+      "ageRange": [
+        28,
+        68
+      ],
+      "outfitTags": [
+        "formal",
+        "business-casual"
+      ],
+      "facialHairChance": 0.35
+    },
+    {
+      "id": "young_coach",
+      "name": "Young Coach",
+      "ageRange": [
+        20,
+        34
+      ],
+      "outfitTags": [
+        "athletic",
+        "streetwear"
+      ],
+      "facialHairChance": 0.25
+    },
+    {
+      "id": "veteran",
+      "name": "Veteran",
+      "ageRange": [
+        50,
+        80
+      ],
+      "outfitTags": [
+        "formal",
+        "coat",
+        "classic"
+      ],
+      "facialHairChance": 0.55
+    },
+    {
+      "id": "modern_sportswear",
+      "name": "Modern Sportswear",
+      "ageRange": [
+        22,
+        55
+      ],
+      "outfitTags": [
+        "performance",
+        "technical",
+        "training"
+      ],
+      "facialHairChance": 0.3
+    },
+    {
+      "id": "traditional",
+      "name": "Traditional",
+      "ageRange": [
+        35,
+        78
+      ],
+      "outfitTags": [
+        "suit",
+        "shirt",
+        "knit"
+      ],
+      "facialHairChance": 0.45
+    },
+    {
+      "id": "casual",
+      "name": "Casual",
+      "ageRange": [
+        18,
+        75
+      ],
+      "outfitTags": [
+        "everyday",
+        "denim",
+        "hoodie"
+      ],
+      "facialHairChance": 0.35
+    },
+    {
+      "id": "tactical_specialist",
+      "name": "Tactical Specialist",
+      "ageRange": [
+        27,
+        70
+      ],
+      "outfitTags": [
+        "quarter-zip",
+        "technical",
+        "coat"
+      ],
+      "facialHairChance": 0.4
+    },
+    {
+      "id": "fashionable",
+      "name": "Fashionable",
+      "ageRange": [
+        20,
+        65
+      ],
+      "outfitTags": [
+        "premium",
+        "streetwear",
+        "smart-casual"
+      ],
+      "facialHairChance": 0.25
+    },
+    {
+      "id": "complete_random",
+      "name": "Complete Random",
+      "ageRange": [
+        18,
+        80
+      ],
+      "outfitTags": [],
+      "facialHairChance": 0.4
+    }
+  ],
+  "controls": [
+    "randomize_all",
+    "randomize_face",
+    "randomize_hair",
+    "randomize_clothes",
+    "randomize_details",
+    "lock_field"
+  ]
+}

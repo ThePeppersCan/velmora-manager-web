@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "matchday",
+      "name": "Matchday",
+      "sceneTags": [
+        "match",
+        "touchline"
+      ],
+      "preferredOutfitTags": [
+        "coach",
+        "tracksuit",
+        "technical",
+        "coat"
+      ]
+    },
+    {
+      "id": "training",
+      "name": "Training",
+      "sceneTags": [
+        "training",
+        "academy"
+      ],
+      "preferredOutfitTags": [
+        "athletic",
+        "training",
+        "performance"
+      ]
+    },
+    {
+      "id": "press",
+      "name": "Press",
+      "sceneTags": [
+        "press",
+        "interview",
+        "media"
+      ],
+      "preferredOutfitTags": [
+        "smart-casual",
+        "formal",
+        "blazer"
+      ]
+    },
+    {
+      "id": "office",
+      "name": "Office",
+      "sceneTags": [
+        "inbox",
+        "board",
+        "staff",
+        "scouting"
+      ],
+      "preferredOutfitTags": [
+        "business-casual",
+        "knit",
+        "shirt"
+      ]
+    },
+    {
+      "id": "casual",
+      "name": "Casual",
+      "sceneTags": [
+        "hub",
+        "roaming",
+        "travel"
+      ],
+      "preferredOutfitTags": [
+        "everyday",
+        "streetwear",
+        "denim",
+        "hoodie"
+      ]
+    },
+    {
+      "id": "formal",
+      "name": "Formal",
+      "sceneTags": [
+        "contract",
+        "gala",
+        "awards"
+      ],
+      "preferredOutfitTags": [
+        "formal",
+        "suit",
+        "dress"
+      ]
+    },
+    {
+      "id": "wet_weather",
+      "name": "Wet Weather",
+      "sceneTags": [
+        "rain",
+        "snow",
+        "cold"
+      ],
+      "preferredOutfitTags": [
+        "coat",
+        "puffer",
+        "windbreaker"
+      ]
+    },
+    {
+      "id": "celebration",
+      "name": "Celebration",
+      "sceneTags": [
+        "trophy",
+        "promotion",
+        "parade"
+      ],
+      "preferredOutfitTags": [
+        "formal",
+        "club-colour",
+        "scarf"
+      ]
+    }
+  ],
+  "fallbackOrder": [
+    "activePreset",
+    "office",
+    "matchday",
+    "casual"
+  ],
+  "notes": [
+    "Every preset stores a complete compatible appearance selection.",
+    "Changing a scene must not mutate another preset."
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "status": "pass",
+  "schemaVersion": 5,
+  "uniqueStableIds": 1032,
+  "validatedLayerPngs": 1285,
+  "categoryCounts": {
+    "skin": 8,
+    "face": 144,
+    "hair": 216,
+    "facial_hair": 40,
+    "outfit": 364,
+    "eyewear": 16,
+    "accessory": 40,
+    "eye": 32,
+    "eyebrow": 24,
+    "complexion": 32,
+    "age": 8,
+    "makeup": 24,
+    "expression": 12,
+    "jewellery": 24,
+    "hair_accessory": 16,
+    "team_branding": 16,
+    "career_reward": 16
+  },
+  "referenceStyleExpansion": {
+    "outfits": 104,
+    "hairStyles": 40,
+    "sourceSet": "streetwear-reference-2026"
+  },
+  "hairColourPalettes": 24,
+  "eyeColourPalettes": 16,
+  "wardrobePresets": 8,
+  "randomizationProfiles": 9,
+  "errors": [],
+  "warnings": [],
+  "runtimeRenderer": "file-safe-indexed-mask-v1",
+  "runtimeMaskSets": 548,
+  "runtimeMaskPngs": 1391,
+  "runtimeMaskValidation": "pass",
+  "curlyHairContinuity": {
+    "status": "pass",
+    "auditedStyles": 49,
+    "stylesWithInternalUpperCapGaps": 0
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "pronouns": [
+    {
+      "id": "pronoun_he_him",
+      "label": "He / him",
+      "subject": "he",
+      "object": "him",
+      "possessive": "his"
+    },
+    {
+      "id": "pronoun_she_her",
+      "label": "She / her",
+      "subject": "she",
+      "object": "her",
+      "possessive": "her"
+    },
+    {
+      "id": "pronoun_they_them",
+      "label": "They / them",
+      "subject": "they",
+      "object": "them",
+      "possessive": "their"
+    },
+    {
+      "id": "pronoun_he_they",
+      "label": "He / they",
+      "subject": "he",
+      "object": "them",
+      "possessive": "their"
+    },
+    {
+      "id": "pronoun_she_they",
+      "label": "She / they",
+      "subject": "she",
+      "object": "them",
+      "possessive": "their"
+    },
+    {
+      "id": "pronoun_ze_zir",
+      "label": "Ze / zir",
+      "subject": "ze",
+      "object": "zir",
+      "possessive": "zir"
+    },
+    {
+      "id": "pronoun_custom",
+      "label": "Custom",
+      "custom": true
+    }
+  ],
+  "titles": [
+    {
+      "id": "title_none",
+      "label": "None"
+    },
+    {
+      "id": "title_coach",
+      "label": "Coach"
+    },
+    {
+      "id": "title_manager",
+      "label": "Manager"
+    },
+    {
+      "id": "title_mr",
+      "label": "Mr"
+    },
+    {
+      "id": "title_ms",
+      "label": "Ms"
+    },
+    {
+      "id": "title_mrs",
+      "label": "Mrs"
+    },
+    {
+      "id": "title_mx",
+      "label": "Mx"
+    },
+    {
+      "id": "title_dr",
+      "label": "Dr"
+    },
+    {
+      "id": "title_professor",
+      "label": "Professor"
+    },
+    {
+      "id": "title_sir",
+      "label": "Sir"
+    },
+    {
+      "id": "title_dame",
+      "label": "Dame"
+    },
+    {
+      "id": "title_custom",
+      "label": "Custom",
+      "custom": true
+    }
+  ],
+  "rules": [
+    "Appearance options never depend on pronouns or title.",
+    "Use the manager name when custom grammar is incomplete."
+  ]
+}

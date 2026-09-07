@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "sceneMap": {
+    "match": "matchday",
+    "training": "training",
+    "press": "press",
+    "inbox": "office",
+    "board": "office",
+    "hub": "casual",
+    "travel": "casual",
+    "contract": "formal",
+    "gala": "formal",
+    "rain": "wet_weather",
+    "snow": "wet_weather",
+    "trophy": "celebration",
+    "promotion": "celebration"
+  },
+  "expressionMap": {
+    "kickoff": "expression_01",
+    "goal_for": "expression_07",
+    "goal_against": "expression_03",
+    "win": "expression_06",
+    "loss": "expression_04",
+    "press_positive": "expression_08",
+    "press_hostile": "expression_01",
+    "injury": "expression_05"
+  },
+  "rules": [
+    "Expressions are transient unless explicitly saved.",
+    "Unknown scenes use the active wardrobe preset and neutral expression."
+  ]
+}

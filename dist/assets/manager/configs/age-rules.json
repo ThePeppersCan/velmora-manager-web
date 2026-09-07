@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "bands": [
+    {
+      "min": 18,
+      "max": 24,
+      "overlayId": "age_overlay_01"
+    },
+    {
+      "min": 25,
+      "max": 34,
+      "overlayId": "age_overlay_02"
+    },
+    {
+      "min": 35,
+      "max": 44,
+      "overlayId": "age_overlay_03"
+    },
+    {
+      "min": 45,
+      "max": 54,
+      "overlayId": "age_overlay_04"
+    },
+    {
+      "min": 55,
+      "max": 64,
+      "overlayId": "age_overlay_05"
+    },
+    {
+      "min": 65,
+      "max": 74,
+      "overlayId": "age_overlay_06"
+    },
+    {
+      "min": 75,
+      "max": 80,
+      "overlayId": "age_overlay_07"
+    }
+  ],
+  "defaultMode": "manual",
+  "autoAgeToggle": true,
+  "hairGreying": "suggest-only",
+  "rules": [
+    "Never overwrite a manually selected age overlay.",
+    "Never force grey hair unless auto-age and auto-grey are both enabled."
+  ]
+}
