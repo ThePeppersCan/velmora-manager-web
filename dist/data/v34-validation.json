@@ -1,0 +1,75 @@
+{
+  "version": 34,
+  "tests": [
+    {
+      "test": "test_v34_storage",
+      "status": "PASS",
+      "seconds": 0.2
+    },
+    {
+      "test": "test_v34_interface",
+      "status": "PASS",
+      "seconds": 3.3
+    },
+    {
+      "test": "test_v34_deals",
+      "status": "PASS",
+      "seconds": 1.7
+    },
+    {
+      "test": "test_v34_expansion",
+      "status": "PASS",
+      "seconds": 89.3
+    },
+    {
+      "test": "test_career_integrity",
+      "status": "PASS",
+      "seconds": 4.3
+    },
+    {
+      "test": "test_training_career",
+      "status": "PASS",
+      "seconds": 4.7
+    },
+    {
+      "test": "test_v31_transfer_recruitment",
+      "status": "PASS",
+      "seconds": 9.7
+    },
+    {
+      "test": "test_v32_career_market_saves",
+      "status": "PASS",
+      "seconds": 2.7
+    },
+    {
+      "test": "test_v33_living_newsroom",
+      "status": "PASS",
+      "seconds": 1.2
+    },
+    {
+      "test": "test_matchday_engine",
+      "status": "PASS",
+      "seconds": 4.9
+    },
+    {
+      "test": "test_matchday_career",
+      "status": "PASS",
+      "seconds": 0.1
+    },
+    {
+      "test": "test_discipline",
+      "status": "PASS",
+      "seconds": 2.0
+    },
+    {
+      "test": "test_career_season",
+      "status": "PASS",
+      "seconds": 38.0
+    }
+  ],
+  "limits": [
+    "Assets folder was not supplied.",
+    "JSDOM and model tests; no rendered visual browser QA.",
+    "Long-term economy balance requires playtesting."
+  ]
+}

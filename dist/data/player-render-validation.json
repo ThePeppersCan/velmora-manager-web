@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "nativeFramesSized": 3218,
+  "flyingMaximum": {
+    "width": 154,
+    "height": 82
+  },
+  "standingMaximum": {
+    "width": 124,
+    "height": 90
+  },
+  "renderFunction": "Actual drawSprite / playerSpriteHeight from velmora-quidditch-engine.js",
+  "browserPlaytest": "Not performed: local preview connection blocked"
+}

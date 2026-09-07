@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "all_image_files_checked": 4836,
+  "native_poses_matched_to_reviewed_source_alpha": 0,
+  "frame_margin_minimum": 6,
+  "avatars_normalized": 1609,
+  "large_disconnected_fragments_for_review": [],
+  "source_sheet_count": 67,
+  "complete_pairs": 1609,
+  "unpaired_source_characters": 9,
+  "failures": []
+}

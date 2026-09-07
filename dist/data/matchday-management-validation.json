@@ -1,0 +1,51 @@
+{
+  "engine": {
+    "status": "PASS",
+    "runtime": "Actual engine with DOM/audio adapter; no browser",
+    "checks": [
+      "12-player squad / six active entities",
+      "pause / heartbeat clock rebase / Escape resumes safely",
+      "live tactics / pressing energy cost",
+      "queued substitutions / no re-entry / ownership",
+      "halftime stop / two halves",
+      "natural and skipped full time",
+      "home and away management",
+      "depleted bench / unused substitute exclusion",
+      "270 player-minutes per team",
+      "outgoing scorer retained beyond feed expiry",
+      "single completion callback",
+      "knockout shootout"
+    ]
+  },
+  "career": {
+    "status": "PASS",
+    "checks": [
+      "substitute appearances, goals, ratings and MVP",
+      "starter-only starts",
+      "minutes and development exposure",
+      "workload-based fitness / unused bench recovery",
+      "no unused substitute appearance or rating",
+      "single fixture commit",
+      "historical report survives reload and transfer",
+      "legacy fixture fallback",
+      "friendly substitute appearances",
+      "injury availability"
+    ]
+  },
+  "sprites": {
+    "status": "PASS",
+    "matchedPlayerIds": 1609,
+    "resolvedImagePaths": 4827,
+    "preparedAvatarBypasses": 1609,
+    "worldPools": {
+      "Velmora": 1105,
+      "Kharova": 168,
+      "Caldria": 168,
+      "Ezuraya": 168
+    },
+    "saveMigration": "PASS",
+    "transferIdentity": "PASS",
+    "invalidIdFallback": "PASS"
+  },
+  "browser": "Not performed: local preview blocked by browser connection policy."
+}
