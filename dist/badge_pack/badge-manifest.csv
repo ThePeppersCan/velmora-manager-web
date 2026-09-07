@@ -1,0 +1,217 @@
+world,tier,league,position,row,column,club,nation,file
+Kharova,1,Kharovan Guild League,1,1,1,Kesselbruck,Eisenmark,kharova/tier-01-kharovan-guild-league/01_kesselbruck.png
+Kharova,1,Kharovan Guild League,2,1,2,Eisenwald,Eisenmark,kharova/tier-01-kharovan-guild-league/02_eisenwald.png
+Kharova,1,Kharovan Guild League,3,1,3,Rotenheim,Brunnwald,kharova/tier-01-kharovan-guild-league/03_rotenheim.png
+Kharova,1,Kharovan Guild League,4,1,4,Dornhafen,Dornland,kharova/tier-01-kharovan-guild-league/04_dornhafen.png
+Kharova,1,Kharovan Guild League,5,1,5,Brunnstadt,Brunnwald,kharova/tier-01-kharovan-guild-league/05_brunnstadt.png
+Kharova,1,Kharovan Guild League,6,1,6,Wolfsbruck,Austerholm,kharova/tier-01-kharovan-guild-league/06_wolfsbruck.png
+Kharova,1,Kharovan Guild League,7,2,1,Austergrad,Austerholm,kharova/tier-01-kharovan-guild-league/07_austergrad.png
+Kharova,1,Kharovan Guild League,8,2,2,Kronwald,Veysburg,kharova/tier-01-kharovan-guild-league/08_kronwald.png
+Kharova,1,Kharovan Guild League,9,2,3,Veysburg Union,Veysburg,kharova/tier-01-kharovan-guild-league/09_veysburg-union.png
+Kharova,1,Kharovan Guild League,10,2,4,Halden Forge,Halden,kharova/tier-01-kharovan-guild-league/10_halden-forge.png
+Kharova,1,Kharovan Guild League,11,2,5,Rimebruck,Rimeval,kharova/tier-01-kharovan-guild-league/11_rimebruck.png
+Kharova,1,Kharovan Guild League,12,2,6,Kesthafen,Kestria,kharova/tier-01-kharovan-guild-league/12_kesthafen.png
+Kharova,1,Kharovan Guild League,13,3,1,Hochwald,Dornland,kharova/tier-01-kharovan-guild-league/13_hochwald.png
+Kharova,1,Kharovan Guild League,14,3,2,Greifenau,Kestria,kharova/tier-01-kharovan-guild-league/14_greifenau.png
+Kharova,1,Kharovan Guild League,15,3,3,Stahlmere,Eisenmark,kharova/tier-01-kharovan-guild-league/15_stahlmere.png
+Kharova,1,Kharovan Guild League,16,3,4,Falkenbruck,Halden,kharova/tier-01-kharovan-guild-league/16_falkenbruck.png
+Kharova,1,Kharovan Guild League,17,3,5,Nordhavn 04,Rimeval,kharova/tier-01-kharovan-guild-league/17_nordhavn-04.png
+Kharova,1,Kharovan Guild League,18,3,6,Blaukirch,Veysburg,kharova/tier-01-kharovan-guild-league/18_blaukirch.png
+Kharova,2,Kharovan Iron Division,1,1,1,Lindental,Brunnwald,kharova/tier-02-kharovan-iron-division/01_lindental.png
+Kharova,2,Kharovan Iron Division,2,1,2,Oberkest,Kestria,kharova/tier-02-kharovan-iron-division/02_oberkest.png
+Kharova,2,Kharovan Iron Division,3,1,3,Altenbruck,Eisenmark,kharova/tier-02-kharovan-iron-division/03_altenbruck.png
+Kharova,2,Kharovan Iron Division,4,1,4,Weisshafen,Rimeval,kharova/tier-02-kharovan-iron-division/04_weisshafen.png
+Kharova,2,Kharovan Iron Division,5,1,5,Grunwald,Dornland,kharova/tier-02-kharovan-iron-division/05_grunwald.png
+Kharova,2,Kharovan Iron Division,6,1,6,Rabenheim,Veysburg,kharova/tier-02-kharovan-iron-division/06_rabenheim.png
+Kharova,2,Kharovan Iron Division,7,2,1,Markstadt,Eisenmark,kharova/tier-02-kharovan-iron-division/07_markstadt.png
+Kharova,2,Kharovan Iron Division,8,2,2,Eichenau,Brunnwald,kharova/tier-02-kharovan-iron-division/08_eichenau.png
+Kharova,2,Kharovan Iron Division,9,2,3,Frostberg,Austerholm,kharova/tier-02-kharovan-iron-division/09_frostberg.png
+Kharova,2,Kharovan Iron Division,10,2,4,Sonnenbruck,Halden,kharova/tier-02-kharovan-iron-division/10_sonnenbruck.png
+Kharova,2,Kharovan Iron Division,11,2,5,Hammerfall,Dornland,kharova/tier-02-kharovan-iron-division/11_hammerfall.png
+Kharova,2,Kharovan Iron Division,12,2,6,Drosselheim,Kestria,kharova/tier-02-kharovan-iron-division/12_drosselheim.png
+Kharova,2,Kharovan Iron Division,13,3,1,Silbersee,Rimeval,kharova/tier-02-kharovan-iron-division/13_silbersee.png
+Kharova,2,Kharovan Iron Division,14,3,2,Westervale,Veysburg,kharova/tier-02-kharovan-iron-division/14_westervale.png
+Kharova,2,Kharovan Iron Division,15,3,3,Braunkamm,Austerholm,kharova/tier-02-kharovan-iron-division/15_braunkamm.png
+Kharova,2,Kharovan Iron Division,16,3,4,Kelbrunn,Brunnwald,kharova/tier-02-kharovan-iron-division/16_kelbrunn.png
+Kharova,2,Kharovan Iron Division,17,3,5,Torstadt,Halden,kharova/tier-02-kharovan-iron-division/17_torstadt.png
+Kharova,2,Kharovan Iron Division,18,3,6,Hohenmere,Eisenmark,kharova/tier-02-kharovan-iron-division/18_hohenmere.png
+Kharova,3,Kharovan Foundry League,1,1,1,Adlerfeld,Eisenmark,kharova/tier-03-kharovan-foundry-league/01_adlerfeld.png
+Kharova,3,Kharovan Foundry League,2,1,2,Mooskirch,Brunnwald,kharova/tier-03-kharovan-foundry-league/02_mooskirch.png
+Kharova,3,Kharovan Foundry League,3,1,3,Ostbruck,Veysburg,kharova/tier-03-kharovan-foundry-league/03_ostbruck.png
+Kharova,3,Kharovan Foundry League,4,1,4,Waldtor,Dornland,kharova/tier-03-kharovan-foundry-league/04_waldtor.png
+Kharova,3,Kharovan Foundry League,5,1,5,Unterhalden,Halden,kharova/tier-03-kharovan-foundry-league/05_unterhalden.png
+Kharova,3,Kharovan Foundry League,6,1,6,Rotsund,Rimeval,kharova/tier-03-kharovan-foundry-league/06_rotsund.png
+Kharova,3,Kharovan Foundry League,7,2,1,Kesselmoor,Eisenmark,kharova/tier-03-kharovan-foundry-league/07_kesselmoor.png
+Kharova,3,Kharovan Foundry League,8,2,2,Steinau,Austerholm,kharova/tier-03-kharovan-foundry-league/08_steinau.png
+Kharova,3,Kharovan Foundry League,9,2,3,Hirschwald,Brunnwald,kharova/tier-03-kharovan-foundry-league/09_hirschwald.png
+Kharova,3,Kharovan Foundry League,10,2,4,Eberstadt,Kestria,kharova/tier-03-kharovan-foundry-league/10_eberstadt.png
+Kharova,3,Kharovan Foundry League,11,2,5,Frosthafen,Rimeval,kharova/tier-03-kharovan-foundry-league/11_frosthafen.png
+Kharova,3,Kharovan Foundry League,12,2,6,Velden,Veysburg,kharova/tier-03-kharovan-foundry-league/12_velden.png
+Kharova,3,Kharovan Foundry League,13,3,1,Kranichsee,Dornland,kharova/tier-03-kharovan-foundry-league/13_kranichsee.png
+Kharova,3,Kharovan Foundry League,14,3,2,Dornbruck,Dornland,kharova/tier-03-kharovan-foundry-league/14_dornbruck.png
+Kharova,3,Kharovan Foundry League,15,3,3,Gelbmark,Eisenmark,kharova/tier-03-kharovan-foundry-league/15_gelbmark.png
+Kharova,3,Kharovan Foundry League,16,3,4,Tiefenwald,Austerholm,kharova/tier-03-kharovan-foundry-league/16_tiefenwald.png
+Kharova,3,Kharovan Foundry League,17,3,5,Brannsee,Halden,kharova/tier-03-kharovan-foundry-league/17_brannsee.png
+Kharova,3,Kharovan Foundry League,18,3,6,Schieferfeld,Kestria,kharova/tier-03-kharovan-foundry-league/18_schieferfeld.png
+Kharova,4,Kharovan Regional League,1,1,1,Kleinbruck,Eisenmark,kharova/tier-04-kharovan-regional-league/01_kleinbruck.png
+Kharova,4,Kharovan Regional League,2,1,2,Nordkirch,Rimeval,kharova/tier-04-kharovan-regional-league/02_nordkirch.png
+Kharova,4,Kharovan Regional League,3,1,3,Amselheim,Brunnwald,kharova/tier-04-kharovan-regional-league/03_amselheim.png
+Kharova,4,Kharovan Regional League,4,1,4,Moorstadt,Veysburg,kharova/tier-04-kharovan-regional-league/04_moorstadt.png
+Kharova,4,Kharovan Regional League,5,1,5,Eichental,Dornland,kharova/tier-04-kharovan-regional-league/05_eichental.png
+Kharova,4,Kharovan Regional League,6,1,6,Sudhafen,Halden,kharova/tier-04-kharovan-regional-league/06_sudhafen.png
+Kharova,4,Kharovan Regional League,7,2,1,Larkwald,Kestria,kharova/tier-04-kharovan-regional-league/07_larkwald.png
+Kharova,4,Kharovan Regional League,8,2,2,Brennau,Austerholm,kharova/tier-04-kharovan-regional-league/08_brennau.png
+Kharova,4,Kharovan Regional League,9,2,3,Windenfeld,Brunnwald,kharova/tier-04-kharovan-regional-league/09_windenfeld.png
+Kharova,4,Kharovan Regional League,10,2,4,Karstbruck,Dornland,kharova/tier-04-kharovan-regional-league/10_karstbruck.png
+Kharova,4,Kharovan Regional League,11,2,5,Tannenmere,Rimeval,kharova/tier-04-kharovan-regional-league/11_tannenmere.png
+Kharova,4,Kharovan Regional League,12,2,6,Rabenau,Veysburg,kharova/tier-04-kharovan-regional-league/12_rabenau.png
+Kharova,4,Kharovan Regional League,13,3,1,Gildenheim,Eisenmark,kharova/tier-04-kharovan-regional-league/13_gildenheim.png
+Kharova,4,Kharovan Regional League,14,3,2,Kreuzhafen,Halden,kharova/tier-04-kharovan-regional-league/14_kreuzhafen.png
+Kharova,4,Kharovan Regional League,15,3,3,Hochmoor,Austerholm,kharova/tier-04-kharovan-regional-league/15_hochmoor.png
+Kharova,4,Kharovan Regional League,16,3,4,Birkenstadt,Kestria,kharova/tier-04-kharovan-regional-league/16_birkenstadt.png
+Kharova,4,Kharovan Regional League,17,3,5,Eisenfeld,Eisenmark,kharova/tier-04-kharovan-regional-league/17_eisenfeld.png
+Kharova,4,Kharovan Regional League,18,3,6,Fahlenberg,Dornland,kharova/tier-04-kharovan-regional-league/18_fahlenberg.png
+Caldria,1,Caldrian Prima Corona,1,1,1,San Virello,Vespara,caldria/tier-01-caldrian-prima-corona/01_san-virello.png
+Caldria,1,Caldrian Prima Corona,2,1,2,Portocielo,Bellacosta,caldria/tier-01-caldrian-prima-corona/02_portocielo.png
+Caldria,1,Caldrian Prima Corona,3,1,3,Valdoro,Montavera,caldria/tier-01-caldrian-prima-corona/03_valdoro.png
+Caldria,1,Caldrian Prima Corona,4,1,4,Monte Azzera,Montavera,caldria/tier-01-caldrian-prima-corona/04_monte-azzera.png
+Caldria,1,Caldrian Prima Corona,5,1,5,Bellacorte,Bellacosta,caldria/tier-01-caldrian-prima-corona/05_bellacorte.png
+Caldria,1,Caldrian Prima Corona,6,1,6,Rosavera,Serravino,caldria/tier-01-caldrian-prima-corona/06_rosavera.png
+Caldria,1,Caldrian Prima Corona,7,2,1,Torre Lucente,Lucenza,caldria/tier-01-caldrian-prima-corona/07_torre-lucente.png
+Caldria,1,Caldrian Prima Corona,8,2,2,Castellaro,Torvanni,caldria/tier-01-caldrian-prima-corona/08_castellaro.png
+Caldria,1,Caldrian Prima Corona,9,2,3,Marina Serene,Bellacosta,caldria/tier-01-caldrian-prima-corona/09_marina-serene.png
+Caldria,1,Caldrian Prima Corona,10,2,4,Alto Vescari,Vespara,caldria/tier-01-caldrian-prima-corona/10_alto-vescari.png
+Caldria,1,Caldrian Prima Corona,11,2,5,Ferrovia Carmina,Carmina,caldria/tier-01-caldrian-prima-corona/11_ferrovia-carmina.png
+Caldria,1,Caldrian Prima Corona,12,2,6,Arco Nerano,Ordelia,caldria/tier-01-caldrian-prima-corona/12_arco-nerano.png
+Caldria,1,Caldrian Prima Corona,13,3,1,Citta Ordelia,Ordelia,caldria/tier-01-caldrian-prima-corona/13_citta-ordelia.png
+Caldria,1,Caldrian Prima Corona,14,3,2,Lupo d'Oro,Torvanni,caldria/tier-01-caldrian-prima-corona/14_lupo-doro.png
+Caldria,1,Caldrian Prima Corona,15,3,3,Ventomare,Bellacosta,caldria/tier-01-caldrian-prima-corona/15_ventomare.png
+Caldria,1,Caldrian Prima Corona,16,3,4,Solenza,Lucenza,caldria/tier-01-caldrian-prima-corona/16_solenza.png
+Caldria,1,Caldrian Prima Corona,17,3,5,Neravalle,Serravino,caldria/tier-01-caldrian-prima-corona/17_neravalle.png
+Caldria,1,Caldrian Prima Corona,18,3,6,Palazzo Verde,Carmina,caldria/tier-01-caldrian-prima-corona/18_palazzo-verde.png
+Caldria,2,Caldrian Serie Argento,1,1,1,Porto Bellano,Bellacosta,caldria/tier-02-caldrian-serie-argento/01_porto-bellano.png
+Caldria,2,Caldrian Serie Argento,2,1,2,Santa Mirella,Vespara,caldria/tier-02-caldrian-serie-argento/02_santa-mirella.png
+Caldria,2,Caldrian Serie Argento,3,1,3,Castello Rosso,Torvanni,caldria/tier-02-caldrian-serie-argento/03_castello-rosso.png
+Caldria,2,Caldrian Serie Argento,4,1,4,Vallo Terenza,Serravino,caldria/tier-02-caldrian-serie-argento/04_vallo-terenza.png
+Caldria,2,Caldrian Serie Argento,5,1,5,Lucenna Alta,Lucenza,caldria/tier-02-caldrian-serie-argento/05_lucenna-alta.png
+Caldria,2,Caldrian Serie Argento,6,1,6,Borgo Sera,Ordelia,caldria/tier-02-caldrian-serie-argento/06_borgo-sera.png
+Caldria,2,Caldrian Serie Argento,7,2,1,Monteluce,Montavera,caldria/tier-02-caldrian-serie-argento/07_monteluce.png
+Caldria,2,Caldrian Serie Argento,8,2,2,Carmina Vecchia,Carmina,caldria/tier-02-caldrian-serie-argento/08_carmina-vecchia.png
+Caldria,2,Caldrian Serie Argento,9,2,3,Torvanni Blu,Torvanni,caldria/tier-02-caldrian-serie-argento/09_torvanni-blu.png
+Caldria,2,Caldrian Serie Argento,10,2,4,Isola Vendra,Bellacosta,caldria/tier-02-caldrian-serie-argento/10_isola-vendra.png
+Caldria,2,Caldrian Serie Argento,11,2,5,Selvarosa,Serravino,caldria/tier-02-caldrian-serie-argento/11_selvarosa.png
+Caldria,2,Caldrian Serie Argento,12,2,6,Piana d'Oro,Montavera,caldria/tier-02-caldrian-serie-argento/12_piana-doro.png
+Caldria,2,Caldrian Serie Argento,13,3,1,Rocca Merida,Ordelia,caldria/tier-02-caldrian-serie-argento/13_rocca-merida.png
+Caldria,2,Caldrian Serie Argento,14,3,2,Seravento,Vespara,caldria/tier-02-caldrian-serie-argento/14_seravento.png
+Caldria,2,Caldrian Serie Argento,15,3,3,Valle Corina,Carmina,caldria/tier-02-caldrian-serie-argento/15_valle-corina.png
+Caldria,2,Caldrian Serie Argento,16,3,4,Porto Nerello,Bellacosta,caldria/tier-02-caldrian-serie-argento/16_porto-nerello.png
+Caldria,2,Caldrian Serie Argento,17,3,5,Fontana Alta,Lucenza,caldria/tier-02-caldrian-serie-argento/17_fontana-alta.png
+Caldria,2,Caldrian Serie Argento,18,3,6,Cala Vesta,Vespara,caldria/tier-02-caldrian-serie-argento/18_cala-vesta.png
+Caldria,3,Caldrian Lega Terza,1,1,1,Ordelia Marina,Ordelia,caldria/tier-03-caldrian-lega-terza/01_ordelia-marina.png
+Caldria,3,Caldrian Lega Terza,2,1,2,Bellacosta Nord,Bellacosta,caldria/tier-03-caldrian-lega-terza/02_bellacosta-nord.png
+Caldria,3,Caldrian Lega Terza,3,1,3,Monte Cervo,Montavera,caldria/tier-03-caldrian-lega-terza/03_monte-cervo.png
+Caldria,3,Caldrian Lega Terza,4,1,4,Torre Bianca,Lucenza,caldria/tier-03-caldrian-lega-terza/04_torre-bianca.png
+Caldria,3,Caldrian Lega Terza,5,1,5,Campo Lucente,Lucenza,caldria/tier-03-caldrian-lega-terza/05_campo-lucente.png
+Caldria,3,Caldrian Lega Terza,6,1,6,Vignavera,Serravino,caldria/tier-03-caldrian-lega-terza/06_vignavera.png
+Caldria,3,Caldrian Lega Terza,7,2,1,Castello Nera,Torvanni,caldria/tier-03-caldrian-lega-terza/07_castello-nera.png
+Caldria,3,Caldrian Lega Terza,8,2,2,Porto Fiamma,Bellacosta,caldria/tier-03-caldrian-lega-terza/08_porto-fiamma.png
+Caldria,3,Caldrian Lega Terza,9,2,3,San Torano,Torvanni,caldria/tier-03-caldrian-lega-terza/09_san-torano.png
+Caldria,3,Caldrian Lega Terza,10,2,4,Colleverde,Montavera,caldria/tier-03-caldrian-lega-terza/10_colleverde.png
+Caldria,3,Caldrian Lega Terza,11,2,5,Marina Orsa,Vespara,caldria/tier-03-caldrian-lega-terza/11_marina-orsa.png
+Caldria,3,Caldrian Lega Terza,12,2,6,Alto Carmino,Carmina,caldria/tier-03-caldrian-lega-terza/12_alto-carmino.png
+Caldria,3,Caldrian Lega Terza,13,3,1,Serravino Est,Serravino,caldria/tier-03-caldrian-lega-terza/13_serravino-est.png
+Caldria,3,Caldrian Lega Terza,14,3,2,Vespara Uno,Vespara,caldria/tier-03-caldrian-lega-terza/14_vespara-uno.png
+Caldria,3,Caldrian Lega Terza,15,3,3,Valle Stella,Ordelia,caldria/tier-03-caldrian-lega-terza/15_valle-stella.png
+Caldria,3,Caldrian Lega Terza,16,3,4,Borgo Lira,Carmina,caldria/tier-03-caldrian-lega-terza/16_borgo-lira.png
+Caldria,3,Caldrian Lega Terza,17,3,5,Muro d'Argento,Lucenza,caldria/tier-03-caldrian-lega-terza/17_muro-dargento.png
+Caldria,3,Caldrian Lega Terza,18,3,6,Ponte Calessa,Bellacosta,caldria/tier-03-caldrian-lega-terza/18_ponte-calessa.png
+Caldria,4,Caldrian Campionato Popolare,1,1,1,Riva Sola,Bellacosta,caldria/tier-04-caldrian-campionato-popolare/01_riva-sola.png
+Caldria,4,Caldrian Campionato Popolare,2,1,2,Montenera,Montavera,caldria/tier-04-caldrian-campionato-popolare/02_montenera.png
+Caldria,4,Caldrian Campionato Popolare,3,1,3,Porto Lento,Bellacosta,caldria/tier-04-caldrian-campionato-popolare/03_porto-lento.png
+Caldria,4,Caldrian Campionato Popolare,4,1,4,Bellamura,Bellacosta,caldria/tier-04-caldrian-campionato-popolare/04_bellamura.png
+Caldria,4,Caldrian Campionato Popolare,5,1,5,Torre Piccola,Lucenza,caldria/tier-04-caldrian-campionato-popolare/05_torre-piccola.png
+Caldria,4,Caldrian Campionato Popolare,6,1,6,Campo d'Ambra,Carmina,caldria/tier-04-caldrian-campionato-popolare/06_campo-dambra.png
+Caldria,4,Caldrian Campionato Popolare,7,2,1,Lucenza Sud,Lucenza,caldria/tier-04-caldrian-campionato-popolare/07_lucenza-sud.png
+Caldria,4,Caldrian Campionato Popolare,8,2,2,Rocca Venti,Vespara,caldria/tier-04-caldrian-campionato-popolare/08_rocca-venti.png
+Caldria,4,Caldrian Campionato Popolare,9,2,3,Santa Corra,Ordelia,caldria/tier-04-caldrian-campionato-popolare/09_santa-corra.png
+Caldria,4,Caldrian Campionato Popolare,10,2,4,Isola Rossa,Bellacosta,caldria/tier-04-caldrian-campionato-popolare/10_isola-rossa.png
+Caldria,4,Caldrian Campionato Popolare,11,2,5,Vallecielo,Montavera,caldria/tier-04-caldrian-campionato-popolare/11_vallecielo.png
+Caldria,4,Caldrian Campionato Popolare,12,2,6,Borgo Nove,Torvanni,caldria/tier-04-caldrian-campionato-popolare/12_borgo-nove.png
+Caldria,4,Caldrian Campionato Popolare,13,3,1,Carmina Bassa,Carmina,caldria/tier-04-caldrian-campionato-popolare/13_carmina-bassa.png
+Caldria,4,Caldrian Campionato Popolare,14,3,2,Serrano Mare,Serravino,caldria/tier-04-caldrian-campionato-popolare/14_serrano-mare.png
+Caldria,4,Caldrian Campionato Popolare,15,3,3,Vescari Ovest,Vespara,caldria/tier-04-caldrian-campionato-popolare/15_vescari-ovest.png
+Caldria,4,Caldrian Campionato Popolare,16,3,4,Ordelia Verde,Ordelia,caldria/tier-04-caldrian-campionato-popolare/16_ordelia-verde.png
+Caldria,4,Caldrian Campionato Popolare,17,3,5,Cala Fiora,Serravino,caldria/tier-04-caldrian-campionato-popolare/17_cala-fiora.png
+Caldria,4,Caldrian Campionato Popolare,18,3,6,Monte Santi,Torvanni,caldria/tier-04-caldrian-campionato-popolare/18_monte-santi.png
+Ezuraya,1,Ezurayan Sky League,1,1,1,Kaishin Crown,Kaishin,ezuraya/tier-01-ezurayan-sky-league/01_kaishin-crown.png
+Ezuraya,1,Ezurayan Sky League,2,1,2,Hoshin Bay,Hoshara,ezuraya/tier-01-ezurayan-sky-league/02_hoshin-bay.png
+Ezuraya,1,Ezurayan Sky League,3,1,3,Yomori Bloom,Yomori,ezuraya/tier-01-ezurayan-sky-league/03_yomori-bloom.png
+Ezuraya,1,Ezurayan Sky League,4,1,4,Rinzu Gate,Rinzu,ezuraya/tier-01-ezurayan-sky-league/04_rinzu-gate.png
+Ezuraya,1,Ezurayan Sky League,5,1,5,Tenzai Arrows,Tenzai,ezuraya/tier-01-ezurayan-sky-league/05_tenzai-arrows.png
+Ezuraya,1,Ezurayan Sky League,6,1,6,Seiraku Tide,Seiraku,ezuraya/tier-01-ezurayan-sky-league/06_seiraku-tide.png
+Ezuraya,1,Ezurayan Sky League,7,2,1,Aokaze Flight,Aokaze,ezuraya/tier-01-ezurayan-sky-league/07_aokaze-flight.png
+Ezuraya,1,Ezurayan Sky League,8,2,2,Daisora Lanterns,Daisora,ezuraya/tier-01-ezurayan-sky-league/08_daisora-lanterns.png
+Ezuraya,1,Ezurayan Sky League,9,2,3,Kurohana,Kaishin,ezuraya/tier-01-ezurayan-sky-league/09_kurohana.png
+Ezuraya,1,Ezurayan Sky League,10,2,4,Mizurai,Hoshara,ezuraya/tier-01-ezurayan-sky-league/10_mizurai.png
+Ezuraya,1,Ezurayan Sky League,11,2,5,Takemori,Yomori,ezuraya/tier-01-ezurayan-sky-league/11_takemori.png
+Ezuraya,1,Ezurayan Sky League,12,2,6,Soryu Harbour,Seiraku,ezuraya/tier-01-ezurayan-sky-league/12_soryu-harbour.png
+Ezuraya,1,Ezurayan Sky League,13,3,1,Akebara,Rinzu,ezuraya/tier-01-ezurayan-sky-league/13_akebara.png
+Ezuraya,1,Ezurayan Sky League,14,3,2,Kintori,Tenzai,ezuraya/tier-01-ezurayan-sky-league/14_kintori.png
+Ezuraya,1,Ezurayan Sky League,15,3,3,Natsukai,Aokaze,ezuraya/tier-01-ezurayan-sky-league/15_natsukai.png
+Ezuraya,1,Ezurayan Sky League,16,3,4,Tsukihama,Daisora,ezuraya/tier-01-ezurayan-sky-league/16_tsukihama.png
+Ezuraya,1,Ezurayan Sky League,17,3,5,Orokai,Kaishin,ezuraya/tier-01-ezurayan-sky-league/17_orokai.png
+Ezuraya,1,Ezurayan Sky League,18,3,6,Shirogane,Hoshara,ezuraya/tier-01-ezurayan-sky-league/18_shirogane.png
+Ezuraya,2,Ezurayan Horizon Division,1,1,1,Kaido Vale,Kaishin,ezuraya/tier-02-ezurayan-horizon-division/01_kaido-vale.png
+Ezuraya,2,Ezurayan Horizon Division,2,1,2,Hoshara North,Hoshara,ezuraya/tier-02-ezurayan-horizon-division/02_hoshara-north.png
+Ezuraya,2,Ezurayan Horizon Division,3,1,3,Yumei Port,Yomori,ezuraya/tier-02-ezurayan-horizon-division/03_yumei-port.png
+Ezuraya,2,Ezurayan Horizon Division,4,1,4,Rinzunori,Rinzu,ezuraya/tier-02-ezurayan-horizon-division/04_rinzunori.png
+Ezuraya,2,Ezurayan Horizon Division,5,1,5,Tenrai Peak,Tenzai,ezuraya/tier-02-ezurayan-horizon-division/05_tenrai-peak.png
+Ezuraya,2,Ezurayan Horizon Division,6,1,6,Seika Wharf,Seiraku,ezuraya/tier-02-ezurayan-horizon-division/06_seika-wharf.png
+Ezuraya,2,Ezurayan Horizon Division,7,2,1,Aokori,Aokaze,ezuraya/tier-02-ezurayan-horizon-division/07_aokori.png
+Ezuraya,2,Ezurayan Horizon Division,8,2,2,Daiseki,Daisora,ezuraya/tier-02-ezurayan-horizon-division/08_daiseki.png
+Ezuraya,2,Ezurayan Horizon Division,9,2,3,Kurotsu,Kaishin,ezuraya/tier-02-ezurayan-horizon-division/09_kurotsu.png
+Ezuraya,2,Ezurayan Horizon Division,10,2,4,Mirahana,Hoshara,ezuraya/tier-02-ezurayan-horizon-division/10_mirahana.png
+Ezuraya,2,Ezurayan Horizon Division,11,2,5,Torikai,Yomori,ezuraya/tier-02-ezurayan-horizon-division/11_torikai.png
+Ezuraya,2,Ezurayan Horizon Division,12,2,6,Sorakai,Seiraku,ezuraya/tier-02-ezurayan-horizon-division/12_sorakai.png
+Ezuraya,2,Ezurayan Horizon Division,13,3,1,Akamori,Rinzu,ezuraya/tier-02-ezurayan-horizon-division/13_akamori.png
+Ezuraya,2,Ezurayan Horizon Division,14,3,2,Kinbara,Tenzai,ezuraya/tier-02-ezurayan-horizon-division/14_kinbara.png
+Ezuraya,2,Ezurayan Horizon Division,15,3,3,Natsuno,Aokaze,ezuraya/tier-02-ezurayan-horizon-division/15_natsuno.png
+Ezuraya,2,Ezurayan Horizon Division,16,3,4,Tsukimori,Daisora,ezuraya/tier-02-ezurayan-horizon-division/16_tsukimori.png
+Ezuraya,2,Ezurayan Horizon Division,17,3,5,Oruhana,Kaishin,ezuraya/tier-02-ezurayan-horizon-division/17_oruhana.png
+Ezuraya,2,Ezurayan Horizon Division,18,3,6,Shirokai,Hoshara,ezuraya/tier-02-ezurayan-horizon-division/18_shirokai.png
+Ezuraya,3,Ezurayan Rising League,1,1,1,Kaisen Ward,Kaishin,ezuraya/tier-03-ezurayan-rising-league/01_kaisen-ward.png
+Ezuraya,3,Ezurayan Rising League,2,1,2,Hoshimori,Hoshara,ezuraya/tier-03-ezurayan-rising-league/02_hoshimori.png
+Ezuraya,3,Ezurayan Rising League,3,1,3,Yorin Bay,Yomori,ezuraya/tier-03-ezurayan-rising-league/03_yorin-bay.png
+Ezuraya,3,Ezurayan Rising League,4,1,4,Rinka Bloom,Rinzu,ezuraya/tier-03-ezurayan-rising-league/04_rinka-bloom.png
+Ezuraya,3,Ezurayan Rising League,5,1,5,Tenzo Ridge,Tenzai,ezuraya/tier-03-ezurayan-rising-league/05_tenzo-ridge.png
+Ezuraya,3,Ezurayan Rising League,6,1,6,Seirun Gate,Seiraku,ezuraya/tier-03-ezurayan-rising-league/06_seirun-gate.png
+Ezuraya,3,Ezurayan Rising League,7,2,1,Aokaze East,Aokaze,ezuraya/tier-03-ezurayan-rising-league/07_aokaze-east.png
+Ezuraya,3,Ezurayan Rising League,8,2,2,Dainori,Daisora,ezuraya/tier-03-ezurayan-rising-league/08_dainori.png
+Ezuraya,3,Ezurayan Rising League,9,2,3,Kuromizu,Kaishin,ezuraya/tier-03-ezurayan-rising-league/09_kuromizu.png
+Ezuraya,3,Ezurayan Rising League,10,2,4,Mirasora,Hoshara,ezuraya/tier-03-ezurayan-rising-league/10_mirasora.png
+Ezuraya,3,Ezurayan Rising League,11,2,5,Takehana,Yomori,ezuraya/tier-03-ezurayan-rising-league/11_takehana.png
+Ezuraya,3,Ezurayan Rising League,12,2,6,Soryama,Seiraku,ezuraya/tier-03-ezurayan-rising-league/12_soryama.png
+Ezuraya,3,Ezurayan Rising League,13,3,1,Akatori,Rinzu,ezuraya/tier-03-ezurayan-rising-league/13_akatori.png
+Ezuraya,3,Ezurayan Rising League,14,3,2,Kinsei,Tenzai,ezuraya/tier-03-ezurayan-rising-league/14_kinsei.png
+Ezuraya,3,Ezurayan Rising League,15,3,3,Natsubara,Aokaze,ezuraya/tier-03-ezurayan-rising-league/15_natsubara.png
+Ezuraya,3,Ezurayan Rising League,16,3,4,Tsukino Port,Daisora,ezuraya/tier-03-ezurayan-rising-league/16_tsukino-port.png
+Ezuraya,3,Ezurayan Rising League,17,3,5,Orukai,Kaishin,ezuraya/tier-03-ezurayan-rising-league/17_orukai.png
+Ezuraya,3,Ezurayan Rising League,18,3,6,Shirohana,Hoshara,ezuraya/tier-03-ezurayan-rising-league/18_shirohana.png
+Ezuraya,4,Ezurayan Island Conference,1,1,1,Kaihara,Kaishin,ezuraya/tier-04-ezurayan-island-conference/01_kaihara.png
+Ezuraya,4,Ezurayan Island Conference,2,1,2,Hoshara Vale,Hoshara,ezuraya/tier-04-ezurayan-island-conference/02_hoshara-vale.png
+Ezuraya,4,Ezurayan Island Conference,3,1,3,Yomitsu,Yomori,ezuraya/tier-04-ezurayan-island-conference/03_yomitsu.png
+Ezuraya,4,Ezurayan Island Conference,4,1,4,Rinbara,Rinzu,ezuraya/tier-04-ezurayan-island-conference/04_rinbara.png
+Ezuraya,4,Ezurayan Island Conference,5,1,5,Tenkori,Tenzai,ezuraya/tier-04-ezurayan-island-conference/05_tenkori.png
+Ezuraya,4,Ezurayan Island Conference,6,1,6,Seihama,Seiraku,ezuraya/tier-04-ezurayan-island-conference/06_seihama.png
+Ezuraya,4,Ezurayan Island Conference,7,2,1,Aokina,Aokaze,ezuraya/tier-04-ezurayan-island-conference/07_aokina.png
+Ezuraya,4,Ezurayan Island Conference,8,2,2,Daisora South,Daisora,ezuraya/tier-04-ezurayan-island-conference/08_daisora-south.png
+Ezuraya,4,Ezurayan Island Conference,9,2,3,Kurobane,Kaishin,ezuraya/tier-04-ezurayan-island-conference/09_kurobane.png
+Ezuraya,4,Ezurayan Island Conference,10,2,4,Mizuhana,Hoshara,ezuraya/tier-04-ezurayan-island-conference/10_mizuhana.png
+Ezuraya,4,Ezurayan Island Conference,11,2,5,Takezora,Yomori,ezuraya/tier-04-ezurayan-island-conference/11_takezora.png
+Ezuraya,4,Ezurayan Island Conference,12,2,6,Sorin Gate,Seiraku,ezuraya/tier-04-ezurayan-island-conference/12_sorin-gate.png
+Ezuraya,4,Ezurayan Island Conference,13,3,1,Akemori,Rinzu,ezuraya/tier-04-ezurayan-island-conference/13_akemori.png
+Ezuraya,4,Ezurayan Island Conference,14,3,2,Kinmori,Tenzai,ezuraya/tier-04-ezurayan-island-conference/14_kinmori.png
+Ezuraya,4,Ezurayan Island Conference,15,3,3,Natsu Vale,Aokaze,ezuraya/tier-04-ezurayan-island-conference/15_natsu-vale.png
+Ezuraya,4,Ezurayan Island Conference,16,3,4,Tsukibara,Daisora,ezuraya/tier-04-ezurayan-island-conference/16_tsukibara.png
+Ezuraya,4,Ezurayan Island Conference,17,3,5,Orokiri,Kaishin,ezuraya/tier-04-ezurayan-island-conference/17_orokiri.png
+Ezuraya,4,Ezurayan Island Conference,18,3,6,Shirosen,Hoshara,ezuraya/tier-04-ezurayan-island-conference/18_shirosen.png
