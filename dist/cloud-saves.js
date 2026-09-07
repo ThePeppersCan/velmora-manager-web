@@ -194,6 +194,13 @@
     function renderStatus(){
       const wrap=doc?.getElementById('velmoraCloudStatus');if(!wrap)return;
       wrap.dataset.mode=state.mode;const set=(query,value)=>{const el=wrap.querySelector(query);if(el)el.textContent=value;};
+      // A completed sync hides the status widget. Always collapse its details
+      // first so the next autosave can only reveal the compact status chip.
+      if(state.mode==='synced'||state.mode==='local-only'){
+        const panel=wrap.querySelector('.velmora-cloud-panel'),chip=wrap.querySelector('.velmora-cloud-chip');
+        if(panel)panel.hidden=true;
+        if(chip)chip.setAttribute('aria-expanded','false');
+      }
       set('[data-cloud-label]',state.label);set('[data-cloud-detail]',state.detail);set('[data-cloud-account]',state.accountName||'Guest player');
       set('[data-cloud-copy]',state.connected?(state.mode==='saving'?'Updating…':state.mode==='offline'||state.setupRequired?'Needs attention':'Protected'):'Local only');
       const sync=wrap.querySelector('[data-cloud-sync]'),login=wrap.querySelector('[data-cloud-login]');if(sync){sync.hidden=!state.connected;sync.disabled=state.mode==='saving'||state.mode==='syncing';}if(login)login.hidden=state.connected;
