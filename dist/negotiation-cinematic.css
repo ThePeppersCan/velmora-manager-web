@@ -1,0 +1,214 @@
+/* V83 responsive negotiation presentation. Activated only after the required scene art loads. */
+#negotiationModal .v73-cutscene{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:0;background:#02080c;transition:opacity .24s ease}
+#negotiationModal .v73-cutscene.has-art{opacity:1}
+#negotiationModal .v73-shot{position:absolute;inset:0;overflow:hidden;opacity:0;transition:opacity .46s cubic-bezier(.22,.61,.36,1)}
+#negotiationModal .v73-shot.is-current{opacity:1}
+#negotiationModal .v73-shot-stage{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+#negotiationModal .v73-plate{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:saturate(.87) contrast(1.06) brightness(.76)}
+#negotiationModal .v73-furniture,#negotiationModal .v73-camera-depth,#negotiationModal .v73-light-pass{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+#negotiationModal .v73-furniture{z-index:4}
+#negotiationModal .v73-camera-depth{z-index:5;opacity:.74}
+#negotiationModal .v73-light-pass{z-index:6;mix-blend-mode:screen;opacity:.78}
+#negotiationModal .v73-table-shadow{position:absolute;z-index:1;left:50%;top:69%;width:45%;height:auto;transform:translate(-50%,-50%);opacity:.62;image-rendering:pixelated}
+#negotiationModal .v73-cast{position:absolute;inset:0;z-index:3}
+#negotiationModal .v73-shot[data-v73-shot^="cafe"] .v73-cast{z-index:5}
+#negotiationModal .v73-shot[data-v73-shot^="cafe"] .v73-contact-shadow{display:none}
+#negotiationModal .v73-contact-shadow{position:absolute;z-index:2;left:var(--v73-x);top:calc(var(--v73-y) + 15%);width:clamp(145px,min(12cqw,24cqh),270px);height:auto;transform:translate(-50%,-50%) scale(var(--v73-scale));transform-origin:center;opacity:.65;image-rendering:pixelated}
+#negotiationModal .v73-contact-shadow.v73-role-player{width:clamp(160px,min(13.5cqw,26cqh),290px)}
+#negotiationModal .v73-character{position:absolute;z-index:3;left:var(--v73-x);top:var(--v73-y);width:clamp(190px,min(15cqw,28cqh),320px);aspect-ratio:2/3;transform:translate(-50%,-50%) scale(var(--v73-scale));transform-origin:center bottom;filter:drop-shadow(0 14px 12px #0008);image-rendering:pixelated}
+#negotiationModal .v73-character.v73-role-player{width:clamp(180px,min(14cqw,26cqh),295px)}
+#negotiationModal .v73-character-frame{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;transform:scaleX(var(--v73-facing,1))}
+#negotiationModal .v73-character-frame>.manager-paperdoll,#negotiationModal .v73-character-frame>.smart-avatar,#negotiationModal .v73-character-frame>.transfer-avatar{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#negotiationModal .v73-character .manager-composite-canvas,#negotiationModal .v73-character .smart-avatar img,#negotiationModal .v73-character .transfer-avatar img,#negotiationModal .v73-character-frame>img{display:block;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center bottom!important;image-rendering:pixelated}
+#negotiationModal .v73-character .manager-ground-shadow{display:none!important}
+#negotiationModal .v73-mouth-open{opacity:0}
+#negotiationModal .v73-character.is-speaker .v73-mouth-closed{animation:v73-mouth-closed var(--v73-mouth-speed) steps(1,end) infinite}
+#negotiationModal .v73-character.is-speaker .v73-mouth-open{animation:v73-mouth-open var(--v73-mouth-speed) steps(1,end) infinite}
+#negotiationModal .v73-character.is-speaker{filter:drop-shadow(0 14px 12px #0009) brightness(1.055)}
+#negotiationModal .v73-character.is-reacting{animation:v73-reaction .8s cubic-bezier(.2,.7,.2,1) both}
+#negotiationModal .v73-character-label{position:absolute;left:50%;top:-6%;min-width:140px;max-width:230px;transform:translateX(-50%);padding:7px 11px;background:#06131ef2;border:1px solid #d7c29470;border-radius:4px;color:#f7f1e5;font:700 clamp(10px,.65vw,13px)/1.25 Arial,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 7px 22px #000a}
+#negotiationModal .v73-character-label small{display:block;margin-bottom:3px;color:#93b5bd;font:800 8px/1.2 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+#negotiationModal .v73-character.v73-role-player .v73-character-label{top:26%}
+#negotiationModal .v73-shot-vignette{position:absolute;z-index:7;inset:0;background:radial-gradient(ellipse at 50% 43%,transparent 31%,rgba(0,8,13,.18) 68%,rgba(0,5,8,.68) 100%),linear-gradient(180deg,rgba(0,6,10,.31),transparent 25%,transparent 66%,rgba(0,4,7,.66))}
+#negotiationModal .v73-screen-grade{position:absolute;z-index:8;inset:0;background:linear-gradient(90deg,rgba(3,11,17,.34),transparent 32%,transparent 68%,rgba(3,11,17,.34));box-shadow:inset 0 0 120px #0007}
+
+#negotiationModal .v73-dialogue{position:absolute;z-index:9;top:24px;left:28px;width:min(720px,calc(100% - 56px));color:#fff;filter:drop-shadow(0 10px 28px #000b)}
+#negotiationModal .v73-dialogue-kicker{display:flex;align-items:center;gap:14px;width:max-content;max-width:100%;padding:8px 12px;background:#071b28f0;border-left:3px solid #bfa76f;color:#b6cbd0;font:800 10px/1.25 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+#negotiationModal .v73-dialogue-kicker strong{padding-left:12px;border-left:1px solid #b8c9c73d;color:#eadcb8}
+#negotiationModal .v73-dialogue-line{margin-top:8px;padding:13px 17px 15px;background:linear-gradient(100deg,#061723f2,#071c28dc 74%,#071c2800);border-top:1px solid #bfa76f80}
+#negotiationModal .v73-dialogue-line small{display:block;margin-bottom:5px;color:#e9d8ae;font:800 11px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+#negotiationModal .v73-dialogue-line p{margin:0;max-width:650px;color:#edf2f0;font:italic clamp(15px,1vw,20px)/1.45 Georgia,serif;text-wrap:balance}
+
+/* The live controls become a restrained deal desk at the foot of the scene. */
+#negotiationModal.v73-has-cast{align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:#000!important}
+#negotiationModal.v73-has-cast .negotiation-card{position:absolute!important;z-index:12;left:50%;right:auto!important;bottom:20px;top:auto!important;transform:translateX(-50%);width:min(1460px,calc(100% - 48px))!important;max-width:none!important;min-height:0!important;max-height:min(54cqh,640px)!important;overflow:hidden!important;background:linear-gradient(120deg,#071d29f7,#0a2833fa)!important;border:1px solid #c2ad7970!important;border-top:2px solid #c7af74!important;border-radius:9px!important;box-shadow:0 24px 80px #000e,0 0 0 1px #001019!important;isolation:isolate}
+#negotiationModal.v73-has-cast .negotiation-card>.modal-close{position:absolute!important;z-index:4;right:13px!important;top:12px!important;width:36px!important;height:36px!important;margin:0!important;display:grid!important;place-items:center;color:#d9e1df!important;background:#0a2b38!important;border:1px solid #8fa3a15c!important;border-radius:4px!important;font-size:20px!important;line-height:1!important}
+#negotiationModal.v73-has-cast #negotiationContent{display:flex;flex-direction:column;min-height:0;max-height:min(54cqh,640px);color:#e7eeee}
+#negotiationModal.v73-has-cast .negotiation-header{display:flex;align-items:center;flex:0 0 auto;min-height:64px;padding:12px 66px 12px 20px!important;gap:18px;background:#061923f2!important;border-bottom:1px solid #91a9a53d}
+#negotiationModal.v73-has-cast .negotiation-header>div:first-child{min-width:0}
+#negotiationModal.v73-has-cast .negotiation-header h3{margin:1px 0 0;color:#fff!important;font-size:clamp(19px,1.3vw,26px)!important;line-height:1.15}
+#negotiationModal.v73-has-cast .negotiation-header .eyebrow{font-size:10px!important;line-height:1.25;letter-spacing:.13em;color:#bea96f!important}
+#negotiationModal.v73-has-cast .negotiation-header p{display:none!important}
+#negotiationModal.v73-has-cast .negotiation-step{flex:0 0 auto;margin-left:auto;padding-right:2px;color:#d5b96d!important;font-size:10px!important;line-height:1.2!important;white-space:nowrap}
+#negotiationModal.v73-has-cast .negotiation-body{display:block!important;flex:1 1 auto;min-height:0!important;overflow:auto!important;overscroll-behavior:contain;background:transparent!important;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#63858c #061720}
+#negotiationModal.v73-has-cast .negotiation-player{display:none!important}
+#negotiationModal.v73-has-cast [hidden]{display:none!important}
+#negotiationModal.v73-has-cast .negotiation-talks{display:grid!important;grid-template-columns:minmax(420px,.94fr) minmax(500px,1.06fr);align-items:start;gap:14px 18px;min-width:0;padding:16px 18px 18px!important;background:transparent!important;color:#e8efed}
+#negotiationModal.v73-has-cast .negotiation-values{grid-column:1/-1;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0!important}
+#negotiationModal.v73-has-cast .negotiation-values>div{min-width:0;padding:10px 13px!important;background:#061721c7!important;border:1px solid #8ca6a33d!important;border-radius:4px!important}
+#negotiationModal.v73-has-cast .negotiation-values span,#negotiationModal.v73-has-cast .offer-builder>label,#negotiationModal.v73-has-cast .contract-grid label>span{color:#9db5bb!important;font-size:10px!important;line-height:1.3;letter-spacing:.08em;text-transform:uppercase}
+#negotiationModal.v73-has-cast .negotiation-values strong{display:block;margin-top:3px;color:#f2e5c5!important;font-size:17px!important;line-height:1.25;overflow-wrap:anywhere}
+#negotiationModal.v73-has-cast .offer-builder,#negotiationModal.v73-has-cast .contract-grid{grid-column:1;padding:13px!important;margin:0!important;background:#061923d1!important;border:1px solid #a3bbb63d!important;border-radius:5px!important}
+#negotiationModal.v73-has-cast .contract-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 13px}
+#negotiationModal.v73-has-cast .contract-grid .v35-clause-field:has(+.v35-clause-field[hidden]){grid-column:1/-1}
+#negotiationModal.v73-has-cast .contract-money{grid-template-columns:36px minmax(0,1fr)!important;height:44px!important;min-height:44px!important}
+#negotiationModal.v73-has-cast .contract-money b{font-size:16px!important}
+#negotiationModal.v73-has-cast input,#negotiationModal.v73-has-cast select{min-height:44px!important;height:44px!important;padding:9px 11px!important;border-color:#96b0ad5c!important;background:#0b2b37!important;color:#f4f6f2!important;font-size:14px!important}
+#negotiationModal.v73-has-cast .offer-control{grid-template-columns:44px minmax(0,1fr) 44px!important;gap:8px!important;margin-top:8px!important}
+#negotiationModal.v73-has-cast .offer-control button{min-height:44px!important;font-size:20px!important}
+#negotiationModal.v73-has-cast .offer-shortcuts{gap:7px!important;margin-top:8px!important}
+#negotiationModal.v73-has-cast .offer-shortcuts button{min-height:36px!important;height:auto!important;padding:7px 8px!important;font-size:10px!important}
+#negotiationModal.v73-has-cast input:focus-visible,#negotiationModal.v73-has-cast select:focus-visible,#negotiationModal.v73-has-cast button:focus-visible{outline:2px solid #dcc27d!important;outline-offset:2px!important}
+#negotiationModal.v73-has-cast .negotiation-response{grid-column:2;align-self:stretch;min-height:100%;margin:0!important;padding:15px 17px!important;background:linear-gradient(140deg,#0a2935ed,#071b25ed)!important;border:1px solid #a8bfba3d!important;border-left:3px solid #bea66b!important;border-radius:4px!important;color:#dce7e5!important;font-size:13px!important;line-height:1.5}
+#negotiationModal.v73-has-cast .negotiation-response span{font-size:10px!important;line-height:1.3!important}
+#negotiationModal.v73-has-cast .negotiation-response strong{display:block;margin-top:5px!important;color:#f3e2b7!important;font-size:17px!important;line-height:1.35!important}
+#negotiationModal.v73-has-cast .negotiation-response small{display:block;margin-top:7px!important;color:#9eb4ba!important;font-size:12px!important;line-height:1.45!important}
+#negotiationModal.v73-has-cast .negotiation-response p{margin:5px 0!important}
+#negotiationModal.v73-has-cast .negotiation-intel-warning,#negotiationModal.v73-has-cast .contract-note{grid-column:1;margin:0!important;padding:10px 12px!important;color:#9eb4ba!important;font-size:11px!important;line-height:1.45;background:#071822bd!important}
+#negotiationModal.v73-has-cast .negotiation-actions{grid-column:2;display:flex!important;justify-content:flex-end;align-items:center;gap:10px;margin:0!important;padding:0!important}
+#negotiationModal.v73-has-cast .negotiation-actions button{min-height:44px!important;height:auto!important;padding:10px 16px!important;border-radius:4px!important;font-size:11px!important;letter-spacing:.06em;white-space:nowrap}
+#negotiationModal.v73-has-cast .v35-agreement-type{grid-column:1/-1;display:flex!important;align-items:center;gap:12px;margin:0!important;padding:10px 12px!important;background:#061923ca!important;border:1px solid #9aafac3d!important;border-radius:4px!important}
+#negotiationModal.v73-has-cast .v35-agreement-type>span{color:#9fb7bc!important;font-size:10px!important;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+#negotiationModal.v73-has-cast .v35-agreement-type select{flex:1}
+#negotiationModal.v73-has-cast .v72-scene-caption,#negotiationModal.v73-has-cast .v72-opposite,#negotiationModal.v73-has-cast .v72-flavor{display:none!important}
+
+/* Structured transfers stay inside the cutscene as a compact deal desk. */
+#negotiationModal.v73-has-cast #v35NegotiationTerms{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:0!important;
+  color:#dce8e8;
+  background:transparent;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:#63858c #061720;
+}
+#negotiationModal.v73-has-cast #v35NegotiationTerms>.v34-content{padding:12px 18px 16px!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading{
+  display:grid;
+  grid-template-columns:minmax(190px,.62fr) minmax(260px,1fr);
+  align-items:end;
+  gap:3px 18px;
+  margin:0 0 11px;
+  padding:0 0 10px;
+  border-bottom:1px solid #91a9a538;
+}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading small{grid-column:1;color:#85c7d0;font:800 9px/1.3 Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading h3{grid-column:1;margin:1px 0 0;color:#f5ead1!important;font-size:19px!important;line-height:1.2}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading p{grid-column:2;grid-row:1/3;align-self:center;margin:0;color:#a9bec3;font:700 11px/1.45 Arial,sans-serif}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px 11px!important;align-items:end}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form label{display:flex;flex-direction:column;gap:5px;min-width:0;margin:0;color:#9fb6bb!important;font:800 9px/1.3 Arial,sans-serif;letter-spacing:.055em;text-transform:uppercase}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form input,#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form select{width:100%;height:39px!important;min-height:39px!important;padding:7px 9px!important;border:1px solid #8ca6a34d!important;border-radius:3px!important;background:#0a2a36!important;color:#f2f5f2!important;font:700 12px/1.2 Arial,sans-serif!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-form-section{grid-column:1/-1;margin-top:2px;padding:8px 0 0;border-top:1px solid #8ca6a329;color:#cfb875!important;font:900 9px/1.2 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-check{grid-column:1/3!important;display:flex!important;flex-direction:row!important;align-items:center!important;min-height:39px;padding:8px 10px;border:1px solid #8ca6a32e;background:#061923ad;text-transform:none}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-check input{flex:0 0 auto;width:17px!important;height:17px!important;min-height:17px!important;padding:0!important;accent-color:#3ab8bd}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form>button{min-height:39px!important;height:39px!important;padding:8px 13px!important;border:1px solid #82d4d0!important;border-radius:3px!important;background:linear-gradient(180deg,#16878a,#0b5962)!important;color:#fff!important;font:900 10px/1 Arial,sans-serif!important;letter-spacing:.08em}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-term-note,#negotiationModal.v73-has-cast #v35NegotiationTerms .v40-arrival-note{margin:10px 0!important;padding:9px 11px!important;border-left:2px solid #bea66b;background:#061923ad;color:#a9bdc1!important;font:700 10px/1.45 Arial,sans-serif}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-feedback,#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-confirm{margin:0 0 10px!important;padding:10px 12px!important;border:1px solid #bea66b70!important;background:#102c35!important;color:#f1e6c9!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-section{margin:13px 0 9px;color:#cfb875!important;font-size:10px!important;letter-spacing:.1em}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-card,#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-empty{padding:11px 12px!important;border:1px solid #8ca6a338!important;background:#061923c9!important;color:#b8c9cc!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-card h3{color:#f5ead1!important;font-size:15px!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v34-card p{color:#a9bdc1!important;font-size:10px!important;line-height:1.45!important}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-transfer-commitments article{border-color:#8ca6a338;background:#061923c9;box-shadow:none}
+#negotiationModal.v73-has-cast #v35NegotiationTerms .v35-transfer-commitments :is(strong,span){color:#d8e4e4}
+
+@keyframes v73-mouth-closed{0%,31%,57%,100%{opacity:1}32%,56%{opacity:0}}
+@keyframes v73-mouth-open{0%,31%,57%,100%{opacity:0}32%,56%{opacity:1}}
+@keyframes v73-reaction{0%{transform:translate(-50%,-50%) scale(var(--v73-scale))}38%{transform:translate(-50%,calc(-50% - 1.3%)) scale(calc(var(--v73-scale) * 1.015))}100%{transform:translate(-50%,-50%) scale(var(--v73-scale))}}
+
+@media (max-height:820px) and (min-width:721px){
+  #negotiationModal.v73-has-cast .negotiation-card,#negotiationModal.v73-has-cast #negotiationContent{max-height:54cqh!important}
+  #negotiationModal.v73-has-cast .negotiation-card{bottom:10px}
+  #negotiationModal .v73-dialogue{top:12px}
+  #negotiationModal .v73-character{top:calc(var(--v73-y) - 9cqh)}
+  #negotiationModal .v73-contact-shadow{top:calc(var(--v73-y) + 6cqh)}
+  #negotiationModal .v73-character-label{top:-6%;bottom:auto}
+  #negotiationModal.v73-has-cast .negotiation-header{min-height:58px;padding-top:9px!important;padding-bottom:9px!important}
+  #negotiationModal.v73-has-cast .negotiation-talks{gap:10px 14px;padding-top:12px!important;padding-bottom:13px!important}
+  #negotiationModal.v73-has-cast .contract-grid{gap:8px 11px;padding:10px!important}
+}
+
+/* V20.8.1 — contextual transfer-market intelligence. */
+.negotiation-market-context{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:10px 0;
+}
+.negotiation-market-context>div{
+  min-height:62px;
+  padding:10px 12px;
+  border:1px solid rgba(150,178,199,.24);
+  background:linear-gradient(145deg,rgba(5,24,39,.82),rgba(12,40,57,.58));
+  box-shadow:inset 0 1px rgba(255,255,255,.035);
+}
+.negotiation-market-context span{
+  display:block;
+  margin-bottom:6px;
+  color:#86c8d5;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.13em;
+}
+.negotiation-market-context strong{
+  display:block;
+  color:#edf7fb;
+  font-size:11px;
+  line-height:1.35;
+}
+@media (max-width:760px){.negotiation-market-context{grid-template-columns:1fr}}
+@media (max-width:1040px){
+  #negotiationModal.v73-has-cast .negotiation-talks{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:14px!important}
+  #negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media (max-width:720px){
+  #negotiationModal .v73-dialogue{top:10px;left:10px;width:calc(100vw - 20px)}
+  #negotiationModal .v73-dialogue-line{padding:8px 10px}
+  #negotiationModal .v73-dialogue-line p{font-size:12px}
+  #negotiationModal .v73-character{width:clamp(180px,34vw,240px)}
+  #negotiationModal .v73-character.v73-role-player{width:clamp(175px,32vw,225px)}
+  #negotiationModal .v73-character-label{display:none}
+  #negotiationModal.v73-has-cast .negotiation-card{bottom:0;width:100%!important;max-height:68vh!important;border-radius:8px 8px 0 0!important;border-left:0!important;border-right:0!important}
+  #negotiationModal.v73-has-cast #negotiationContent{max-height:68vh!important}
+  #negotiationModal.v73-has-cast .negotiation-header{min-height:58px;padding:10px 56px 10px 13px!important}
+  #negotiationModal.v73-has-cast .negotiation-header p{display:none}
+  #negotiationModal.v73-has-cast .negotiation-step{display:none}
+  #negotiationModal.v73-has-cast .negotiation-talks{display:block!important;padding:11px 12px 14px!important}
+  #negotiationModal.v73-has-cast .negotiation-talks>*{margin-bottom:10px!important}
+  #negotiationModal.v73-has-cast .negotiation-values{display:grid!important}
+  #negotiationModal.v73-has-cast .contract-grid{display:grid!important}
+  #negotiationModal.v73-has-cast .negotiation-actions{display:flex!important}
+  #negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading{display:block}
+  #negotiationModal.v73-has-cast #v35NegotiationTerms .v35-deal-heading p{margin-top:5px}
+}
+@media (max-width:520px){
+  #negotiationModal .v73-dialogue{left:8px;width:calc(100% - 16px)}
+  #negotiationModal.v73-has-cast .negotiation-card,#negotiationModal.v73-has-cast #negotiationContent{max-height:72vh!important}
+  #negotiationModal.v73-has-cast .negotiation-header h3{font-size:18px!important}
+  #negotiationModal.v73-has-cast .negotiation-values{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  #negotiationModal.v73-has-cast .negotiation-values>div:nth-child(3){grid-column:1/-1}
+  #negotiationModal.v73-has-cast .contract-grid{grid-template-columns:minmax(0,1fr)!important}
+  #negotiationModal.v73-has-cast .contract-grid .v35-clause-field{grid-column:1!important}
+  #negotiationModal.v73-has-cast .v35-agreement-type{align-items:stretch;flex-direction:column}
+  #negotiationModal.v73-has-cast .negotiation-actions{width:100%}
+  #negotiationModal.v73-has-cast .negotiation-actions button{flex:1;min-width:0;padding-inline:9px!important;font-size:10px!important}
+  #negotiationModal.v73-has-cast #v35NegotiationTerms .v34-form{grid-template-columns:minmax(0,1fr)!important}
+  #negotiationModal.v73-has-cast #v35NegotiationTerms .v34-check{grid-column:1!important}
+}
+@media (prefers-reduced-motion:reduce){
+  #negotiationModal .v73-shot,#negotiationModal .v73-cutscene{transition:none!important}
+  #negotiationModal .v73-character-frame,#negotiationModal .v73-character{animation:none!important}
+  #negotiationModal .v73-character.is-speaker .v73-mouth-closed{opacity:1!important}
+  #negotiationModal .v73-character.is-speaker .v73-mouth-open{opacity:0!important}
+}

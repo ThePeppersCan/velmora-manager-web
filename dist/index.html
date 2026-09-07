@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Velmora Manager — Career Mode</title>
+  <script>
+    (()=>{try{const key='velmora-manager-interface-theme-v1',allowed=['classic','night','indigo','ember'],saved=String(localStorage.getItem(key)||'classic').toLowerCase();document.documentElement.dataset.vmTheme=allowed.includes(saved)?saved:'classic';}catch(_e){document.documentElement.dataset.vmTheme='classic';}})();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=v89-stable" />
+  <link rel="stylesheet" href="training.css?v=v89-stable" />
+  <link rel="stylesheet" href="central.css?v=v89-stable" />
+  <link rel="stylesheet" href="central-news.css?v=v89-stable" />
+  <link rel="stylesheet" href="career-expansion.css?v=v89-stable" />
+  <link rel="stylesheet" href="career-legacy-challenges.css?v=v89-stable" />
+  <link rel="stylesheet" href="aaa-career-pass.css?v=v89-stable" />
+  <link rel="stylesheet" href="themes.css?v=v89-stable" />
+  <link rel="stylesheet" href="matchday-cobalt.css?v=v89-stable" />
+  <link rel="stylesheet" href="player-profiles.css?v=v89-stable" />
+  <link rel="stylesheet" href="homepage-polish.css?v=v89-stable" />
+  <link rel="stylesheet" href="matchday-polish.css?v=v89-stable" />
+  <link rel="stylesheet" href="matchday-preview-redesign.css?v=v89-stable" />
+  <link rel="stylesheet" href="press-conference.css?v=v89-stable" />
+  <link rel="stylesheet" href="results-cinematic.css?v=v89-stable" />
+  <link rel="stylesheet" href="league-table-cinematic.css?v=v89-stable" />
+  <link rel="stylesheet" href="manager-profiles.css?v=v89-stable" />
+  <link rel="stylesheet" href="squad-redesign.css?v=v89-stable" />
+  <link rel="stylesheet" href="transfers-gallery.css?v=v89-stable" />
+  <link rel="stylesheet" href="squad-clubhouse.css?v=v89-stable" />
+  <link rel="stylesheet" href="season-hub-polish.css?v=v89-stable" />
+  <link rel="stylesheet" href="inbox-pixel.css?v=v89-stable" />
+  <link rel="stylesheet" href="central-reference-v2.css?v=v89-stable" />
+  <link rel="stylesheet" href="office-screens-pixel.css?v=v89-stable" />
+  <link rel="stylesheet" href="negotiation-cinematic.css?v=v89-stable" />
+  <link rel="stylesheet" href="clubhouse-events.css?v=v89-stable" />
+  <link rel="stylesheet" href="manager-career.css?v=v89-stable" />
+  <link rel="stylesheet" href="season-board-polish.css?v=v89-stable" />
+  <link rel="stylesheet" href="domestic-cups.css?v=v89-stable" />
+  <link rel="stylesheet" href="world-history-records.css?v=v89-stable" />
+  <link rel="stylesheet" href="personnel-identity.css?v=v97-personnel" />
+  <link rel="stylesheet" href="main-menu.css?v=v99-menu" />
+</head>
+<body class="v20-ui">
+  <main id="app" class="app-root" aria-live="polite">
+    <div id="gameFrame" class="game-frame">
+      <section id="screenMenu" class="screen menu-screen is-active" aria-label="Velmora Manager main menu">
+        <div class="menu-art-backdrop" aria-hidden="true"></div>
+        <div class="menu-atmosphere" aria-hidden="true"></div>
+        <div id="menuParticleField" class="menu-particle-field" aria-hidden="true"></div>
+
+        <div class="menu-art-utilities" aria-label="Quick settings">
+          <button id="menuAudioToggle" type="button" data-art-action="audio" aria-label="Mute audio" aria-pressed="false" title="Mute audio">
+            <svg class="menu-icon menu-icon-audio" aria-hidden="true" viewBox="0 0 32 32">
+              <path d="M5 13h5l7-6v18l-7-6H5z" />
+              <path class="audio-wave audio-wave-one" d="M21 12c2 2 2 6 0 8" />
+              <path class="audio-wave audio-wave-two" d="M25 8c5 5 5 11 0 16" />
+              <path class="audio-muted-mark" d="m21 12 7 8m0-8-7 8" />
+            </svg>
+          </button>
+          <button type="button" data-art-action="settings" aria-label="Open settings" title="Settings">
+            <svg class="menu-icon" aria-hidden="true" viewBox="0 0 32 32">
+              <path d="M13.4 4.5h5.2l.8 3a10.9 10.9 0 0 1 2.2 1.3l3-.8 2.6 4.5-2.2 2.2a11 11 0 0 1 0 2.6l2.2 2.2-2.6 4.5-3-.8a10.9 10.9 0 0 1-2.2 1.3l-.8 3h-5.2l-.8-3a10.9 10.9 0 0 1-2.2-1.3l-3 .8-2.6-4.5L7 17.3a11 11 0 0 1 0-2.6l-2.2-2.2L7.4 8l3 .8a10.9 10.9 0 0 1 2.2-1.3z" />
+              <circle cx="16" cy="16" r="4" />
+            </svg>
+          </button>
+        </div>
+
+        <nav class="menu-actions" aria-label="Main menu">
+          <button id="btnContinue" class="menu-option is-selected" type="button" data-menu-index="0">
+            <span class="menu-option-number" aria-hidden="true">01</span>
+            <span class="menu-option-divider" aria-hidden="true"></span>
+            <span class="menu-option-copy">
+              <strong>CONTINUE CAREER</strong>
+              <small id="menuContinueStatus">CURRENT SAVE</small>
+              <em id="menuContinueDetail">PREVIEW BUILD · 2026</em>
+            </span>
+            <span class="menu-option-chevron" aria-hidden="true">›</span>
+          </button>
+          <button id="btnNewCareer" class="menu-option" type="button" data-menu-index="1">
+            <span class="menu-option-number" aria-hidden="true">02</span>
+            <span class="menu-option-divider" aria-hidden="true"></span>
+            <span class="menu-option-copy"><strong>NEW CAREER</strong><small>BUILD YOUR STORY</small><em>FIVE INDEPENDENT SAVE SLOTS</em></span>
+            <span class="menu-option-chevron" aria-hidden="true">›</span>
+          </button>
+          <button id="btnSettings" class="menu-option" type="button" data-menu-index="2">
+            <span class="menu-option-number" aria-hidden="true">03</span>
+            <span class="menu-option-divider" aria-hidden="true"></span>
+            <span class="menu-option-copy"><strong>SETTINGS</strong><small>PERSONALISE YOUR GAME</small><em>AUDIO · DISPLAY · ACCESSIBILITY</em></span>
+            <span class="menu-option-chevron" aria-hidden="true">›</span>
+          </button>
+        </nav>
+
+        <div class="menu-input-hint" aria-hidden="true"><span>↑↓</span> SELECT <span>ENTER</span> CONFIRM</div>
+        <span class="menu-release" data-velmora-release>V89 · STABILISATION RELEASE</span>
+      </section>
+
+
+      <section id="screenManagerCreator" class="screen manager-creator-screen" aria-label="Create your manager">
+        <div class="manager-creator-bg"></div>
+        <header class="manager-create-header">
+          <button id="managerBackToMenu" class="manager-back-btn" type="button" aria-label="Back to main menu">‹</button>
+          <img src="assets/ui-v2/header-logo.png" alt="Velmora Manager" class="manager-create-logo">
+          <div class="manager-create-title"><span>NEW CAREER</span><h2>CREATE YOUR MANAGER</h2></div>
+          <div class="manager-create-progress"><span id="managerStepCounter">STEP 1 OF 4</span><strong id="managerStepName">PERSONAL DETAILS</strong></div>
+        </header>
+
+        <div class="manager-create-shell">
+          <aside class="manager-stage-rail" aria-label="Manager creation stages">
+            <button type="button" class="manager-stage-tab is-active" data-manager-stage="0"><span>01</span><div><strong>PERSONAL DETAILS</strong><small>Your Velmoran identity</small></div></button>
+            <button type="button" class="manager-stage-tab" data-manager-stage="1"><span>02</span><div><strong>APPEARANCE</strong><small>Face, hair and details</small></div></button>
+            <button type="button" class="manager-stage-tab" data-manager-stage="2"><span>03</span><div><strong>WARDROBE</strong><small>Touchline presentation</small></div></button>
+            <button type="button" class="manager-stage-tab" data-manager-stage="3"><span>04</span><div><strong>CONFIRM MANAGER</strong><small>Begin your career</small></div></button>
+            <div class="manager-stage-note"><span>CAREER CHARACTER</span><p>Your manager is saved as modular layer IDs and can be reused throughout the career.</p></div>
+          </aside>
+
+          <section class="manager-live-stage" aria-label="Live manager preview">
+            <div class="manager-studio-kicker">VELMORA CAREER STUDIO</div>
+            <div id="managerLivePreview" class="manager-live-preview"></div>
+            <div class="manager-preview-plinth"><span id="managerPreviewName">YOUR MANAGER</span><small id="managerPreviewOrigin">VELMORA</small></div>
+            <div class="manager-preview-actions manager-preview-actions-v5">
+              <button id="managerRandomize" type="button">RANDOMISE ALL</button>
+              <button id="managerReset" type="button">RESET</button>
+            </div>
+            <div class="manager-random-studio" aria-label="Manager randomization controls">
+              <label><span>PROFILE</span><select id="managerRandomProfile"></select></label>
+              <label><span>SEED</span><input id="managerRandomSeed" type="text" maxlength="28" placeholder="Optional seed"></label>
+              <div class="manager-random-actions">
+                <button type="button" data-manager-random-group="face">FACE ONLY</button>
+                <button type="button" data-manager-random-group="hair">HAIR ONLY</button>
+                <button type="button" data-manager-random-group="clothes">CLOTHES ONLY</button>
+                <button type="button" data-manager-random-group="details">DETAILS ONLY</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="manager-config-panel">
+            <div id="managerPersonalStage" class="manager-config-stage is-active" data-manager-pane="0">
+              <div class="manager-panel-heading"><span>01 · IDENTITY</span><h3>Personal Details</h3><p>Set the identity that will follow you through your Velmora career.</p></div>
+              <div class="manager-form-grid manager-form-grid-v5">
+                <label class="manager-field manager-field-wide"><span>MANAGER NAME</span><input id="managerNameInput" type="text" maxlength="32" placeholder="Enter manager name" autocomplete="off"></label>
+                <label class="manager-field"><span>PREFERRED SHORT NAME</span><input id="managerShortNameInput" type="text" maxlength="20" placeholder="Optional"></label>
+                <label class="manager-field"><span>AGE</span><input id="managerAgeInput" type="number" min="18" max="80" value="32"></label>
+                <label class="manager-field"><span>PRONOUNS</span><select id="managerPronounSelect"></select></label>
+                <label class="manager-field"><span>TITLE</span><select id="managerTitleSelect"></select></label>
+                <label id="managerCustomTitleField" class="manager-field manager-field-wide manager-custom-title is-hidden"><span>CUSTOM TITLE</span><input id="managerCustomTitleInput" type="text" maxlength="28" placeholder="Enter title"></label>
+                <label id="managerCustomPronounsField" class="manager-field manager-field-wide manager-custom-pronouns is-hidden"><span>CUSTOM PRONOUNS</span><input id="managerCustomPronounsInput" type="text" maxlength="42" placeholder="e.g. xe / xem / xyr"><small>If grammar is incomplete, Velmora Manager safely falls back to your name.</small></label>
+                <label class="manager-field"><span>COUNTRY OF ORIGIN</span><select id="managerNationSelect"></select></label>
+                <label class="manager-field"><span>HOME CITY</span><select id="managerCitySelect"></select><small id="managerCityNote">Uses established Velmoran club/locality canon.</small></label>
+              </div>
+              <div class="manager-identity-card"><span>CAREER IDENTITY</span><strong id="managerIdentitySummary">Manager · Velmora</strong><p>This information will appear in your Manager Career profile, press scenes and future story events.</p></div>
+            </div>
+
+            <div id="managerAppearanceStage" class="manager-config-stage" data-manager-pane="1">
+              <div class="manager-panel-heading"><span>02 · CHARACTER</span><h3>Appearance</h3><p>Every option is compatible. No gender selection or restricted styles.</p></div>
+              <nav id="managerAppearanceTabs" class="manager-category-tabs manager-category-tabs-scroll" aria-label="Appearance categories">
+                <button class="is-active" type="button" data-manager-category="skin">SKIN <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="skin" aria-label="Lock skin">◇</span></button>
+                <button type="button" data-manager-category="face">FACE <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="face" aria-label="Lock face">◇</span></button>
+                <button type="button" data-manager-category="eye">EYES <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eye" aria-label="Lock eyes">◇</span></button>
+                <button type="button" data-manager-category="eyeColour">EYE COLOUR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eyeColour" aria-label="Lock eye colour">◇</span></button>
+                <button type="button" data-manager-category="eyebrow">EYEBROWS <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eyebrow" aria-label="Lock eyebrows">◇</span></button>
+                <button type="button" data-manager-category="eyebrowColour">BROW COLOUR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eyebrowColour" aria-label="Lock eyebrow colour">◇</span></button>
+                <button type="button" data-manager-category="complexion">FACE DETAIL <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="complexion" aria-label="Lock face detail">◇</span></button>
+                <button type="button" data-manager-category="makeup">MAKEUP <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="makeup" aria-label="Lock makeup">◇</span></button>
+                <button type="button" data-manager-category="age">AGE DETAIL <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="age" aria-label="Lock age detail">◇</span></button>
+                <button type="button" data-manager-category="hair">HAIR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="hair" aria-label="Lock hair">◇</span></button>
+                <button type="button" data-manager-category="hairColour">HAIR COLOUR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="hairColour" aria-label="Lock hair colour">◇</span></button>
+                <button type="button" data-manager-category="facial_hair">FACIAL HAIR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="facial_hair" aria-label="Lock facial hair">◇</span></button>
+                <button type="button" data-manager-category="eyewear">EYEWEAR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eyewear" aria-label="Lock eyewear">◇</span></button>
+              </nav>
+              <div class="manager-age-controls">
+                <label><input id="managerAutoAgeToggle" type="checkbox"> <span>Visual ageing follows career age</span></label>
+                <label><input id="managerAutoGreyToggle" type="checkbox"> <span>Allow automatic greying</span></label>
+              </div>
+              <div id="managerAppearanceOptions" class="manager-option-grid"></div>
+            </div>
+
+            <div id="managerWardrobeStage" class="manager-config-stage" data-manager-pane="2">
+              <div class="manager-panel-heading"><span>03 · TOUCHLINE</span><h3>Wardrobe</h3><p>Build independent looks for Matchday, Training, Press, Office and every major career scene.</p></div>
+              <div class="manager-preset-toolbar">
+                <label><span>WARDROBE PRESET</span><select id="managerWardrobePresetSelect"></select></label>
+                <div class="manager-preset-actions">
+                  <select id="managerCopyTargetSelect" aria-label="Copy wardrobe to preset"></select>
+                  <button id="managerCopyPreset" type="button">COPY TO</button>
+                  <button id="managerResetPreset" type="button">RESET PRESET</button>
+                  <button id="managerApplyPresetAll" type="button">APPLY TO ALL</button>
+                </div>
+              </div>
+              <nav id="managerWardrobeTabs" class="manager-category-tabs manager-category-tabs-scroll manager-wardrobe-tabs" aria-label="Wardrobe categories">
+                <button class="is-active" type="button" data-manager-category="outfit">OUTFIT <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="outfit" aria-label="Lock outfit">◇</span></button>
+                <button type="button" data-manager-category="jewellery">JEWELLERY <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="jewellery" aria-label="Lock jewellery">◇</span></button>
+                <button type="button" data-manager-category="hair_accessory">HAIR ACCESSORY <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="hair_accessory" aria-label="Lock hair accessory">◇</span></button>
+                <button type="button" data-manager-category="eyewear">EYEWEAR <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="eyewear" aria-label="Lock eyewear">◇</span></button>
+                <button type="button" data-manager-category="accessory">ACCESSORY <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="accessory" aria-label="Lock accessory">◇</span></button>
+                <button type="button" data-manager-category="career_reward">CAREER REWARD <span class="manager-tab-lock" role="button" tabindex="0" data-manager-lock-category="career_reward" aria-label="Lock career reward">◇</span></button>
+              </nav>
+              <div id="managerWardrobeOptions" class="manager-option-grid manager-outfit-grid"></div>
+            </div>
+
+            <div id="managerConfirmStage" class="manager-config-stage" data-manager-pane="3">
+              <div class="manager-panel-heading"><span>04 · READY</span><h3>Your Manager</h3><p>Review your career character before choosing your first club.</p></div>
+              <div class="manager-confirm-profile">
+                <div id="managerConfirmPortrait" class="manager-confirm-portrait"></div>
+                <div class="manager-confirm-copy"><span>VELMORA MANAGER</span><h3 id="managerConfirmName">Your Manager</h3><p id="managerConfirmDetails">Age 32 · Velmora</p><div class="manager-confirm-tags"><b>UNATTACHED</b><b>NEW CAREER</b></div></div>
+              </div>
+              <div class="manager-confirm-facts">
+                <div><span>ORIGIN</span><strong id="managerConfirmOrigin">Velmora</strong></div>
+                <div><span>STYLE</span><strong id="managerConfirmStyle">Touchline Professional</strong></div>
+                <div><span>CAREER STATUS</span><strong>Ready for appointment</strong></div>
+              </div>
+              <div class="manager-confirm-note">Your appearance is stored using stable modular asset IDs. It will load identically with this career and remains ready for a future Edit Manager feature.</div>
+            </div>
+
+            <footer class="manager-create-footer">
+              <button id="managerPrevious" type="button" class="manager-secondary-action">PREVIOUS</button>
+              <div class="manager-footer-status"><span id="managerFooterStage">PERSONAL DETAILS</span><small id="managerFooterHint">Complete your identity to continue.</small></div>
+              <button id="managerContinue" type="button" class="manager-primary-action">CONTINUE</button>
+            </footer>
+          </section>
+        </div>
+      </section>
+
+      <section id="screenCareerStart" class="screen career-start-screen" aria-label="Choose how to begin your career">
+        <div class="career-start-bg"></div>
+        <header class="career-start-header">
+          <button id="careerStartBack" class="manager-back-btn" type="button" aria-label="Back to manager confirmation">‹</button>
+          <img src="assets/ui-v2/header-logo.png" alt="Velmora Manager" class="manager-create-logo">
+          <div class="career-start-heading"><span>NEW CAREER · FIRST APPOINTMENT</span><h2>HOW DO YOU WANT TO BEGIN?</h2></div>
+          <div class="career-start-status"><span>MANAGER STATUS</span><strong>UNPROVEN</strong></div>
+        </header>
+        <div class="career-start-shell">
+          <aside class="career-start-manager">
+            <div id="careerStartPortrait" class="career-start-portrait"></div>
+            <span class="career-start-kicker">REGISTERED MANAGER</span>
+            <h3 id="careerStartManagerName">YOUR MANAGER</h3>
+            <p id="careerStartManagerOrigin">VELMORA</p>
+            <div class="career-start-license"><span>VQA CAREER LICENCE</span><strong>ENTRY LEVEL</strong><small>Your reputation grows through results, promotions and trophies.</small></div>
+          </aside>
+          <main class="career-path-grid">
+            <button id="careerPathChooseClub" class="career-path-card career-path-card-club" type="button">
+              <span class="career-path-number">01</span>
+              <div class="career-path-copy"><span>CLASSIC CAREER</span><h3>CHOOSE ANY CLUB</h3><p>Pick any of 288 clubs across Velmora, Kharova, Caldria and Ezuraya, then begin on 01 August at the start of a brand-new season. No reputation restriction at career setup.</p></div>
+              <div class="career-path-details"><b>ALL 16 DIVISIONS</b><b>ANY CLUB</b><b>IMMEDIATE CONTRACT</b></div>
+              <div class="career-path-visual career-club-ladder" aria-hidden="true"><span>VELMORA</span><span>KHAROVA</span><span>CALDRIA</span><span>EZURAYA</span></div>
+              <strong class="career-path-action">BROWSE CLUBS <i>›</i></strong>
+            </button>
+            <button id="careerPathUnemployed" class="career-path-card career-path-card-unemployed" type="button">
+              <span class="career-path-number">02</span>
+              <div class="career-path-copy"><span>JOURNEY CAREER</span><h3>START UNEMPLOYED</h3><p>Begin on 01 August with no club. As you wait, the season keeps moving: fixtures are played, results are recorded and tables change until a board approaches you.</p></div>
+              <div class="career-path-details"><b>LOWER-LEAGUE START</b><b>RANDOM OFFERS</b><b>BUILD REPUTATION</b></div>
+              <div class="career-path-visual career-job-pulse" aria-hidden="true"><div><i></i><span>BOARD SEARCHING</span></div><div><i></i><span>VACANCY WATCH</span></div><div><i></i><span>CLUB APPROACH</span></div></div>
+              <strong class="career-path-action">ENTER JOB MARKET <i>›</i></strong>
+            </button>
+            <button id="careerPathChallenge" type="button" class="v70-challenge-entry"><span>03 · ONE SEASON. ONE MISSION.</span><strong>SHORT CHALLENGE CAREERS</strong><small>Take a focused contract with clear rules, live objectives and a permanent result.</small><i>›</i></button>
+            <button type="button" class="v34-create-entry" data-v34-open="create"><span>04 · YOUR CLUB, YOUR STORY</span><strong>CREATE A CLUB</strong><small>Choose a league place, identity, colours and starting budget.</small></button>
+            <section class="career-start-note">
+              <span>CAREER LOGIC</span>
+              <p>Both paths begin at the start of a fresh season. Choosing a club appoints you immediately on 01 August. Starting unemployed also begins on 01 August, but every day you wait advances the live world — fixtures, results and league tables continue without you.</p>
+            </section>
+          </main>
+        </div>
+      </section>
+
+      <section id="screenUnemployed" class="screen unemployed-screen" aria-label="Unemployed manager job search">
+        <div class="unemployed-bg"></div>
+        <header class="unemployed-header">
+          <button id="unemployedToMenu" class="manager-back-btn" type="button" aria-label="Return to main menu">‹</button>
+          <div class="unemployed-title"><span>MANAGER CAREER</span><h2>JOB CENTRE</h2></div>
+          <div class="unemployed-date"><span>CURRENT DATE</span><strong id="unemployedDateLabel">01 AUG 2026</strong></div>
+        </header>
+        <div class="unemployed-shell">
+          <aside class="unemployed-profile-panel">
+            <div id="unemployedPortrait" class="unemployed-portrait"></div>
+            <span>AVAILABLE MANAGER</span>
+            <h3 id="unemployedManagerName">YOUR MANAGER</h3>
+            <p id="unemployedManagerOrigin">VELMORA</p>
+            <div class="unemployed-rep"><small>CAREER REPUTATION</small><strong id="unemployedRepLabel">NEWCOMER</strong><div><i id="unemployedRepBar"></i></div></div>
+            <div class="unemployed-stat-grid"><div><span>DAYS SEARCHING</span><strong id="unemployedDays">0</strong></div><div><span>OFFERS RECEIVED</span><strong id="unemployedOfferCount">0</strong></div></div>
+          </aside>
+          <main class="job-market-panel">
+            <div class="job-market-heading"><div><span>FIRST APPOINTMENT</span><h3>CLUB APPROACHES</h3><p>Boards will contact you when they believe your profile fits their vacancy.</p></div><div class="job-market-live"><i></i> JOB MARKET ACTIVE</div></div>
+            <div id="jobOfferGrid" class="job-offer-grid"></div>
+            <div class="job-wait-controls">
+              <div><span>NO OFFER YOU LIKE?</span><p>Advance time. The search stops automatically when a new approach arrives.</p></div>
+              <button id="jobAdvanceDay" type="button">WAIT 1 DAY</button>
+              <button id="jobAdvanceWeek" type="button" class="job-advance-primary">WAIT UP TO 7 DAYS</button>
+            </div>
+          </main>
+          <aside class="job-market-sidebar">
+            <section><span>HOW IT WORKS</span><h4>EARN THE BIG JOBS</h4><p>Your first offers are weighted toward the lower divisions. Success in your first role raises the calibre of future opportunities.</p></section>
+            <section><span>EARLY CAREER MARKET</span><div class="market-likelihood"><b>LEAGUE TWO</b><i style="--w:92%"></i><b>LEAGUE ONE</b><i style="--w:63%"></i><b>CHAMPIONSHIP</b><i style="--w:22%"></i><b>REPO SPORTS</b><i style="--w:3%"></i></div></section>
+            <section id="unemployedWorldActivity" class="job-world-activity"><div class="job-world-head"><div><span>SEASON IN MOTION</span><strong>0 MATCHES PLAYED</strong></div></div><p class="job-world-empty">The season has not kicked off yet.</p></section>
+            <section class="job-market-tip"><span>TIP</span><p>You can reject an approach and keep waiting. Offers expire after seven days. Accepting a job never rewinds the season.</p></section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="screenAppointment" class="screen appointment-screen" aria-label="Manager appointment and contract signing">
+        <div class="appointment-bg"></div>
+        <header class="appointment-header">
+          <button id="appointmentBack" class="manager-back-btn" type="button" aria-label="Back">‹</button>
+          <div><span>FIRST APPOINTMENT</span><h2>CONTRACT ROOM</h2></div>
+          <div class="appointment-step"><span>CAREER STATUS</span><strong>APPOINTMENT PENDING</strong></div>
+        </header>
+        <div id="appointmentContent" class="appointment-content"></div>
+      </section>
+
+      <section id="screenFirstWeek" class="screen first-week-screen" aria-label="Welcome to your new club">
+        <div id="firstWeekBackdrop" class="first-week-backdrop"></div>
+        <div class="first-week-grade" aria-hidden="true"></div>
+        <header class="first-week-header">
+          <button id="firstWeekMenu" class="first-week-icon-btn" type="button" aria-label="Save and return to main menu">‹</button>
+          <div class="first-week-brand"><span>VELMORA MANAGER</span><h2 id="firstWeekSceneLabel">WELCOME TO THE JOB</h2></div>
+          <div id="firstWeekClubLockup" class="first-week-club-lockup"></div>
+          <div class="first-week-date"><span>CAREER DATE</span><strong id="firstWeekDateLabel">01 AUG 2026</strong></div>
+        </header>
+        <nav id="firstWeekProgress" class="first-week-progress" aria-label="First week progress"></nav>
+        <div id="firstWeekGhostBadge" class="first-week-ghost-badge" aria-hidden="true"></div>
+        <main id="firstWeekContent" class="first-week-content" aria-live="polite"></main>
+        <footer class="first-week-footer">
+          <button id="firstWeekPrevious" class="first-week-secondary" type="button">PREVIOUS</button>
+          <div class="first-week-footer-copy"><span id="firstWeekFooterKicker">FIRST WEEK</span><strong id="firstWeekFooterTitle">BOARD BRIEFING</strong></div>
+          <button id="firstWeekSkip" class="first-week-skip" type="button">SKIP INTRO</button>
+          <button id="firstWeekContinue" class="first-week-primary" type="button">CONTINUE <i>›</i></button>
+        </footer>
+      </section>
+
+      <section id="screenClubSelect" class="screen select-screen" aria-label="Choose your club">
+        <div class="select-bg"></div>
+        <div class="select-overlay"></div>
+        <div class="select-art-utilities"><button type="button" data-art-action="audio" aria-label="Audio"></button><button type="button" data-art-action="settings" aria-label="Settings"></button></div>
+        <header class="select-header">
+          <button id="btnBackToMenu" class="icon-btn" aria-label="Back to main menu">‹</button>
+          <div>
+            <div class="eyebrow">NEW CAREER</div>
+            <h2>CHOOSE YOUR CLUB</h2>
+          </div>
+          <div class="select-count"><strong id="clubCount">288</strong><span>CLUBS</span></div>
+        </header>
+
+        <div class="select-layout">
+          <aside id="clubPreview" class="club-preview"></aside>
+          <section class="club-browser">
+            <label class="club-search-art"><span>SEARCH CLUBS</span><input id="clubSearchInput" type="search" placeholder="Search club, country or code" autocomplete="off"></label>
+            <div class="filters">
+              <div id="divisionFilters" class="division-filters" role="tablist" aria-label="Division filters">
+                <button class="filter-btn is-active" data-division="all">ALL</button>
+                <button class="filter-btn" data-division="tier-1">TIER 1</button>
+                <button class="filter-btn" data-division="tier-2">TIER 2</button>
+                <button class="filter-btn" data-division="tier-3">TIER 3</button>
+                <button class="filter-btn" data-division="tier-4">TIER 4</button>
+              </div>
+              <label class="country-filter">
+                <span>COUNTRY</span>
+                <select id="countrySelect">
+                  <option value="all">All Worlds</option>
+                </select>
+              </label>
+            </div>
+            <div id="clubGrid" class="club-grid"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="screenCentral" class="screen central-screen" aria-label="Career central dashboard">
+        <header class="career-topbar v20-shared-topbar">
+          <div class="career-brand"><img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager"></div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" class="is-current" aria-current="page" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities"><button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button><button id="centralInbox" type="button" class="career-util-btn" aria-label="Inbox">✉</button><button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button><button id="centralSettings" type="button" class="career-util-btn" aria-label="Settings">⚙</button></div>
+        </header>
+
+        <img class="central-template" src="assets/ui-v2/central.webp" alt="Velmora Manager headquarters dashboard" />
+
+        <nav class="central-nav-surface" aria-label="Career navigation">
+          <button type="button" class="central-nav-btn is-current" aria-current="page" data-career-nav="central">CENTRAL</button>
+          <button type="button" class="central-nav-btn" data-career-nav="squad">SQUAD</button>
+          <button type="button" class="central-nav-btn" data-career-nav="transfers">TRANSFERS</button>
+          <button type="button" class="central-nav-btn" data-career-nav="office">OFFICE</button>
+          <button type="button" class="central-nav-btn" data-career-nav="season">SEASON</button>
+          
+        </nav>
+
+
+        <div class="central-center-clean" aria-hidden="true"></div>
+        <div id="centralClubBadgeTop" class="central-club-top"></div>
+        <div id="centralManagerPortrait" class="central-manager-portrait" aria-label="Career manager portrait"></div>
+
+        <section id="centralAdvancePanel" class="central-advance-panel" aria-label="Advance career calendar">
+          <div class="central-advance-actions">
+            <button id="centralAdvanceDay" class="central-advance-action" type="button" aria-label="Advance one career day">
+              <span class="advance-club-badge" id="centralAdvanceBadge" aria-hidden="true"></span>
+              <span class="advance-action-copy">
+                <span class="advance-kicker">ADVANCE</span>
+                <strong>1 DAY</strong>
+                <small id="centralAdvanceNextEvent">Progress career time</small>
+              </span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button id="centralAdvanceNext" class="central-advance-next" type="button" aria-label="Advance to next important event"><span>ADVANCE TO</span><strong>NEXT EVENT</strong></button>
+          </div>
+          <div class="central-advance-calendar">
+            <header><span>Career calendar</span><strong id="centralAdvanceMonth">AUG 2026</strong></header>
+            <span class="central-advance-nextup" aria-hidden="true">NEXT UP</span>
+            <div id="centralAdvanceDays" class="central-advance-days" aria-live="polite"></div>
+            <div class="central-advance-upnext"><span aria-hidden="true">▦</span><strong id="centralAdvanceUpNext">—</strong></div>
+          </div>
+          <div class="central-advance-sweep" aria-hidden="true"></div>
+        </section>
+
+        <section class="central-match-hero vm27-match-card" aria-label="Next fixture team sheets">
+          <div class="central-broadcast-backdrop" aria-hidden="true"></div>
+
+          <header class="central-hero-header vm27-match-header">
+            <span class="central-hero-eyebrow">NEXT FIXTURE</span>
+            <div id="centralHeroMeta" class="central-hero-meta">NO FIXTURE SCHEDULED</div>
+          </header>
+
+          <div class="central-broadcast-stage vm27-fixture-stage">
+            <div class="central-match-summary is-home">
+              <span class="central-team-side-label">HOME</span>
+              <div id="centralHomeRecord" class="central-team-record">—</div>
+            </div>
+
+            <article class="central-versus-core vm27-fixture-spine" aria-label="Fixture matchup">
+              <div class="central-club-badge central-home" id="centralHomeBadge"></div>
+              <div class="central-versus-ring">VS</div>
+              <div class="central-club-badge central-away" id="centralAwayBadge"></div>
+              <div id="centralCompetitionLabel" class="central-competition-label">VELMORA</div>
+            </article>
+
+            <div class="central-match-summary is-away">
+              <span class="central-team-side-label">AWAY</span>
+              <div id="centralAwayRecord" class="central-team-record">—</div>
+            </div>
+
+            <h2 class="central-matchup-title" id="centralMatchTitle">
+              <span class="central-nameplate central-home-name" id="centralHomeName"></span>
+              <span class="central-nameplate central-away-name" id="centralAwayName"></span>
+            </h2>
+
+            <div class="central-captain-pair" aria-label="Featured captains">
+              <div class="central-featured-player vm27-captain-stage is-home">
+                <img id="centralHomeCaptainSprite" class="central-captain-sprite" alt="Home featured player" />
+                <img id="centralHomeShadow" class="central-player-shadow" alt="" aria-hidden="true" />
+                <img id="centralHomeCaptainMarker" class="central-captain-marker" alt="Captain" />
+              </div>
+              <div class="central-featured-player vm27-captain-stage is-away">
+                <img id="centralAwayCaptainSprite" class="central-captain-sprite" alt="Away featured player" />
+                <img id="centralAwayShadow" class="central-player-shadow" alt="" aria-hidden="true" />
+                <img id="centralAwayCaptainMarker" class="central-captain-marker" alt="Captain" />
+              </div>
+            </div>
+
+            <div class="central-stadium" id="centralStadium"></div>
+
+            <div class="central-roster-deck">
+              <article class="central-broadcast-side is-home vm27-team-wing" aria-label="Home team sheet">
+                <div class="central-roster-crest" id="centralHomeGhostBadge" aria-hidden="true"></div>
+                <div class="central-team-sheet vm27-roster-board">
+                  <div class="central-lineup-block vm27-starters">
+                    <span>STARTING THREE</span>
+                    <ol id="centralHomeStarters" class="central-lineup-list"></ol>
+                  </div>
+                  <div class="central-lineup-block is-subs vm27-subs">
+                    <span>SUBSTITUTES</span>
+                    <ol id="centralHomeSubs" class="central-lineup-list central-subs-list"></ol>
+                  </div>
+                </div>
+              </article>
+
+              <article class="central-broadcast-side is-away vm27-team-wing" aria-label="Away team sheet">
+                <div class="central-team-sheet vm27-roster-board">
+                  <div class="central-lineup-block vm27-starters">
+                    <span>STARTING THREE</span>
+                    <ol id="centralAwayStarters" class="central-lineup-list"></ol>
+                  </div>
+                  <div class="central-lineup-block is-subs vm27-subs">
+                    <span>SUBSTITUTES</span>
+                    <ol id="centralAwaySubs" class="central-lineup-list central-subs-list"></ol>
+                  </div>
+                </div>
+                <div class="central-roster-crest" id="centralAwayGhostBadge" aria-hidden="true"></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="central-hero-bottom vm27-data-cache" aria-hidden="true">
+            <strong id="centralFormWatch">—</strong>
+            <strong id="centralBoardFocus">—</strong>
+            <strong id="centralTacticalNote">—</strong>
+          </div>
+          <footer class="central-fixture-footer">
+            <div class="central-captain-credit">
+              <span>CAPTAINS</span>
+              <strong id="centralHomeCaptainName">—</strong>
+              <i aria-hidden="true">/</i>
+              <strong id="centralAwayCaptainName">—</strong>
+            </div>
+            <div id="centralFixtureContext" class="central-fixture-context">Match context loading</div>
+            <button id="centralContinue" class="central-continue" type="button" aria-label="Match Preview">MATCH PREVIEW</button>
+          </footer>
+        </section>
+
+        <section class="central-manager-briefing" data-central-week-hub aria-label="This week at your club">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V10.5m0 0 3.6-7.2a2 2 0 0 1 2.8 2.6L12 10.5h5.4a2 2 0 0 1 2 2.4l-1.2 6A2 2 0 0 1 16.2 21H7z"/><path d="M3.5 10.5H7V21H3.5z"/></svg></span><span>This week at your club</span></header>
+          <div class="central-manager-briefing-body central-week-grid">
+            <button type="button" class="central-week-card is-match" id="centralWeekMatch">
+              <span>NEXT MATCH</span><strong id="centralWeekMatchTitle">Fixture loading</strong><p id="centralWeekMatchCopy">Your next opponent will appear here.</p>
+            </button>
+            <button type="button" class="central-week-card is-story" id="centralWeekStory">
+              <span>AROUND THE CLUB</span><strong id="centralBriefingTitle">Club story loading</strong><p id="centralBriefingBody">A developing club story will appear here.</p>
+            </button>
+            <button type="button" class="central-week-card is-attention" id="centralWeekAttention">
+              <span>MANAGER ATTENTION</span><strong id="centralWeekAttentionTitle">Quiet week</strong><p id="centralWeekAttentionCopy">Nothing requires your response.</p>
+            </button>
+          </div>
+        </section>
+
+        <section class="central-side-panel central-inbox-panel" aria-label="Needs your attention">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.7V20h13V9.7"/></svg></span><span>Needs your attention</span><strong id="centralAttentionCount" class="central-attention-count">0</strong></header>
+          <div class="central-panel-body central-inbox-list" id="centralInboxList"></div>
+        </section>
+
+        <section class="central-side-panel central-news-panel" aria-label="Latest news">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 9.5h6M7 13h6M7 16h4M16.5 9.5h1M16.5 13h1"/></svg></span><span>Latest news</span><button type="button" id="centralNewsAll" class="central-panel-link">View all</button></header>
+          <div class="central-panel-body central-news-list" id="centralNewsList"></div>
+        </section>
+
+        <section class="central-side-panel central-objectives-panel" aria-label="Board expectations">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5l3.5 3L12 5l4.5 6.5L20 8.5V18H4z"/></svg></span><span>Board expectations</span></header>
+          <div class="central-panel-body central-objectives" id="centralObjectives"></div>
+        </section>
+
+        <section class="central-side-panel central-finances-panel" aria-label="Club finances">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.2A3.2 3.2 0 0 0 9 8.4V13m-2 0h6m-6.5 5.5h9M7 18.5c1.8-1.2 2-2.6 2-5.5"/></svg></span><span>Club finances</span></header>
+          <div class="central-panel-body central-finances" id="centralFinances"></div>
+        </section>
+
+        <section class="central-side-panel central-calendar-panel" aria-label="Club pulse">
+          <header class="central-panel-header"><span class="central-panel-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9.2A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.8c0 4.8-7 9.2-7 9.2z"/></svg></span><span>Club pulse</span></header>
+          <div class="central-panel-body central-club-pulse" id="centralClubPulse"></div>
+        </section>
+
+        <section class="central-season-snapshot" id="centralSeasonSnapshot" aria-label="Manager command view"></section>
+
+        <aside class="central-club-plate" aria-hidden="true"><div class="central-club-plate-badge" id="centralPlateBadge"></div><div><strong id="centralPlateName">CLUB</strong><small id="centralPlateFounded">EST. —</small></div></aside>
+      </section>
+
+
+      <section id="screenSquad" class="screen squad-screen" aria-label="Squad management">
+        <div class="squad-bg"></div>
+        <div class="squad-shade"></div>
+
+        <header class="career-topbar">
+          <div class="career-brand">
+            <img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager">
+          </div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities">
+            <div id="squadClubBadgeTop" class="career-club-mark" aria-label="Current club"></div>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button>
+            <button id="squadInbox" type="button" class="career-util-btn" aria-label="Inbox">✉</button>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button>
+            <button id="squadSettings" type="button" class="career-util-btn" aria-label="Settings">⚙</button>
+          </div>
+        </header>
+
+        <div class="squad-shell">
+          <section class="squad-workspace">
+            <header class="squad-heading">
+              <div class="squad-club-lockup">
+                <div id="squadHeadingBadge" class="squad-heading-badge"></div>
+                <div>
+                  <div class="eyebrow" id="squadHeaderClubName">PLAYER MANAGEMENT</div>
+                  <h2>SQUAD MANAGEMENT</h2>
+                  <p id="squadClubLine">Club · Division</p>
+                  <div class="squad-season-chip"><span>SEASON</span><strong id="careerSeasonLabel">2026/27 · S1</strong></div>
+                </div>
+              </div>
+              <div class="squad-heading-metrics">
+                <div><span>SQUAD OVR</span><strong id="squadAverageOvr">--</strong></div>
+                <div><span>AVG AGE</span><strong id="squadAverageAge">--</strong></div>
+                <div><span>FITNESS</span><strong id="squadAverageFitness">--</strong></div>
+              </div>
+            </header>
+
+            <nav id="squadSubnav" class="squad-subnav" aria-label="Squad sections">
+              <button type="button" data-squad-view="overview"><span class="squad-nav-label">OVERVIEW</span></button>
+              <button type="button" class="is-active" data-squad-view="senior"><span class="squad-nav-icon" aria-hidden="true">♟</span><span class="squad-nav-label">SQUAD</span></button>
+              <button type="button" data-squad-view="tactics"><span class="squad-nav-icon" aria-hidden="true">▦</span><span class="squad-nav-label">TACTICS</span></button>
+              <button type="button" data-squad-view="training"><span class="squad-nav-icon" aria-hidden="true">△</span><span class="squad-nav-label">TRAINING</span></button>
+              <button type="button" data-squad-view="youth"><span class="squad-nav-label">YOUTH ACADEMY</span><span class="squad-nav-count" id="youthAcademyCount">0</span></button>
+              <button type="button" data-squad-view="legends"><span class="squad-nav-label">CAREER ARCHIVE</span><span class="squad-nav-count" id="retiredClubCount">0</span></button>
+            </nav>
+
+            <div id="squadOverviewView" class="squad-view" data-squad-pane="overview" aria-label="Squad overview"></div>
+            <div id="seniorSquadView" class="squad-view is-active" data-squad-pane="senior">
+              <div id="swapBanner" class="swap-banner" aria-live="polite"></div>
+
+              <section class="roster-section v51-st3-panel">
+                <div class="v51-st3-head"><div><h3>STARTING THREE</h3><p>Your match starts with the right three.</p></div><div class="v66-formation"><span>FORMATION</span><strong>THREE-LANE</strong></div></div>
+                <div class="v51-st3-row">
+                  <div id="startingThreeShowcase" class="v51-st3-grid"></div>
+                </div>
+                <div class="v51-st3-foot">
+                  <div class="v51-sub-note"><div><strong>Drag to swap · or select a player and choose “Swap with…”</strong><small>Your selection saves automatically.</small></div></div>
+                  <span class="sq-save-status" role="status" aria-live="polite">Autosave active</span>
+                </div>
+              </section>
+
+              <div id="startersGrid" class="starter-grid v66-legacy-starters" hidden aria-hidden="true"></div>
+
+              <section class="roster-section v66-depth-section">
+                <div class="v66-depth-head">
+                  <div><h3>SUBSTITUTES &amp; DEPTH</h3><p id="squadDepthCopy">Drag a player onto the pitch to swap</p></div>
+                </div>
+                <div class="v66-depth-scroll">
+                  <section class="substitutes-section" aria-label="Substitutes"><div id="subsGrid" class="subs-grid"></div></section>
+                  <details id="squadReservePlaces" class="sq-reserves"><summary><span id="squadReserveSummary">Reserve places</span></summary><section class="reserves-section" aria-label="Senior depth"><div id="reservesGrid" class="reserves-grid"></div></section></details>
+                </div>
+              </section>
+
+              <section id="squadSummary" class="squad-summary" aria-label="Squad overview"></section>
+            </div>
+
+            <div id="squadTacticsView" class="squad-view tactics-squad-view" data-squad-pane="tactics">
+              <section class="tactics-hero">
+                <div><span class="roster-kicker">MATCH PLAN</span><h3>TEAM TACTICS</h3><p>Set the broad identity your squad takes into every match. Changes apply immediately and remain part of your career save.</p></div>
+                <div id="tacticsIdentityBadge" class="tactics-identity-badge"></div>
+              </section>
+              <div id="squadTacticsContent" class="squad-tactics-content"></div>
+            </div>
+
+            <div id="squadTrainingView" class="squad-view" data-squad-pane="training" aria-hidden="true" inert>
+              <div id="squadTrainingContent"></div>
+            </div>
+
+            <div id="youthSquadView" class="squad-view" data-squad-pane="youth">
+              <section class="academy-hero">
+                <div><span class="roster-kicker">CLUB PATHWAY</span><h3>YOUTH ACADEMY</h3><p>Develop prospects before deciding who earns one of the thirteen senior places.</p></div>
+                <div class="academy-overview"><span>ACADEMY LEVEL</span><strong id="academyLevelLabel">--</strong><small id="academyCapacityLabel">0 / 6 prospects</small></div>
+              </section>
+              <div id="v35AcademyNav"></div><div id="v35AcademyWorkspace" hidden></div>
+              <div id="youthAcademyGrid" class="academy-grid"></div>
+              <div class="academy-footer-note"><b>ANNUAL INTAKE</b><span>Each club receives 1–3 new prospects at the start of a season. Strong academies improve the odds, but any club can uncover a rare talent.</span></div>
+            </div>
+
+            <div id="legendsSquadView" class="squad-view" data-squad-pane="legends">
+              <section class="archive-hero"><div><span class="roster-kicker">YOUR SAVE HISTORY</span><h3>CAREER ARCHIVE</h3><p>Retired players remain part of this world instead of disappearing when their playing days end.</p></div></section>
+              <div id="retiredPlayersGrid" class="retired-grid"></div>
+            </div>
+          </section>
+
+          <aside id="playerProfile" class="player-profile" aria-label="Selected player profile"></aside>
+        </div>
+      </section>
+
+
+      <section id="screenTransfers" class="screen transfers-screen" aria-label="Transfers">
+        <div class="transfers-bg"></div>
+        <div class="transfers-shade"></div>
+
+        <header class="career-topbar">
+          <div class="career-brand">
+            <img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager">
+          </div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities">
+            <div id="transfersClubBadgeTop" class="career-club-mark" aria-label="Current club"></div>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button>
+            <button id="transfersInbox" type="button" class="career-util-btn" aria-label="Inbox">✉</button>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button>
+            <button id="transfersSettings" type="button" class="career-util-btn" aria-label="Settings">⚙</button>
+          </div>
+        </header>
+
+        <div class="transfers-shell">
+          <section class="transfer-workspace">
+            <header class="transfer-heading">
+              <div>
+                <div class="eyebrow">RECRUITMENT CENTRE</div>
+                <h2>FIND YOUR NEXT STAR.</h2>
+                <p id="transferClubLine">Search Velmora for your next signing.</p>
+              </div>
+              <div class="transfer-budget-block">
+                <div class="transfer-budget-total">
+                  <span>AVAILABLE TRANSFER BUDGET</span>
+                  <strong id="transferBudgetValue">£--</strong>
+                </div>
+                <div class="transfer-budget-allocation">
+                  <div class="transfer-allocation-heading">
+                    <span>TRANSFER</span>
+                    <span>WAGE ALLOCATION <strong id="transferWageBudgetValue">£--/w</strong></span>
+                  </div>
+                  <input id="transferBudgetAllocation" type="range" min="0" max="1" step="100" value="0" aria-label="Allocate funds between the transfer and weekly wage budgets" />
+                  <div class="transfer-allocation-meta">
+                    <small id="transferWageCommitted">Committed £--/w</small>
+                    <small>£1/w uses £52 per season</small>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <nav id="transferSubnav" class="transfer-subnav" aria-label="Transfer sections">
+              <button type="button" class="is-active" data-transfer-tab="search">SEARCH PLAYERS</button>
+              <button type="button" data-transfer-tab="shortlist">SHORTLIST <span id="shortlistCount">0</span></button>
+              <button type="button" data-transfer-tab="hub">TRANSFER HUB</button>
+              <button type="button" data-transfer-tab="scouting">SCOUTING</button>
+            </nav>
+            <div id="scoutingNetworkBar" class="scouting-network-bar" aria-label="Recruitment scouting network"></div>
+
+            <section id="transferSearchPane" class="transfer-pane is-active" data-pane="search">
+              <div class="v39-search-tools">
+                <div class="v39-search-primary">
+                  <label class="v39-search-field"><span>Find your next signing</span><input id="transferSearchInput" type="search" placeholder="Player, club, country or world…" autocomplete="off"></label>
+                  <label><span>Playing role</span><select id="transferRoleFilter"><option value="all">All roles</option><option>ATTACKER</option><option>PLAYMAKER</option><option>DEFENDER</option><option>ALL-ROUNDER</option></select></label>
+                  <label><span>Sort by</span><select id="transferSortFilter"><option value="relevance">Recommended</option><option value="age">Youngest first</option><option value="knowledge">Scout knowledge</option><option value="value">Lowest known value</option><option value="form">Public form</option></select></label>
+                </div>
+                <div class="v39-market-shortcuts" aria-label="Quick market filters"><button type="button" data-v39-market="all">All targets</button><button type="button" data-v39-market="freeagent">Free agents</button><button type="button" data-v39-market="listed">Listed players</button><button type="button" data-v39-market="expiring">Expiring deals</button></div>
+                <details class="v39-advanced-search"><summary>Refine your search <span id="v39FilterTotal">All markets</span></summary><div class="v39-filter-grid">
+                  <label><span>Age</span><select id="transferAgeFilter"><option value="all">Any age</option><option value="u21">17–21</option><option value="22-25">22–25</option><option value="26-29">26–29</option><option value="30+">30+</option></select></label>
+                  <label><span>Known ability</span><select id="transferOvrFilter"><option value="0">Any knowledge</option><option value="55">Known 55+</option><option value="60">Known 60+</option><option value="65">Known 65+</option><option value="70">Known 70+</option><option value="75">Known 75+</option><option value="80">Known 80+</option></select></label>
+                  <label><span>World / country</span><select id="transferCountryFilter"><option value="all">All known markets</option></select></label>
+                  <label><span>Division</span><select id="transferDivisionFilter"><option value="all">All divisions</option></select></label>
+                  <label><span>Availability</span><select id="transferTypeFilter"><option value="all">Any type</option><option value="freeagent">Free agents</option><option value="listed">Transfer listed</option><option value="expiring">Contract expiring</option><option value="release">Release clause</option><option value="unhappy">Unhappy</option><option value="firstteam">First-team players</option></select></label>
+                  <label><span>Scouting knowledge</span><select id="transferScoutingFilter"><option value="all">Any knowledge</option><option value="unknown">Unknown / limited</option><option value="active">Scouting now</option><option value="known">Good knowledge</option><option value="full">Full report</option></select></label>
+                </div></details>
+                <div class="v39-active-search"><div id="v39FilterChips" aria-label="Applied search filters"></div><button id="clearTransferFilters" type="button">Reset search</button></div>
+              </div>
+              <div class="v39-discovery-hint">Your scouts reveal ability, potential and fit. Search by name to find a player beyond your network.</div>
+              <div id="transferResults" class="transfer-results" role="group" aria-label="Player search results"></div>
+              <footer class="transfer-list-footer"><span id="transferResultCount">0 players</span><span>Select a player to open their dossier</span></footer>
+            </section>
+
+            <section id="transferShortlistPane" class="transfer-pane" data-pane="shortlist">
+              <div class="transfer-pane-intro shortlist-intro"><div><span class="eyebrow">YOUR TARGETS</span><h3>SHORTLIST</h3><p>Your clearest recruitment view. Scout targets, then compare the information you have earned.</p></div><button id="compareShortlistBtn" type="button" class="shortlist-compare-btn">COMPARE TARGETS</button></div>
+              <div id="shortlistComparePanel" class="shortlist-compare-panel" hidden></div>
+              <div class="transfer-list-head" aria-hidden="true"><span>PLAYER / INTEL</span><span>CLUB</span><span>ROLE</span><span>AGE</span><span>ABILITY EST.</span><span>VALUE / FIT</span></div>
+              <div id="shortlistResults" class="transfer-results" role="group" aria-label="Shortlisted players"></div>
+            </section>
+
+            <section id="transferHubPane" class="transfer-pane" data-pane="hub">
+              <div class="transfer-pane-intro"><div><span class="eyebrow">DEALS IN MOTION</span><h3>TRANSFER HUB</h3><p>Manage incoming bids, counter offers, active negotiations, outgoing deals, loans and completed transfers.</p></div><div class="shortlist-mark">↔</div></div>
+              <div id="transferHubCards" class="transfer-hub-grid"></div>
+            </section>
+
+            <section id="transferScoutingPane" class="transfer-pane" data-pane="scouting">
+              <div class="transfer-pane-intro scouting-tab-intro"><div><span class="eyebrow">RECRUITMENT INTELLIGENCE</span><h3>SCOUTING</h3><p>Track active assignments, report deadlines and completed player intelligence in one recruitment workspace.</p></div><div class="shortlist-mark">⌕</div></div>
+              <div id="scoutingTabContent" class="scouting-tab-content" tabindex="0" role="region" aria-label="Active and completed scouting reports"></div>
+            </section>
+          </section>
+
+          <aside id="transferDossier" class="transfer-dossier" aria-label="Transfer player dossier"></aside>
+        </div>
+      </section>
+
+
+      <section id="screenOffice" class="screen office-screen" aria-label="Office">
+        <div class="office-bg"></div>
+        <div class="office-shade"></div>
+
+        <header class="career-topbar">
+          <div class="career-brand">
+            <img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager">
+          </div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities">
+            <div id="officeClubBadgeTop" class="career-club-mark" aria-label="Current club"></div>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button>
+            <button id="officeInboxShortcut" type="button" class="career-util-btn" aria-label="Inbox">✉</button>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button>
+            <button id="officeSettings" type="button" class="career-util-btn" aria-label="Settings">⚙</button>
+          </div>
+        </header>
+
+        <div class="office-shell">
+          <header class="office-heading">
+            <div class="office-title-lockup">
+              <div id="officeHeadingBadge" class="office-heading-badge"></div>
+              <div>
+                <div class="eyebrow">CLUB ADMINISTRATION</div>
+                <h2>OFFICE</h2>
+                <p id="officeClubLine">Club · Division</p>
+              </div>
+            </div>
+            <div class="office-confidence-mini">
+              <div>
+                <span>BOARD CONFIDENCE</span>
+                <strong id="officeBoardConfidence">--</strong>
+                <small id="officeBoardStatus">Stable</small>
+              </div>
+              <div class="confidence-ring" id="officeConfidenceRing" aria-hidden="true"><b>--</b></div>
+            </div>
+          </header>
+
+          <nav id="officeSubnav" class="office-subnav" aria-label="Office sections">
+            <button type="button" class="is-active" data-office-tab="inbox">INBOX <span id="officeUnreadCount">0</span></button>
+            <button type="button" data-office-tab="board">BOARD EXPECTATIONS</button>
+            <button type="button" data-office-tab="finances">FINANCES</button>
+            <button type="button" data-office-tab="contracts">CONTRACTS</button>
+            <button type="button" data-office-tab="staff">STAFF</button>
+            <button type="button" data-office-tab="manager">MANAGER CAREER</button>
+          </nav>
+
+          <div class="office-stage">
+            <section id="officeInboxPane" class="office-pane is-active" data-office-pane="inbox">
+              <div class="office-inbox-layout">
+                <aside class="office-message-column">
+                  <div class="office-message-toolbar">
+                    <div><span class="office-kicker">BEHIND THE BADGE</span><h3>CLUB POST</h3></div>
+                    <div id="officeInboxFilters" class="office-inbox-filters">
+                      <button type="button" class="is-active" data-inbox-filter="all">ALL</button>
+                      <button type="button" data-inbox-filter="unread">UNREAD</button>
+                    </div>
+                  </div>
+                  <div id="officeMessageList" class="office-message-list"></div>
+                </aside>
+                <article id="officeMessageReader" class="office-message-reader" aria-label="Selected message"></article>
+              </div>
+            </section>
+
+            <section id="officeBoardPane" class="office-pane" data-office-pane="board">
+              <div id="officeBoardContent" class="office-board-content"></div>
+            </section>
+
+            <section id="officeStaffPane" class="office-pane" data-office-pane="staff"><div id="officeStaffContent"></div></section>
+            <section id="officeFinancesPane" class="office-pane" data-office-pane="finances">
+              <div id="officeFinancesContent" class="office-finances-content"></div>
+            </section>
+
+            <section id="officeContractsPane" class="office-pane" data-office-pane="contracts">
+              <div class="office-contracts-layout">
+                <section class="office-contract-list-wrap">
+                  <header class="office-section-heading">
+                    <div><span class="office-kicker">SENIOR SQUAD</span><h3>CONTRACTS</h3></div>
+                    <p>Manage the thirteen-player senior squad without bloating the wage bill.</p>
+                  </header>
+                  <div class="office-contract-table-head" aria-hidden="true">
+                    <span>PLAYER</span><span>ROLE</span><span>WAGE</span><span>TERM</span><span>STATUS</span>
+                  </div>
+                  <div id="officeContractList" class="office-contract-list"></div>
+                </section>
+                <aside id="officeContractDetail" class="office-contract-detail" aria-label="Selected contract"></aside>
+              </div>
+            </section>
+
+            <section id="officeManagerPane" class="office-pane" data-office-pane="manager">
+              <div id="officeManagerContent" class="office-manager-content"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenSeason" class="screen season-screen art-screen" aria-label="Competitions and season">
+        <header class="career-topbar v20-shared-topbar">
+          <div class="career-brand"><img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager"></div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities"><button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button><button type="button" class="career-util-btn" data-art-action="inbox" aria-label="Inbox">✉</button><button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button><button type="button" class="career-util-btn" data-art-action="settings" aria-label="Settings">⚙</button></div>
+        </header>
+
+        <img class="art-template" src="assets/ui-v2/season.webp" alt="Velmora Manager competitions interface" />
+        <div class="season-live-heading">
+          <div id="seasonClubBadge" class="season-live-badge"></div>
+          <div><strong id="seasonClubName">CLUB</strong><span id="seasonCompetitionName">COMPETITION</span></div>
+        </div>
+        <nav id="seasonSubnav" class="season-live-subnav" aria-label="Competition views">
+          <button type="button" class="is-active" data-season-tab="table">TABLE</button>
+          <button type="button" data-season-tab="fixtures">FIXTURES</button>
+          <button type="button" data-season-tab="calendar">CALENDAR</button>
+          <button type="button" data-season-tab="cup">DOMESTIC CUPS</button>
+          <button type="button" class="season-crown-tab" data-season-tab="champions-crown"><img src="assets/champions-crown/icon.png" alt="">CHAMPIONS CROWN</button>
+          <button type="button" data-season-tab="stats">PLAYER STATS</button>
+          <button type="button" data-season-tab="records">RECORDS</button>
+        </nav>
+        <section id="seasonMainContent" class="season-main-content" aria-live="polite"></section>
+        <aside id="seasonSideContent" class="season-side-content"></aside>
+      </section>
+
+      <section id="screenMatchday" class="screen matchday-screen md2" aria-label="Matchday">
+        <div class="matchday-atmosphere" aria-hidden="true"></div>
+        <header class="career-topbar matchday-topbar">
+          <div class="career-brand"><img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="matchday-brand-fallback" hidden>VELMORA<small>MANAGER</small></span></div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities matchday-utilities md2-utilities">
+            <div id="matchdayCompetition" class="matchday-competition md2-meta"></div>
+            <div class="matchday-date-chip md2-date-chip"><span>MATCH WEEK</span><strong id="matchdayDateTop">—</strong></div>
+            <button type="button" class="career-util-btn" data-art-action="inbox" aria-label="Inbox">✉</button>
+            <button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button>
+            <button type="button" class="career-util-btn" data-art-action="settings" aria-label="Settings">⚙</button>
+          </div>
+        </header>
+
+        <main class="matchday-shell-v2 md2-shell">
+          <section class="md2-hero" id="matchdayHeroCard">
+            <div class="md2-hero-bg" aria-hidden="true"></div>
+            <div class="md2-hero-streaks" aria-hidden="true"></div>
+            <div class="md2-hero-top">
+              <div class="md2-hero-kicker">
+                <div id="matchdayHeroCompetition" class="md2-hero-competition"></div>
+                <small id="matchdayRoundLabel" class="md2-hero-round">FIXTURE</small>
+              </div>
+              <div class="md2-hero-badges">
+                <div id="matchdayHomeBadge" class="matchday-badge md2-badge"></div>
+                <i class="md2-badge-rule" aria-hidden="true"></i>
+                <div id="matchdayAwayBadge" class="matchday-badge md2-badge"></div>
+              </div>
+            </div>
+
+            <div class="matchday-featured home md2-portrait"><div id="matchdayHomeGhost" class="matchday-ghost-crest"></div><img id="matchdayHomeFeatured" alt="" decoding="async"></div>
+            <div class="matchday-featured away md2-portrait"><div id="matchdayAwayGhost" class="matchday-ghost-crest"></div><img id="matchdayAwayFeatured" alt="" decoding="async"></div>
+
+            <div class="md2-hero-body">
+              <h1 class="md2-hero-title">
+                <span id="matchdayHomeName" class="matchday-name md2-hero-home"></span><i class="md2-hero-x" aria-hidden="true">×</i><span id="matchdayAwayName" class="matchday-name md2-hero-away"></span>
+              </h1>
+              <div id="matchdayVenueRibbon" class="md2-hero-venue"></div>
+              <div class="md2-hero-standings">
+                <span id="matchdayHomeContext" class="md2-hero-standing"></span>
+                <i class="md2-hero-standings-rule" aria-hidden="true"></i>
+                <span id="matchdayAwayContext" class="md2-hero-standing"></span>
+              </div>
+            </div>
+            <b id="matchdayVersusStatus" class="md2-visually-hidden"></b>
+            <div id="matchdayInfo" class="matchday-info md2-visually-hidden"></div>
+          </section>
+
+          <aside class="md2-side">
+            <div class="md2-card md2-status-card" id="matchdayStatusCard">
+              <span class="md2-card-label">MATCH STATUS</span>
+              <div class="md2-card-row"><strong id="matchdayStatusHeadline">READY</strong><span class="md2-card-icon md2-icon-check" aria-hidden="true"></span></div>
+              <p id="matchdayStatusNote"></p>
+            </div>
+            <div class="md2-card md2-intel-card" id="matchdayIntelCard">
+              <span class="md2-card-label">OPPOSITION INTEL</span>
+              <div class="md2-card-row"><strong id="matchdayIntelHeadline">UNSCOUTED</strong><span class="md2-card-icon md2-icon-scout" aria-hidden="true"></span></div>
+              <p id="matchdayIntelNote"></p>
+            </div>
+            <div class="md2-card md2-rec-card" id="matchdayRecCard">
+              <span class="md2-card-label">STAFF RECOMMENDATION</span>
+              <div class="md2-card-row"><strong id="matchdayRecHeadline">BALANCED</strong><span class="md2-card-icon md2-icon-tactic" aria-hidden="true"></span></div>
+              <p id="matchdayRecNote"></p>
+            </div>
+            <button id="matchWatch" type="button" class="md2-btn md2-btn-primary" aria-label="Play Match"><span>PLAY MATCH</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/></svg></button>
+            <button id="matchQuick" type="button" class="md2-btn md2-btn-secondary" aria-label="Quick Sim"><span>QUICK SIM</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 6 6 6-6 6m8-12 6 6-6 6"/></svg></button>
+            <button id="matchEditTeam" type="button" class="md2-btn md2-btn-edit" data-career-nav="squad"><span>Edit team selection and tactics</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+            <p id="matchdayActionStatus" class="md2-action-status" role="status"></p>
+          </aside>
+
+          <div class="md2-teams">
+            <section class="matchday-lineup-panel home md2-team-card">
+              <div class="md2-team-head">
+                <div class="md2-team-identity"><div id="matchdayHomeTeamBadge" class="matchday-badge md2-team-badge"></div><div id="matchdayHomePanelTitle" class="matchday-panel-kicker">HOME TEAM</div></div>
+                <button type="button" class="matchday-edit-team md2-edit-btn" data-matchday-edit-home data-career-nav="squad">EDIT TEAM &amp; TACTICS</button>
+              </div>
+              <div id="matchdayHomeLineup" class="matchday-lineup matchday-home-lineup md2-lineup"></div>
+            </section>
+
+            <section class="matchday-lineup-panel away md2-team-card">
+              <div class="md2-team-head">
+                <div class="md2-team-identity"><div id="matchdayAwayTeamBadge" class="matchday-badge md2-team-badge"></div><div id="matchdayAwayPanelTitle" class="matchday-panel-kicker">AWAY TEAM</div></div>
+                <button type="button" class="matchday-edit-team md2-edit-btn" data-matchday-edit-away data-career-nav="squad">EDIT TEAM &amp; TACTICS</button>
+              </div>
+              <div id="matchdayAwayLineup" class="matchday-lineup matchday-away-lineup md2-lineup"></div>
+            </section>
+          </div>
+
+          <footer class="md2-footer">
+            <div class="md2-footer-stat"><span>HOME FORM</span><strong id="matchdayHomeForm">—</strong></div>
+            <div class="md2-footer-stat"><span>HEAD TO HEAD</span><strong id="matchdayH2H">—</strong></div>
+            <div class="md2-footer-stat"><span>LAST MEETING</span><strong id="matchdayLastMeeting">—</strong></div>
+            <button type="button" class="md2-footer-settings" data-art-action="settings" aria-label="Settings">⚙<small>Settings</small></button>
+          </footer>
+
+          <details class="md2-report"><summary><svg class="md2-report-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6m-6 4h6"/></svg><span class="md2-report-copy"><strong>OPPOSITION REPORT &amp; STAFF MATCH PLAN</strong><small>Opponent analysis and tactical recommendations</small></span><span class="md2-report-toggle" aria-hidden="true"></span></summary><aside id="matchdaySummary" class="matchday-summary md2-detail"></aside></details>
+        </main>
+      </section>
+
+      <section id="screenResults" class="screen results-screen art-screen" aria-label="Match results">
+        <header class="career-topbar v20-shared-topbar">
+          <div class="career-brand"><img class="career-brand-logo" src="assets/ui-v2/header-logo.png" alt="Velmora Manager"></div>
+          <nav class="career-tabs" aria-label="Career navigation">
+            <button type="button" data-career-nav="central">CENTRAL</button>
+            <button type="button" data-career-nav="squad">SQUAD</button>
+            <button type="button" data-career-nav="transfers">TRANSFERS</button>
+            <button type="button" class="is-current" aria-current="page" data-career-nav="matchday">MATCHDAY</button>
+            <button type="button" data-career-nav="season">SEASON</button>
+            <button type="button" data-career-nav="office">OFFICE</button>
+          </nav>
+          <div class="career-utilities"><button type="button" class="career-util-btn v20-text-util" data-art-action="calendar" aria-label="Calendar">CAL</button><button type="button" class="career-util-btn" data-art-action="inbox" aria-label="Inbox">✉</button><button type="button" class="career-util-btn v20-text-util" data-art-action="audio" aria-label="Audio">SFX</button><button type="button" class="career-util-btn" data-art-action="settings" aria-label="Settings">⚙</button></div>
+        </header>
+
+        <img class="art-template" src="assets/ui-v2/results.webp" alt="" aria-hidden="true" />
+
+        <div id="resultsScroll" class="results-scroll" tabindex="-1">
+          <main class="results-shell">
+            <header class="results-page-header">
+              <div class="results-page-heading">
+                <span>POST-MATCH REPORT</span>
+                <h1>FULL-TIME REVIEW</h1>
+                <div id="resultsCompetition" class="results-competition"></div>
+              </div>
+              <div class="results-page-status" aria-hidden="true">
+                <b>90'</b>
+                <span>FINAL WHISTLE</span>
+                <small>Match report ready</small>
+              </div>
+            </header>
+
+            <section class="results-scoreboard" aria-label="Final score and player of the match">
+              <article class="results-team results-team-home">
+                <small>HOME</small>
+                <div id="resultsHomeBadge" class="results-badge results-home-badge"></div>
+                <div id="resultsHomeName" class="results-name results-home-name"></div>
+              </article>
+
+              <div class="results-score-wrap">
+                <small>FINAL SCORE</small>
+                <div id="resultsScore" class="results-score"></div>
+              </div>
+
+              <article class="results-team results-team-away">
+                <small>AWAY</small>
+                <div id="resultsAwayBadge" class="results-badge results-away-badge"></div>
+                <div id="resultsAwayName" class="results-name results-away-name"></div>
+              </article>
+
+              <aside id="resultsPotm" class="results-potm"></aside>
+            </section>
+
+            <section class="results-report-grid" aria-label="Detailed match report">
+              <div id="resultsStats" class="results-stats"></div>
+              <div id="resultsEvents" class="results-events"></div>
+              <div id="resultsRatings" class="results-ratings"></div>
+              <aside id="resultsLeagueImpact" class="results-league-impact"></aside>
+            </section>
+          </main>
+        </div>
+
+        <footer class="results-action-bar">
+          <div class="results-action-copy"><span>POST-MATCH COMPLETE</span><small>Review as much as you need. Continue is always available.</small></div>
+          <button id="resultsContinue" type="button" class="results-continue"><span>CONTINUE</span><b aria-hidden="true">›</b></button>
+        </footer>
+      </section>
+
+      <div id="negotiationModal" class="modal-backdrop negotiation-backdrop" aria-hidden="true">
+        <div class="negotiation-card" role="dialog" aria-modal="true" aria-labelledby="negotiationTitle">
+          <button id="closeNegotiation" class="modal-close" aria-label="Close">×</button>
+          <div id="negotiationContent"></div>
+        </div>
+      </div>
+
+
+      <div id="contractModal" class="modal-backdrop contract-backdrop" aria-hidden="true">
+        <div class="contract-renewal-card" role="dialog" aria-modal="true" aria-labelledby="contractModalTitle">
+          <button id="closeContractModal" class="modal-close" aria-label="Close">×</button>
+          <div id="contractModalContent"></div>
+        </div>
+      </div>
+
+      <div id="settingsModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <button class="modal-close" data-close-modal aria-label="Close">×</button>
+          <div class="eyebrow">VELMORA MANAGER</div>
+          <h3 id="settingsTitle">SETTINGS</h3>
+          <label>Music Volume <input id="musicVolume" type="range" min="0" max="100" value="36" /></label>
+          <label>SFX Volume <input id="sfxVolume" type="range" min="0" max="100" value="60" /></label>
+          <label>UI Scale <input id="uiScale" type="range" min="85" max="115" step="5" value="100" aria-describedby="uiScaleValue" /><small id="uiScaleValue">100%</small></label>
+          <label class="switch-row"><span>Reduced Motion</span><input id="reducedMotion" type="checkbox" /></label>
+          <div class="career-management-panel">
+            <div>
+              <span>CAREER WORLD</span>
+              <strong id="settingsSeasonLabel">2026/27 · Season 1</strong>
+              <small>Full-season skipping is disabled. Progression now flows through fixtures, matchdays and day-by-day scouting.</small>
+            </div>
+            <button type="button" id="settingsReturnMenu" class="modal-secondary-btn">RETURN TO MAIN MENU</button>
+          </div>
+          <button class="primary-btn modal-done" data-close-modal>DONE</button>
+        </div>
+      </div>
+
+      <div id="infoModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card compact" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+          <button class="modal-close" data-close-info aria-label="Close">×</button>
+          <div class="eyebrow">VELMORA MANAGER</div>
+          <h3 id="infoTitle">CAREER MODE</h3>
+          <p id="infoText">This system arrives in a later phase.</p>
+          <button class="primary-btn modal-done" data-close-info>GOT IT</button>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status"></div>
+    </div>
+  </main>
+  <audio id="menuMusic" src="assets/audio/menu-music.mp3" preload="auto" loop></audio>
+  <audio id="uiClickSfx" src="assets/audio/ui-click.mp3" preload="auto"></audio>
+  <script src="release-meta.js?v=v89-stable"></script>
+  <script src="clubs.js?v=v89-stable"></script>
+  <script src="names.js?v=v89-stable"></script>
+  <script src="assets/manager/manager-assets.js?v=v89-stable"></script>
+  <script src="world-expansion.js?v=v89-stable"></script>
+  <script src="data/player-sprites.js?v=v89-stable"></script>
+  <script src="data/club-stadiums.js?v=v89-stable"></script>
+  <script src="personnel-identity.js?v=v97-personnel"></script>
+  <script src="training.js?v=v89-stable"></script>
+  <script src="player-performance.js?v=v89-stable"></script>
+  <script src="training-ui.js?v=v89-stable"></script>
+  <script src="vendor/pako.min.js?v=v89-stable"></script>
+  <script src="save-codec.js?v=v89-stable"></script>
+  <script src="central-news.js?v=v89-stable"></script>
+  <script src="career-storage.js?v=v89-stable"></script>
+  <script src="career-expansion.js?v=v89-stable"></script>
+  <script src="player-traits.js?v=v89-stable"></script>
+  <script src="player-profiles.js?v=v89-stable"></script>
+  <script src="press-conference-data.js?v=v89-stable"></script>
+  <script src="press-conference-engine.js?v=v89-stable"></script>
+  <script src="negotiation-cinematic.js?v=v89-stable"></script>
+  <script src="career-bootstrap.js?v=v89-stable"></script>
+</body>
+</html>

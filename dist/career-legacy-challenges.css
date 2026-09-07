@@ -1,0 +1,85 @@
+/* V70 — Club Legacy staff pathways and Short Challenge Careers */
+
+.v70-challenge-entry {
+  position: relative;
+  grid-column: 1 / -1;
+  min-height: 5.2cqw;
+  padding: .9cqw 4.6cqw .9cqw 1.2cqw;
+  border: 1px solid rgba(224,188,105,.55);
+  background:
+    linear-gradient(90deg,rgba(9,34,50,.98),rgba(10,65,73,.96)),
+    radial-gradient(circle at 80% 30%,rgba(48,208,197,.22),transparent 38%);
+  color: #f4f7f5;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 .7cqw 1.8cqw rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.v70-challenge-entry::before { content:"";position:absolute;inset:0 auto 0 0;width:.28cqw;background:#d9b45f; }
+.v70-challenge-entry::after { content:"LIMITED SERIES";position:absolute;right:4.4cqw;top:.8cqw;color:rgba(238,214,156,.52);font:900 .48cqw/1 Arial,sans-serif;letter-spacing:.2em; }
+.v70-challenge-entry span,.v70-challenge-entry small { display:block; }
+.v70-challenge-entry span { color:#d8bd78;font:900 .49cqw/1.2 Arial,sans-serif;letter-spacing:.13em; }
+.v70-challenge-entry strong { display:block;margin:.3cqw 0 .24cqw;font:900 1.02cqw/1 Arial,sans-serif;letter-spacing:.035em; }
+.v70-challenge-entry small { color:#b9cbd0;font:600 .59cqw/1.3 Arial,sans-serif; }
+.v70-challenge-entry > i { position:absolute;right:1.5cqw;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:2cqw;height:2cqw;border:1px solid rgba(224,188,105,.52);border-radius:50%;color:#efd690;font:400 1.4cqw/1 Arial,sans-serif; }
+.v70-challenge-entry:hover,.v70-challenge-entry:focus-visible { filter:brightness(1.1);transform:translateY(-.05cqw);outline:2px solid rgba(224,188,105,.25); }
+
+.v70-challenge-overlay { position:absolute;inset:0;z-index:120;display:grid;place-items:center;background:rgba(1,8,14,.84);opacity:0;pointer-events:none;transition:opacity .2s ease;backdrop-filter:blur(.28cqw); }
+.v70-challenge-overlay[hidden] { display:none !important; }
+.v70-challenge-overlay.is-open { opacity:1;pointer-events:auto; }
+.v70-challenge-shell { width:min(78cqw,1180px);max-height:88%;overflow:auto;border:1px solid rgba(226,192,111,.6);background:linear-gradient(145deg,#071c2b,#0b3441 62%,#0c4b4f);color:#f4f6f4;box-shadow:0 2cqw 5cqw rgba(0,0,0,.55); }
+.v70-challenge-shell > header { display:flex;align-items:flex-start;justify-content:space-between;padding:1.35cqw 1.5cqw 1.05cqw;border-bottom:1px solid rgba(165,197,204,.2);background:linear-gradient(90deg,rgba(5,20,32,.8),rgba(13,74,78,.28)); }
+.v70-challenge-shell header span { color:#d6b665;font:900 .54cqw/1 Arial,sans-serif;letter-spacing:.18em; }
+.v70-challenge-shell header h2 { margin:.34cqw 0 .25cqw;font:900 1.65cqw/1 Arial,sans-serif;letter-spacing:.025em; }
+.v70-challenge-shell header p { margin:0;max-width:45cqw;color:#a9c0c6;font:600 .65cqw/1.45 Arial,sans-serif; }
+.v70-challenge-close { width:2.2cqw;height:2.2cqw;border:1px solid rgba(174,204,209,.28);background:rgba(5,18,27,.45);color:#d9e4e4;font:400 1.35cqw/1 Arial,sans-serif;cursor:pointer; }
+.v70-challenge-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1cqw;padding:1.25cqw 1.5cqw 1.5cqw; }
+.v70-challenge-card { position:relative;display:flex;flex-direction:column;min-height:24cqw;padding:1.15cqw;border:1px solid rgba(160,193,199,.24);background:linear-gradient(155deg,rgba(5,24,36,.97),rgba(10,52,61,.95));color:#edf4f3;text-align:left;overflow:hidden; }
+.v70-challenge-card::after { content:attr(data-mark);position:absolute;right:-.2cqw;top:2.1cqw;color:rgba(120,211,202,.08);font:900 7cqw/1 Arial,sans-serif; }
+.v70-challenge-card.is-academy { background:linear-gradient(155deg,rgba(12,30,35,.98),rgba(43,66,38,.96)); }
+.v70-challenge-card > small { color:#dfbd67;font:900 .5cqw/1 Arial,sans-serif;letter-spacing:.16em; }
+.v70-challenge-card h3 { position:relative;z-index:1;margin:.45cqw 0 .35cqw;font:900 1.36cqw/1 Arial,sans-serif; }
+.v70-challenge-card > p { position:relative;z-index:1;min-height:2.7cqw;margin:0 0 .85cqw;color:#b7c9cc;font:600 .63cqw/1.45 Arial,sans-serif; }
+.v70-challenge-rules { position:relative;z-index:1;display:grid;gap:.45cqw;margin:.4cqw 0 1cqw; }
+.v70-challenge-rules span { display:grid;grid-template-columns:1.45cqw 1fr;gap:.55cqw;align-items:center;padding:.5cqw .55cqw;border:1px solid rgba(169,200,203,.15);background:rgba(3,18,27,.38); }
+.v70-challenge-rules b { color:#e6c474;font:900 .72cqw/1 Arial,sans-serif;text-align:center; }
+.v70-challenge-rules strong { display:block;font:800 .61cqw/1.15 Arial,sans-serif; }
+.v70-challenge-rules small { display:block;margin-top:.12cqw;color:#8faab0;font:600 .5cqw/1.25 Arial,sans-serif; }
+.v70-challenge-select { position:relative;z-index:1;margin-top:auto;width:100%;padding:.75cqw;border:1px solid #d7b35c;background:linear-gradient(180deg,#14858a,#0c5c68);color:#fff;font:900 .62cqw/1 Arial,sans-serif;letter-spacing:.09em;cursor:pointer; }
+.v70-challenge-select:hover,.v70-challenge-select:focus-visible { filter:brightness(1.13);outline:2px solid rgba(230,196,116,.25); }
+.v70-challenge-footnote { grid-column:1/-1;display:flex;justify-content:space-between;gap:1cqw;padding:.75cqw 1cqw;border:1px solid rgba(196,219,221,.14);background:rgba(4,19,28,.45);color:#9db4b9;font:600 .55cqw/1.35 Arial,sans-serif; }
+.v70-challenge-footnote strong { color:#d9e6e5; }
+
+.v70-club-challenge-banner { display:grid;grid-template-columns:auto 1fr auto;gap:.8cqw;align-items:center;margin:0 0 .7cqw;padding:.72cqw .85cqw;border:1px solid rgba(206,171,83,.48);background:linear-gradient(90deg,#091e2c,#0c4850);color:#eef4f3; }
+.v70-club-challenge-banner > b { display:grid;place-items:center;width:2.25cqw;height:2.25cqw;border:1px solid #cba653;border-radius:50%;color:#e7c46d;font:900 .78cqw/1 Arial,sans-serif; }
+.v70-club-challenge-banner span strong,.v70-club-challenge-banner span small { display:block; }
+.v70-club-challenge-banner span strong { font:900 .67cqw/1.2 Arial,sans-serif; }
+.v70-club-challenge-banner span small { margin-top:.14cqw;color:#a9c1c5;font:600 .52cqw/1.3 Arial,sans-serif; }
+.v70-club-challenge-banner > small { color:#dabc71;font:900 .48cqw/1 Arial,sans-serif;letter-spacing:.1em; }
+.v70-preview-contract { margin:.55cqw 0 0;padding:.65cqw .75cqw;border-left:.2cqw solid #d4ad55;background:rgba(6,29,40,.88); }
+.v70-preview-contract span,.v70-preview-contract strong,.v70-preview-contract small { display:block; }
+.v70-preview-contract span { color:#d9b967;font:900 .48cqw/1 Arial,sans-serif;letter-spacing:.12em; }
+.v70-preview-contract strong { margin:.25cqw 0;font:900 .75cqw/1.1 Arial,sans-serif; }
+.v70-preview-contract small { color:#a7bbc0;font:600 .52cqw/1.3 Arial,sans-serif; }
+
+.central-objectives-panel.is-v70-challenge { border-color:rgba(197,155,53,.65)!important;box-shadow:0 0 0 1px rgba(214,177,86,.16),0 .5cqw 1.3cqw rgba(0,0,0,.16)!important; }
+.central-objectives-panel.is-v70-challenge .central-panel-header { background:linear-gradient(90deg,#143c71,#80621b)!important;color:#fff!important; }
+.central-objectives-panel.is-v70-complete .central-panel-header { background:linear-gradient(90deg,#0f6a5f,#b18d2f)!important; }
+.central-objectives-panel.is-v70-failed .central-panel-header { background:linear-gradient(90deg,#4d2531,#87552a)!important; }
+.central-objective-row.is-challenge .objective-icon { color:#b88a20!important; }
+.central-objective-row.is-challenge .progress i { background:linear-gradient(90deg,#b8871e,#e0bf65)!important; }
+
+.v36-staff-dossier.is-former-player { box-shadow:inset .22cqw 0 #c9a64e; }
+.v70-legacy-tag { display:inline-flex!important;align-items:center;gap:.24cqw;margin-top:.3cqw;padding:.25cqw .42cqw!important;border:1px solid rgba(197,159,69,.4);background:rgba(196,157,64,.1);color:#d4af55!important;font:900 .48cqw/1 Arial,sans-serif!important;letter-spacing:.08em; }
+.v70-legacy-note { border-left:.18cqw solid #c9a64e!important;padding-left:.55cqw!important;color:#5e5030!important; }
+.retired-card .v70-staff-path { display:inline-block;margin-top:.25cqw;color:#b78920;font:900 .45cqw/1 Arial,sans-serif;letter-spacing:.06em; }
+.v70-archive-staff { margin-top:.7cqw;padding:.72cqw;border:1px solid rgba(186,146,48,.34);background:linear-gradient(90deg,rgba(207,172,79,.12),rgba(9,53,75,.05)); }
+.v70-archive-staff span,.v70-archive-staff strong,.v70-archive-staff small { display:block; }
+.v70-archive-staff span { color:#96721e;font:900 .47cqw/1 Arial,sans-serif;letter-spacing:.12em; }
+.v70-archive-staff strong { margin:.28cqw 0;font:900 .68cqw/1.2 Arial,sans-serif;color:#182a31; }
+.v70-archive-staff small { color:#60737a;font:600 .52cqw/1.35 Arial,sans-serif; }
+
+@media (max-aspect-ratio: 4/3) {
+  .v70-challenge-shell { width:88%; }
+  .v70-challenge-card { min-height:31cqw; }
+}

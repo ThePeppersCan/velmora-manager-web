@@ -1,0 +1,154 @@
+/* League table — compact blue broadcast layout inspired by classic televised standings. */
+
+body.v20-ui #screenSeason.is-table-view .season-main-content{
+  left:1.65cqw!important;right:1.65cqw!important;top:10.25cqw!important;width:auto!important;
+  padding:0!important;overflow:hidden!important;border:0!important;border-radius:.45cqw!important;
+  background:#293f84!important;box-shadow:0 .55cqw 1.7cqw rgba(4,17,54,.25)!important;
+}
+body.v20-ui #screenSeason.is-table-view .season-side-content{display:none!important}
+
+body.v20-ui #screenSeason .vm-table-broadcast{
+  position:relative!important;isolation:isolate!important;width:100%!important;height:100%!important;min-height:0!important;display:grid!important;
+  grid-template-rows:clamp(102px,5.6cqw,122px) clamp(46px,2.65cqw,58px) minmax(0,1fr)!important;overflow:hidden!important;
+  background:radial-gradient(circle at 50% -18%,rgba(125,158,229,.18) 0%,rgba(125,158,229,0) 39%),linear-gradient(135deg,#304f98 0%,#2a468b 52%,#243c7a 100%)!important;
+  color:#fff!important;font-family:Arial,Helvetica,sans-serif!important;font-variant-numeric:tabular-nums!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.12),inset 0 -1px rgba(0,0,0,.08)!important;
+}
+body.v20-ui #screenSeason .vm-table-broadcast::before{
+  content:""!important;position:absolute!important;z-index:0!important;inset:-20% -12%!important;pointer-events:none!important;
+  background:linear-gradient(112deg,transparent 25%,rgba(129,172,255,.055) 43%,rgba(255,255,255,.07) 50%,rgba(129,172,255,.045) 57%,transparent 75%)!important;
+  transform:translate3d(-18%,0,0)!important;animation:vmTableAmbientSweep 14s ease-in-out infinite alternate!important;
+}
+body.v20-ui #screenSeason .vm-table-hero,body.v20-ui #screenSeason .vm-league-browser,body.v20-ui #screenSeason .vm-league-table{position:relative!important;z-index:1!important}
+
+body.v20-ui #screenSeason .vm-table-hero{
+  position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  min-height:0!important;padding:.25cqw 1cqw .12cqw!important;overflow:hidden!important;background:transparent!important;color:#fff!important;text-align:center!important;
+}
+body.v20-ui #screenSeason .vm-table-hero::before,body.v20-ui #screenSeason .vm-table-hero::after{display:none!important}
+body.v20-ui #screenSeason .vm-table-league-logo{
+  display:block!important;width:clamp(170px,9.5cqw,214px)!important;height:clamp(58px,3.2cqw,70px)!important;margin:0 auto .04cqw!important;padding:0!important;box-sizing:border-box!important;object-fit:contain!important;
+  border:0!important;border-radius:0!important;background:transparent!important;filter:drop-shadow(1px 0 rgba(255,255,255,.62)) drop-shadow(-1px 0 rgba(255,255,255,.62)) drop-shadow(0 1px rgba(255,255,255,.62)) drop-shadow(0 -1px rgba(255,255,255,.62)) drop-shadow(0 .14cqw .18cqw rgba(3,13,44,.38))!important;
+}
+body.v20-ui #screenSeason .vm-table-hero h1{
+  margin:0!important;color:#fff!important;font:900 clamp(25px,1.5cqw,34px)/.9 Arial,Helvetica,sans-serif!important;
+  letter-spacing:.035em!important;text-shadow:0 .12cqw .2cqw rgba(0,0,0,.22)!important;
+}
+body.v20-ui #screenSeason .vm-table-hero p{
+  margin:.18cqw 0 0!important;color:rgba(255,255,255,.76)!important;font:700 clamp(9px,.4cqw,12px)/1 Arial,Helvetica,sans-serif!important;letter-spacing:.105em!important;
+}
+
+body.v20-ui #screenSeason .vm-league-browser{
+  align-self:center!important;justify-self:center!important;width:min(78cqw,calc(100% - 3cqw))!important;min-height:2.15cqw!important;
+  display:grid!important;grid-template-columns:minmax(11cqw,15cqw) minmax(22cqw,1fr) 8.2cqw!important;align-items:center!important;gap:.5cqw!important;
+  margin:0!important;padding:.3cqw .5cqw!important;border:1px solid rgba(255,255,255,.2)!important;border-radius:.28cqw!important;
+  background:rgba(7,25,69,.3)!important;box-shadow:0 .18cqw .65cqw rgba(5,20,59,.14),inset 0 1px rgba(255,255,255,.05)!important;
+  animation:vmTableControlsIn .46s cubic-bezier(.2,.78,.2,1) both!important;
+}
+body.v20-ui #screenSeason .vm-league-browser>div{display:block!important;min-width:0!important}
+body.v20-ui #screenSeason .vm-league-browser>div>span,body.v20-ui #screenSeason .vm-league-browser>small{display:none!important}
+body.v20-ui #screenSeason .vm-league-browser label{position:relative!important;display:block!important;min-width:0!important}
+body.v20-ui #screenSeason .vm-league-browser select{
+  width:100%!important;height:clamp(30px,1.65cqw,36px)!important;min-height:30px!important;padding:0 1.8cqw 0 .68cqw!important;
+  border:1px solid rgba(255,255,255,.32)!important;border-radius:.18cqw!important;outline:0!important;appearance:none!important;
+  background:rgba(9,31,82,.52)!important;color:#fff!important;font:800 clamp(11px,.48cqw,14px)/1 Arial,Helvetica,sans-serif!important;letter-spacing:.03em!important;
+}
+body.v20-ui #screenSeason .vm-league-browser select:focus{border-color:#fff!important;box-shadow:0 0 0 .12cqw rgba(255,255,255,.18)!important}
+body.v20-ui #screenSeason .vm-league-browser select option{background:#17336f!important;color:#fff!important}
+body.v20-ui #screenSeason .vm-league-browser label>i{
+  position:absolute!important;right:.62cqw!important;top:50%!important;transform:translateY(-52%)!important;color:rgba(255,255,255,.85)!important;
+  font:900 .58cqw/1 Arial,sans-serif!important;pointer-events:none!important;
+}
+body.v20-ui #screenSeason .vm-league-browser>button{
+  height:clamp(30px,1.65cqw,36px)!important;min-height:30px!important;padding:0 .5cqw!important;border:1px solid rgba(255,255,255,.48)!important;border-radius:.18cqw!important;
+  background:rgba(255,255,255,.045)!important;color:#fff!important;font:900 clamp(10px,.43cqw,13px)/1 Arial,Helvetica,sans-serif!important;letter-spacing:.055em!important;cursor:pointer!important;
+}
+body.v20-ui #screenSeason .vm-league-browser>button:hover{background:rgba(255,255,255,.12)!important}
+body.v20-ui #screenSeason .vm-league-browser>button:disabled{opacity:.42!important;cursor:default!important}
+
+body.v20-ui #screenSeason .vm-table-strip{display:none!important}
+
+body.v20-ui #screenSeason .vm-league-table{
+  align-self:stretch!important;justify-self:center!important;width:min(84cqw,calc(100% - 2.5cqw))!important;min-height:0!important;padding:0 0 .45cqw!important;box-sizing:border-box!important;
+  display:grid!important;grid-template-rows:clamp(33px,1.7cqw,37px) minmax(0,1fr)!important;overflow:hidden!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+}
+body.v20-ui #screenSeason .vm-table-rows{
+  min-height:0!important;display:grid!important;grid-template-rows:repeat(18,minmax(0,1fr))!important;overflow:hidden!important;background:transparent!important;
+}
+body.v20-ui #screenSeason .vm-table-rows::-webkit-scrollbar{width:.28cqw!important}
+body.v20-ui #screenSeason .vm-table-rows::-webkit-scrollbar-track{background:transparent!important}
+body.v20-ui #screenSeason .vm-table-rows::-webkit-scrollbar-thumb{border-radius:1cqw!important;background:rgba(255,255,255,.48)!important}
+
+body.v20-ui #screenSeason .live-table-head,body.v20-ui #screenSeason .live-table-row{
+  display:grid!important;grid-template-columns:4.2cqw minmax(20cqw,1fr) 4.5cqw 4.5cqw 4.5cqw 5.8cqw 5.8cqw!important;align-items:center!important;gap:0!important;
+  width:100%!important;min-height:0!important;margin:0!important;padding:0 .72cqw!important;border:0!important;border-radius:0!important;box-sizing:border-box!important;
+}
+body.v20-ui #screenSeason .live-table-head{
+  position:relative!important;top:auto!important;z-index:2!important;height:clamp(33px,1.7cqw,37px)!important;min-height:33px!important;
+  border-top:1px solid rgba(255,255,255,.08)!important;border-bottom:1px solid rgba(255,255,255,.3)!important;background:rgba(8,27,72,.16)!important;box-shadow:0 .2cqw .5cqw rgba(5,18,52,.07)!important;
+  animation:vmTableHeadIn .4s .08s cubic-bezier(.2,.78,.2,1) both!important;
+}
+body.v20-ui #screenSeason .live-table-head>span{
+  color:rgba(255,255,255,.68)!important;font:800 clamp(10px,.45cqw,13px)/1 Arial,Helvetica,sans-serif!important;
+  letter-spacing:.06em!important;text-align:center!important;text-transform:uppercase!important;
+}
+body.v20-ui #screenSeason .live-table-head>span:nth-child(2){padding-left:.2cqw!important;text-align:left!important}
+
+body.v20-ui #screenSeason .live-table-row{
+  position:relative!important;height:auto!important;min-height:0!important;border-bottom:1px solid rgba(255,255,255,.145)!important;
+  background:transparent!important;color:#fff!important;box-shadow:none!important;text-align:left!important;cursor:pointer!important;appearance:none!important;
+  opacity:0;transform:translate3d(0,5px,0);animation:vmTableRowReveal .38s cubic-bezier(.2,.72,.22,1) both;animation-delay:calc(.1s + var(--row-delay,0ms));
+  transition:background-color .14s ease,box-shadow .14s ease!important;
+}
+body.v20-ui #screenSeason .live-table-row:nth-child(even){background:rgba(5,24,76,.045)!important}
+body.v20-ui #screenSeason .live-table-row:hover{background:rgba(255,255,255,.095)!important;filter:none!important}
+body.v20-ui #screenSeason .live-table-row:focus-visible{outline:1px solid rgba(255,255,255,.75)!important;outline-offset:-1px!important}
+body.v20-ui #screenSeason .live-table-row.is-own{background:rgba(255,255,255,.13)!important;box-shadow:inset .18cqw 0 #fff!important}
+body.v20-ui #screenSeason .live-table-row::before{
+  content:""!important;position:absolute!important;left:0!important;top:.31cqw!important;bottom:.31cqw!important;width:.11cqw!important;min-width:2px!important;
+  border-radius:1cqw!important;background:transparent!important;
+}
+body.v20-ui #screenSeason .live-table-row.is-continental::before,body.v20-ui #screenSeason .live-table-row.is-auto-promotion::before{background:#56d8b1!important}
+body.v20-ui #screenSeason .live-table-row.is-playoff::before{background:#75b9ff!important}
+body.v20-ui #screenSeason .live-table-row.is-relegation::before{background:#ff7180!important}
+
+body.v20-ui #screenSeason .vm-table-position{display:block!important;min-width:0!important;text-align:center!important}
+body.v20-ui #screenSeason .vm-table-position>strong{color:#fff!important;font:700 clamp(15px,.66cqw,18px)/1 Arial,Helvetica,sans-serif!important}
+
+body.v20-ui #screenSeason .live-club-cell{display:flex!important;align-items:center!important;gap:.48cqw!important;min-width:0!important;padding:0!important}
+body.v20-ui #screenSeason .live-club-cell>img,body.v20-ui #screenSeason .live-club-cell>.v34-club-crest{
+  flex:0 0 auto!important;width:clamp(23px,1.25cqw,29px)!important;height:clamp(23px,1.25cqw,29px)!important;min-width:23px!important;min-height:23px!important;
+  object-fit:contain!important;filter:drop-shadow(0 1px 1px rgba(0,0,0,.2))!important;
+}
+body.v20-ui #screenSeason .live-club-cell>span{display:block!important;min-width:0!important}
+body.v20-ui #screenSeason .live-club-cell>span>strong{
+  display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;
+  font:700 clamp(15px,.66cqw,18px)/1 Arial,Helvetica,sans-serif!important;letter-spacing:.005em!important;text-transform:none!important;text-shadow:0 1px 1px rgba(5,18,52,.2)!important;
+}
+body.v20-ui #screenSeason .live-club-cell>span>small,body.v20-ui #screenSeason .table-zone-tag{display:none!important}
+
+body.v20-ui #screenSeason .live-table-row>span[role="cell"],body.v20-ui #screenSeason .live-table-row>strong.vm-table-points{
+  color:#fff!important;font:700 clamp(15px,.66cqw,18px)/1 Arial,Helvetica,sans-serif!important;text-align:center!important;text-shadow:0 1px 1px rgba(5,18,52,.2)!important;
+}
+body.v20-ui #screenSeason .live-table-row>.vm-table-points{font-weight:900!important}
+body.v20-ui #screenSeason .vm-goal-difference{font-weight:700!important}
+
+@keyframes vmTableAmbientSweep{from{transform:translate3d(-18%,0,0)}to{transform:translate3d(18%,0,0)}}
+@keyframes vmTableControlsIn{from{opacity:0;transform:translate3d(0,-6px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes vmTableHeadIn{from{opacity:0;transform:translate3d(0,5px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes vmTableRowReveal{to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes vmTableLogoFloat{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-2px,0)}}
+body.v20-ui #screenSeason .vm-table-league-logo{animation:vmTableLogoFloat 4.8s ease-in-out .8s infinite!important}
+
+@media(prefers-reduced-motion:reduce){
+  body.v20-ui #screenSeason .vm-table-broadcast::before,body.v20-ui #screenSeason .vm-table-league-logo,body.v20-ui #screenSeason .vm-league-browser,body.v20-ui #screenSeason .live-table-head,body.v20-ui #screenSeason .live-table-row{animation:none!important;opacity:1!important;transform:none!important}
+}
+
+@media(max-width:900px){
+  body.v20-ui #screenSeason .vm-table-broadcast{grid-template-rows:102px 46px minmax(0,1fr)!important}
+  body.v20-ui #screenSeason .vm-table-league-logo{width:170px!important;height:58px!important}
+  body.v20-ui #screenSeason .vm-league-browser,body.v20-ui #screenSeason .vm-league-table{width:calc(100% - 1.4cqw)!important}
+  body.v20-ui #screenSeason .vm-league-browser{grid-template-columns:11cqw minmax(17cqw,1fr) 8cqw!important}
+  body.v20-ui #screenSeason .live-table-head,body.v20-ui #screenSeason .live-table-row{grid-template-columns:3.8cqw minmax(13cqw,1fr) 4cqw 4cqw 4cqw 4.7cqw 5cqw!important}
+}

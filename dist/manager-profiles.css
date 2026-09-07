@@ -1,0 +1,54 @@
+/* V64 — Club manager portraits + manager dossier */
+body.v20-ui .vm-club-manager{
+  width:100%;min-height:4.6cqw;margin-top:.55cqw;padding:0!important;display:grid!important;grid-template-columns:4.15cqw minmax(0,1fr);align-items:stretch;text-align:left;
+  overflow:hidden;border:1px solid #d4dee8!important;border-left:.18cqw solid var(--profile-accent)!important;border-radius:.42cqw!important;background:linear-gradient(100deg,#eef4f8,#f8fafc)!important;color:#18324e!important;cursor:pointer!important;box-shadow:0 .16cqw .4cqw rgba(17,42,68,.06);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease
+}
+body.v20-ui .vm-club-manager:hover{transform:translateY(-.05cqw);border-color:#9db5c9!important;box-shadow:0 .25cqw .65cqw rgba(17,42,68,.13)}
+body.v20-ui .vm-club-manager.is-vacant{display:block!important;min-height:auto;padding:.65cqw!important;cursor:default!important}
+body.v20-ui .vm-club-manager-portrait{position:relative;min-height:4.6cqw;overflow:hidden;background:radial-gradient(circle at 50% 28%,#f7fbfd 0,#dce8ef 72%,#cbd9e3 100%);border-right:1px solid #d4dee8}
+body.v20-ui .vm-club-manager-portrait .manager-portrait-crop{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:transparent!important}
+body.v20-ui .vm-club-manager-portrait .manager-paperdoll{top:-26%!important;left:50%!important;width:172%!important;max-width:none!important;transform:translateX(-50%)!important}
+body.v20-ui .vm-club-manager>section{min-width:0;padding:.62cqw .72cqw .55cqw;display:flex;flex-direction:column;justify-content:center}
+body.v20-ui .vm-club-manager>section b{display:block;color:#6e8193!important;font:900 .25cqw/1 Arial,sans-serif!important;letter-spacing:.1em!important}
+body.v20-ui .vm-club-manager>section strong{display:block;margin:.28cqw 0 .2cqw;color:#153a60!important;font:900 .48cqw/1 Arial,sans-serif!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.v20-ui .vm-club-manager>section small{display:block;color:#738396!important;font:800 .27cqw/1.25 Arial,sans-serif!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.v20-ui .vm-club-manager>section em{display:block;margin-top:.37cqw;color:#0e6b9f!important;font:900 .23cqw/1 Arial,sans-serif!important;font-style:normal!important;letter-spacing:.08em!important}
+
+body.v20-ui .vm-manager-dossier>button{height:1.7cqw;margin-bottom:.5cqw;padding:0 .62cqw;border:1px solid #c2cfdb;border-radius:.28cqw;background:#fff;color:#164f87;font:900 .62cqw/1 Arial;cursor:pointer}
+body.v20-ui .vm-manager-dossier>button span{margin-left:.2cqw;font-size:.27cqw;letter-spacing:.06em;vertical-align:.1cqw}
+body.v20-ui .vm-manager-dossier>header{display:grid;grid-template-columns:7.2cqw minmax(0,1fr) 7.2cqw;align-items:center;gap:.9cqw;min-height:8.3cqw;padding:.65cqw 1cqw;border-radius:.58cqw;overflow:hidden;background:linear-gradient(112deg,#071c38,#0c4778 63%,#116f8c);color:#fff;box-shadow:0 .28cqw .75cqw rgba(10,34,58,.18)}
+body.v20-ui .vm-manager-dossier-portrait{position:relative;width:6.7cqw;height:7cqw;overflow:hidden;border:1px solid rgba(255,255,255,.18);border-radius:.55cqw;background:radial-gradient(circle at 50% 25%,#eef6f8,#cbdce5 75%)}
+body.v20-ui .vm-manager-dossier-portrait .manager-portrait-crop{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:transparent!important}
+body.v20-ui .vm-manager-dossier-portrait .manager-paperdoll{top:-24%!important;left:50%!important;width:170%!important;max-width:none!important;transform:translateX(-50%)!important}
+body.v20-ui .vm-manager-dossier>header>section{min-width:0}
+body.v20-ui .vm-manager-dossier>header>section>span{color:#87dce4!important;font:900 .29cqw/1 Arial,sans-serif!important;letter-spacing:.12em!important}
+body.v20-ui .vm-manager-dossier>header h2{margin:.34cqw 0 .22cqw;color:#fff!important;font:900 1.2cqw/.95 Arial,sans-serif!important;letter-spacing:-.025em!important}
+body.v20-ui .vm-manager-dossier>header p{margin:0;color:#c5d6e4!important;font:800 .32cqw/1.25 Arial,sans-serif!important}
+body.v20-ui .vm-manager-dossier>header>section>div{display:flex;align-items:center;gap:.34cqw;margin-top:.55cqw;padding-top:.5cqw;border-top:1px solid rgba(255,255,255,.14)}
+body.v20-ui .vm-manager-dossier>header>section>div img{width:1.35cqw!important;height:1.35cqw!important;object-fit:contain!important}
+body.v20-ui .vm-manager-dossier>header>section>div strong{color:#fff!important;font:900 .32cqw/1 Arial,sans-serif!important}
+body.v20-ui .vm-manager-dossier>header>section>div small{margin-left:.2cqw;color:#9fb8ca!important;font:800 .25cqw/1 Arial,sans-serif!important}
+body.v20-ui .vm-manager-dossier>header>aside{padding-left:.8cqw;border-left:1px solid rgba(255,255,255,.18)}
+body.v20-ui .vm-manager-dossier>header>aside span,body.v20-ui .vm-manager-dossier>header>aside small{display:block;color:#b5c8d7!important;font:900 .25cqw/1.2 Arial,sans-serif!important;letter-spacing:.07em!important}
+body.v20-ui .vm-manager-dossier>header>aside strong{display:block;margin:.3cqw 0;color:#fff!important;font:900 1.08cqw/1 Arial,sans-serif!important}
+body.v20-ui .vm-manager-facts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.45cqw;margin-top:.55cqw}
+body.v20-ui .vm-manager-facts article{min-width:0;padding:.55cqw .6cqw;border:1px solid #ccd7e2;border-radius:.4cqw;background:#fff}
+body.v20-ui .vm-manager-facts span{display:block;color:#758599!important;font:900 .23cqw/1 Arial,sans-serif!important;letter-spacing:.07em!important}
+body.v20-ui .vm-manager-facts strong{display:block;margin-top:.25cqw;color:#153d66!important;font:900 .35cqw/1.05 Arial,sans-serif!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.v20-ui .vm-manager-profile-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:.55cqw;margin-top:.55cqw}
+body.v20-ui .vm-manager-profile-grid>section{padding:.68cqw;border:1px solid #ccd7e2;border-radius:.45cqw;background:#fff}
+body.v20-ui .vm-manager-profile-grid>section.is-wide{grid-column:1/-1}
+body.v20-ui .vm-manager-profile-grid>section>header{margin-bottom:.52cqw;color:#5b6e83;font:900 .29cqw/1 Arial,sans-serif;letter-spacing:.07em}
+body.v20-ui .vm-manager-profile-grid>section>article{display:flex;align-items:center;justify-content:space-between;gap:.7cqw;padding:.46cqw .1cqw;border-bottom:1px solid #edf1f4}
+body.v20-ui .vm-manager-profile-grid>section>article:last-child{border-bottom:0}
+body.v20-ui .vm-manager-profile-grid>section>article span{color:#768798!important;font:900 .25cqw/1 Arial,sans-serif!important;letter-spacing:.06em!important}
+body.v20-ui .vm-manager-profile-grid>section>article strong{color:#173d64!important;font:900 .34cqw/1 Arial,sans-serif!important;text-align:right}
+body.v20-ui .vm-manager-record{display:grid;grid-template-columns:repeat(5,1fr);gap:.4cqw}
+body.v20-ui .vm-manager-record b{padding:.72cqw .35cqw;border-radius:.34cqw;background:#f0f5f9;color:#104a80!important;font:900 .7cqw/1 Arial,sans-serif!important;text-align:center}
+body.v20-ui .vm-manager-record b small{display:block;margin-top:.25cqw;color:#758597!important;font:900 .2cqw/1.1 Arial,sans-serif!important;letter-spacing:.05em!important}
+body.v20-ui .vm-manager-record.is-career b{background:linear-gradient(180deg,#f3f7fa,#eaf1f6)}
+@media (max-width:900px){
+  body.v20-ui .vm-manager-facts{grid-template-columns:repeat(3,1fr)}
+  body.v20-ui .vm-manager-profile-grid{grid-template-columns:1fr}
+  body.v20-ui .vm-manager-profile-grid>section.is-wide{grid-column:auto}
+}

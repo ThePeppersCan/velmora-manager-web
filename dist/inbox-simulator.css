@@ -1,0 +1,642 @@
+/* ================================================================
+   V73 — CLUB COMMUNICATIONS SIMULATOR
+   Character-led, consequence-aware Office inbox presentation.
+   Existing correspondence, decisions, filters and save data remain intact.
+   ================================================================ */
+
+body.v20-ui #officeInboxPane {
+  --inbox-ink: #061a27;
+  --inbox-panel: #0a2a39;
+  --inbox-panel-2: #0e3544;
+  --inbox-mint: #67d7ce;
+  --inbox-gold: #d6b56d;
+  --inbox-paper: #f8f4e9;
+  --inbox-alert: #e6675d;
+  background:
+    radial-gradient(circle at 76% 0%, rgba(72, 190, 182, .16), transparent 28%),
+    linear-gradient(145deg, #dfe9ee 0%, #edf3f6 52%, #d8e6eb 100%) !important;
+}
+
+body.v20-ui #officeInboxPane .office-inbox-layout {
+  grid-template-columns: 31.5% minmax(0, 1fr) !important;
+  gap: .72cqw !important;
+  padding: .72cqw !important;
+  background: transparent !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-column,
+body.v20-ui #officeInboxPane .office-message-reader {
+  border: 1px solid rgba(9, 39, 54, .16) !important;
+  border-radius: .62cqw !important;
+  overflow: hidden !important;
+  box-shadow: 0 .65cqw 1.8cqw rgba(9, 34, 48, .12) !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-column {
+  background: #f5f8fa !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-toolbar {
+  min-height: 5.4cqw;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  align-content: center;
+  gap: .68cqw !important;
+  padding: .85cqw .88cqw .78cqw !important;
+  border: 0 !important;
+  background:
+    linear-gradient(90deg, rgba(103, 215, 206, .1) 1px, transparent 1px) 0 0 / 1.9cqw 100%,
+    linear-gradient(145deg, #061c2a 0%, #0a3442 100%) !important;
+  box-shadow: inset 0 -.12cqw 0 var(--inbox-mint) !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-toolbar .office-kicker {
+  color: var(--inbox-mint) !important;
+  font-size: .3cqw !important;
+  letter-spacing: .18em !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-toolbar h3 {
+  margin-top: .18cqw !important;
+  color: #fff !important;
+  font-size: .86cqw !important;
+  letter-spacing: .055em;
+}
+
+body.v20-ui #officeInboxPane .office-inbox-filters {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .28cqw !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+body.v20-ui #officeInboxPane .office-inbox-filters button {
+  min-height: 1.45cqw;
+  padding: .22cqw .3cqw !important;
+  border: 1px solid rgba(166, 205, 212, .2) !important;
+  border-radius: .26cqw !important;
+  background: rgba(255, 255, 255, .035) !important;
+  color: #a9c0c8 !important;
+  font-size: .28cqw !important;
+  letter-spacing: .095em !important;
+  transition: color .16s ease, background .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+body.v20-ui #officeInboxPane .office-inbox-filters button:hover {
+  color: #fff !important;
+  border-color: rgba(103, 215, 206, .55) !important;
+  transform: translateY(-.04cqw);
+}
+
+body.v20-ui #officeInboxPane .office-inbox-filters button.is-active {
+  border-color: var(--inbox-mint) !important;
+  background: var(--inbox-mint) !important;
+  color: #06202b !important;
+  box-shadow: 0 .22cqw .55cqw rgba(45, 184, 175, .18);
+}
+
+body.v20-ui #officeInboxPane .office-message-list {
+  background: linear-gradient(180deg, #eef3f6, #f8fafb) !important;
+}
+
+.office-sim-briefing {
+  position: relative;
+  overflow: hidden;
+  margin: .55cqw;
+  padding: .68cqw;
+  border: 1px solid #d4e0e5;
+  border-radius: .48cqw;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(103, 215, 206, .24), transparent 42%),
+    linear-gradient(135deg, #fff, #edf5f6);
+  box-shadow: 0 .25cqw .72cqw rgba(11, 48, 63, .08);
+}
+
+.office-sim-briefing:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: .16cqw;
+  height: 100%;
+  background: var(--inbox-mint);
+}
+
+.office-sim-briefing header {
+  display: grid;
+  grid-template-columns: 1.5cqw minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .52cqw;
+}
+
+.office-sim-briefing-badge {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  display: grid;
+  place-items: center;
+}
+
+.office-sim-briefing-badge > * { width: 100% !important; height: 100% !important; }
+.office-sim-briefing-badge img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.office-sim-briefing header span { display: block; color: #69808d; font: 900 .24cqw/1 Arial, sans-serif; letter-spacing: .13em; }
+.office-sim-briefing header strong { display: block; margin-top: .16cqw; color: #102836; font: 900 .48cqw/1.1 Arial, sans-serif; }
+.office-sim-briefing header time { color: #43616e; font: 900 .27cqw/1 Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+
+.office-sim-briefing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .28cqw;
+  margin-top: .55cqw;
+}
+
+.office-sim-briefing-grid div {
+  min-width: 0;
+  padding: .42cqw .45cqw;
+  border: 1px solid rgba(14, 60, 73, .1);
+  border-radius: .28cqw;
+  background: rgba(255, 255, 255, .68);
+}
+
+.office-sim-briefing-grid span { display: block; color: #748792; font: 900 .21cqw/1 Arial, sans-serif; letter-spacing: .1em; }
+.office-sim-briefing-grid strong { display: block; margin-top: .2cqw; overflow: hidden; color: #143342; font: 900 .39cqw/1.14 Arial, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.office-sim-briefing-grid .is-alert strong { color: #b7443d; }
+
+.office-sim-lane-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .36cqw .72cqw .28cqw;
+  color: #728590;
+  font: 900 .24cqw/1 Arial, sans-serif;
+  letter-spacing: .14em;
+}
+
+.office-sim-lane-label b {
+  color: #173a49;
+  font-size: .28cqw;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-row {
+  position: relative;
+  grid-template-columns: .18cqw 2.72cqw minmax(0, 1fr) !important;
+  min-height: 5.15cqw !important;
+  margin: 0 .55cqw .35cqw !important;
+  padding: .58cqw .58cqw .58cqw 0 !important;
+  gap: .55cqw !important;
+  border: 1px solid #dde5e9 !important;
+  border-radius: .45cqw !important;
+  background: rgba(255, 255, 255, .86) !important;
+  box-shadow: 0 .18cqw .42cqw rgba(15, 45, 58, .045) !important;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-row:before {
+  content: "";
+  align-self: stretch;
+  width: .18cqw;
+  min-height: 100%;
+  border-radius: 0 .16cqw .16cqw 0;
+  background: color-mix(in srgb, var(--mail-tone, #62cfc7) 68%, #d7e2e6);
+}
+
+body.v20-ui #officeInboxPane .v38-mail-row:hover {
+  z-index: 2;
+  transform: translateX(.12cqw);
+  border-color: color-mix(in srgb, var(--mail-tone, #62cfc7) 55%, #d7e2e6) !important;
+  background: #fff !important;
+  box-shadow: 0 .35cqw .85cqw rgba(13, 48, 61, .11) !important;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-row.is-selected {
+  border-color: var(--inbox-mint) !important;
+  background: linear-gradient(135deg, #fff, #effbfa) !important;
+  box-shadow: 0 .38cqw .92cqw rgba(36, 148, 143, .15) !important;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-row.is-selected:after {
+  content: "VIEWING";
+  position: absolute;
+  right: .5cqw;
+  top: .38cqw;
+  border: 0;
+  color: #18877f;
+  font: 900 .2cqw/1 Arial, sans-serif;
+  letter-spacing: .1em;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-portrait { width: 2.72cqw; }
+body.v20-ui #officeInboxPane .v37-mail-avatar { width: 2.72cqw !important; height: 3.1cqw !important; border-radius: .4cqw !important; }
+body.v20-ui #officeInboxPane .v37-mail-copy { min-width: 0; padding-right: .1cqw; }
+body.v20-ui #officeInboxPane .v38-mail-department { color: color-mix(in srgb, var(--mail-tone, #2f8f91) 88%, #143342) !important; font-size: .24cqw !important; letter-spacing: .12em !important; }
+body.v20-ui #officeInboxPane .v37-mail-sender { margin-top: .14cqw; color: #35515d !important; font-size: .28cqw !important; }
+body.v20-ui #officeInboxPane .v37-mail-copy > strong { margin-top: .1cqw; color: #102631 !important; font-size: .45cqw !important; line-height: 1.16 !important; }
+body.v20-ui #officeInboxPane .v37-mail-snippet { margin-top: .16cqw; color: #657985 !important; font-size: .29cqw !important; line-height: 1.3 !important; }
+
+.office-sim-row-context {
+  display: flex;
+  align-items: center;
+  gap: .26cqw;
+  min-width: 0;
+  margin-top: .26cqw;
+}
+
+.office-sim-row-context span {
+  max-width: 58%;
+  overflow: hidden;
+  padding: .16cqw .28cqw;
+  border: 1px solid #d7e2e6;
+  border-radius: 999px;
+  background: #f4f7f8;
+  color: #536b76;
+  font: 900 .21cqw/1 Arial, sans-serif;
+  letter-spacing: .065em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.office-sim-row-context span:first-child {
+  border-color: color-mix(in srgb, var(--mail-tone, #62cfc7) 42%, #d7e2e6);
+  color: color-mix(in srgb, var(--mail-tone, #268e88) 85%, #173342);
+}
+
+body.v20-ui #officeInboxPane .v37-mail-meta { margin-top: .25cqw !important; }
+body.v20-ui #officeInboxPane .v37-mail-meta .mail-priority { font-size: .2cqw !important; }
+
+body.v20-ui #officeInboxPane .office-routine-toggle {
+  margin: .35cqw .55cqw .42cqw !important;
+  border-radius: .4cqw !important;
+  background: linear-gradient(135deg, #e8eff2, #f7fafb) !important;
+}
+
+body.v20-ui #officeInboxPane .office-message-reader {
+  padding: 0 !important;
+  background:
+    linear-gradient(rgba(255, 255, 255, .54), rgba(255, 255, 255, .54)),
+    repeating-linear-gradient(90deg, rgba(15, 55, 68, .035) 0 1px, transparent 1px 38px),
+    #d9e5e9 !important;
+}
+
+body.v20-ui #officeInboxPane .v38-letter {
+  min-height: 100%;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene {
+  position: relative;
+  min-height: 13.2cqw;
+  overflow: hidden;
+  padding: .9cqw 1.05cqw .72cqw !important;
+  border: 0 !important;
+  border-bottom: .16cqw solid var(--mail-tone, var(--inbox-mint)) !important;
+  border-radius: 0 !important;
+  background-image:
+    linear-gradient(90deg, rgba(3, 19, 28, .96) 0%, rgba(4, 26, 36, .88) 48%, rgba(4, 29, 38, .52) 100%),
+    linear-gradient(0deg, rgba(3, 20, 28, .72), transparent 55%),
+    var(--office-scene) !important;
+  background-position: center !important;
+  background-size: cover !important;
+  color: #fff;
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .15;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.08) 0 1px, transparent 1px 4px);
+  mix-blend-mode: soft-light;
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene > * { position: relative; z-index: 1; }
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-eyebrow { color: #a9c6ce !important; }
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-eyebrow > span:first-child { color: var(--inbox-mint) !important; }
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-eyebrow svg { width: .48cqw; height: .48cqw; }
+
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-intro {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: end !important;
+  min-height: 8.3cqw;
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-title > span {
+  color: #9ec0c8 !important;
+  font-size: .33cqw !important;
+  letter-spacing: .15em !important;
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-title h3 {
+  max-width: 37cqw;
+  margin: .5cqw 0 .48cqw !important;
+  color: #fff !important;
+  font-size: 1.65cqw !important;
+  line-height: .98 !important;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+  text-shadow: 0 .18cqw .42cqw rgba(0,0,0,.35);
+}
+
+body.v20-ui #officeInboxPane .office-sim-scene .v38-sender-line strong { color: #fff !important; font-size: .46cqw !important; }
+body.v20-ui #officeInboxPane .office-sim-scene .v38-sender-line span { color: #a9c1c9 !important; font-size: .3cqw !important; }
+
+.office-sim-cast {
+  display: flex;
+  align-items: flex-end;
+  gap: .45cqw;
+  padding-right: .18cqw;
+}
+
+.office-sim-actor {
+  position: relative;
+  width: 5.3cqw;
+  flex: 0 0 5.3cqw;
+  text-align: center;
+}
+
+.office-sim-actor-portrait {
+  position: relative;
+  width: 5.3cqw;
+  height: 6.25cqw;
+  overflow: hidden;
+  border: 1px solid rgba(194, 235, 233, .33);
+  border-radius: .75cqw .75cqw .18cqw .18cqw;
+  background: radial-gradient(circle at 50% 35%, rgba(103,215,206,.22), rgba(5,26,36,.78));
+  box-shadow: 0 .65cqw 1.4cqw rgba(0,0,0,.34), inset 0 -.14cqw 0 var(--mail-tone, var(--inbox-mint));
+}
+
+.office-sim-actor-portrait > *,
+.office-sim-actor-portrait .avatar-shell,
+.office-sim-actor-portrait .avatar-stage { width: 100% !important; height: 100% !important; }
+.office-sim-actor-portrait img { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center 20% !important; }
+.office-sim-actor.is-secondary { width: 4.35cqw; flex-basis: 4.35cqw; opacity: .88; }
+.office-sim-actor.is-secondary .office-sim-actor-portrait { width: 4.35cqw; height: 5.15cqw; filter: saturate(.78); }
+.office-sim-actor small { display: inline-block; max-width: 100%; margin-top: .22cqw; overflow: hidden; color: #c2d7dc; font: 900 .22cqw/1 Arial, sans-serif; letter-spacing: .08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+
+body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-address {
+  margin-top: .62cqw !important;
+  padding-top: .5cqw !important;
+  border-top-color: rgba(193, 225, 230, .2) !important;
+  color: #abc2c9 !important;
+}
+
+body.v20-ui #officeInboxPane .v38-letter-paper {
+  margin: 0 !important;
+  padding: .82cqw .9cqw 1.15cqw !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    linear-gradient(90deg, rgba(211, 183, 114, .2) 1px, transparent 1px) 1.45cqw 0 / calc(100% - 2.9cqw) 100% no-repeat,
+    linear-gradient(180deg, #fbfaf5, var(--inbox-paper)) !important;
+  box-shadow: inset 0 .55cqw 1cqw rgba(28, 48, 53, .06) !important;
+}
+
+.office-sim-intel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .48cqw;
+  margin-bottom: .66cqw;
+}
+
+.office-sim-intel > div {
+  position: relative;
+  min-width: 0;
+  padding: .58cqw .68cqw .55cqw .78cqw;
+  overflow: hidden;
+  border: 1px solid #d7e0df;
+  border-radius: .38cqw;
+  background: rgba(255,255,255,.72);
+}
+
+.office-sim-intel > div:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: .13cqw;
+  background: var(--intel-tone, var(--mail-tone, #51bdb5));
+}
+
+.office-sim-intel span { display: block; color: #7a817f; font: 900 .24cqw/1 Arial, sans-serif; letter-spacing: .12em; }
+.office-sim-intel strong { display: block; margin-top: .24cqw; overflow: hidden; color: #142a30; font: 900 .45cqw/1.14 Arial, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+
+.office-sim-conversation {
+  position: relative;
+  padding: .25cqw .18cqw .2cqw 1.05cqw;
+}
+
+.office-sim-conversation:before {
+  content: "";
+  position: absolute;
+  left: .25cqw;
+  top: .45cqw;
+  bottom: .4cqw;
+  width: 1px;
+  background: linear-gradient(var(--mail-tone, #58c9c0), rgba(88,201,192,.1));
+}
+
+body.v20-ui #officeInboxPane .office-sim-conversation .v37-letter-body > p {
+  position: relative;
+  margin: 0 0 .46cqw !important;
+  padding: .72cqw .82cqw !important;
+  border: 1px solid #dedfd7 !important;
+  border-radius: .16cqw .48cqw .48cqw .48cqw !important;
+  background: rgba(255,255,255,.78) !important;
+  color: #33494e !important;
+  font: 600 .43cqw/1.58 Georgia, serif !important;
+  box-shadow: 0 .16cqw .4cqw rgba(44, 53, 51, .045);
+}
+
+body.v20-ui #officeInboxPane .office-sim-conversation .v37-letter-body > p:before {
+  content: "";
+  position: absolute;
+  left: -1.02cqw;
+  top: .74cqw;
+  width: .42cqw;
+  height: .42cqw;
+  border: .1cqw solid var(--inbox-paper);
+  border-radius: 50%;
+  background: var(--mail-tone, #56c6bd);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mail-tone, #56c6bd) 50%, #d5dddb);
+}
+
+body.v20-ui #officeInboxPane .v38-salutation {
+  border: 0 !important;
+  padding: .15cqw 0 .24cqw !important;
+  background: transparent !important;
+  color: #18373d !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #officeInboxPane .v38-salutation:before { display: none; }
+body.v20-ui #officeInboxPane .v37-letter-signature { padding: .35cqw 0 .2cqw !important; }
+
+body.v20-ui #officeInboxPane .v38-mail-replies {
+  margin-top: .7cqw !important;
+  padding: .74cqw !important;
+  border: 1px solid #d8dfdc !important;
+  border-radius: .52cqw !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.9), rgba(236,241,238,.92)) !important;
+  box-shadow: 0 .35cqw .85cqw rgba(43, 54, 52, .07) !important;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-replies header {
+  display: flex !important;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: .5cqw !important;
+  padding-bottom: .48cqw;
+  border-bottom: 1px solid #d9e0dd;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-replies header span { color: #5b7477 !important; }
+body.v20-ui #officeInboxPane .v38-mail-replies h4 { color: #122d34 !important; font-size: .68cqw !important; }
+
+body.v20-ui #officeInboxPane .v38-mail-replies button {
+  position: relative;
+  grid-template-columns: 1.55cqw minmax(0, 1fr) auto !important;
+  min-height: 3.45cqw !important;
+  margin-top: .38cqw !important;
+  padding: .48cqw .6cqw !important;
+  overflow: hidden;
+  border: 1px solid #d8dfdc !important;
+  border-radius: .4cqw !important;
+  background: rgba(255,255,255,.8) !important;
+  color: #18343b !important;
+  box-shadow: none !important;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+body.v20-ui #officeInboxPane .v38-mail-replies button:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: .14cqw;
+  background: var(--choice-tone, var(--mail-tone, #56c6bd));
+}
+
+body.v20-ui #officeInboxPane .v38-mail-replies button:hover,
+body.v20-ui #officeInboxPane .v38-mail-replies button:focus-visible {
+  z-index: 2;
+  transform: translateX(.12cqw);
+  border-color: color-mix(in srgb, var(--choice-tone, #56c6bd) 58%, #d8dfdc) !important;
+  background: #fff !important;
+  box-shadow: 0 .3cqw .75cqw rgba(32, 61, 66, .1) !important;
+}
+
+body.v20-ui #officeInboxPane .v38-reply-number {
+  width: 1.35cqw !important;
+  height: 1.35cqw !important;
+  border-color: color-mix(in srgb, var(--choice-tone, #56c6bd) 52%, #ccd7d5) !important;
+  background: color-mix(in srgb, var(--choice-tone, #56c6bd) 10%, #fff) !important;
+  color: color-mix(in srgb, var(--choice-tone, #278f88) 84%, #18343b) !important;
+}
+
+.office-sim-choice-topline {
+  display: flex;
+  align-items: center;
+  gap: .32cqw;
+  margin-bottom: .2cqw;
+}
+
+.office-sim-choice-tone,
+.office-sim-choice-impact {
+  display: inline-flex;
+  align-items: center;
+  min-height: .74cqw;
+  padding: .13cqw .28cqw;
+  border-radius: 999px;
+  font: 900 .2cqw/1 Arial, sans-serif;
+  letter-spacing: .08em;
+}
+
+.office-sim-choice-tone {
+  border: 1px solid color-mix(in srgb, var(--choice-tone, #56c6bd) 45%, #d6dfdc);
+  background: color-mix(in srgb, var(--choice-tone, #56c6bd) 9%, #fff);
+  color: color-mix(in srgb, var(--choice-tone, #278f88) 82%, #17363d);
+}
+
+.office-sim-choice-impact {
+  color: #687d80;
+  background: #eef2f1;
+}
+
+body.v20-ui #officeInboxPane .v38-reply-copy strong { font-size: .41cqw !important; line-height: 1.22 !important; }
+body.v20-ui #officeInboxPane .v38-reply-copy > span:last-child { color: #63777b !important; font-size: .3cqw !important; line-height: 1.36 !important; }
+
+body.v20-ui #officeInboxPane .v38-reply-receipt {
+  border: 1px solid #c9dfd8 !important;
+  border-radius: .5cqw !important;
+  background: linear-gradient(145deg, #eef8f4, #fff) !important;
+  box-shadow: inset .15cqw 0 0 #3fb394, 0 .3cqw .72cqw rgba(41, 100, 81, .07) !important;
+}
+
+.office-sim-outcome-label {
+  display: block;
+  margin-bottom: .24cqw;
+  color: #2d866e;
+  font: 900 .23cqw/1 Arial, sans-serif;
+  letter-spacing: .13em;
+}
+
+.office-sim-consequences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .28cqw;
+  margin-top: .45cqw;
+}
+
+.office-sim-consequences span {
+  padding: .2cqw .34cqw;
+  border: 1px solid #cfe0db;
+  border-radius: 999px;
+  background: rgba(255,255,255,.72);
+  color: #496b63;
+  font: 900 .21cqw/1 Arial, sans-serif;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+
+body.v20-ui #officeInboxPane .v38-letter-attachment {
+  border-radius: .48cqw !important;
+  background: linear-gradient(135deg, #0a2734, #0d3c47) !important;
+  color: #fff !important;
+}
+
+body.v20-ui #officeInboxPane .v38-letter-attachment small { color: #b9cdd1 !important; }
+body.v20-ui #officeInboxPane .v38-letter-attachment button { border-color: var(--inbox-mint) !important; background: var(--inbox-mint) !important; color: #08242d !important; }
+body.v20-ui #officeInboxPane .v38-letter-foot { color: #77837f !important; }
+
+@media (max-width: 1180px) {
+  body.v20-ui #officeInboxPane .office-inbox-layout { grid-template-columns: 36% minmax(0, 1fr) !important; }
+  body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-title h3 { font-size: 1.45cqw !important; }
+  .office-sim-actor { width: 4.8cqw; flex-basis: 4.8cqw; }
+  .office-sim-actor-portrait { width: 4.8cqw; height: 5.7cqw; }
+}
+
+@media (max-width: 900px) {
+  body.v20-ui #officeInboxPane .office-inbox-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(18rem, 42%) minmax(24rem, 1fr) !important;
+  }
+  body.v20-ui #officeInboxPane .office-message-toolbar { min-height: 5rem; }
+  body.v20-ui #officeInboxPane .office-inbox-filters { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  body.v20-ui #officeInboxPane .office-sim-scene { min-height: 16rem; }
+  body.v20-ui #officeInboxPane .office-sim-scene .v38-letter-title h3 { font-size: clamp(1.6rem, 4vw, 2.4rem) !important; }
+  .office-sim-intel { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.v20-ui #officeInboxPane .office-inbox-filters button,
+  body.v20-ui #officeInboxPane .v38-mail-row,
+  body.v20-ui #officeInboxPane .v38-mail-replies button { transition: none !important; }
+}

@@ -1,0 +1,391 @@
+/* Squad clubhouse: shared career shell, contained atmosphere, readable management tools.
+   Scoped override of the legacy squad presentation; gameplay DOM mounts stay stable. */
+@font-face{font-family:SquadDisplay;src:url('assets/matchday-cobalt/fonts/Anton-Regular.ttf') format('truetype');font-display:swap}
+body.v20-ui #screenSquad{--sq-paper:#f5f3ed;--sq-card:#fffef9;--sq-ink:#282f28;--sq-muted:#626d60;--sq-line:#d9ddd1;--sq-accent:#698044;--sq-lime:#c2db64;--sq-dark:#252f26;--v66-green:#bfd76d;--v66-text:#f6f5eb;--v66-line:#495345;--v66-muted:#bec7b4;background:var(--sq-paper)!important;color:var(--sq-ink)!important;--squad-nav-height:clamp(60px,4.7cqw,104px)}
+body.v20-ui #screenSquad .squad-shell{inset:calc(var(--squad-nav-height) + 18px) 24px 22px!important;grid-template-columns:minmax(0,1fr) minmax(310px,29%)!important;gap:20px!important;overflow:auto!important;align-items:stretch!important}
+body.v20-ui #screenSquad .squad-workspace{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto 52px minmax(0,1fr)!important;gap:14px!important;overflow:hidden!important;background:transparent!important}
+body.v20-ui #screenSquad .squad-heading{grid-column:1!important;grid-row:1!important;padding:4px 0 8px!important;background:transparent!important;border:0!important;box-shadow:none!important;gap:16px!important;min-height:78px!important}
+body.v20-ui #screenSquad .squad-club-lockup{gap:14px!important}
+body.v20-ui #screenSquad .squad-heading-badge{width:58px!important;height:64px!important;flex-basis:58px!important;padding:4px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+body.v20-ui #screenSquad .squad-heading .eyebrow{color:var(--sq-muted)!important;font:700 10px/1.4 Arial,sans-serif!important;letter-spacing:.16em!important}
+body.v20-ui #screenSquad .squad-heading h2{font:400 clamp(24px,2cqw,42px)/1.15 SquadDisplay,Arial,sans-serif!important;letter-spacing:.01em!important;color:var(--sq-ink)!important;margin:4px 0!important}
+body.v20-ui #screenSquad .squad-heading p{font:400 12px/1.4 Arial,sans-serif!important;color:var(--sq-muted)!important;margin:0!important;letter-spacing:0!important}
+body.v20-ui #screenSquad .squad-heading-metrics{display:grid!important;grid-template-columns:repeat(3,minmax(62px,5cqw))!important;background:transparent!important;border:0!important;border-radius:0!important;height:54px!important;flex:none!important}
+body.v20-ui #screenSquad .squad-heading-metrics>div{border-left:1px solid var(--sq-line)!important}
+body.v20-ui #screenSquad .squad-heading-metrics span{color:var(--sq-muted)!important;font:700 9px/1.4 Arial,sans-serif!important;letter-spacing:.06em!important}
+body.v20-ui #screenSquad .squad-heading-metrics strong{color:var(--sq-ink)!important;font:700 clamp(20px,1.5cqw,30px)/1.2 Arial,sans-serif!important;margin-top:4px!important}
+body.v20-ui #screenSquad .squad-heading-metrics>div:last-child strong{color:#507443!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav{position:relative!important;grid-column:1!important;grid-row:2!important;display:flex!important;flex-direction:row!important;align-items:stretch!important;gap:0!important;min-height:52px!important;height:52px!important;padding:0!important;background:var(--sq-card)!important;border:1px solid var(--sq-line)!important;border-radius:5px!important;box-shadow:none!important;overflow-x:auto!important;overflow-y:hidden!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button{flex:1 0 auto!important;flex-direction:row!important;gap:6px!important;min-width:0!important;width:auto!important;height:50px!important;min-height:50px!important;padding:0 13px!important;font:700 10px/1.3 Arial,sans-serif!important;letter-spacing:.06em!important;color:var(--sq-muted)!important;border:0!important;border-bottom:3px solid transparent!important;white-space:nowrap!important;overflow:visible!important;background:transparent!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button:is(:hover,.is-active){background:#edf0e5!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button.is-active{border-bottom-color:var(--sq-accent)!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button::after,body.v20-ui #screenSquad #squadSubnav .squad-nav-icon{display:none!important}
+body.v20-ui #screenSquad #squadSubnav .squad-nav-count{position:static!important;min-width:18px!important;height:18px!important;padding:2px 5px!important;font:700 9px/1 Arial,sans-serif!important;background:#e4e9d9!important;color:#4c603e!important;border-radius:50%!important}
+body.v20-ui #screenSquad .squad-season-chip{position:static!important;display:flex!important;flex-direction:row!important;gap:7px!important;min-height:0!important;height:auto!important;margin:7px 0 0!important;padding:0!important;background:transparent!important;border:0!important;justify-content:flex-start!important}
+body.v20-ui #screenSquad .squad-season-chip span,body.v20-ui #screenSquad .squad-season-chip strong{font:600 10px/1.4 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .squad-view{grid-column:1!important;grid-row:3!important;background:transparent!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad #seniorSquadView.squad-view.is-active{gap:16px!important;overflow:auto!important;padding:0 3px 6px!important;scrollbar-width:thin!important;scrollbar-color:#b6c0ab transparent!important}
+body.v20-ui #screenSquad .v51-st3-panel{flex:1 0 auto!important;min-height:clamp(350px,23cqw,520px)!important;padding:22px!important;border:1px solid #cbd1c0!important;border-radius:7px!important;background:linear-gradient(180deg,rgba(241,242,229,.96),rgba(225,233,209,.88) 56%,rgba(239,240,226,.97)),url('assets/career/training-ground.png') center/cover!important;color:var(--sq-ink)!important;box-shadow:none!important;clip-path:none!important;filter:none!important}
+body.v20-ui #screenSquad .v51-st3-panel::before{top:30%!important;bottom:14%!important;left:5%!important;right:5%!important;background:linear-gradient(90deg,transparent 49.8%,#75886030 50%,transparent 50.2%),radial-gradient(ellipse,transparent 18%,#75886025 18.4% 18.8%,transparent 19.2%)!important;border:1px solid #75886040!important;box-shadow:none!important}
+body.v20-ui #screenSquad .v51-st3-panel::after{display:none!important}
+body.v20-ui #screenSquad .v51-st3-head h3{font:400 clamp(23px,1.7cqw,36px)/1.1 SquadDisplay,Arial,sans-serif!important;color:var(--sq-ink)!important;letter-spacing:.02em!important}
+body.v20-ui #screenSquad .v51-st3-head h3 span{display:none!important}
+body.v20-ui #screenSquad .v51-st3-head p{font:400 12px/1.4 Arial,sans-serif!important;color:var(--sq-muted)!important;margin:6px 0 0!important}
+body.v20-ui #screenSquad .v66-formation{background:#f8f9efb8!important;color:var(--sq-muted)!important;border:1px solid #bcc7ae!important;border-radius:4px!important;min-width:145px!important;height:42px!important;gap:14px!important;padding:0 12px!important}
+body.v20-ui #screenSquad .v66-formation span{font:700 9px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-formation strong{font:700 11px/1.3 Arial,sans-serif!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .v51-st3-row{position:absolute!important;top:88px!important;bottom:65px!important;left:5%!important;right:5%!important}
+body.v20-ui #screenSquad .v51-st3-grid{height:100%!important;gap:20px!important;align-items:stretch!important}
+body.v20-ui #screenSquad .v51-st3-slot{width:100%!important;height:100%!important;max-width:260px!important;min-height:0!important}
+body.v20-ui #screenSquad .v51-st3-num{left:0!important;top:5px!important;right:0!important;text-align:center!important;font:700 10px/1.4 Arial,sans-serif!important;color:#596d49!important;letter-spacing:.12em!important}
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card{background:transparent!important;border:1px solid transparent!important;border-top:0!important;border-radius:6px!important;box-shadow:none!important;overflow:visible!important;outline:none!important}
+body.v20-ui #screenSquad .v51-st3-grid .player-card.v51-card:is(:hover,.is-selected){background:linear-gradient(180deg,transparent,#fcfdf7a8)!important;border-color:#7b91594d!important;box-shadow:0 12px 18px -15px #536b39a0!important;transform:translateY(-2px)!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-portrait{inset:25px 8px 90px!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-portrait img{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;transform:none!important;filter:drop-shadow(0 7px 5px #26362435)!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-info{left:8px!important;right:8px!important;bottom:9px!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:3px 8px!important;align-items:center!important;text-align:left!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-name{grid-column:1!important;grid-row:1!important;order:0!important;font:800 clamp(13px,.9cqw,20px)/1.15 Arial,sans-serif!important;color:var(--sq-ink)!important;white-space:normal!important;overflow-wrap:anywhere!important;letter-spacing:-.025em!important;margin:0!important;min-height:2.3em!important;display:flex!important;align-items:center!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-role{grid-column:1!important;grid-row:2!important;font:700 9px/1.4 Arial,sans-serif!important;color:#526a3f!important;letter-spacing:.04em!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr{grid-column:2!important;grid-row:1/3!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:2px!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr strong{font:400 clamp(27px,2.1cqw,42px)/1 SquadDisplay,Arial,sans-serif!important;color:#35492c!important}
+body.v20-ui #screenSquad .v51-st3-grid .v51-ovr small{font:700 8px/1 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .v51-st3-grid .squad-slot-status{display:none!important}
+body.v20-ui #screenSquad .sq-card-condition{grid-column:1/-1;color:#54644b;font:500 10px/1.4 Arial,sans-serif;display:flex;align-items:center;gap:6px;margin-top:3px;text-transform:none;letter-spacing:0}
+body.v20-ui #screenSquad .sq-card-condition::before{content:'';width:5px;height:5px;background:#527b41;border-radius:50%;flex:none}
+body.v20-ui #screenSquad .sq-card-condition.is-warning{color:#8b4927}
+body.v20-ui #screenSquad .sq-card-condition.is-warning::before{background:#b36136}
+body.v20-ui #screenSquad .v51-st3-foot{left:22px!important;right:22px!important;bottom:15px!important;justify-content:space-between!important;gap:12px!important;border-top:1px solid #9bab8340!important;padding-top:10px!important}
+body.v20-ui #screenSquad .v51-sub-note>span{display:none!important}
+body.v20-ui #screenSquad .v51-sub-note strong{font:600 11px/1.4 Arial,sans-serif!important;color:var(--sq-ink)!important;letter-spacing:0!important}
+body.v20-ui #screenSquad .v51-sub-note small{font:400 10px/1.4 Arial,sans-serif!important;color:var(--sq-muted)!important;margin-top:2px!important}
+body.v20-ui #screenSquad .sq-save-status{font:600 10px/1.4 Arial,sans-serif;color:#526a3f;white-space:nowrap}
+body.v20-ui #screenSquad .sq-save-status.has-error{color:#ac412b}
+body.v20-ui #screenSquad .swap-banner{position:sticky!important;top:0!important;left:auto!important;right:auto!important;margin:0!important;z-index:15!important;background:#e7edda!important;color:#283b24!important;border:1px solid #9aaa81!important;box-shadow:0 4px 10px #26332312!important;padding:12px 16px!important;gap:16px!important;font:500 12px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad .swap-banner span{color:#4c643b!important;font:700 10px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad .swap-banner strong{color:#293629!important;font:600 12px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad .swap-banner button{background:#fffef9!important;color:#35462b!important;border:1px solid #aeba9d!important;min-height:36px!important;font:700 10px Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-depth-section{flex:0 0 auto!important;min-height:0!important;padding:0!important;background:transparent!important;overflow:visible!important}
+body.v20-ui #screenSquad .v66-depth-head{min-height:40px!important;gap:10px!important}
+body.v20-ui #screenSquad .v66-depth-head h3{color:var(--sq-ink)!important;font:800 13px/1.4 Arial,sans-serif!important;letter-spacing:.07em!important}
+body.v20-ui #screenSquad .v66-depth-head p{color:var(--sq-muted)!important;font:400 11px/1.5 Arial,sans-serif!important;margin-top:3px!important}
+body.v20-ui #screenSquad .v66-depth-scroll{display:block!important;height:auto!important;overflow:visible!important;padding:10px 0 0!important}
+body.v20-ui #screenSquad .v66-depth-scroll>section{display:block!important}
+body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;width:100%!important;height:auto!important;gap:8px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card{display:block!important;width:100%!important;height:96px!important;min-height:96px!important;max-width:none!important;flex:auto!important;background:var(--sq-card)!important;border:1px solid var(--sq-line)!important;border-top:1px solid var(--sq-line)!important;border-radius:5px!important;box-shadow:none!important;outline:none!important;clip-path:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card:is(:hover,.is-selected){background:#edf1e3!important;border-color:#8da271!important;transform:translateY(-1px)!important;box-shadow:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait{left:7px!important;right:auto!important;top:16px!important;bottom:4px!important;width:56px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait img{width:100%!important;height:100%!important;object-fit:contain!important;transform:none!important;filter:drop-shadow(0 3px 2px #283d2226)!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-info{left:73px!important;right:9px!important;top:22px!important;bottom:6px!important;display:grid!important;grid-template-columns:minmax(0,1fr) 27px!important;gap:2px 5px!important;align-content:center!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-name{grid-column:1!important;grid-row:1!important;font:700 clamp(11px,.68cqw,15px)/1.2 Arial,sans-serif!important;color:var(--sq-ink)!important;white-space:normal!important;overflow-wrap:anywhere!important;margin:0!important;letter-spacing:-.015em!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-role{grid-column:1!important;grid-row:2!important;color:#60704f!important;font:600 8px/1.4 Arial,sans-serif!important;white-space:normal!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr{grid-column:2!important;grid-row:1/3!important;align-self:center!important;margin:0!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-ovr strong{font:400 24px/1 SquadDisplay,Arial,sans-serif!important;color:#465b37!important}
+body.v20-ui #screenSquad .v66-depth-scroll .v51-origin,body.v20-ui #screenSquad .v66-depth-scroll .v51-badge{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .squad-slot-status{top:8px!important;left:74px!important;color:#788568!important;font:700 8px/1 Arial,sans-serif!important;letter-spacing:.08em!important}
+body.v20-ui #screenSquad .v66-depth-scroll .sq-card-condition{font-size:9px!important;white-space:normal!important}
+body.v20-ui #screenSquad .sq-reserves{margin-top:12px;border-top:1px solid var(--sq-line);padding-top:4px}
+body.v20-ui #screenSquad .sq-reserves summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;min-height:38px;gap:12px;font:700 11px/1.5 Arial,sans-serif;color:#536447;list-style:none}
+body.v20-ui #screenSquad .sq-reserves summary::after{content:'+';font-size:21px;font-weight:400}
+body.v20-ui #screenSquad .sq-reserves[open] summary::after{content:'−'}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot.v51-card{height:72px!important;min-height:72px!important;background:transparent!important;border:1px dashed #b2bea4!important;cursor:pointer!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot>div{padding:8px!important;gap:2px!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot span{display:none!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot strong{font:700 10px/1.3 Arial,sans-serif!important;color:#68755b!important;margin:0!important}
+body.v20-ui #screenSquad .v66-depth-scroll .empty-player-slot small{font:400 10px/1.4 Arial,sans-serif!important;color:#738068!important}
+body.v20-ui #screenSquad .player-card:is(.is-drag-over,.is-swap-target:hover){outline:2px solid #7b934f!important;outline-offset:2px!important}
+body.v20-ui #screenSquad .player-card.is-swap-source{opacity:.65!important}
+body.v20-ui #screenSquad .player-profile{display:block!important;background:linear-gradient(155deg,#35432f,#242d25 60%)!important;border:1px solid #45553a!important;border-radius:7px!important;box-shadow:none!important;padding:20px 22px 70px!important;scrollbar-color:#637354 transparent!important;color:#f5f4e9!important;scroll-padding-bottom:65px!important}
+body.v20-ui #screenSquad .player-profile .profile-accent{height:3px!important;background:#98b55e!important}
+body.v20-ui #screenSquad .player-profile .profile-topline{font:700 9px/1.5 Arial,sans-serif!important;letter-spacing:.08em!important;color:#c0cbb2!important;gap:8px!important}
+body.v20-ui #screenSquad .squad-profile-status{background:#50603a80!important;color:#d9e7b8!important;font-size:9px!important}
+body.v20-ui #screenSquad .player-profile .profile-hero{min-height:240px!important;grid-template-columns:minmax(0,1fr) 46%!important;grid-template-rows:1fr auto!important;gap:12px!important;margin:10px 0 18px!important;overflow:visible!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage{grid-column:2!important;grid-row:1/3!important;height:230px!important;width:100%!important;max-width:100%!important;background:radial-gradient(ellipse,#b0c27821,transparent 70%)!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage img{width:100%!important;height:100%!important;object-fit:contain!important;transform:none!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy{grid-column:1!important;grid-row:1!important;align-self:center!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy h3{font:800 clamp(21px,1.6cqw,35px)/1.08 Arial,sans-serif!important;letter-spacing:-.045em!important;text-transform:none!important;flex-wrap:wrap!important;color:#f8f6e9!important;overflow-wrap:anywhere!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy p{font:600 10px/1.6 Arial,sans-serif!important;color:#cad5bc!important;margin-top:12px!important}
+body.v20-ui #screenSquad .player-profile .profile-hero-copy small{font:400 10px/1.5 Arial,sans-serif!important;color:#b3c0a8!important;margin-top:7px!important}
+body.v20-ui #screenSquad .player-profile .profile-overall{grid-column:1!important;grid-row:2!important;justify-self:start!important;text-align:left!important}
+body.v20-ui #screenSquad .player-profile .profile-overall strong{font:400 46px/1 SquadDisplay,Arial,sans-serif!important;color:#e2e9be!important}
+body.v20-ui #screenSquad .player-profile .profile-overall small{font:700 9px/1.4 Arial,sans-serif!important;color:#c4d1a3!important}
+body.v20-ui #screenSquad .v66-profile-captain{width:19px!important;height:19px!important;font-size:9px!important;background:#c7cf89!important}
+body.v20-ui #screenSquad .v66-profile-tabs{grid-template-columns:repeat(3,minmax(0,1fr))!important;height:42px!important;border-color:#60704b!important}
+body.v20-ui #screenSquad .v66-profile-tabs button{font:700 10px/1.3 Arial,sans-serif!important;letter-spacing:0!important;color:#bbc7ae!important}
+body.v20-ui #screenSquad .v66-profile-tabs button.is-active{color:#d5e79d!important}
+body.v20-ui #screenSquad .v66-profile-tabs button.is-active::after{background:#bfd76d!important;height:2px!important;left:0!important;right:0!important}
+body.v20-ui #screenSquad .v66-profile-overview>section,body.v20-ui #screenSquad .v66-profile-attributes>section{padding:14px 0!important;border-color:#495543!important}
+body.v20-ui #screenSquad .v66-profile-overview section>span,body.v20-ui #screenSquad .v66-profile-attributes>span,body.v20-ui #screenSquad .v66-profile-attributes section>span{font:700 9px/1.4 Arial,sans-serif!important;color:#afbea2!important}
+body.v20-ui #screenSquad .v66-profile-block strong,body.v20-ui #screenSquad .v66-profile-signal>strong{font:700 14px/1.4 Arial,sans-serif!important;margin-top:6px!important;color:#f0f2e4!important}
+body.v20-ui #screenSquad .v66-profile-block p{font:400 12px/1.6 Arial,sans-serif!important;color:#c0cbb4!important;margin-top:5px!important}
+body.v20-ui #screenSquad .v66-profile-signal>strong>small{font:600 9px/1.4 Arial,sans-serif!important;color:#becbae!important}
+body.v20-ui #screenSquad .v66-profile-signal>b{height:4px!important;margin-top:9px!important;background:#526047!important}
+body.v20-ui #screenSquad .v66-profile-signal>b>i,body.v20-ui #screenSquad .v66-profile-attributes>div>i>em{background:#b6cf77!important}
+body.v20-ui #screenSquad .v66-profile-form>strong{font:700 12px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-form>div i{width:32px!important;height:5px!important;background:#53604a!important}
+body.v20-ui #screenSquad .v66-profile-form>div i.tone-good{background:#b6cf77!important}
+body.v20-ui #screenSquad .v66-profile-form>div i.tone-neutral{background:#c6c49b!important}
+body.v20-ui #screenSquad .v66-profile-form>div i.tone-bad{background:#e19273!important}
+body.v20-ui #screenSquad .v66-profile-stats>div{margin-top:12px!important}
+body.v20-ui #screenSquad .v66-profile-stats b{font:700 21px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-stats small{font:600 9px/1.4 Arial,sans-serif!important;color:#bac6ae!important;margin-top:4px!important}
+body.v20-ui #screenSquad .v66-profile-attributes{padding-top:18px!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div{grid-template-columns:32px 1fr 28px!important;gap:12px!important;margin:18px 0!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>b,body.v20-ui #screenSquad .v66-profile-attributes>div>strong{font:700 11px/1.4 Arial,sans-serif!important;color:#d7dfc8!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>i{height:5px!important}
+body.v20-ui #screenSquad .v66-profile-attributes section strong{font:700 15px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad .v66-profile-attributes section small{font:400 12px/1.6 Arial,sans-serif!important;color:#becbb0!important}
+body.v20-ui #screenSquad .v66-profile-actions{gap:8px!important;margin-top:18px!important}
+body.v20-ui #screenSquad .v66-profile-actions button{height:40px!important;color:#ecf0de!important;background:#35432d!important;border:1px solid #748360!important;border-radius:4px!important;font:700 10px/1.3 Arial,sans-serif!important;letter-spacing:.03em!important}
+body.v20-ui #screenSquad .sq-profile-primary{display:flex;justify-content:center;align-items:center;min-height:43px;width:100%;margin-top:9px;background:#c0d767;color:#28331e;border:1px solid #c0d767;border-radius:4px;font:800 11px/1.4 Arial,sans-serif;letter-spacing:.05em;cursor:pointer}
+body.v20-ui #screenSquad .sq-development{padding:20px 0;color:#d9e2ca;font:400 12px/1.6 Arial,sans-serif}
+body.v20-ui #screenSquad .sq-development label{display:grid;gap:8px;font-weight:700}
+body.v20-ui #screenSquad .sq-development select{min-height:40px;border:1px solid #788665;background:#35432d;color:#f1f4e8;border-radius:4px;padding:8px;font:600 12px Arial,sans-serif;color-scheme:dark}
+body.v20-ui #screenSquad .sq-development strong{display:block;color:#e0e9c2;font-size:18px;margin:18px 0 5px}
+body.v20-ui #screenSquad .sq-development p{margin:8px 0 0}
+body.v20-ui #screenSquad .tone-neutral{color:#d8dcc8!important}
+body.v20-ui #screenSquad .tone-bad{color:#eda081!important}
+body.v20-ui #screenSquad :is(button,select,input,summary):focus-visible{outline:2px solid #729144!important;outline-offset:3px!important}
+body.v20-ui #screenSquad .player-profile :is(button,select):focus-visible{outline-color:#dfedaa!important}
+body.v20-ui #screenSquad :is(button,summary){transition:background-color .16s ease,border-color .16s ease,transform .16s ease!important}
+body.v20-ui #screenSquad .squad-view:not(#seniorSquadView){padding:0 3px 12px!important;background:transparent!important;color:var(--sq-ink)!important;overflow:auto!important;scrollbar-width:thin!important;scrollbar-color:#b6c0ab transparent!important}
+body.v20-ui #screenSquad:is(.is-tactics-view,.is-training-view,.is-overview-view,.v35-academy-wide) .squad-shell{grid-template-columns:minmax(0,1fr)!important}
+body.v20-ui #screenSquad:is(.is-tactics-view,.is-training-view,.is-overview-view,.v35-academy-wide) .squad-workspace{grid-template-columns:minmax(0,1fr)!important}
+body.v20-ui #screenSquad:is(.is-tactics-view,.is-training-view,.is-overview-view,.v35-academy-wide) #playerProfile{display:none!important}
+/* The overview uses real roster state, never illustrative statistics. */
+body.v20-ui #screenSquad .sq-overview-hero{display:grid;grid-template-columns:minmax(0,1fr) 34%;gap:30px;padding:32px;min-height:280px;border-radius:7px;background:linear-gradient(90deg,#263523f5,#263523bf),url('assets/career/training-ground.png') center/cover;color:#eff3df}
+body.v20-ui #screenSquad .sq-overview-hero span{font:700 10px/1.5 Arial,sans-serif;letter-spacing:.15em;color:#c9dba4}
+body.v20-ui #screenSquad .sq-overview-hero h3{font:400 clamp(32px,3cqw,60px)/1.1 SquadDisplay,Arial,sans-serif;margin:12px 0}
+body.v20-ui #screenSquad .sq-overview-hero p{font:400 13px/1.7 Arial,sans-serif;color:#d0dcc0;max-width:540px}
+body.v20-ui #screenSquad .sq-overview-hero aside{display:flex;flex-direction:column;justify-content:center;border-left:1px solid #c6d5ab40;padding-left:28px}
+body.v20-ui #screenSquad .sq-overview-hero aside strong{font:700 24px/1.3 Arial,sans-serif;margin:10px 0}
+body.v20-ui #screenSquad .sq-overview-hero button,body.v20-ui #screenSquad .sq-overview-actions button{min-height:42px;padding:12px 18px;border:1px solid #9aaf72;border-radius:4px;background:#cadc8e;color:#2c3d24;font:700 11px/1.3 Arial,sans-serif;cursor:pointer}
+body.v20-ui #screenSquad .sq-overview-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+body.v20-ui #screenSquad .sq-overview-metrics article{padding:22px;background:var(--sq-card);border:1px solid var(--sq-line);border-radius:6px}
+body.v20-ui #screenSquad .sq-overview-metrics span{display:block;color:var(--sq-muted);font:700 10px/1.4 Arial,sans-serif;letter-spacing:.08em}
+body.v20-ui #screenSquad .sq-overview-metrics strong{display:block;margin:10px 0;font:700 24px/1.2 Arial,sans-serif;color:var(--sq-ink)}
+body.v20-ui #screenSquad .sq-overview-metrics small{font:400 12px/1.5 Arial,sans-serif;color:var(--sq-muted)}
+body.v20-ui #screenSquad .sq-overview-actions{display:flex;gap:10px;flex-wrap:wrap}
+body.v20-ui #screenSquad .sq-overview-actions button{background:var(--sq-card);border-color:var(--sq-line);color:var(--sq-ink)}
+/* Companion panes inherit the same paper, olive, and charcoal palette. */
+body.v20-ui #screenSquad :is(.tactics-hero,.academy-hero,.career-archive-hero){background:#e9eddf!important;color:var(--sq-ink)!important;border:1px solid var(--sq-line)!important;border-radius:6px!important;padding:22px!important;box-shadow:none!important;min-height:120px!important}
+body.v20-ui #screenSquad :is(.tactics-hero,.academy-hero,.career-archive-hero) :is(h2,h3){color:var(--sq-ink)!important;font:400 clamp(26px,2.1cqw,42px)/1.15 SquadDisplay,Arial,sans-serif!important;letter-spacing:.01em!important;margin:8px 0!important}
+body.v20-ui #screenSquad :is(.tactics-hero,.academy-hero,.career-archive-hero) p{font:400 12px/1.6 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .roster-kicker{color:#647b4d!important;font:700 10px/1.5 Arial,sans-serif!important;letter-spacing:.12em!important}
+body.v20-ui #screenSquad :is(.squad-tactic-group,.tactics-profile-card,.academy-dashboard article,.academy-card,.archive-stat,.archive-award-mini,.archive-season-list>button,.archive-world-ledger article,.archive-record-book article,.v35-panel,.v35-kpi,.academy-footer-note){background:var(--sq-card)!important;border:1px solid var(--sq-line)!important;border-radius:5px!important;color:var(--sq-ink)!important;box-shadow:none!important}
+body.v20-ui #screenSquad .squad-tactics-content{margin-top:18px!important}
+body.v20-ui #screenSquad .squad-tactics-layout{grid-template-columns:minmax(0,1fr) minmax(250px,26%)!important;gap:20px!important}
+body.v20-ui #screenSquad .squad-tactics-main{gap:16px!important}
+body.v20-ui #screenSquad .tactics-profile-card{padding:22px!important;min-height:200px!important;gap:24px!important}
+body.v20-ui #screenSquad .tactics-mini-pitch{background:#e2e9d5!important;border:1px solid #acbc97!important;box-shadow:none!important}
+body.v20-ui #screenSquad .tactic-dot{background:#495e38!important;color:#f4f6eb!important;border-color:#f4f6eb!important;box-shadow:none!important}
+body.v20-ui #screenSquad .tactics-profile-copy h3{font:700 24px/1.3 Arial,sans-serif!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .tactics-profile-copy p{font:400 12px/1.6 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .squad-tactic-group{padding:18px!important}
+body.v20-ui #screenSquad .squad-tactic-group header{margin-bottom:14px!important}
+body.v20-ui #screenSquad .squad-tactic-group header span{font:700 11px/1.5 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .squad-tactic-group header strong{font:700 12px/1.5 Arial,sans-serif!important;color:#577244!important}
+body.v20-ui #screenSquad .squad-tactic-option{min-height:94px!important;padding:16px!important;background:#f7f8f1!important;border:1px solid var(--sq-line)!important;border-radius:4px!important;box-shadow:none!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .squad-tactic-option.is-selected{background:#e6edd9!important;border-color:#829d5b!important;box-shadow:inset 0 3px #829d5b!important}
+body.v20-ui #screenSquad .squad-tactic-option b{font:700 12px/1.4 Arial,sans-serif!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .squad-tactic-option small{font:400 11px/1.6 Arial,sans-serif!important;color:var(--sq-muted)!important;margin-top:8px!important}
+body.v20-ui #screenSquad .squad-tactics-summary{background:var(--sq-dark)!important;border:1px solid #4a5b3d!important;border-radius:6px!important;padding:26px!important;box-shadow:none!important;color:#eef3e0!important}
+body.v20-ui #screenSquad .squad-tactics-summary :is(h3,strong){color:#e8edda!important}
+body.v20-ui #screenSquad .squad-tactics-summary :is(p,small,span){color:#c0cdae!important;font-size:12px!important;line-height:1.6!important}
+body.v20-ui #screenSquad .squad-tactics-summary button{min-height:42px!important;background:#425232!important;color:#e7efd8!important;border:1px solid #7c9263!important;font:700 10px Arial,sans-serif!important}
+body.v20-ui #screenSquad .tactic-profile-meter :is(span,strong){font:700 10px/1.5 Arial,sans-serif!important;color:#5d6e4f!important}
+body.v20-ui #screenSquad .tactic-profile-meter i{background:#e1e7d9!important}
+body.v20-ui #screenSquad .tactic-profile-meter i b{background:#809b55!important}
+body.v20-ui #screenSquad #squadTrainingContent{color:var(--sq-ink)!important;font-size:13px!important}
+body.v20-ui #screenSquad .tr-shell{padding:0!important}
+body.v20-ui #screenSquad .tr-hero{background:linear-gradient(90deg,#293a24ed,#293a2490),url('assets/career/training-ground.png') center/cover!important;border:1px solid #4c613d!important;box-shadow:none!important;border-radius:6px!important}
+body.v20-ui #screenSquad .tr-hero h2{font-family:SquadDisplay,Arial,sans-serif!important;font-weight:400!important;letter-spacing:0!important}
+body.v20-ui #screenSquad :is(.tr-eyebrow,.tr-fixture>span){color:#d1e2a9!important}
+body.v20-ui #screenSquad .tr-shell :is(.tr-stat,.tr-controls,.tr-table-wrap,.tr-panel,.tr-summary-card){background:var(--sq-card)!important;border-color:var(--sq-line)!important;box-shadow:none!important}
+body.v20-ui #screenSquad .tr-shell :is(select,input){color:var(--sq-ink)!important;background:var(--sq-card)!important;border-color:#b7c3a7!important;accent-color:#708b4c}
+body.v20-ui #screenSquad .tr-shell :is(th,td){border-color:var(--sq-line)!important}
+body.v20-ui #screenSquad .tr-shell th{background:#eaf0df!important;color:#526740!important}
+body.v20-ui #screenSquad :is(.v35-section-nav,.career-archive-nav){display:flex!important;gap:6px!important;flex-wrap:wrap!important;background:transparent!important;border-bottom:1px solid var(--sq-line)!important;margin:16px 0!important;padding:0!important}
+body.v20-ui #screenSquad :is(.v35-section-nav,.career-archive-nav) button{background:transparent!important;color:var(--sq-muted)!important;border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;min-height:40px!important;padding:10px 14px!important;font:700 10px/1.4 Arial,sans-serif!important;box-shadow:none!important}
+body.v20-ui #screenSquad :is(.v35-section-nav,.career-archive-nav) button.is-active{background:#e7eddc!important;border-bottom-color:#789353!important;color:#3a5030!important}
+body.v20-ui #screenSquad .academy-dashboard{gap:12px!important}
+body.v20-ui #screenSquad .academy-dashboard article{padding:18px!important;min-height:110px!important}
+body.v20-ui #screenSquad .academy-dashboard strong{font:700 23px/1.3 Arial,sans-serif!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .academy-dashboard :is(span,small){font:500 11px/1.5 Arial,sans-serif!important;color:var(--sq-muted)!important;white-space:normal!important}
+body.v20-ui #screenSquad .academy-list-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important}
+body.v20-ui #screenSquad .academy-card.academy-card-v2{grid-template-columns:clamp(100px,8cqw,160px) minmax(0,1fr)!important;min-height:230px!important;overflow:hidden!important}
+body.v20-ui #screenSquad .academy-avatar{background:radial-gradient(ellipse,#dce7c7,#eaf0e1)!important;border-color:var(--sq-line)!important}
+body.v20-ui #screenSquad .academy-avatar img{object-fit:contain!important;transform:none!important;max-width:100%!important;max-height:100%!important}
+body.v20-ui #screenSquad .academy-card-copy{padding:28px 14px 14px!important;gap:8px!important}
+body.v20-ui #screenSquad .academy-card-copy h4{font:700 16px/1.25 Arial,sans-serif!important;color:var(--sq-ink)!important;white-space:normal!important}
+body.v20-ui #screenSquad .academy-card-copy p{font:400 11px/1.5 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad :is(.academy-overview,.academy-ranges>div){background:#ecf0e3!important;border-color:#c3ceb2!important;box-shadow:none!important}
+body.v20-ui #screenSquad :is(.academy-overview,.academy-ranges)>div>strong,body.v20-ui #screenSquad .academy-overview strong{color:#536e37!important}
+body.v20-ui #screenSquad :is(.academy-role-pill,.academy-tier-pill,.academy-tag-row span,.academy-card-flag){background:#e8eedc!important;border-color:#bfcba9!important;color:#52633f!important;font:600 9px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad .academy-card.is-selected{border-color:#799855!important;box-shadow:0 0 0 1px #799855!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-hero{grid-template-columns:40% minmax(0,1fr)!important;grid-template-rows:auto!important;min-height:220px!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-hero .profile-avatar-stage{grid-column:1!important;grid-row:1!important;height:210px!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-hero .profile-hero-copy{grid-column:2!important;grid-row:1!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-hero h3{font-size:22px!important}
+body.v20-ui #screenSquad #playerProfile :is(.academy-profile-report,.academy-detail-grid>div,.academy-insight-card,.profile-section,.academy-profile-tags span){background:#35442c!important;border-color:#536745!important;color:#e0e8d2!important;box-shadow:none!important}
+body.v20-ui #screenSquad #playerProfile :is(.academy-profile-report,.academy-detail-grid,.academy-insight-card,.profile-section) :is(p,li,small,span){color:#c2cfb2!important;font-size:11px!important;line-height:1.6!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-actions button{font:700 10px/1.5 Arial,sans-serif!important;min-height:40px!important}
+body.v20-ui #screenSquad :is(.archive-stat strong,.archive-record-book h4,.archive-legends-heading>strong){color:var(--sq-ink)!important}
+body.v20-ui #screenSquad :is(.archive-stat small,.archive-record-book p,.archive-record-book small,.archive-legends-heading p,.archive-empty span){color:var(--sq-muted)!important;font:400 12px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad :is(.archive-stat>span,.archive-record-book article>strong,.archive-record-preview strong){color:#647d42!important}
+body.v20-ui #screenSquad .archive-manager-legacy h2{font:700 24px/1.3 Arial,sans-serif!important;color:#edf0df!important}
+body.v20-ui #screenSquad .archive-manager-legacy p,body.v20-ui #screenSquad .archive-note span{font:400 12px/1.6 Arial,sans-serif!important;color:#c1ccb2!important}
+body.v20-ui #screenSquad .archive-manager-metrics b{color:#d4e3aa!important}
+body.v20-ui #screenSquad .archive-manager-metrics small{color:#bcc9ad!important}
+body.v20-ui #screenSquad .archive-note{background:#34452b!important;border-color:#8ca962!important}
+body.v20-ui #screenSquad .archive-note b{color:#d5e3b0!important}
+@media(max-width:1400px){
+ body.v20-ui #screenSquad .squad-shell{inset:calc(var(--squad-nav-height) + 14px) 18px 16px!important;gap:16px!important;grid-template-columns:minmax(0,1fr) 310px!important}
+ body.v20-ui #screenSquad .squad-heading-badge{display:none!important}
+ body.v20-ui #screenSquad #squadSubnav.squad-subnav button{padding:0 10px!important;font-size:9px!important}
+ body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad .academy-list-grid{grid-template-columns:minmax(0,1fr)!important}
+ body.v20-ui #screenSquad .squad-tactic-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad .sq-overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+ body.v20-ui #screenSquad .squad-shell{display:block!important;overflow:auto!important;padding-bottom:65px!important}
+ body.v20-ui #screenSquad .squad-workspace{display:grid!important;grid-template-rows:auto 52px auto!important;height:auto!important;min-height:0!important;overflow:visible!important}
+ body.v20-ui #screenSquad .squad-view,body.v20-ui #screenSquad #seniorSquadView.squad-view.is-active{height:auto!important;overflow:visible!important}
+ body.v20-ui #screenSquad .player-profile{margin-top:18px!important;height:auto!important;max-height:none!important;padding-bottom:28px!important}
+ body.v20-ui #screenSquad .player-profile .profile-hero{min-height:210px!important;grid-template-columns:minmax(0,1fr) 210px!important}
+ body.v20-ui #screenSquad .v51-st3-panel{min-height:430px!important}
+ body.v20-ui #screenSquad .v51-st3-grid .v51-name{font-size:16px!important}
+ body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad .squad-tactics-layout{grid-template-columns:minmax(0,1fr)!important}
+ body.v20-ui #screenSquad .squad-tactics-summary{position:static!important}
+}
+@media(max-width:760px){
+ body.v20-ui #screenSquad .squad-shell{left:12px!important;right:12px!important}
+ body.v20-ui #screenSquad .squad-heading{flex-wrap:wrap!important;gap:10px!important}
+ body.v20-ui #screenSquad .squad-heading h2{font-size:27px!important}
+ body.v20-ui #screenSquad .squad-heading-metrics{grid-template-columns:repeat(3,70px)!important}
+ body.v20-ui #screenSquad .v51-st3-panel{padding:16px!important;min-height:400px!important}
+ body.v20-ui #screenSquad .v51-st3-head p{font-size:11px!important}
+ body.v20-ui #screenSquad .v66-formation{display:none!important}
+ body.v20-ui #screenSquad .v51-st3-row{left:10px!important;right:10px!important}
+ body.v20-ui #screenSquad .v51-st3-grid{gap:5px!important}
+ body.v20-ui #screenSquad .v51-st3-grid .v51-name{font-size:12px!important}
+ body.v20-ui #screenSquad .v51-st3-grid .v51-role{font-size:8px!important}
+ body.v20-ui #screenSquad .v51-st3-grid .v51-info{left:5px!important;right:5px!important;gap:2px!important}
+ body.v20-ui #screenSquad .v51-st3-grid .v51-ovr strong{font-size:25px!important}
+ body.v20-ui #screenSquad .v51-st3-num{font-size:8px!important;letter-spacing:.04em!important}
+ body.v20-ui #screenSquad .sq-card-condition{font-size:9px!important}
+ body.v20-ui #screenSquad .v51-st3-foot{left:16px!important;right:16px!important;flex-wrap:wrap!important;gap:4px!important}
+ body.v20-ui #screenSquad .v51-sub-note small{display:block!important}
+ body.v20-ui #screenSquad .v66-depth-scroll .subs-grid,body.v20-ui #screenSquad .v66-depth-scroll .reserves-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad .v66-depth-scroll .v51-portrait{width:40px!important}
+ body.v20-ui #screenSquad .v66-depth-scroll .v51-info,body.v20-ui #screenSquad .v66-depth-scroll .squad-slot-status{left:53px!important}
+ body.v20-ui #screenSquad .sq-overview-hero{grid-template-columns:1fr;padding:22px;gap:18px}
+ body.v20-ui #screenSquad .sq-overview-hero aside{padding:18px 0 0;border-left:0;border-top:1px solid #c6d5ab40}
+ body.v20-ui #screenSquad .sq-overview-metrics article{padding:16px}
+ body.v20-ui #screenSquad .sq-overview-metrics strong{font-size:20px}
+ body.v20-ui #screenSquad .academy-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.v20-ui #screenSquad .academy-hero{flex-wrap:wrap!important}
+}
+@media(prefers-reduced-motion:reduce){body.v20-ui #screenSquad *,body.v20-ui #screenSquad *::before,body.v20-ui #screenSquad *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* Explicitly retire the legacy tier paint and intrinsic portrait sizing. */
+body.v20-ui #screenSquad .player-card.v51-card{filter:none!important}
+body.v20-ui #screenSquad .player-card.v51-card .v51-ovr strong{color:#425535!important}
+body.v20-ui #screenSquad .player-card.v51-card .v51-name .v48-name{color:var(--sq-ink)!important;text-transform:none!important;border-bottom:0!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card:is(.is-sub,.is-reserve){border-top:1px solid var(--sq-line)!important}
+body.v20-ui #screenSquad .v66-depth-scroll .player-card.v51-card .squad-slot-status{color:#647653!important}
+body.v20-ui #screenSquad .player-card.v51-card .v51-portrait img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;aspect-ratio:auto!important;object-fit:contain!important;object-position:center bottom!important}
+body.v20-ui #screenSquad #squadSubnav.squad-subnav button.is-active,body.v20-ui #screenSquad .v66-profile-tabs button.is-active{box-shadow:none!important}
+body.v20-ui #screenSquad .v51-sub-note small{text-transform:none!important;letter-spacing:0!important}
+body.v20-ui #screenSquad .v51-st3-grid .empty-player-slot.v51-card{border:1px dashed #a8b791!important;display:grid!important;place-items:center!important}
+body.v20-ui #screenSquad .v51-st3-grid .empty-player-slot>div{padding:20px!important;display:grid!important;gap:10px!important;text-align:center!important}
+body.v20-ui #screenSquad .v51-st3-grid .empty-player-slot :is(strong,span,small){color:#526746!important;font:600 12px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad .player-profile .profile-avatar-stage img{position:absolute!important;inset:0!important;min-width:0!important;min-height:0!important;object-position:center bottom!important}
+body.v20-ui #screenSquad .tr-shell :is(.tr-player,.tr-detail,.tr-toolbar){background:var(--sq-card)!important;border-color:var(--sq-line)!important;box-shadow:none!important}
+body.v20-ui #screenSquad .tr-shell :is(.tr-avatar,.tr-note){background:#eaf0df!important}
+body.v20-ui #screenSquad .tr-detail>header{background:#34432b!important}
+body.v20-ui #screenSquad .tr-track .fitness{background:#769249!important}
+body.v20-ui #screenSquad .v66-depth-scroll :is(.subs-grid,.reserves-grid){grid-auto-rows:auto!important;grid-template-rows:none!important;align-content:start!important}
+body.v20-ui #screenSquad :is(.tactics-profile-card,.squad-tactic-option){clip-path:none!important;filter:none!important}
+body.v20-ui #screenSquad .squad-tactic-option::after{display:none!important}
+body.v20-ui #screenSquad :is(.tactics-identity-badge strong,.tactics-profile-copy>span){color:#607b3e!important}
+body.v20-ui #screenSquad .tactics-identity-badge small{color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .squad-tactic-options:not(:has(>button:nth-child(4))){grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.v20-ui #screenSquad .tactics-mini-pitch :is(.pitch-line,.pitch-circle){border-color:#79965a80!important}
+body.v20-ui #screenSquad .tactics-mini-pitch .pitch-half{background:#79965a80!important}
+/* Academy: one scroll surface, complete portraits, legible dossier and real hidden states. */
+body.v20-ui #screenSquad #youthSquadView.is-active{display:flex!important;flex-direction:column!important;gap:16px!important}
+body.v20-ui #screenSquad #youthSquadView>*{flex-shrink:0!important;min-width:0!important}
+body.v20-ui #screenSquad #youthAcademyGrid{display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;overflow:visible!important;gap:16px!important;margin:0!important;padding:0!important}
+body.v20-ui #screenSquad #youthAcademyGrid[hidden],body.v20-ui #screenSquad #v35AcademyWorkspace[hidden],body.v20-ui #screenSquad .academy-footer-note[hidden]{display:none!important}
+body.v20-ui #screenSquad .academy-dashboard article:first-child{border-left:3px solid #91a967!important}
+body.v20-ui #screenSquad .academy-dashboard small{display:block!important;-webkit-line-clamp:unset!important;white-space:normal!important;overflow:visible!important}
+body.v20-ui #screenSquad .academy-avatar{position:relative!important;inset:auto!important;display:block!important;width:100%!important;height:100%!important;padding:10px!important}
+body.v20-ui #screenSquad .academy-avatar img.smart-avatar{position:absolute!important;inset:12px 6px!important;width:calc(100% - 12px)!important;height:calc(100% - 24px)!important;min-height:0!important;max-height:none!important;object-fit:contain!important;object-position:center!important}
+body.v20-ui #screenSquad .academy-footer-note{padding:16px!important;display:flex!important;gap:14px!important;align-items:flex-start!important;height:auto!important}
+body.v20-ui #screenSquad .academy-footer-note b{font:700 10px/1.6 Arial,sans-serif!important;color:#6a7e43!important;white-space:nowrap!important}
+body.v20-ui #screenSquad .academy-footer-note span{font:400 11px/1.6 Arial,sans-serif!important;color:var(--sq-muted)!important;white-space:normal!important}
+body.v20-ui #screenSquad .academy-overview span,body.v20-ui #screenSquad .academy-overview small{font:600 10px/1.4 Arial,sans-serif!important;color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .academy-overview strong{font:700 20px/1.4 Arial,sans-serif!important}
+body.v20-ui #screenSquad .academy-ranges small{font:600 9px/1.4 Arial,sans-serif!important;color:#63744d!important}
+body.v20-ui #screenSquad .academy-ranges strong{font:700 16px/1.4 Arial,sans-serif!important;color:#405b2d!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-actions{position:static!important;inset:auto!important;display:flex!important;flex-wrap:wrap!important;gap:8px!important;margin-top:18px!important;background:transparent!important;padding:0!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-actions button{flex:1 1 100%!important;background:#c0d767!important;color:#293720!important;border:1px solid #c0d767!important;border-radius:4px!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-actions .academy-keep{background:#394b2e!important;color:#e1e9ce!important;border-color:#819766!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-actions .academy-release{background:transparent!important;color:#edb29b!important;border-color:#966d57!important}
+body.v20-ui #screenSquad #playerProfile :is(.academy-profile-report,.academy-detail-grid,.academy-insight-card,.profile-section) strong{color:#edf2df!important;font:700 15px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad #playerProfile .academy-profile-report{padding:18px!important}
+body.v20-ui #screenSquad #playerProfile .academy-detail-grid>div{padding:14px!important}
+body.v20-ui #screenSquad #playerProfile .academy-insight-grid{grid-template-columns:1fr!important;gap:12px!important}
+body.v20-ui #screenSquad #playerProfile .academy-insight-card{padding:16px!important}
+body.v20-ui #screenSquad #playerProfile .profile-stats{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:15px!important}
+body.v20-ui #screenSquad #playerProfile .profile-stats strong{font-size:11px!important;white-space:nowrap!important}
+body.v20-ui #screenSquad #playerProfile .profile-club-line{color:#c0ceb0!important;font:500 11px/1.5 Arial,sans-serif!important;display:flex!important;gap:10px!important;align-items:center!important;margin:10px 0!important}
+body.v20-ui #screenSquad #playerProfile .profile-club-line img{width:25px!important;height:25px!important;object-fit:contain!important}
+body.v20-ui #screenSquad #playerProfile .profile-overall.youth-estimate{width:auto!important;display:flex!important;flex-wrap:wrap!important;align-items:baseline!important;gap:8px!important;margin-bottom:12px!important}
+body.v20-ui #screenSquad #playerProfile .profile-overall.youth-estimate strong{font-size:36px!important}
+body.v20-ui #screenSquad #v35AcademyWorkspace{padding:0!important}
+body.v20-ui #screenSquad .v35-workspace{font:400 13px/1.6 Arial,sans-serif!important;color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .v35-workspace .v34-content{padding:0!important}
+body.v20-ui #screenSquad .v35-workspace :is(.v34-card,.v34-summary>div,.v34-table-wrap){background:var(--sq-card)!important;border-color:var(--sq-line)!important;box-shadow:none!important}
+body.v20-ui #screenSquad .v35-workspace .v34-summary>div{border-top:3px solid #8fa667!important}
+body.v20-ui #screenSquad .v35-workspace :is(h3,.v34-summary strong,.v34-facts b){color:var(--sq-ink)!important}
+body.v20-ui #screenSquad .v35-workspace :is(p,small,label,.v34-empty){color:var(--sq-muted)!important}
+body.v20-ui #screenSquad .v35-workspace :is(input,select){background:var(--sq-card)!important;color:var(--sq-ink)!important;border-color:#b6c3a5!important}
+body.v20-ui #screenSquad .v35-workspace button{background:#e9efd9!important;border-color:#b5c79a!important;color:#3e5530!important}
+body.v20-ui #screenSquad .v35-workspace .v34-form button{background:#526e38!important;color:#f4f6ea!important;border-color:#526e38!important}
+body.v20-ui #screenSquad .v35-workspace th{background:#e9eedf!important;color:#5b7146!important}
+body.v20-ui #screenSquad .v35-workspace td{border-color:var(--sq-line)!important}
+body.v20-ui #screenSquad .v35-workspace tr.is-own{background:#e3eccf!important;color:#415a2e!important}
+/* Archive: reuse the clubhouse surfaces across every archive tab. */
+body.v20-ui #screenSquad #legendsSquadView.is-active{display:flex!important;flex-direction:column!important;gap:16px!important}
+body.v20-ui #screenSquad #legendsSquadView>*{flex-shrink:0!important}
+body.v20-ui #screenSquad :is(.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.archive-season-list>button,.archive-world-ledger,.archive-honours-group,.archive-record-book article,.v42-memory-dashboard>header,.v42-memory-timeline,.v42-memory-side>section){padding:20px!important;border:1px solid var(--sq-line)!important;background:var(--sq-card)!important;color:var(--sq-ink)!important;border-radius:6px!important;box-shadow:none!important}
+body.v20-ui #screenSquad .archive-feature-card{padding:26px!important;background:linear-gradient(125deg,#3e5030,#283626)!important;color:#f0f4e3!important;border:1px solid #546941!important;border-radius:6px!important}
+body.v20-ui #screenSquad :is(.archive-feature-card,.archive-season-snapshot,.archive-recent-honours,.archive-record-preview) h2{font:700 26px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad :is(.archive-feature-card,.archive-season-snapshot,.archive-recent-honours,.archive-record-preview) p{font:400 12px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad .archive-feature-card :is(p,small){color:#d0dcbd!important}
+body.v20-ui #screenSquad :is(.archive-season-snapshot,.archive-recent-honours,.archive-record-preview,.v42-memory-dashboard) :is(span,small,p){color:var(--sq-muted)!important;font:500 11px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad :is(.archive-feature-card>span,.archive-feature-card header span){color:#c8dca0!important}
+body.v20-ui #screenSquad .career-archive-hero>div>span{color:#5a7443!important;font-size:10px!important}
+body.v20-ui #screenSquad .career-archive-hero aside{background:transparent!important}
+body.v20-ui #screenSquad .career-archive-hero aside b{background:transparent!important;color:#50673c!important;font:700 25px/1.4 Arial,sans-serif!important;border-color:#c6d0b8!important}
+body.v20-ui #screenSquad .career-archive-hero aside small{color:var(--sq-muted)!important;font:700 9px/1.5 Arial,sans-serif!important}
+body.v20-ui #screenSquad :is(.archive-inline-empty,.archive-empty,.archive-placeholder-copy,.v42-memory-empty){background:#f0f3e8!important;border:1px dashed #c5d0b5!important;border-radius:4px!important;padding:16px!important;color:var(--sq-muted)!important;font:400 12px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad .career-archive-content button{color:#4c6837!important;background:#eaf0dc!important;border-color:#bfcea7!important;min-height:36px!important;font-size:10px!important}
+body.v20-ui #screenSquad #playerProfile :is(.archive-manager-legacy,.archive-manager-metrics,.archive-season-profile,.archive-profile-awards,.archive-facts>div){background:#34432c!important;border-color:#526546!important;border-radius:5px!important;color:#ebf0df!important;box-shadow:none!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-legacy{padding:20px!important;display:grid!important;grid-template-columns:120px 1fr!important;gap:18px!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-portrait{height:180px!important;background:radial-gradient(ellipse,#61744355,#304529)!important;border-color:#5a7149!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-portrait :is(.manager-portrait-crop,.manager-paperdoll){position:relative!important;inset:auto!important;width:100%!important;height:100%!important;min-height:0!important;overflow:hidden!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-portrait canvas.manager-composite-canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center bottom!important}
+body.v20-ui #screenSquad .player-profile .v66-profile-view{min-height:0!important;height:auto!important}
+body.v20-ui #screenSquad .player-profile .sq-development select{background:#35432d!important;color:#f1f4e8!important;border-color:#788665!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-metrics{margin-top:16px!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-metrics b{padding:18px!important;border-color:#526546!important;font:700 25px/1.3 Arial,sans-serif!important}
+body.v20-ui #screenSquad #playerProfile .archive-manager-metrics small{font:700 9px/1.5 Arial,sans-serif!important;margin-top:5px!important}
+body.v20-ui #screenSquad #playerProfile :is(.archive-season-profile,.archive-profile-awards,.archive-facts) :is(h2,strong){color:#e6efd0!important;font-family:Arial,sans-serif!important}
+body.v20-ui #screenSquad #playerProfile :is(.archive-season-profile,.archive-profile-awards,.archive-facts) :is(span,small,p){color:#bccdad!important;font:400 12px/1.6 Arial,sans-serif!important}
+body.v20-ui #screenSquad #playerProfile .archive-profile-empty{padding:24px!important;color:#e6efda!important}
+body.v20-ui #screenSquad #playerProfile .archive-profile-empty h3{font:400 30px/1.2 SquadDisplay,Arial,sans-serif!important;color:#e6efda!important}
+body.v20-ui #screenSquad #playerProfile .archive-profile-empty p{font:400 13px/1.7 Arial,sans-serif!important;color:#c2d0b1!important}
+@media(max-width:1100px){body.v20-ui #screenSquad .career-archive-hero{grid-template-columns:1fr!important}body.v20-ui #screenSquad .career-archive-dashboard{grid-template-columns:1fr!important}}
+@media(max-width:760px){body.v20-ui #screenSquad .squad-tactic-options:not(:has(>button:nth-child(4))){grid-template-columns:1fr!important}body.v20-ui #screenSquad .v35-workspace .v34-form{grid-template-columns:1fr!important}body.v20-ui #screenSquad .v35-workspace .v34-summary{grid-template-columns:1fr!important}body.v20-ui #screenSquad .academy-list-grid{grid-template-columns:1fr!important}}

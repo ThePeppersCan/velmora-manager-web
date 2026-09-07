@@ -1,0 +1,584 @@
+
+/* ==========================================================================
+   V46.2 — Interface Themes
+   Presentation-only theme layer. Classic is intentionally untouched.
+   Theme is stored outside career saves and never changes layout/gameplay.
+   ========================================================================== */
+
+html[data-vm-theme="night"] body.v20-ui{
+  --vm-bg:#0d1118;
+  --vm-bg-deep:#090d13;
+  --vm-surface:#141a23;
+  --vm-surface-soft:#18212c;
+  --vm-surface-raised:#1c2633;
+  --vm-navy:#080d15;
+  --vm-navy-2:#101a2a;
+  --vm-blue:#4d6cff;
+  --vm-blue-2:#3856e8;
+  --vm-teal:#32a9bd;
+  --vm-gold:#d8b665;
+  --vm-text:#f3f6fb;
+  --vm-text-2:#cad3df;
+  --vm-muted:#8d9bad;
+  --vm-muted-2:#718094;
+  --vm-line:#283546;
+  --vm-line-strong:#35465a;
+  --vm-success:#55b58d;
+  --vm-warning:#d7a64d;
+  --vm-danger:#e06b70;
+  --vm-shadow:0 .34cqw 1cqw rgba(0,0,0,.22);
+  --vm-shadow-raised:0 .55cqw 1.5cqw rgba(0,0,0,.32);
+  color-scheme:dark;
+}
+html[data-vm-theme="indigo"] body.v20-ui{
+  --vm-bg:#151b34;
+  --vm-bg-deep:#10162b;
+  --vm-surface:#1b2443;
+  --vm-surface-soft:#212c50;
+  --vm-surface-raised:#27345e;
+  --vm-navy:#0e1430;
+  --vm-navy-2:#17234a;
+  --vm-blue:#647cff;
+  --vm-blue-2:#4e66e7;
+  --vm-teal:#4aa9d8;
+  --vm-gold:#dcc276;
+  --vm-text:#f5f7ff;
+  --vm-text-2:#d3dbef;
+  --vm-muted:#9aa8c7;
+  --vm-muted-2:#7e8caf;
+  --vm-line:#33436d;
+  --vm-line-strong:#425584;
+  --vm-success:#66c49a;
+  --vm-warning:#e1b45c;
+  --vm-danger:#ee777f;
+  --vm-shadow:0 .34cqw 1cqw rgba(3,7,20,.25);
+  --vm-shadow-raised:0 .55cqw 1.5cqw rgba(3,7,20,.36);
+  color-scheme:dark;
+}
+html[data-vm-theme="ember"] body.v20-ui{
+  --vm-bg:#121417;
+  --vm-bg-deep:#0d0f12;
+  --vm-surface:#1a1d22;
+  --vm-surface-soft:#20242a;
+  --vm-surface-raised:#252a31;
+  --vm-navy:#101216;
+  --vm-navy-2:#1a1d23;
+  --vm-blue:#df742f;
+  --vm-blue-2:#b95820;
+  --vm-teal:#cf914e;
+  --vm-gold:#efb568;
+  --vm-text:#f4f0e9;
+  --vm-text-2:#d7d0c7;
+  --vm-muted:#a59c92;
+  --vm-muted-2:#817b74;
+  --vm-line:#393d43;
+  --vm-line-strong:#4a5058;
+  --vm-success:#64b78d;
+  --vm-warning:#dfa955;
+  --vm-danger:#db6965;
+  --vm-shadow:0 .34cqw 1cqw rgba(0,0,0,.24);
+  --vm-shadow-raised:0 .55cqw 1.5cqw rgba(0,0,0,.36);
+  color-scheme:dark;
+}
+
+/* ---------- Settings theme picker ---------- */
+body.v20-ui .vm-theme-settings{
+  margin:.75cqw 0 .85cqw;
+  padding:.72cqw;
+  border:1px solid #d7e1ea;
+  border-radius:.55cqw;
+  background:linear-gradient(180deg,#fbfdff,#f7f9fc);
+}
+body.v20-ui .vm-theme-settings>header{
+  display:flex;align-items:end;justify-content:space-between;gap:1cqw;margin-bottom:.55cqw
+}
+body.v20-ui .vm-theme-settings>header>div{display:grid;gap:.14cqw}
+body.v20-ui .vm-theme-settings>header span{color:#177f86;font:900 .28cqw/1 Arial,sans-serif;letter-spacing:.12em}
+body.v20-ui .vm-theme-settings>header strong{color:#173247;font:900 .58cqw/1 Arial,sans-serif;letter-spacing:.04em}
+body.v20-ui .vm-theme-settings>header small{max-width:15cqw;color:#718493;font:700 .31cqw/1.35 Arial,sans-serif;text-align:right}
+body.v20-ui .vm-theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.48cqw}
+body.v20-ui .vm-theme-option{
+  position:relative;min-width:0;min-height:5.2cqw;padding:.52cqw;border:1px solid #d9e1e9;border-radius:.42cqw;
+  background:#fff;color:#20364a;text-align:left;cursor:pointer;transition:.14s ease;overflow:hidden
+}
+body.v20-ui .vm-theme-option:hover{transform:translateY(-.04cqw);border-color:#9fb5c9;box-shadow:0 .18cqw .5cqw rgba(19,48,80,.08)}
+body.v20-ui .vm-theme-option.is-active{border-color:#1768c9;box-shadow:inset 0 0 0 1px #1768c9}
+body.v20-ui .vm-theme-option.is-active::after{
+  content:"✓";position:absolute;right:.4cqw;top:.36cqw;width:1.05cqw;height:1.05cqw;display:grid;place-items:center;
+  border-radius:50%;background:#1768c9;color:#fff;font:900 .48cqw/1 Arial,sans-serif
+}
+body.v20-ui .vm-theme-swatch{height:2cqw;margin-bottom:.45cqw;border-radius:.28cqw;border:1px solid rgba(255,255,255,.12);overflow:hidden;display:grid;grid-template-columns:1.2fr .8fr .35fr}
+body.v20-ui .vm-theme-swatch i{display:block}
+body.v20-ui .vm-theme-option strong{display:block;color:inherit;font:900 .38cqw/1 Arial,sans-serif;letter-spacing:.045em}
+body.v20-ui .vm-theme-option small{display:block;margin-top:.18cqw;color:#748392;font:700 .28cqw/1.25 Arial,sans-serif}
+body.v20-ui .vm-theme-option[data-vm-theme-option="classic"] .vm-theme-swatch i:nth-child(1){background:#f5f8fb}
+body.v20-ui .vm-theme-option[data-vm-theme-option="classic"] .vm-theme-swatch i:nth-child(2){background:#fff}
+body.v20-ui .vm-theme-option[data-vm-theme-option="classic"] .vm-theme-swatch i:nth-child(3){background:#123f9e}
+body.v20-ui .vm-theme-option[data-vm-theme-option="night"] .vm-theme-swatch i:nth-child(1){background:#0d1118}
+body.v20-ui .vm-theme-option[data-vm-theme-option="night"] .vm-theme-swatch i:nth-child(2){background:#18212c}
+body.v20-ui .vm-theme-option[data-vm-theme-option="night"] .vm-theme-swatch i:nth-child(3){background:#4d6cff}
+body.v20-ui .vm-theme-option[data-vm-theme-option="indigo"] .vm-theme-swatch i:nth-child(1){background:#151b34}
+body.v20-ui .vm-theme-option[data-vm-theme-option="indigo"] .vm-theme-swatch i:nth-child(2){background:#27345e}
+body.v20-ui .vm-theme-option[data-vm-theme-option="indigo"] .vm-theme-swatch i:nth-child(3){background:#647cff}
+body.v20-ui .vm-theme-option[data-vm-theme-option="ember"] .vm-theme-swatch i:nth-child(1){background:#121417}
+body.v20-ui .vm-theme-option[data-vm-theme-option="ember"] .vm-theme-swatch i:nth-child(2){background:#252a31}
+body.v20-ui .vm-theme-option[data-vm-theme-option="ember"] .vm-theme-swatch i:nth-child(3){background:#df742f}
+
+@media(max-width:1100px){
+  body.v20-ui .vm-theme-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.v20-ui .vm-theme-option{min-height:4.5cqw}
+}
+
+/* ---------- Shared non-classic surface mapping ---------- */
+html:not([data-vm-theme="classic"]) body.v20-ui{
+  background:#05070a!important;
+  color:var(--vm-text)!important;
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .game-frame{background:var(--vm-bg-deep)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfers-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .season-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-screen,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-screen{
+  background:
+    radial-gradient(circle at 82% 4%,color-mix(in srgb,var(--vm-blue) 12%,transparent),transparent 26%),
+    linear-gradient(180deg,var(--vm-bg) 0%,var(--vm-bg-deep) 100%)!important;
+  color:var(--vm-text)!important;
+}
+
+/* Career chrome */
+html:not([data-vm-theme="classic"]) body.v20-ui .career-topbar{
+  background:color-mix(in srgb,var(--vm-surface) 96%,transparent)!important;
+  border-bottom-color:var(--vm-line)!important;
+  box-shadow:0 .22cqw .8cqw rgba(0,0,0,.18)!important;
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-tabs button{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-tabs button:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-tabs button.is-current,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-tabs button[aria-current="page"]{
+  color:var(--vm-text)!important;background:var(--vm-surface-soft)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-club-mark,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-util-btn,
+html:not([data-vm-theme="classic"]) body.v20-ui .v20-build-chip,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-date-chip{
+  background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-text-2)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-util-btn:hover{background:var(--vm-surface-raised)!important;color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-brand-logo{filter:drop-shadow(0 1px 0 rgba(255,255,255,.06))}
+
+/* Primary cards / headings / tabs */
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-heading,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-heading,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-heading{
+  background:linear-gradient(180deg,var(--vm-surface-raised),var(--vm-surface))!important;border-color:var(--vm-line)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-heading-badge,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-heading-badge{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-subnav,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-subnav,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-subnav,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-player-tabs,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-nav,
+html:not([data-vm-theme="classic"]) body.v20-ui .cc-inner-nav{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-subnav button,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-subnav button,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-subnav button,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-player-tabs button,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-nav button{color:var(--vm-muted)!important;border-color:var(--vm-line)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-subnav button:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-subnav button:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-subnav button:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-player-tabs button:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-nav button:hover{background:var(--vm-surface-raised)!important;color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-subnav button.is-active,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-subnav button.is-active,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-subnav button.is-active,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-player-tabs button.is-active,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-nav button.is-active{background:var(--vm-navy-2)!important;color:#fff!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-subnav button span,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-subnav button span,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-subnav button span,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-nav b{background:var(--vm-surface-raised)!important;color:var(--vm-text-2)!important}
+
+/* Forms / secondary actions */
+html:not([data-vm-theme="classic"]) body.v20-ui input:not([type="range"]):not([type="checkbox"]),
+html:not([data-vm-theme="classic"]) body.v20-ui select,
+html:not([data-vm-theme="classic"]) body.v20-ui textarea,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-action-secondary,
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-secondary-btn,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-contract-actions button,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-negotiation-actions button,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-clear-btn,
+html:not([data-vm-theme="classic"]) body.v20-ui .shortlist-compare-btn{
+  background:var(--vm-surface-soft)!important;border-color:var(--vm-line-strong)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui input::placeholder,
+html:not([data-vm-theme="classic"]) body.v20-ui textarea::placeholder{color:var(--vm-muted-2)!important}
+
+/* Squad */
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-view,
+html:not([data-vm-theme="classic"]) body.v20-ui .roster-section,
+html:not([data-vm-theme="classic"]) body.v20-ui .tactics-hero,
+html:not([data-vm-theme="classic"]) body.v20-ui .academy-hero,
+html:not([data-vm-theme="classic"]) body.v20-ui .archive-hero,
+html:not([data-vm-theme="classic"]) body.v20-ui .summary-tile,
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-hero,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-section,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-detail-grid>div{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .roster-title,
+html:not([data-vm-theme="classic"]) body.v20-ui .roster-title.compact,
+html:not([data-vm-theme="classic"]) body.v20-ui .squad-season-chip,
+html:not([data-vm-theme="classic"]) body.v20-ui .portrait-halo,
+html:not([data-vm-theme="classic"]) body.v20-ui .role-tag,
+html:not([data-vm-theme="classic"]) body.v20-ui .status-chip,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-avatar-stage{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card{background:linear-gradient(180deg,var(--vm-surface-raised),var(--vm-surface))!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card:hover{background:var(--vm-surface-raised)!important;border-color:var(--vm-line-strong)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card-copy h4,
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card-copy strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .card-ovr strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .roster-title h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .summary-tile strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-hero h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-section h4,
+html:not([data-vm-theme="classic"]) body.v20-ui .profile-detail-grid strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .player-meta,
+html:not([data-vm-theme="classic"]) body.v20-ui .fitness-line strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card small,
+html:not([data-vm-theme="classic"]) body.v20-ui .player-card span,
+html:not([data-vm-theme="classic"]) body.v20-ui .roster-title p,
+html:not([data-vm-theme="classic"]) body.v20-ui .summary-tile span,
+html:not([data-vm-theme="classic"]) body.v20-ui .summary-tile small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .fitness-line>div{background:var(--vm-bg-deep)!important}
+
+/* Transfers */
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-pane,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-filterbar,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-results,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-hub-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-pane-intro,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-topline,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-scout-strip,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-hero,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-section,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-fact-grid>div,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-risk-note{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-list-head,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-list-footer,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-row:nth-child(even),
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-avatar,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-avatar-stage{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-row:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-row.is-selected{background:var(--vm-surface-raised)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-copy strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-ovr,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-value,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-hero h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-section h4,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-fact-grid strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-player-copy small,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-club-cell span,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-role-cell,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-value small,
+html:not([data-vm-theme="classic"]) body.v20-ui .transfer-num,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-hero p,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-section span,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-fact-grid span,
+html:not([data-vm-theme="classic"]) body.v20-ui .dossier-report p{color:var(--vm-muted)!important}
+
+/* Office / inbox */
+html:not([data-vm-theme="classic"]) body.v20-ui .office-shell,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-heading,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-stage,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-pane,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-column,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-reader,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-board-content,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-finances-content,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contract-list-wrap,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contract-detail,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-manager-content,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-toolbar,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-section-heading{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .v38-mail-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contract-row{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .v38-mail-row:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .v38-mail-row.is-selected{background:var(--vm-surface-raised)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .v37-mail-copy strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .v38-letter .v37-letter-body,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contract-row strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .v37-mail-snippet,
+html:not([data-vm-theme="classic"]) body.v20-ui .v37-mail-copy small,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contract-row small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .office-routine-toggle{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-text-2)!important}
+
+/* Central light support panels; broadcast centre intentionally remains cinematic. */
+html:not([data-vm-theme="classic"]) body.v20-ui .central-side-panel,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-inbox-list,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-calendar,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-days,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-day,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-season-snapshot,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-manager-briefing,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-empty{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .central-panel-header,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-calendar>header{
+  background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-day.is-today,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-advance-day.has-season,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-row:hover{background:var(--vm-surface-raised)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-copy strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-empty strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-manager-briefing-body strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-copy small,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-copy p,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-empty span,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-manager-briefing-body p{color:var(--vm-muted)!important}
+
+/* Season / world database / match browser */
+html:not([data-vm-theme="classic"]) body.v20-ui .season-main-content,
+html:not([data-vm-theme="classic"]) body.v20-ui .season-side-content,
+html:not([data-vm-theme="classic"]) body.v20-ui .season-live-heading,
+html:not([data-vm-theme="classic"]) body.v20-ui .season-live-subnav,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-matchday-group,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-filters,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-empty,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-back,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-timeline,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-facts,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-table-movement,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-player-panel{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-card:hover,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-card:focus-visible{background:var(--vm-surface-raised)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-card time b,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-empty strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-card time span,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-match-empty span{color:var(--vm-muted)!important}
+
+/* Matchday outer presentation. The central blue broadcast card keeps its identity. */
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-shell-v2,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-heading-v2,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-lineup-panel,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-summary,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-actions-v2{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-lineup-panel .matchday-lineup-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-edit-team,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-action-copy{
+  background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-lineup-row strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-action-copy strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-lineup-row small,
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-action-copy span{color:var(--vm-muted)!important}
+html[data-vm-theme="night"] body.v20-ui .match-watch{background:linear-gradient(135deg,#304bd0,#4d6cff)!important}
+html[data-vm-theme="indigo"] body.v20-ui .match-watch{background:linear-gradient(135deg,#4059d8,#6a7eff)!important}
+html[data-vm-theme="ember"] body.v20-ui .match-watch{background:linear-gradient(135deg,#a94d1f,#df742f)!important}
+
+/* Results */
+html:not([data-vm-theme="classic"]) body.v20-ui .results-shell,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-page-header,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-scoreboard,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-panel,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-action-bar{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+
+/* Modals / settings */
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-backdrop{background:rgba(0,0,0,.72)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .negotiation-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .contract-renewal-card{
+  background:var(--vm-surface)!important;color:var(--vm-text)!important;border-color:var(--vm-line)!important;box-shadow:0 2cqw 5cqw rgba(0,0,0,.45)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-card h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .negotiation-card h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .contract-renewal-card h3,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-management-panel strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-card label,
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-card p,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-management-panel small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .modal-close{color:var(--vm-text-2)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-management-panel,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>header,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>footer,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-settings-grid label,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-settings{
+  background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-settings-grid label,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>footer{background:var(--vm-surface)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>header,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-settings>header{background:var(--vm-surface-soft)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-settings-grid b,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>header strong,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-settings>header strong{color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-settings-grid small,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2077-career-settings>header small,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-settings>header small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-option{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-option small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-option.is-active{border-color:var(--vm-blue)!important;box-shadow:inset 0 0 0 1px var(--vm-blue)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-theme-option.is-active::after{background:var(--vm-blue)!important}
+
+/* Scrollbars: cosmetic only */
+html:not([data-vm-theme="classic"]) body.v20-ui *{scrollbar-color:var(--vm-line-strong) var(--vm-bg-deep)}
+html:not([data-vm-theme="classic"]) body.v20-ui *::-webkit-scrollbar-track{background:var(--vm-bg-deep)}
+html:not([data-vm-theme="classic"]) body.v20-ui *::-webkit-scrollbar-thumb{background:var(--vm-line-strong)}
+
+
+/* ---------- Extended coverage: career systems added in V19–V46 ---------- */
+html:not([data-vm-theme="classic"]) body.v20-ui .living-growth-facts,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-career-timeline,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-contract-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-development-note,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-plan-grid button,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-transfer-hub-body,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-negotiation-values,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-counter-field,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-offer-status,
+html:not([data-vm-theme="classic"]) body.v20-ui .living-market-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2075-dev-progress,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2075-pathway-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2075-role-conversion,
+html:not([data-vm-theme="classic"]) body.v20-ui .v2075-renewal-state{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+
+/* Recruitment / scouting */
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .recruitment-scout-card,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .recruitment-discovery-filters,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .dossier-statusbar,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .recruitment-scout-strip>div,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .compare-grid article,
+html:not([data-vm-theme="classic"]) body.v20-ui .scouting-work-section,
+html:not([data-vm-theme="classic"]) body.v20-ui .scouting-work-list,
+html:not([data-vm-theme="classic"]) body.v20-ui .scouting-work-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .scouting-empty-state{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .recruitment-discovery-filters .transfer-clear-btn,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenTransfers .shortlist-compare-btn{background:var(--vm-surface-soft)!important;color:var(--vm-text-2)!important}
+
+/* Office detail cards */
+html:not([data-vm-theme="classic"]) body.v20-ui .office-inbox-layout,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-item,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-message-card.is-unread,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-reader-factstrip>div,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-reader-document .office-reader-body p,
+html:not([data-vm-theme="classic"]) body.v20-ui .office-contracts-layout{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .office-inbox-filters button{background:var(--vm-surface-soft)!important;border-color:var(--vm-line)!important;color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .office-inbox-filters button.is-active{background:var(--vm-blue)!important;color:#fff!important}
+
+/* Calendar */
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-calendar-layout .career-calendar-shell,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-calendar-layout .calendar-day,
+html:not([data-vm-theme="classic"]) body.v20-ui .v19-calendar-days .calendar-day,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-mini-days button,
+html:not([data-vm-theme="classic"]) body.v20-ui .advance-event-symbol{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+
+/* Season cards, tables and player statistics */
+html:not([data-vm-theme="classic"]) body.v20-ui .season-side-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-table-broadcast .live-table-row,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-player-stats-shell,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-player-stats-table,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-club-profile-shell,
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-club-profile-card{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .vm-table-broadcast .live-table-row:nth-child(even){background:var(--vm-surface-soft)!important}
+
+/* Matchday outer action cards */
+html:not([data-vm-theme="classic"]) body.v20-ui .matchday-badge,
+html:not([data-vm-theme="classic"]) body.v20-ui .match-action,
+html:not([data-vm-theme="classic"]) body.v20-ui .match-summary-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .match-readiness{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-quick{background:var(--vm-surface-raised)!important;color:var(--vm-text)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-action-number{background:color-mix(in srgb,var(--vm-blue) 14%,var(--vm-surface))!important;color:var(--vm-blue)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-action-label strong{color:inherit!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-action-label small{color:var(--vm-muted)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-watch .match-action-number,
+html:not([data-vm-theme="classic"]) body.v20-ui .match-watch .match-action-label strong{color:#fff!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .match-watch .match-action-label small{color:rgba(255,255,255,.78)!important}
+
+/* Results */
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-page-header,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-team,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-score-wrap,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-potm,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-stats,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-events,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-ratings,
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-league-impact,
+html:not([data-vm-theme="classic"]) body.v20-ui .results-badge{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui #screenResults .results-score strong{background:var(--vm-surface-soft)!important;color:var(--vm-text)!important}
+
+/* Manager market / manager career */
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-vacancy-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-career-overview,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-contract-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-monitoring-card,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-spell-crest,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-spell-record span,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-interest-crest,
+html:not([data-vm-theme="classic"]) body.v20-ui .manager-contract-crest{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+
+/* Youth academy */
+html:not([data-vm-theme="classic"]) body.v20-ui #youthSquadView .academy-overview,
+html:not([data-vm-theme="classic"]) body.v20-ui #youthAcademyGrid .academy-dashboard article,
+html:not([data-vm-theme="classic"]) body.v20-ui #youthAcademyGrid .academy-card-v2,
+html:not([data-vm-theme="classic"]) body.v20-ui .player-story-panel>header{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+
+/* Career save manager */
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-slot,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-actions button,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-confirm button,
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-dialog>footer button{
+  background:var(--vm-surface)!important;border-color:var(--vm-line)!important;color:var(--vm-text)!important
+}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-slot:hover{background:var(--vm-surface-raised)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .career-save-actions button.is-danger{background:color-mix(in srgb,var(--vm-danger) 13%,var(--vm-surface))!important;color:var(--vm-danger)!important}
+
+/* Keep readable semantic chips in dark themes without changing meaning. */
+html:not([data-vm-theme="classic"]) body.v20-ui .mail-priority.is-important,
+html:not([data-vm-theme="classic"]) body.v20-ui .central-task-row.is-urgent .central-task-priority{background:rgba(224,107,112,.16)!important;color:#ff9b9f!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .mail-priority.is-interesting,
+html:not([data-vm-theme="classic"]) body.v20-ui .v37-mail-state.is-interesting{background:rgba(50,169,189,.15)!important;color:#7ed7e3!important;border-color:rgba(50,169,189,.28)!important}
+html:not([data-vm-theme="classic"]) body.v20-ui .mail-priority.is-routine{background:var(--vm-surface-soft)!important;color:var(--vm-muted)!important}

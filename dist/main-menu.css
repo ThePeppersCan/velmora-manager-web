@@ -1,0 +1,406 @@
+@font-face{
+  font-family:"Velmora Menu Condensed";
+  src:url("assets/matchday-cobalt/fonts/Anton-Regular.ttf") format("truetype");
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+}
+
+/* V99 — the title screen is a live interface over a clean production art plate. */
+body.v20-ui #screenMenu.menu-screen{
+  isolation:isolate;
+  overflow:hidden;
+  color:#111820;
+  background:#f7f7f6!important;
+  font-family:Arial,Helvetica,sans-serif;
+}
+
+body.v20-ui #screenMenu.menu-screen::before,
+body.v20-ui #screenMenu.menu-screen::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
+body.v20-ui #screenMenu.menu-screen::before{
+  z-index:2;
+  opacity:.34;
+  background:
+    linear-gradient(105deg,transparent 8%,rgba(255,255,255,.72) 35%,transparent 53%) -115cqw 0/70cqw 100% no-repeat,
+    linear-gradient(180deg,rgba(255,255,255,.1),rgba(222,231,239,.08));
+  animation:vmMenuLightPass 7.5s 1.15s ease-in-out infinite;
+}
+
+body.v20-ui #screenMenu.menu-screen::after{
+  z-index:9;
+  box-shadow:inset 0 0 6cqw rgba(45,65,90,.045);
+}
+
+.menu-art-backdrop{
+  position:absolute;
+  z-index:0;
+  inset:0;
+  background:url("assets/ui-v2/main-menu-clean-v2.png") center/100% 100% no-repeat;
+  transform-origin:62% 48%;
+  animation:vmMenuPlateIn 1.05s cubic-bezier(.18,.78,.2,1) both;
+  pointer-events:none;
+}
+
+.menu-atmosphere{
+  --menu-parallax-x:0px;
+  --menu-parallax-y:0px;
+  position:absolute;
+  z-index:1;
+  inset:0;
+  pointer-events:none;
+  transform:translate3d(var(--menu-parallax-x),var(--menu-parallax-y),0);
+  transition:transform .22s cubic-bezier(.2,.7,.2,1);
+  background:
+    radial-gradient(ellipse at 72% 49%,rgba(255,255,255,0) 0 29%,rgba(255,255,255,.22) 52%,transparent 72%),
+    linear-gradient(112deg,transparent 55%,rgba(118,171,215,.055) 63%,transparent 71%);
+  mix-blend-mode:screen;
+}
+
+.menu-particle-field{
+  position:absolute;
+  z-index:4;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.menu-particle-field>i{
+  --size:.18cqw;
+  --alpha:.38;
+  position:absolute;
+  left:var(--x);
+  top:var(--y);
+  width:var(--size);
+  height:var(--size);
+  border-radius:50%;
+  opacity:0;
+  background:rgba(79,133,177,var(--alpha));
+  box-shadow:0 0 .34cqw rgba(255,255,255,.92);
+  animation:vmMenuParticle var(--duration) var(--delay) linear infinite;
+}
+
+.menu-selection-spark{
+  --spark-x:0px;
+  --spark-y:-10px;
+  position:absolute;
+  z-index:12;
+  width:.18cqw;
+  height:.18cqw;
+  border-radius:50%;
+  pointer-events:none;
+  background:#df1d20;
+  box-shadow:0 0 .28cqw rgba(223,29,32,.4);
+  animation:vmMenuSelectionSpark .55s cubic-bezier(.15,.7,.2,1) both;
+}
+
+body.v20-ui #screenMenu .menu-art-utilities{
+  position:absolute!important;
+  z-index:20!important;
+  top:2.15%!important;
+  right:6.5%!important;
+  width:7.15%!important;
+  height:5.8%!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  align-items:center;
+  gap:.7cqw!important;
+}
+
+body.v20-ui #screenMenu .menu-art-utilities button{
+  position:relative;
+  width:100%;
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  padding:.55cqw;
+  border:1px solid transparent!important;
+  border-radius:50%!important;
+  color:#121820;
+  background:transparent!important;
+  cursor:pointer;
+  transition:color .16s ease,background .16s ease,transform .16s ease,border-color .16s ease!important;
+}
+
+body.v20-ui #screenMenu .menu-art-utilities button:hover,
+body.v20-ui #screenMenu .menu-art-utilities button:focus-visible{
+  color:#0a3e92;
+  border-color:rgba(11,51,127,.2)!important;
+  background:rgba(222,234,247,.76)!important;
+  transform:translateY(-.1cqw) scale(1.035);
+}
+
+body.v20-ui #screenMenu .menu-art-utilities button:active{transform:translateY(0) scale(.95)}
+.menu-icon{width:100%;height:100%;overflow:visible;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.menu-icon-audio .audio-muted-mark{display:none}
+#menuAudioToggle[aria-pressed="true"] .audio-wave{display:none}
+#menuAudioToggle[aria-pressed="true"] .audio-muted-mark{display:block}
+
+body.v20-ui #screenMenu .menu-actions{
+  position:absolute!important;
+  z-index:15!important;
+  inset:auto!important;
+  left:9.25%!important;
+  top:40.7%!important;
+  width:34.3%!important;
+  height:auto!important;
+  display:grid!important;
+  grid-template-rows:7.65cqw 6.45cqw 6.45cqw!important;
+  gap:0!important;
+}
+
+body.v20-ui #screenMenu .menu-actions .menu-option,
+body.v20-ui #screenMenu #btnContinue,
+body.v20-ui #screenMenu #btnNewCareer,
+body.v20-ui #screenMenu #btnSettings{
+  position:relative!important;
+  inset:auto!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:18% 1px minmax(0,1fr) 2.2cqw!important;
+  align-items:center!important;
+  column-gap:2.15cqw!important;
+  margin:0!important;
+  padding:0 1.2cqw 0 2.35cqw!important;
+  border:0!important;
+  border-bottom:1px solid rgba(30,42,53,.19)!important;
+  border-radius:0!important;
+  outline:0;
+  color:#111820!important;
+  text-align:left!important;
+  text-shadow:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  cursor:pointer;
+  overflow:visible!important;
+  opacity:0;
+  transform:translateX(-1.4cqw);
+  animation:vmMenuRowIn .52s cubic-bezier(.18,.82,.2,1) forwards!important;
+  transition:color .16s ease,background .2s ease,transform .16s ease,box-shadow .2s ease!important;
+}
+
+body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(1){animation-delay:.18s!important}
+body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(2){animation-delay:.27s!important}
+body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(3){animation-delay:.36s!important}
+
+body.v20-ui #screenMenu .menu-actions .menu-option::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:.25cqw;
+  background:#e31d25;
+  opacity:0;
+  transform:scaleY(.25);
+  transform-origin:center;
+  transition:opacity .16s ease,transform .22s cubic-bezier(.2,.8,.2,1);
+}
+
+body.v20-ui #screenMenu .menu-actions .menu-option::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:1px;
+  opacity:0;
+  background:linear-gradient(90deg,#0d3c91 0 22%,rgba(13,60,145,.28) 55%,transparent);
+  transform:scaleX(.25);
+  transform-origin:left;
+  transition:opacity .2s ease,transform .24s ease;
+}
+
+body.v20-ui #screenMenu .menu-actions .menu-option:hover,
+body.v20-ui #screenMenu .menu-actions .menu-option:focus-visible,
+body.v20-ui #screenMenu .menu-actions .menu-option.is-selected{
+  color:#0c1721!important;
+  background:linear-gradient(90deg,rgba(226,237,248,.96),rgba(226,237,248,.62) 68%,rgba(226,237,248,.12))!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.82),0 .55cqw 1.6cqw rgba(33,70,111,.055)!important;
+  transform:translateX(.15cqw)!important;
+}
+
+body.v20-ui #screenMenu .menu-actions .menu-option:hover::before,
+body.v20-ui #screenMenu .menu-actions .menu-option:focus-visible::before,
+body.v20-ui #screenMenu .menu-actions .menu-option.is-selected::before{opacity:1;transform:scaleY(1)}
+
+body.v20-ui #screenMenu .menu-actions .menu-option:hover::after,
+body.v20-ui #screenMenu .menu-actions .menu-option:focus-visible::after,
+body.v20-ui #screenMenu .menu-actions .menu-option.is-selected::after{opacity:1;transform:scaleX(1)}
+
+body.v20-ui #screenMenu .menu-actions .menu-option:active{transform:translateX(.28cqw) scale(.992)!important}
+
+.menu-option-number{
+  align-self:center;
+  color:#0d4199;
+  font:400 3.35cqw/.82 "Velmora Menu Condensed",Impact,sans-serif;
+  letter-spacing:.015em;
+  transition:transform .2s ease,color .2s ease;
+}
+
+.menu-option:hover .menu-option-number,
+.menu-option:focus-visible .menu-option-number,
+.menu-option.is-selected .menu-option-number{color:#07368d;transform:translateX(.1cqw)}
+
+.menu-option-divider{align-self:center;width:1px;height:45%;background:rgba(21,39,59,.17)}
+.menu-option-copy{min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+
+body.v20-ui #screenMenu .menu-option-copy strong{
+  display:block;
+  color:inherit;
+  font:400 1.67cqw/.98 "Velmora Menu Condensed",Impact,sans-serif;
+  letter-spacing:.045em;
+  white-space:nowrap;
+}
+
+body.v20-ui #screenMenu .menu-option-copy small,
+body.v20-ui #screenMenu .menu-option-copy em{
+  display:block;
+  max-height:0;
+  margin:0;
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(.25cqw);
+  color:#0a4199;
+  font:800 .48cqw/1.15 Arial,Helvetica,sans-serif;
+  letter-spacing:.09em;
+  font-style:normal;
+  text-transform:uppercase;
+  transition:max-height .2s ease,opacity .18s ease,transform .2s ease,margin .2s ease;
+}
+
+body.v20-ui #screenMenu .menu-option-copy em{color:#303840;font-weight:700;letter-spacing:.045em}
+
+body.v20-ui #screenMenu .menu-option:hover .menu-option-copy small,
+body.v20-ui #screenMenu .menu-option:focus-visible .menu-option-copy small,
+body.v20-ui #screenMenu .menu-option.is-selected .menu-option-copy small,
+body.v20-ui #screenMenu .menu-option:hover .menu-option-copy em,
+body.v20-ui #screenMenu .menu-option:focus-visible .menu-option-copy em,
+body.v20-ui #screenMenu .menu-option.is-selected .menu-option-copy em{
+  max-height:1.1cqw;
+  margin-top:.32cqw;
+  opacity:1;
+  transform:none;
+}
+
+.menu-option-chevron{
+  color:#16479b;
+  font:400 2cqw/1 Arial,sans-serif;
+  opacity:0;
+  transform:translateX(-.45cqw);
+  transition:opacity .16s ease,transform .2s ease;
+}
+
+.menu-option:hover .menu-option-chevron,
+.menu-option:focus-visible .menu-option-chevron,
+.menu-option.is-selected .menu-option-chevron{opacity:.92;transform:none}
+
+.menu-input-hint{
+  position:absolute;
+  z-index:16;
+  left:9.25%;
+  bottom:4.9%;
+  display:flex;
+  align-items:center;
+  gap:.48cqw;
+  color:#6e7680;
+  font:800 .42cqw/1 Arial,sans-serif;
+  letter-spacing:.08em;
+  opacity:.78;
+}
+
+.menu-input-hint span{
+  padding:.21cqw .35cqw;
+  border:1px solid rgba(20,44,75,.22);
+  border-radius:.18cqw;
+  color:#0c3f93;
+  background:rgba(255,255,255,.76);
+}
+
+.menu-release{display:none!important}
+
+/* Restyle the shared live music controller only while the title screen is active. */
+body.v20-ui:has(#screenMenu.is-active) .career-music-mini{
+  right:1.15cqw!important;
+  bottom:1.05cqw!important;
+  width:10.6cqw!important;
+  height:2.7cqw!important;
+  z-index:120!important;
+  grid-template-columns:1.7cqw minmax(0,1fr) 2.1cqw!important;
+  gap:.45cqw!important;
+  padding:.25cqw .25cqw .25cqw .55cqw!important;
+  border:1px solid #d6e0ea!important;
+  border-left:.24cqw solid #0d479e!important;
+  border-radius:.36cqw!important;
+  color:#182431!important;
+  background:rgba(249,252,255,.95)!important;
+  box-shadow:0 .55cqw 1.6cqw rgba(27,60,99,.12)!important;
+  backdrop-filter:blur(12px);
+}
+
+body.v20-ui:has(#screenMenu.is-active) .career-music-icon{border-color:#d1dde8!important;background:#e8f0f7!important}
+body.v20-ui:has(#screenMenu.is-active) .career-music-copy small{color:#7a8590!important}
+body.v20-ui:has(#screenMenu.is-active) .career-music-copy strong{color:#20324a!important}
+body.v20-ui:has(#screenMenu.is-active) #careerMusicNext{color:#0b469d!important;border-color:#d5dfe9!important;background:#fff!important}
+
+@keyframes vmMenuPlateIn{
+  from{opacity:0;transform:scale(1.018) translateX(.45cqw);filter:brightness(1.05)}
+  to{opacity:1;transform:none;filter:none}
+}
+
+@keyframes vmMenuRowIn{
+  from{opacity:0;transform:translateX(-1.4cqw)}
+  to{opacity:1;transform:none}
+}
+
+@keyframes vmMenuLightPass{
+  0%,62%{background-position:-115cqw 0,0 0}
+  82%,100%{background-position:115cqw 0,0 0}
+}
+
+@keyframes vmMenuParticle{
+  0%{opacity:0;transform:translate3d(0,1.2cqw,0) scale(.65)}
+  15%{opacity:var(--alpha)}
+  76%{opacity:calc(var(--alpha) * .65)}
+  100%{opacity:0;transform:translate3d(var(--drift),-4.6cqw,0) scale(1.35)}
+}
+
+@keyframes vmMenuSelectionSpark{
+  from{opacity:.75;transform:translate3d(0,0,0) scale(1)}
+  to{opacity:0;transform:translate3d(var(--spark-x),var(--spark-y),0) scale(.2)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .menu-art-backdrop,
+  body.v20-ui #screenMenu.menu-screen::before,
+  .menu-particle-field>i,
+  .menu-selection-spark,
+  body.v20-ui #screenMenu .menu-actions .menu-option{animation:none!important}
+  .menu-atmosphere{transform:none!important;transition:none!important}
+  body.v20-ui #screenMenu .menu-actions .menu-option{opacity:1;transform:none}
+}
+
+html[data-vm-reduced-motion="true"] .menu-art-backdrop,
+html[data-vm-reduced-motion="true"] body.v20-ui #screenMenu.menu-screen::before,
+html[data-vm-reduced-motion="true"] .menu-particle-field>i,
+html[data-vm-reduced-motion="true"] .menu-selection-spark,
+html[data-vm-reduced-motion="true"] body.v20-ui #screenMenu .menu-actions .menu-option{animation:none!important}
+html[data-vm-reduced-motion="true"] .menu-atmosphere{transform:none!important;transition:none!important}
+html[data-vm-reduced-motion="true"] body.v20-ui #screenMenu .menu-actions .menu-option{opacity:1;transform:none}
+
+@container (max-width:900px){
+  body.v20-ui #screenMenu .menu-actions{left:6.2%!important;width:43%!important}
+  body.v20-ui #screenMenu .menu-art-utilities{right:4%!important;width:9%!important}
+  .menu-input-hint{left:6.2%}
+}
