@@ -82,8 +82,9 @@
       const current=objectPath(slot),previous=objectPath(slot,true);
       let hasPrevious=!!remote?.has_previous;
       if(remote?.object_path){
-        const copied=await client.storage.from(BUCKET).copy(remote.object_path,previous);
-        if(!copied?.error)hasPrevious=true;
+        const previousRaw=await download(remote.object_path);
+        await upload(previous,previousRaw);
+        hasPrevious=true;
       }
       await upload(current,raw);
       const stamp=new Date(info.timestamp||now()).toISOString();
@@ -104,7 +105,7 @@
     function schedule(event){
       if(!user||state.setupRequired)return;
       pending.set(event.slot,event);clearTimeout(timers.get(event.slot));
-      timers.set(event.slot,setTimeout(()=>{timers.delete(event.slot);const latest=pending.get(event.slot);pending.delete(event.slot);emit({mode:'saving',label:'SAVING CLOUD',detail:'Your local save is safe. Updating your private cloud copy…'});queue=queue.then(()=>perform(latest)).then(()=>emit({mode:'synced',label:'CLOUD SAVED',detail:'Local and cloud careers are up to date.',error:null,lastSyncedAt:new Date(now()).toISOString()})).catch(handleSyncError);},debounceMs));
+      timers.set(event.slot,setTimeout(()=>{timers.delete(event.slot);const latest=pending.get(event.slot);pending.delete(event.slot);emit({mode:'saving',label:'SAVING CLOUD',detail:'Your local save is safe. Updating your private cloud copy…'});queue=queue.catch(()=>undefined).then(()=>perform(latest)).then(()=>emit({mode:'synced',label:'CLOUD SAVED',detail:'Local and cloud careers are up to date.',error:null,lastSyncedAt:new Date(now()).toISOString()})).catch(handleSyncError);},debounceMs));
       emit({mode:'saving',label:'CLOUD QUEUED',detail:'Career saved locally. Cloud copy queued…'});
     }
     function handleCommit(event){const slot=slotFromKey(event?.key);if(!slot||suppressCommits)return;schedule({slot,raw:event.value,deleted:event.deleted});}
@@ -137,7 +138,7 @@
     async function flush(){
       for(const timer of timers.values())clearTimeout(timer);timers.clear();
       const work=[...pending.values()];pending.clear();
-      if(work.length){emit({mode:'saving',label:'SAVING CLOUD',detail:'Finishing your private cloud copy…'});for(const event of work)queue=queue.then(()=>perform(event));}
+      if(work.length){emit({mode:'saving',label:'SAVING CLOUD',detail:'Finishing your private cloud copy…'});for(const event of work)queue=queue.catch(()=>undefined).then(()=>perform(event));}
       try{await queue;if(user&&!state.setupRequired)emit({mode:'synced',label:'CLOUD SAVED',detail:'Local and cloud careers are up to date.',error:null,lastSyncedAt:new Date(now()).toISOString()});}
       catch(error){handleSyncError(error);throw error;}
     }
