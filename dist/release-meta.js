@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'103.0.2',
-    label:'V103.2',
-    channel:'MAIN MENU TUTORIAL',
-    cacheKey:'v103-2-main-menu-tutorial-20260908',
+    version:'103.0.3',
+    label:'V103.3',
+    channel:'LOAN OWNERSHIP HOTFIX',
+    cacheKey:'v103-3-loan-ownership-20260909',
     saveSchema:86
   });
 });
