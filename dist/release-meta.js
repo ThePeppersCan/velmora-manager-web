@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'101.0.0',
-    label:'V101',
-    channel:'PEOPLE & POWER',
-    cacheKey:'v101-people-power-20260908',
-    saveSchema:84
+    version:'103.0.0',
+    label:'V103',
+    channel:'LIVING CLUB PULSE',
+    cacheKey:'v103-living-club-pulse-20260908',
+    saveSchema:86
   });
 });
