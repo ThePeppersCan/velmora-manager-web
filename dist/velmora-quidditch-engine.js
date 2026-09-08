@@ -1864,7 +1864,7 @@ function ensureBigMomentStyles(){
       <div id="wcgHalftime" class="wcg-overlay-card"><div class="wcg-panel wcg-half-wait-panel"><div class="wcg-half-brand"><img src="assets/repo-sports-logo.png" alt="Repo Sports"><span>HALF-TIME LIVE</span></div><h2 id="wcgHalfTitle">SECOND HALF READY</h2><h3>STANDARD REPO SPORTS ARENA · REPO SPORTS LIVE</h3><div class="wcg-halftime-stats"><div class="wcg-half-team"><img src="assets/world-cup-flags/belros-flag.png" alt="Belros flag"><b>BELROS</b><strong id="wcgHalfBelros">0</strong></div><div class="wcg-half-centre">9 MINUTES<br>COMPLETE<br><span id="wcgHalfShots"></span></div><div class="wcg-half-team"><img src="assets/world-cup-flags/zafran-flag.png" alt="Zafran flag"><b>ZAFRAN</b><strong id="wcgHalfZafran">0</strong></div></div><div id="wcgHalfRotation" class="wcg-half-rotation"></div><p id="wcgHalfCopy">Waiting for CatAsthma to continue the broadcast.</p><button id="wcgContinueHalf" type="button">CONTINUE SECOND HALF</button></div></div>
       <div id="wcgPredictionBar" class="wcg-v2-prediction" aria-hidden="true"><div class="wcg-v2-prediction-copy"><small>REPO SPORTS PREDICT</small><b>WHO WINS?</b><span>Correct pick · +1,000 GP</span></div><div class="wcg-v2-prediction-buttons"><button id="wcgPredictHome" type="button" data-v2-predict="belros"><b>HOME</b><span id="wcgPredictHomeShare">0% · 0</span></button><i>OR</i><button id="wcgPredictAway" type="button" data-v2-predict="zafran"><b>AWAY</b><span id="wcgPredictAwayShare">0% · 0</span></button></div><div id="wcgFanVote" class="wcg-v2-fan-vote"><b>FAN VOTE</b><span>WAITING FOR PICKS</span></div><em id="wcgPredictionStatus">PICK ANY TIME BEFORE KICKOFF</em></div>
       <div id="wcgFulltime" class="wcg-overlay-card"><div class="wcg-panel wcg-v2-fulltime-panel wcg-v2-fulltime-clean wcg-v30-fulltime-panel">
-        <div class="wcg-v30-report-scroll">
+        <div class="wcg-v30-report-scroll" role="region" aria-label="Full-time match report" tabindex="0">
           <header class="wcg-v30-report-topbar">
             <div class="wcg-v30-report-brand"><span class="wcg-v30-live-dot"></span><div><b>VELMORA MATCH CENTRE</b><small>FINAL WHISTLE · MATCH REPORT</small></div></div>
             <div class="wcg-v30-report-meta"><span id="wcgFullCompetition">CAREER FIXTURE</span><strong>FULL TIME</strong></div>
@@ -1952,6 +1952,15 @@ function ensureBigMomentStyles(){
     $('wcgSkipBroadcast')?.addEventListener('click',skipBroadcastPresentation);
     $('wcgCareerSkip')?.addEventListener('click',skipCareerToFulltime);
     $('wcgReturnLobby')?.addEventListener('click',deliverCareerResult);
+    const fulltimeOverlay=$('wcgFulltime'),fulltimeReport=fulltimeOverlay?.querySelector('.wcg-v30-report-scroll');
+    fulltimeOverlay?.addEventListener('wheel',event=>{
+      if(!fulltimeOverlay.classList.contains('is-open')||event.ctrlKey||!fulltimeReport)return;
+      const max=Math.max(0,fulltimeReport.scrollHeight-fulltimeReport.clientHeight);
+      if(max<=0)return;
+      const before=fulltimeReport.scrollTop;
+      fulltimeReport.scrollTop=Math.max(0,Math.min(max,before+event.deltaY));
+      if(fulltimeReport.scrollTop!==before)event.preventDefault();
+    },{passive:false});
     document.querySelectorAll('[data-v2-predict]').forEach(btn=>btn.addEventListener('click',()=>setPredictionPick(btn.dataset.v2Predict)));
     $('wcgBarryTipButton')?.addEventListener('click',tipBarryFromV2);
     $('wcgLegacyModeLaunch')?.addEventListener('click',()=>{

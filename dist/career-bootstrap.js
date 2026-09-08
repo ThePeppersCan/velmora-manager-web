@@ -6,7 +6,7 @@
   try{
     await store.ready;
     if(window.VelmoraCloudSaves){const cloud=window.VelmoraCloudSaves.create({window,document,store,codec:window.VelmoraSaveCodec});window.VelmoraCloudSaveManager=cloud;await cloud.ready;}
-    const script=document.createElement('script');const cacheKey=window.VELMORA_RELEASE?.cacheKey||'v103-living-club-pulse-20260908';script.src=`app.js?v=${encodeURIComponent(cacheKey)}`;document.body.appendChild(script);
+    const script=document.createElement('script');const cacheKey=window.VELMORA_RELEASE?.cacheKey||'v103-1-scroll-layout-20260908';script.src=`app.js?v=${encodeURIComponent(cacheKey)}`;document.body.appendChild(script);
   }
   catch(error){banner.textContent='Career saves could not be opened. '+error.message+' Your existing saves have not been removed.';banner.hidden=false;}
   window.addEventListener('beforeunload',event=>{if(store.status().pending||store.status().unsaved){event.preventDefault();event.returnValue='';}});

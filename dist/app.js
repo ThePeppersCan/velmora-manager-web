@@ -10788,7 +10788,7 @@
   }
   // ---------- V21.0: RepoSports-derived live Quidditch engine ----------
   let v210EngineLoadPromise=null,v210WatchActive=false;
-  const V210_ENGINE_JS='velmora-quidditch-engine.js?v=v86-performance-balance',V210_ENGINE_CSS='velmora-quidditch-engine.css?v=endgame-v30',V210_STANDING_ROOT='assets/quidditch-engine/standing/',V210_RIDER_ROOT='assets/quidditch-engine/players/';
+  const V210_ENGINE_JS='velmora-quidditch-engine.js?v=v103-1-scroll-layout',V210_ENGINE_CSS='velmora-quidditch-engine.css?v=v103-1-scroll-layout',V210_STANDING_ROOT='assets/quidditch-engine/standing/',V210_RIDER_ROOT='assets/quidditch-engine/players/';
   function v210AvatarNumber(player){const m=String(player?.avatar||'').match(/player-(\d+)/i),n=m?Number(m[1]):0;return playerSpriteIds.has(n)?n:playerSpriteCatalog.ids[Math.abs(hashString(`${player?.id||player?.name||'player'}-QUIDDITCH-SPRITE`))%playerSpriteCatalog.ids.length];}
   function v210EngineStat(v,base=60){return performanceRules?performanceRules.engineStat(v,base):clamp(.70+((clamp(Number(v??base),30,99)-40)/59)*.285,.65,.985);}
   function v210PlayerAttributes(player,roleModifier=1){
