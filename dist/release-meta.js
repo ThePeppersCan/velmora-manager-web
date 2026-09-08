@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'89.0.1',
-    label:'V89.1',
-    channel:'STABILISATION RELEASE',
-    cacheKey:'v89-1-profile-overlay-stack-20260908',
-    saveSchema:83
+    version:'101.0.0',
+    label:'V101',
+    channel:'PEOPLE & POWER',
+    cacheKey:'v101-people-power-20260908',
+    saveSchema:84
   });
 });
