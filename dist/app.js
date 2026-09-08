@@ -1314,7 +1314,8 @@
     '.rtg-review-overlay',
     '.v2073-season-moment-overlay',
     '.v44-manager-scene-overlay',
-    '.press-conference-overlay'
+    '.press-conference-overlay',
+    '#v48PlayerProfile'
   ].join(',');
   const V201_BLOCKING_OVERLAY_SELECTOR=V201_OVERLAY_ROOT_SELECTOR.split(',').map(selector=>`${selector}.is-open`).join(',');
 
@@ -1453,7 +1454,7 @@
     const mutationTouchesOverlay=m=>{
       const target=m.target instanceof Element?m.target:null;
       if(target?.matches?.(V201_OVERLAY_ROOT_SELECTOR))return true;
-      if(m.type==='childList')return [...m.addedNodes].some(node=>node instanceof Element&&(node.matches?.(V201_OVERLAY_ROOT_SELECTOR)||node.querySelector?.(V201_OVERLAY_ROOT_SELECTOR)));
+      if(m.type==='childList')return [...m.addedNodes,...m.removedNodes].some(node=>node instanceof Element&&(node.matches?.(V201_OVERLAY_ROOT_SELECTOR)||node.querySelector?.(V201_OVERLAY_ROOT_SELECTOR)));
       return false;
     };
     const observer=new MutationObserver(mutations=>{if(mutations.some(mutationTouchesOverlay))scheduleOverlaySync();});
@@ -8032,7 +8033,7 @@
     window.VelmoraPlayerProfiles?.install({
       players:()=>v48PlayerIndex().map(({p,club})=>({id:String(p.id),name:p.name,club:club?.name||'Free agent'})),
       data:v48ProfileData,action:v48ProfileAction,navigate:goCareerScreen,canOpen:()=>!swapSourceId&&Date.now()-squadDragJustFinishedAt>=240&&!pressConferenceSystem?.isOpen?.(),
-      source:()=>({central:'Central',squad:'Squad',transfers:'Transfers',matchday:'Matchday',season:'Season',office:'Inbox'}[activePrimaryScreen]||'game'),
+      source:()=>document.getElementById('careerNewsOverlay')?.classList.contains('is-open')?'News':({central:'Central',squad:'Squad',transfers:'Transfers',matchday:'Matchday',season:'Season',office:'Inbox'}[activePrimaryScreen]||'game'),
       pause:()=>window.VelmoraQuidditchEngine?.pauseForProfile?.(),resume:token=>window.VelmoraQuidditchEngine?.resumeFromProfile?.(token),
       save:saveCareerState
     });
@@ -11964,7 +11965,8 @@
       if(overlay){
         const critical=overlay.matches('.career-decision-overlay,.watch-match-overlay,.manager-interview-overlay,.manager-offer-overlay,.manager-dismissal-overlay,.cc-draw-overlay,.cc-final-overlay,.rtg-review-overlay,.press-conference-overlay');
         if(critical){e.preventDefault();return;}
-        if(overlay.id==='settingsModal')closeSettings();
+        if(overlay.id==='v48PlayerProfile')window.VelmoraPlayerProfiles?.close();
+        else if(overlay.id==='settingsModal')closeSettings();
         else if(overlay.id==='infoModal')closeInfo();
         else if(overlay.id==='negotiationModal')closeNegotiation();
         else if(overlay.id==='contractModal')closeContractRenewal();

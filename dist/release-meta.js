@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'89.0.0',
-    label:'V89',
+    version:'89.0.1',
+    label:'V89.1',
     channel:'STABILISATION RELEASE',
-    cacheKey:'v89-stable',
+    cacheKey:'v89-1-profile-overlay-stack-20260908',
     saveSchema:83
   });
 });

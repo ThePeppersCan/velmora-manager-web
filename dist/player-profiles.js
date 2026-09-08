@@ -52,7 +52,7 @@
     const d=bridge.data(id);if(!d)return false;
     if(!dialog){
       returnFocus=document.activeElement;source=bridge.source();matchPause=bridge.pause?.()||null;
-      dialog=document.createElement('section');dialog.id='v48PlayerProfile';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','Player profile');
+      dialog=document.createElement('section');dialog.id='v48PlayerProfile';dialog.className='is-open';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-hidden','false');dialog.setAttribute('aria-label','Player profile');
       inertRecords=Array.from(document.body.children).filter(n=>!['SCRIPT','STYLE','LINK'].includes(n.tagName)).map(n=>[n,n.inert]);
       for(const [n]of inertRecords)n.inert=true;
       document.body.appendChild(dialog);document.body.classList.add('v48-profile-open');
