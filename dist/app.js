@@ -1855,6 +1855,57 @@
     selectOption(0,{sound:false,particles:false});
   }
 
+  let tutorialResumeMenuMusic=false;
+  function setTutorialComplete(visible){
+    const panel=document.getElementById('tutorialComplete');
+    if(!panel)return;
+    panel.classList.toggle('is-visible',!!visible);
+    panel.setAttribute('aria-hidden',visible?'false':'true');
+  }
+  function playTutorialFromStart(){
+    const video=document.getElementById('menuTutorialVideo'),loading=document.getElementById('tutorialLoading');
+    if(!video)return;
+    setTutorialComplete(false);
+    if(loading){loading.textContent='PREPARING TUTORIAL…';loading.classList.remove('is-error');loading.classList.toggle('is-ready',video.readyState>=2);}
+    try{video.currentTime=0;}catch(_e){}
+    video.muted=audioMuted;
+    const playback=video.play();
+    if(playback&&typeof playback.catch==='function')playback.catch(()=>{if(loading){loading.textContent='PRESS PLAY TO BEGIN';loading.classList.add('is-ready');}});
+  }
+  function openTutorial(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo');
+    if(!overlay||!video)return;
+    tutorialResumeMenuMusic=!!menuMusic&&(musicStarted||!menuMusic.paused);
+    if(menuMusic&&!menuMusic.paused){try{menuMusic.pause();}catch(_e){}}
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden','false');
+    syncPrimaryScreenInteractivity();
+    playTutorialFromStart();
+  }
+  function closeTutorial(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo');
+    if(video){try{video.pause();video.currentTime=0;}catch(_e){}}
+    setTutorialComplete(false);
+    overlay?.classList.remove('is-open');
+    overlay?.setAttribute('aria-hidden','true');
+    syncPrimaryScreenInteractivity();
+    if(tutorialResumeMenuMusic)ensureMenuMusic();
+    tutorialResumeMenuMusic=false;
+  }
+  function installTutorialExperience(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo'),loading=document.getElementById('tutorialLoading');
+    if(!overlay||!video||overlay.dataset.tutorialReady==='true')return;
+    overlay.dataset.tutorialReady='true';
+    const ready=()=>loading?.classList.add('is-ready');
+    video.addEventListener('loadeddata',ready);
+    video.addEventListener('canplay',ready);
+    video.addEventListener('playing',ready);
+    video.addEventListener('waiting',()=>{if(loading&&!video.ended){loading.textContent='BUFFERING TUTORIAL…';loading.classList.remove('is-ready','is-error');}});
+    video.addEventListener('ended',()=>setTutorialComplete(true));
+    video.addEventListener('error',()=>{if(loading){loading.textContent='TUTORIAL COULD NOT LOAD · TRY AGAIN';loading.classList.remove('is-ready');loading.classList.add('is-error');}});
+    overlay.addEventListener('click',event=>{if(event.target===overlay)closeTutorial();});
+  }
+
 
 
   function managerAsset(category,id){
@@ -11962,6 +12013,12 @@
   $('#btnNewCareer').addEventListener('click',()=>{ensureMenuMusic();openCareerSaveMenu('new');});
   $('#btnContinue').addEventListener('click',()=>{ensureMenuMusic();openCareerSaveMenu('continue');});
   $('#btnSettings').addEventListener('click',()=>{ensureMenuMusic();openSettings();});
+  $('#btnTutorial')?.addEventListener('click',openTutorial);
+  $('#tutorialClose')?.addEventListener('click',closeTutorial);
+  $('#tutorialBack')?.addEventListener('click',closeTutorial);
+  $('#tutorialReturn')?.addEventListener('click',closeTutorial);
+  $('#tutorialReplay')?.addEventListener('click',playTutorialFromStart);
+  installTutorialExperience();
   $('#btnBackToMenu').addEventListener('click',()=>{ensureMenuMusic();renderCareerStart();showScreen('careerStart');});
 
   $('#countrySelect').addEventListener('change',e=>{activeCountry=e.target.value;renderGrid();});
@@ -12144,6 +12201,7 @@
         if(critical){e.preventDefault();return;}
         if(overlay.id==='v48PlayerProfile')window.VelmoraPlayerProfiles?.close();
         else if(overlay.id==='settingsModal')closeSettings();
+        else if(overlay.id==='tutorialModal')closeTutorial();
         else if(overlay.id==='infoModal')closeInfo();
         else if(overlay.id==='negotiationModal')closeNegotiation();
         else if(overlay.id==='contractModal')closeContractRenewal();

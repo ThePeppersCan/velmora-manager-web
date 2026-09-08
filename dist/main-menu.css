@@ -146,18 +146,19 @@ body.v20-ui #screenMenu .menu-actions{
   z-index:15!important;
   inset:auto!important;
   left:9.25%!important;
-  top:40.7%!important;
+  top:39.1%!important;
   width:34.3%!important;
   height:auto!important;
   display:grid!important;
-  grid-template-rows:7.65cqw 6.45cqw 6.45cqw!important;
+  grid-template-rows:7.25cqw repeat(3,5.55cqw)!important;
   gap:0!important;
 }
 
 body.v20-ui #screenMenu .menu-actions .menu-option,
 body.v20-ui #screenMenu #btnContinue,
 body.v20-ui #screenMenu #btnNewCareer,
-body.v20-ui #screenMenu #btnSettings{
+body.v20-ui #screenMenu #btnSettings,
+body.v20-ui #screenMenu #btnTutorial{
   position:relative!important;
   inset:auto!important;
   left:auto!important;
@@ -193,6 +194,7 @@ body.v20-ui #screenMenu #btnSettings{
 body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(1){animation-delay:.18s!important}
 body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(2){animation-delay:.27s!important}
 body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(3){animation-delay:.36s!important}
+body.v20-ui #screenMenu .menu-actions .menu-option:nth-child(4){animation-delay:.45s!important}
 
 body.v20-ui #screenMenu .menu-actions .menu-option::before{
   content:"";
@@ -354,6 +356,74 @@ body.v20-ui:has(#screenMenu.is-active) .career-music-copy small{color:#7a8590!im
 body.v20-ui:has(#screenMenu.is-active) .career-music-copy strong{color:#20324a!important}
 body.v20-ui:has(#screenMenu.is-active) #careerMusicNext{color:#0b469d!important;border-color:#d5dfe9!important;background:#fff!important}
 
+/* Main-menu tutorial — the supplied guide plays as part of the game, not in a browser tab. */
+body.v20-ui #tutorialModal.tutorial-cinematic{
+  position:absolute!important;
+  inset:0!important;
+  z-index:2000!important;
+  padding:2.2cqw!important;
+  background:rgba(6,13,23,.76)!important;
+  backdrop-filter:blur(14px) saturate(.75)!important;
+}
+
+body.v20-ui #tutorialModal .tutorial-cinematic-shell{
+  position:relative;
+  width:min(80cqw,1360px);
+  height:min(49.2cqw,88%);
+  min-height:0;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  overflow:hidden;
+  border:1px solid #bfcbd7;
+  border-radius:.42cqw;
+  background:#f7f9fb;
+  box-shadow:0 2.1cqw 7cqw rgba(0,0,0,.58),inset 0 .18cqw #e31d25;
+  color:#111820;
+  transform:translateY(.8cqw) scale(.985);
+  transition:transform .28s cubic-bezier(.18,.82,.2,1);
+}
+
+body.v20-ui #tutorialModal.is-open .tutorial-cinematic-shell{transform:none}
+
+.tutorial-cinematic-header{
+  min-height:4.6cqw;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:.72cqw 1.25cqw .65cqw 1.45cqw;
+  border-bottom:1px solid #ccd6df;
+  background:linear-gradient(100deg,#fff 0 68%,#edf3f8);
+}
+
+.tutorial-cinematic-header span{display:block;color:#0b469d;font:800 .48cqw/1 Arial,sans-serif;letter-spacing:.14em}
+.tutorial-cinematic-header h2{margin:.34cqw 0 0!important;color:#101820!important;font:400 1.55cqw/.95 "Velmora Menu Condensed",Impact,sans-serif!important;letter-spacing:.045em!important}
+.tutorial-cinematic-header button{width:2.35cqw;height:2.35cqw;border:1px solid rgba(12,48,101,.18);border-radius:50%;background:transparent;color:#17212c;font:300 1.65cqw/1 Arial,sans-serif;cursor:pointer;transition:.16s ease}
+.tutorial-cinematic-header button:hover,.tutorial-cinematic-header button:focus-visible{border-color:#0b469d;background:#e5eef7;color:#0b469d;transform:rotate(5deg)}
+
+.tutorial-video-stage{position:relative;min-height:0;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 45%,#101b2b,#02060b 72%)}
+.tutorial-video-stage::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(115deg,rgba(25,79,145,.12),transparent 35% 72%,rgba(220,31,39,.08))}
+.tutorial-video-stage video{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;background:#000;outline:0}
+.tutorial-video-stage video:focus-visible{box-shadow:inset 0 0 0 2px #72b7e8}
+
+.tutorial-loading{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);padding:.55cqw .8cqw;border:1px solid rgba(113,183,232,.32);border-radius:.18cqw;background:rgba(4,16,31,.88);color:#d9ecfb;font:800 .46cqw/1 Arial,sans-serif;letter-spacing:.13em;pointer-events:none;transition:opacity .18s ease}
+.tutorial-loading.is-ready{opacity:0}
+.tutorial-loading.is-error{color:#fff;background:rgba(135,21,28,.92)}
+
+.tutorial-complete{position:absolute;z-index:3;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55cqw;background:rgba(2,8,15,.82);color:#fff;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.tutorial-complete.is-visible{opacity:1;pointer-events:auto}
+.tutorial-complete>span{color:#70b9ed;font:800 .5cqw/1 Arial,sans-serif;letter-spacing:.15em}
+.tutorial-complete>strong{font:400 2cqw/1 "Velmora Menu Condensed",Impact,sans-serif;letter-spacing:.05em}
+.tutorial-complete>div{display:flex;gap:.6cqw;margin-top:.5cqw}
+.tutorial-complete button,.tutorial-cinematic-footer button{min-height:2.15cqw;padding:0 .9cqw;border:1px solid #b9c8d6;background:#fff;color:#143d7d;font:800 .48cqw/1 Arial,sans-serif;letter-spacing:.08em;cursor:pointer;transition:.16s ease}
+.tutorial-complete button:hover,.tutorial-complete button:focus-visible,.tutorial-cinematic-footer button:hover,.tutorial-cinematic-footer button:focus-visible{border-color:#0b469d;background:#e6f0fa;transform:translateY(-.08cqw)}
+.tutorial-complete button.is-primary{border-color:#174b9d;background:#174b9d;color:#fff}
+
+.tutorial-cinematic-footer{min-height:3.25cqw;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:1cqw;padding:.48cqw .75cqw .48cqw 1.45cqw;border-top:1px solid #cbd5df;background:#f7f9fb}
+.tutorial-cinematic-footer>span{color:#0b469d;font:800 .46cqw/1 Arial,sans-serif;letter-spacing:.13em}
+.tutorial-cinematic-footer>small{color:#626f7b;font:700 .47cqw/1.2 Arial,sans-serif}
+
+body:has(#tutorialModal.is-open) .career-music-mini{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+
 @keyframes vmMenuPlateIn{
   from{opacity:0;transform:scale(1.018) translateX(.45cqw);filter:brightness(1.05)}
   to{opacity:1;transform:none;filter:none}
@@ -398,6 +468,7 @@ html[data-vm-reduced-motion="true"] .menu-selection-spark,
 html[data-vm-reduced-motion="true"] body.v20-ui #screenMenu .menu-actions .menu-option{animation:none!important}
 html[data-vm-reduced-motion="true"] .menu-atmosphere{transform:none!important;transition:none!important}
 html[data-vm-reduced-motion="true"] body.v20-ui #screenMenu .menu-actions .menu-option{opacity:1;transform:none}
+html[data-vm-reduced-motion="true"] body.v20-ui #tutorialModal .tutorial-cinematic-shell{transform:none!important;transition:none!important}
 
 @container (max-width:900px){
   body.v20-ui #screenMenu .menu-actions{left:6.2%!important;width:43%!important}
