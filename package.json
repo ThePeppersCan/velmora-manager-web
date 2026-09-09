@@ -54,6 +54,7 @@
     "test:loan-ownership": "node tools/test_v103_3_loan_ownership.cjs",
     "test:multiplayer": "node tools/test_v104_multiplayer_core.cjs && node tools/test_v104_multiplayer_sync.cjs && node tools/test_v104_multiplayer_career.cjs",
     "test:multiplayer-db": "node tools/test_v104_multiplayer_database.cjs",
+    "test:scouting-loans": "node tools/test_v104_1_scouting_and_loans.cjs",
     "test:visual": "playwright test",
     "visual:update": "playwright test --update-snapshots"
   },
