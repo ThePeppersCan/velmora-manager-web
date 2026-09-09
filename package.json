@@ -1,6 +1,6 @@
 {
   "name": "velmora-manager",
-  "version": "104.4.0",
+  "version": "104.5.0",
   "private": true,
   "description": "Velmora Manager V104 Online Career",
   "scripts": {
@@ -59,6 +59,7 @@
     "test:enter-online": "node tools/test_v104_3_enter_online_career.cjs",
     "test:multiplayer-retry": "node tools/test_v104_3_multiplayer_retry.cjs",
     "test:scouting-intel": "node tools/test_v104_4_scouting_intel.cjs",
+    "test:multiplayer-integrity": "node tools/test_v104_5_multiplayer_integrity.cjs",
     "stress:multiplayer": "node tools/stress_v104_multiplayer.cjs",
     "test:visual": "playwright test",
     "visual:update": "playwright test --update-snapshots"

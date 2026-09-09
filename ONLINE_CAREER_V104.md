@@ -268,8 +268,11 @@ machines). Both signed in at Repo Company.
 - **Realtime is a convenience, not a dependency.** If the websocket cannot
   connect, clients poll every six seconds. Correctness is unaffected;
   responsiveness is.
-- **Transfers between the two human clubs** go through the same one-winner
-  mechanism as any contested action, but there is no negotiation flow between
-  two human managers yet — the AI valuation path is used.
+- **Transfers between the two human clubs require both managers.** The buyer
+  submits a shared offer, the selling manager explicitly accepts or rejects it,
+  and only an accepted fee unlocks player-contract talks. Completion uses the
+  one-winner player registration key, so a retry or rival signing cannot create
+  duplicate players or budgets. AI transfer, loan and structured-deal routines
+  exclude every human-controlled club.
 - **Archived careers cannot be restored from inside the game.** The host can
   archive; un-archiving is a database action for now.

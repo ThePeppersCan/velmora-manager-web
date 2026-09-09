@@ -410,13 +410,12 @@
     if(currentClub?.id&&careerRuntime?.boardConfidence!=null&&Number.isFinite(Number(careerRuntime.boardConfidence)))confidenceByClub[currentClub.id]=Number(careerRuntime.boardConfidence);
     ownershipState=engine.createState({clubs,worldSeed,date:currentCareerISO(),existing,confidenceByClub});
     clubs.forEach(club=>{
-      const managerId=employmentStatus==='employed'&&currentClub?.id===club.id?PLAYER_MANAGER_ID:(managerMarket?.clubManagers?.[club.id]||'UNASSIGNED');
-      engine.relationshipFor(ownershipState,club.id,managerId,confidenceByClub[club.id]??65,currentCareerISO());
+      engine.relationshipFor(ownershipState,club.id,chairmanManagerId(club),confidenceByClub[club.id]??65,currentCareerISO());
     });
     return ownershipState;
   }
   function chairmanForClub(club=currentClub||selectedClub||clubs[0]){if(!club)return null;initializeChairmanSystem();return window.VelmoraChairmen?.profileFor(ownershipState,club.id)||null;}
-  function chairmanManagerId(club=currentClub){return employmentStatus==='employed'&&currentClub?.id===club?.id?PLAYER_MANAGER_ID:(managerMarket?.clubManagers?.[club?.id]||'UNASSIGNED');}
+  function chairmanManagerId(club=currentClub){const human=v104HumanMemberForClub(club);if(human)return v104Core()?.humanManagerId(human.user_id)||`HUMAN-MANAGER:${human.user_id}`;return employmentStatus==='employed'&&currentClub?.id===club?.id?PLAYER_MANAGER_ID:(managerMarket?.clubManagers?.[club?.id]||'UNASSIGNED');}
   function chairmanRelationship(club=currentClub,managerId=chairmanManagerId(club)){if(!club||!window.VelmoraChairmen)return null;initializeChairmanSystem();return window.VelmoraChairmen.relationshipFor(ownershipState,club.id,managerId,club.id===currentClub?.id?Number(careerRuntime?.boardConfidence??objectiveConfidenceBaseline(club)):65,currentCareerISO());}
   function chairmanRecord(club,managerId,entry){if(!club||!window.VelmoraChairmen)return null;initializeChairmanSystem();return window.VelmoraChairmen.recordMemory(ownershipState,club.id,managerId||chairmanManagerId(club),{date:currentCareerISO(),...entry});}
   function chairmanPolicy(club=currentClub||selectedClub||clubs[0]){const profile=chairmanForClub(club);return window.VelmoraChairmen?.ownerPolicy(profile,club)||{reserveRatio:.1,transferAuthority:1,wageFlexibility:1,academyProtection:50,sellToBuy:false};}
@@ -1027,12 +1026,12 @@
   function ensureBoardConfidence(){
     if(careerRuntime.boardConfidence==null||!Number.isFinite(Number(careerRuntime.boardConfidence)))careerRuntime.boardConfidence=objectiveConfidenceBaseline(currentClub);
     careerRuntime.boardConfidence=clamp(Math.round(Number(careerRuntime.boardConfidence)),0,100);
-    if(currentClub&&window.VelmoraChairmen){const relation=chairmanRelationship(currentClub,PLAYER_MANAGER_ID);if(relation){if(!Number.isFinite(Number(relation.confidence)))relation.confidence=careerRuntime.boardConfidence;careerRuntime.boardConfidence=clamp(Math.round(Number(relation.confidence)),0,100);}}
+    if(currentClub&&window.VelmoraChairmen){const relation=chairmanRelationship(currentClub,chairmanManagerId(currentClub));if(relation){if(!Number.isFinite(Number(relation.confidence)))relation.confidence=careerRuntime.boardConfidence;careerRuntime.boardConfidence=clamp(Math.round(Number(relation.confidence)),0,100);}}
     return careerRuntime.boardConfidence;
   }
   function shiftBoardConfidence(delta,reason=''){
     const date=currentCareerISO(),before=ensureBoardConfidence();
-    if(currentClub&&window.VelmoraChairmen){const relation=window.VelmoraChairmen.adjustConfidence(ownershipState,currentClub.id,PLAYER_MANAGER_ID,delta,reason,date,'BOARD_ASSESSMENT');careerRuntime.boardConfidence=relation.confidence;}
+    if(currentClub&&window.VelmoraChairmen){const relation=window.VelmoraChairmen.adjustConfidence(ownershipState,currentClub.id,chairmanManagerId(currentClub),delta,reason,date,'BOARD_ASSESSMENT');careerRuntime.boardConfidence=relation.confidence;}
     else careerRuntime.boardConfidence=clamp(before+Number(delta||0),0,100);
     careerRuntime.lastBoardConfidenceDate=date;careerRuntime.lastBoardReason=reason;return careerRuntime.boardConfidence;
   }
@@ -4119,9 +4118,10 @@
     return{estOvr,estPot,judgement,reputation,market,style,tacticalFit:fit};
   }
   function realisticAiTransferCandidate(buyer,date){
+    if(v104HumanControlledClub(buyer))return null;
     const buyerSquad=normalizeSquadRoles(buyer);if(buyerSquad.length+(careerExpansion?.reservedPlaces(buyer)||0)>=AI_SENIOR_SQUAD_CAP)return null;const plan=aiClubSquadPlanReview(buyer,date,true),buyerAvg=aiClubRawStrength(buyer),priority=(plan?.priorityRoles||[]).filter(x=>x.score>=22).slice(0,3),priorityRoles=priority.length?priority.map(x=>x.role):['ATTACKER','PLAYMAKER','DEFENDER','ALL-ROUNDER'];
     const budget=moneyNumber(buyer.budget),bLevel=divisionLevel(buyer),rng=mulberry32(hashString(`${worldSeed}-AI-TARGET-${date}-${buyer.id}`));
-    const candidates=clubs.filter(s=>s.id!==buyer.id&&s.id!==currentClub?.id&&Math.abs(divisionLevel(s)-bLevel)<=1).flatMap(seller=>getSquad(seller).filter(p=>!p.v34Precontract&&!p.captain&&!p.onLoan&&(priorityRoles.includes(p.role)||Number(p.ovr||0)>=buyerAvg+5)&&Number(p.joinedSeason||0)!==careerSeason&&getSquad(seller).length>6).map(p=>({p,seller,assessment:aiRecruitmentAssessment(buyer,p,seller,date)}))).filter(({p,seller,assessment})=>{const value=livingPlayerMarketValue(p,{club:seller,date}),need=aiClubRoleNeedScore(buyer,p.role,p,date);return need>=16&&assessment.estOvr>=buyerAvg-7&&assessment.estOvr<=buyerAvg+10&&value<=Math.max(250000,budget*.58)&&p.age<=33;}).map(({p,seller,assessment})=>{const need=aiClubRoleNeedScore(buyer,p.role,p,date),upgrade=assessment.estOvr-buyerAvg,upside=Math.max(0,assessment.estPot-assessment.estOvr),ageBonus=p.age<=23?4:p.age>=31?-2:0,levelFit=-Math.abs(divisionLevel(seller)-bLevel)*1.7,marketBonus=['TRANSFER LISTED','CONTRACT EXPIRING','UNHAPPY'].includes(assessment.market)?5:0,sellerStatus=aiClubPlayerStatus(seller,p.id,date),sellerReluctance=sellerStatus==='CORE'?-9:sellerStatus==='STARTER'?-3:sellerStatus==='SURPLUS'?5:0,noise=rng()*6;return{p,seller,assessment,score:need*.32+upgrade*1.65+upside*.3+ageBonus+levelFit+marketBonus+assessment.reputation*.035+assessment.style+sellerReluctance+noise};}).sort((a,b)=>b.score-a.score);
+    const candidates=clubs.filter(s=>s.id!==buyer.id&&!v104HumanControlledClub(s)&&Math.abs(divisionLevel(s)-bLevel)<=1).flatMap(seller=>getSquad(seller).filter(p=>!p.v34Precontract&&!p.captain&&!p.onLoan&&(priorityRoles.includes(p.role)||Number(p.ovr||0)>=buyerAvg+5)&&Number(p.joinedSeason||0)!==careerSeason&&getSquad(seller).length>6).map(p=>({p,seller,assessment:aiRecruitmentAssessment(buyer,p,seller,date)}))).filter(({p,seller,assessment})=>{const value=livingPlayerMarketValue(p,{club:seller,date}),need=aiClubRoleNeedScore(buyer,p.role,p,date);return need>=16&&assessment.estOvr>=buyerAvg-7&&assessment.estOvr<=buyerAvg+10&&value<=Math.max(250000,budget*.58)&&p.age<=33;}).map(({p,seller,assessment})=>{const need=aiClubRoleNeedScore(buyer,p.role,p,date),upgrade=assessment.estOvr-buyerAvg,upside=Math.max(0,assessment.estPot-assessment.estOvr),ageBonus=p.age<=23?4:p.age>=31?-2:0,levelFit=-Math.abs(divisionLevel(seller)-bLevel)*1.7,marketBonus=['TRANSFER LISTED','CONTRACT EXPIRING','UNHAPPY'].includes(assessment.market)?5:0,sellerStatus=aiClubPlayerStatus(seller,p.id,date),sellerReluctance=sellerStatus==='CORE'?-9:sellerStatus==='STARTER'?-3:sellerStatus==='SURPLUS'?5:0,noise=rng()*6;return{p,seller,assessment,score:need*.32+upgrade*1.65+upside*.3+ageBonus+levelFit+marketBonus+assessment.reputation*.035+assessment.style+sellerReluctance+noise};}).sort((a,b)=>b.score-a.score);
     if(!candidates.length)return null;return candidates[Math.min(candidates.length-1,Math.floor(rng()*Math.min(5,candidates.length)))];
   }
   function aiNegotiatedTransferFee(p,buyer,seller,date=currentCareerISO()){
@@ -4146,7 +4146,7 @@
   function maybeGenerateAITransfer(date=currentCareerISO()){
     if(!isTransferWindowOpen(date)||careerRuntime.lastAiTransferDate===date)return null;
     const dayRoll=hashString(`${worldSeed}-AI-MARKET-${date}`)%100;if(dayRoll>43)return null;
-    const eligible=clubs.filter(c=>c.id!==currentClub?.id&&getSquad(c).length<AI_SENIOR_SQUAD_CAP&&moneyNumber(c.budget)>250000);
+    const eligible=clubs.filter(c=>!v104HumanControlledClub(c)&&getSquad(c).length<AI_SENIOR_SQUAD_CAP&&moneyNumber(c.budget)>250000);
     if(!eligible.length)return null;const rng=mulberry32(hashString(`${worldSeed}-AI-BUYER-${date}`));
     const ordered=seededShuffle(eligible,`AI-BUYER-${date}`);let deal=null,buyer=null;
     for(const club of ordered.slice(0,12)){const target=realisticAiTransferCandidate(club,date);if(target){deal=target;buyer=club;break;}}
@@ -4164,7 +4164,7 @@
   }
 
   function processAiSquadMaintenance(date=currentCareerISO()){
-    if(!date.endsWith('-01'))return;clubs.filter(c=>c.id!==currentClub?.id).forEach(club=>{aiClubSquadPlanReview(club,date,true);normalizeSquadRoles(club);});
+    if(!date.endsWith('-01'))return;clubs.filter(c=>!v104HumanControlledClub(c)).forEach(club=>{aiClubSquadPlanReview(club,date,true);normalizeSquadRoles(club);});
   }
 
   function monthlyDevelopmentKey(date=currentCareerISO()){return date.slice(0,7);}
@@ -6590,6 +6590,7 @@
     enrichAiManagerIdentity(manager,club);managerMarket.managers[id]=manager;return manager;
   }
   function currentClubManager(club){
+    const human=v104HumanManagerForClub(club);if(human)return human;
     const id=managerMarket.clubManagers?.[club?.id];return id===PLAYER_MANAGER_ID?{id:PLAYER_MANAGER_ID,name:managerName,reputation:Number(roadToGlory.managerReputation||18),preferredStyle:careerPreferences?.tactics?.mentality||'Balanced',status:'EMPLOYED',currentClubId:club?.id}:managerMarket.managers?.[id]||null;
   }
   function ensurePlayerManagerContract(club=currentClub,years=2,salary=null){
@@ -6630,7 +6631,7 @@
     manager.caretakerClosedDate=date;manager.caretakerRecord={...record};return entry;
   }
   function v44AppointCaretaker(club,date=currentCareerISO(),vacancy=null){
-    if(!club||club.id===currentClub?.id&&employmentStatus==='employed')return null;
+    if(!club||v104HumanControlledClub(club)||club.id===currentClub?.id&&employmentStatus==='employed')return null;
     const existing=currentClubManager(club);if(existing&&v44IsCaretaker(existing))return existing;
     const seed=`CARETAKER-${date}-${vacancy?.id||managerMarket.sequence}`,manager=createAiManagerForClub(club,seed);
     manager.isCaretaker=true;manager.appointmentType='CARETAKER';manager.caretakerSpellId=`CT-${manager.id}-${date}`;manager.appointedDate=date;manager.contractEnd=addDaysISO(date,120);manager.jobSecurity=55;manager.pressurePhase='NONE';
@@ -6665,6 +6666,7 @@
   function initializeManagerMarketState(){
     managerMarket=normalizeManagerMarketState(managerMarket);
     clubs.forEach(club=>{
+      if(v104HumanControlledClub(club)){const open=managerVacancyForClub(club.id);if(open)open.status='CLOSED';if(club.id===currentClub?.id&&employmentStatus==='employed')managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
       let id=managerMarket.clubManagers[club.id];
       if(employmentStatus==='employed'&&currentClub?.id===club.id){managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
       if(id===PLAYER_MANAGER_ID)id=null;
@@ -6681,22 +6683,23 @@
       managerMarket.playerContract=null;
     }
     repairManagerMarketIntegrity();
-    clubs.forEach(club=>{if(!(employmentStatus==='employed'&&currentClub?.id===club.id)&&managerMarket.clubManagers[club.id])aiClubSquadPlanReview(club,currentCareerISO(),false);});
+    clubs.forEach(club=>{if(!v104HumanControlledClub(club)&&managerMarket.clubManagers[club.id])aiClubSquadPlanReview(club,currentCareerISO(),false);});
   }
   function repairManagerMarketIntegrity(){
     const seen=new Set();
     clubs.forEach(club=>{
+      if(v104HumanControlledClub(club))return;
       const id=managerMarket.clubManagers[club.id];
       if(id===PLAYER_MANAGER_ID){if(!(employmentStatus==='employed'&&currentClub?.id===club.id))managerMarket.clubManagers[club.id]=null;return;}
       const m=managerMarket.managers[id];
       if(!m||seen.has(id)||m.currentClubId!==club.id||m.status!=='EMPLOYED')managerMarket.clubManagers[club.id]=null;else seen.add(id);
     });
-    clubs.forEach(club=>{if(employmentStatus==='employed'&&currentClub?.id===club.id){managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}if(!managerMarket.clubManagers[club.id]&&!managerVacancyForClub(club.id)){const m=createAiManagerForClub(club,`REPAIR-${managerMarket.sequence}`);managerMarket.clubManagers[club.id]=m.id;}});
+    clubs.forEach(club=>{if(v104HumanControlledClub(club)){if(club.id===currentClub?.id&&employmentStatus==='employed')managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}if(!managerMarket.clubManagers[club.id]&&!managerVacancyForClub(club.id)){const m=createAiManagerForClub(club,`REPAIR-${managerMarket.sequence}`);managerMarket.clubManagers[club.id]=m.id;}});
   }
   function managerVacancyForClub(clubId){return managerMarket.vacancies.find(v=>v.clubId===clubId&&v.status==='OPEN')||null;}
   function managerVacancyById(id){return managerMarket.vacancies.find(v=>v.id===id)||null;}
   function openManagerVacancy(club,reason='Managerial change',previousManagerId=null,date=currentCareerISO(),options={}){
-    if(!club||managerVacancyForClub(club.id))return managerVacancyForClub(club.id);
+    if(!club||v104HumanControlledClub(club)||managerVacancyForClub(club.id))return managerVacancyForClub(club.id);
     const currentId=managerMarket.clubManagers[club.id],departingId=previousManagerId||currentId||null,departing=departingId&&departingId!==PLAYER_MANAGER_ID?managerMarket.managers[departingId]:null;
     if(currentId&&currentId!==PLAYER_MANAGER_ID&&!options.keepPreviousEmployed){const old=managerMarket.managers[currentId];if(old){recordAiManagerDeparture(old,club,date,reason);old.status='UNEMPLOYED';old.currentClubId=null;old.lastClubId=club.id;old.lastDepartureDate=date;old.lastDepartureReason=reason;old.pressurePhase='NONE';}}
     managerMarket.clubManagers[club.id]=null;
@@ -6711,7 +6714,7 @@
     return vacancy;
   }
   function assignAiManagerToClub(managerId,club,date=currentCareerISO(),reason='APPOINTED'){
-    const m=managerMarket.managers[managerId];if(!m||!club)return false;enrichAiManagerIdentity(m,club);const oldClubId=m.currentClubId,oldClub=oldClubId&&oldClubId!==club.id?clubById(oldClubId):null;
+    const m=managerMarket.managers[managerId];if(!m||!club||v104HumanControlledClub(club))return false;enrichAiManagerIdentity(m,club);const oldClubId=m.currentClubId,oldClub=oldClubId&&oldClubId!==club.id?clubById(oldClubId):null;
     if(oldClub){recordAiManagerDeparture(m,oldClub,date,`LEFT FOR ${club.name}`);if(managerMarket.clubManagers[oldClubId]===managerId)managerMarket.clubManagers[oldClubId]=null;openManagerVacancy(oldClub,`${m.name} left to join ${club.name}`,managerId,date,{keepPreviousEmployed:true});}
     const incumbent=managerMarket.clubManagers[club.id];if(incumbent&&incumbent!==PLAYER_MANAGER_ID&&incumbent!==managerId){const old=managerMarket.managers[incumbent];if(old){if(v44IsCaretaker(old))v44CloseCaretakerSpell(old,club,date,'PERMANENT MANAGER APPOINTED');else recordAiManagerDeparture(old,club,date,'REPLACED');old.status='UNEMPLOYED';old.currentClubId=null;old.lastClubId=club.id;}}
     const promotedCaretaker=incumbent===managerId&&v44IsCaretaker(m);if(promotedCaretaker)v44CloseCaretakerSpell(m,club,date,'APPOINTED PERMANENTLY');m.isCaretaker=false;m.appointmentType='PERMANENT';m.caretakerClosedDate=promotedCaretaker?date:m.caretakerClosedDate||null;
@@ -6753,7 +6756,7 @@
   function processAiManagerSecurity(date=currentCareerISO()){
     if(dateFromISO(date).getUTCDay()!==1)return [];
     const dismissals=[],candidates=[];
-    clubs.forEach(club=>{if(currentClub?.id===club.id&&employmentStatus==='employed')return;const id=managerMarket.clubManagers[club.id],m=managerMarket.managers[id];if(!m)return;if(v44IsCaretaker(m)){m.careerRecord={...aiManagerSpellRecord(m,club,date)};return;}enrichAiManagerIdentity(m,club);const security=aiManagerSecurityScore(club,m);m.jobSecurity=security;m.careerRecord={...aiManagerSpellRecord(m,club,date)};const state=updateAiManagerPressure(m,club,security,date),row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id);if(Number(row?.played||0)<9||managerTenureDays(m,date)<55)return;if(state.phase==='FINAL')candidates.push({club,m,security,state});});
+    clubs.forEach(club=>{if(v104HumanControlledClub(club))return;const id=managerMarket.clubManagers[club.id],m=managerMarket.managers[id];if(!m)return;if(v44IsCaretaker(m)){m.careerRecord={...aiManagerSpellRecord(m,club,date)};return;}enrichAiManagerIdentity(m,club);const security=aiManagerSecurityScore(club,m);m.jobSecurity=security;m.careerRecord={...aiManagerSpellRecord(m,club,date)};const state=updateAiManagerPressure(m,club,security,date),row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id);if(Number(row?.played||0)<9||managerTenureDays(m,date)<55)return;if(state.phase==='FINAL')candidates.push({club,m,security,state});});
     candidates.sort((a,b)=>a.security-b.security).slice(0,2).forEach(({club,m,security,state})=>{const phaseDays=state.since?diffDaysISO(state.since,date):0,roll=hashString(`${worldSeed}-AI-SACK-${date}-${club.id}-${m.id}`)%100,threshold=security<14?72:security<20?48:Math.max(10,30-security);if((phaseDays>=7||security<14)&&roll<threshold){openManagerVacancy(club,`Board dismissed ${m.name} after results fell below expectations`,m.id,date);m.reputation=clamp(Number(m.reputation||30)-2,5,95);state.phase='NONE';dismissals.push({type:'AI_DISMISSAL',clubId:club.id,managerId:m.id,security});}});
     return dismissals;
   }
@@ -6892,7 +6895,7 @@
   function processAiManagerSummerReview(date=currentCareerISO()){
     if(!String(date).endsWith('-08-01')||managerMarket.lastSummerReviewSeason===careerTime.seasonId)return[];
     managerMarket.lastSummerReviewSeason=careerTime.seasonId;const changes=[];let departures=0;
-    Object.values(managerMarket.managers).filter(m=>m.status==='EMPLOYED'&&m.currentClubId&&m.currentClubId!==currentClub?.id).sort((a,b)=>String(a.id).localeCompare(String(b.id))).forEach(m=>{
+    Object.values(managerMarket.managers).filter(m=>m.status==='EMPLOYED'&&m.currentClubId&&!v104HumanControlledClub(clubById(m.currentClubId))).sort((a,b)=>String(a.id).localeCompare(String(b.id))).forEach(m=>{
       const club=clubById(m.currentClubId);if(!club||departures>=12)return;const expired=!m.contractEnd||m.contractEnd<=date,security=aiManagerSecurityScore(club,m),roll=hashString(`${worldSeed}-SUMMER-MANAGER-${careerTime.seasonId}-${m.id}`)%100;
       const leave=(expired&&security<58&&roll<42)||(security<34&&roll<24);
       if(leave){openManagerVacancy(club,expired?`${m.name}'s contract ended after the season`:`${club.name} and ${m.name} agreed to make a change`,m.id,date);departures++;changes.push({type:'AI_DEPARTURE',clubId:club.id,managerId:m.id});}
@@ -9809,7 +9812,24 @@
     requestAnimationFrame(()=>{if(transferActiveTab==='search'&&market.length&&($('#transferResults')?.children.length||0)===0)renderTransferResults();queueAvatarHydration($('#screenTransfers'));});
   }
 
+  function v104RenderHumanTransferNegotiation(p,initial=null){
+    const offer=v104HumanOfferForPlayer(p.id,currentClub?.id),budget=availableTransferBudget(currentClub),vi=valueEstimateInfo(p),base=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08)),amount=Math.max(0,Number(initial??offer?.currentFee??Math.round(base*.9/50_000)*50_000)),status=offer?.status||'DRAFT',waiting=status==='OPEN',agreed=status==='FEE_AGREED',rejected=status==='REJECTED',content=$('#negotiationContent'),sellerManager=v104HumanManagerForClub(p.club);
+    content.innerHTML=`<header class="negotiation-header"><div><div class="eyebrow">ONLINE MANAGER NEGOTIATION</div><h3 id="negotiationTitle">TRANSFER OFFER</h3><p>${escapeHtml(sellerManager?.name||'The other manager')} controls ${escapeHtml(p.club.name)}. Only they can approve this fee.</p>${transferArrivalNote(p)}</div><div class="negotiation-step">HUMAN DECISION</div></header><div class="negotiation-body"><aside class="negotiation-player"><div class="transfer-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="dossier-ovr ${visibleOvrInfo(p).kind!=='exact'?'is-estimate':''}" style="justify-content:center"><strong>${escapeHtml(visibleOvrInfo(p).text)}</strong><small>OVR${visibleOvrInfo(p).kind==='range'?' EST.':''}</small></div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.role)} · AGE ${Number(p.age||0)}<br>${escapeHtml(p.country)}</p><div class="negotiation-club-lockup">${badgeHTML(p.club)}<span>${escapeHtml(p.club.name)}</span></div></aside><section class="negotiation-talks"><div class="negotiation-values"><div><span>YOUR ESTIMATE</span><strong>${escapeHtml(vi.text)}</strong></div><div><span>SELLING MANAGER</span><strong>${escapeHtml(sellerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>AVAILABLE BUDGET</span><strong>${formatMoney(budget)}</strong></div></div><div class="offer-builder ${waiting||agreed?'is-locked':''}"><label for="offerAmount">${agreed?'AGREED TRANSFER FEE':waiting?'SUBMITTED OFFER':'YOUR TRANSFER FEE'}</label><div class="offer-control"><button type="button" id="offerMinus" ${waiting||agreed?'disabled':''}>−</button><input id="offerAmount" inputmode="text" autocomplete="off" spellcheck="false" value="${amount}" ${waiting||agreed?'readonly':''}><button type="button" id="offerPlus" ${waiting||agreed?'disabled':''}>+</button></div></div><div id="negotiationResponse" class="negotiation-response ${waiting?'is-pending':agreed?'is-accepted':rejected?'is-rejected':''}"><span>${waiting?'AWAITING MANAGER':agreed?'OFFER ACCEPTED':rejected?'OFFER REJECTED':'DIRECT MANAGER OFFER'}</span><strong>${waiting?`${sellerManager?.name||'The selling manager'} must respond before talks can continue.`:agreed?`${p.club.name} approved ${formatMoney(offer.currentFee)}.`:rejected?'The selling manager declined the previous proposal.':'Submit a fee directly to the other manager.'}</strong><small>${waiting?'The player remains registered to the selling club. Nothing can complete while approval is pending.':agreed?'You may now negotiate personal terms with the player.':rejected?'You can return with a new offer. The game will never negotiate on their behalf.':'This bypasses all AI valuation logic. The decision belongs entirely to the human manager.'}</small></div><div class="negotiation-actions"><button type="button" id="walkAwayOffer">BACK</button><button type="button" id="submitTransferOffer" class="submit-offer" ${waiting?'disabled':''}>${waiting?'AWAITING RESPONSE':agreed?'PROCEED TO PLAYER TALKS':rejected?'SUBMIT NEW OFFER':'SUBMIT TO MANAGER'}</button></div></section></div>`;
+    const input=$('#offerAmount'),normalize=()=>Math.max(0,moneyNumber(input?.value)),update=value=>{if(!waiting&&!agreed)input.value=String(Math.max(0,Math.round(Number(value||0)/1000)*1000));};
+    $('#offerMinus')?.addEventListener('click',()=>update(normalize()-250_000));$('#offerPlus')?.addEventListener('click',()=>update(normalize()+250_000));$('#walkAwayOffer')?.addEventListener('click',closeNegotiation);
+    $('#submitTransferOffer')?.addEventListener('click',event=>runLockedAction(`HUMAN_BUY:${p.id}:${status}`,event.currentTarget,async()=>{
+      if(agreed){openContractNegotiation(p,Number(offer.currentFee||0));return true;}
+      if(waiting)return false;const fee=normalize();if(fee>budget){showToast(`Your current transfer budget is ${formatMoney(budget)}`);return false;}
+      const sent=await v104SubmitHumanTransferOffer(p,fee);if(!sent.ok){showToast(sent.message);return false;}v104RenderHumanTransferNegotiation(p,fee);showToast(`Offer sent to ${sellerManager?.name||'the other manager'}`);return true;
+    },{releaseDelay:360,busyText:agreed?'OPENING TALKS…':'SENDING…'}));
+  }
+  function v104OpenHumanTransferNegotiation(p){
+    const modal=$('#negotiationModal'),offer=v104HumanOfferForPlayer(p.id,currentClub?.id),initial=offer?.currentFee||transferActivity.get(p.id)?.offer||null;
+    v104RenderHumanTransferNegotiation(p,initial);modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();return true;
+  }
+
   function openNegotiation(p){
+    if(v104Active()&&p?.club&&v104HumanControlledClub(p.club)&&p.club.id!==currentClub?.id)return v104OpenHumanTransferNegotiation(p);
     const session=clubNegotiationSession(p,true);if(session&&!negotiationSessionCanReopen(session,currentCareerISO())){const days=negotiationCooldownRemaining(session);showToast(`Talks closed · try again in ${days} day${days===1?'':'s'}`);return;}
     const modal=$('#negotiationModal'),prev=transferActivity.get(p.id)||{},pending=transferResponsePendingForPlayer(p.id),vi=valueEstimateInfo(p),budget=availableTransferBudget(currentClub||selectedClub),estimateBase=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08));
     if(prev.status==='Talks Collapsed'&&session?.state==='ACTIVE')transferActivity.set(p.id,{...prev,status:'Negotiating',cooldownUntil:null});
@@ -9956,7 +9976,7 @@
     $('#walkAwayContract')?.addEventListener('click',()=>p.freeAgent?closeNegotiation():renderNegotiation(p,agreedFee,{status:'accepted',title:`${p.club?.name||'Selling club'} accepted ${formatMoney(agreedFee)}.`,copy:'The club fee remains agreed. You can return to player talks while the deal is live.'}));
     $('#submitContractOffer')?.addEventListener('click',e=>runLockedAction(`BUY_CONTRACT:${p.id}:${status}:R${session?.round||0}`,e.currentTarget,async()=>{
       const wage=num(wageInput),bonus=num(bonusInput),role=roleInput?.value||'Rotation',years=Number(yearsInput?.value||3);if(status==='walked')return false;
-      if(status==='accepted'){const accepted=session?.acceptedPackage||{wage,bonus,role,years},alreadyCompleted=transferActivity.get(p.id)?.status==='Completed',completed=alreadyCompleted?{ok:true,player:careerPlayerById(p.id)||p,group:playerLineupPosition(club,p.id)?.group||'reserve'}:completeTransferSigning(p,agreedFee,accepted.wage,accepted.bonus,accepted.role,accepted.years,accepted.releaseClause||0);if(!completed.ok){showToast(completed.message);return false;}if(!(alreadyCompleted?await saveCareerStateDurable():await confirmCareerSave()))return false;if(session)session.state='COMPLETED';closeNegotiation();if(completed.deferred)transferHubView='future';setTransferTab('hub');renderTransfers();renderSquad();renderOffice();showToast(completed.deferred?`${p.name} signed · joins ${shortDateLabel(completed.joinDate)}`:`${p.name} signed · registered in ${rosterGroupLabel(completed.group)}`);return true;}
+      if(status==='accepted'){const accepted=session?.acceptedPackage||{wage,bonus,role,years},alreadyCompleted=transferActivity.get(p.id)?.status==='Completed',completed=alreadyCompleted?{ok:true,player:careerPlayerById(p.id)||p,group:playerLineupPosition(club,p.id)?.group||'reserve'}:v104Active()?await v104CompleteOnlineTransfer(p,agreedFee,accepted.wage,accepted.bonus,accepted.role,accepted.years,accepted.releaseClause||0):completeTransferSigning(p,agreedFee,accepted.wage,accepted.bonus,accepted.role,accepted.years,accepted.releaseClause||0);if(!completed.ok){showToast(completed.message);return false;}if(!(alreadyCompleted?await saveCareerStateDurable():await confirmCareerSave()))return false;if(session)session.state='COMPLETED';closeNegotiation();if(completed.deferred)transferHubView='future';setTransferTab('hub');renderTransfers();renderSquad();renderOffice();showToast(completed.deferred?`${p.name} signed · joins ${shortDateLabel(completed.joinDate)}`:`${p.name} signed · registered in ${rosterGroupLabel(completed.group)}`);return true;}
       const budget=availableTransferBudget(club);if(Number(agreedFee||0)+bonus>budget){renderContractNegotiation(p,agreedFee,{status:'rejected',title:'The package cannot be funded.',copy:`Transfer fee plus signing bonus exceeds your available ${formatMoney(budget)} transfer budget after existing commitments.`});return false;}
       const clause=v35ReadClauseFields('contract',p,session);if(!clause.ok){showToast(clause.message);return false;}
       const next=evaluateContractPackage(p,{wage,bonus,role,years},session);if(next.status==='accepted'&&session?.acceptedPackage)session.acceptedPackage.releaseClause=clause.amount;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:next.status==='accepted'?'Terms Agreed':next.status==='counter'?'Player Counter':next.status==='walked'?'Player Talks Collapsed':'Terms Rejected',proposedWage:next.counterWage||wage,signingBonus:next.counterBonus??bonus,squadRole:next.counterRole||role,contractLength:next.counterYears||years});renderContractNegotiation(p,agreedFee,next);return saveCareerStateDurable();
@@ -9967,6 +9987,7 @@
   function completeTransferSigning(p,agreedFee,wage,bonus,role,years,releaseClause=0){
     const club=currentClub||selectedClub;
     if(!club||!p)return{ok:false,message:'No active club.'};
+    if(v104Active())return{ok:false,message:'Online transfers must complete through the shared transfer record.'};
     const sourceClub=p.freeAgent?null:clubById(p.club?.id||p.clubId),sourcePlayer=(p.freeAgent?getFreeAgents():sourceClub?getSquad(sourceClub):[]).find(player=>player.id===p.id);
     if(!sourcePlayer)return{ok:false,message:'The player is no longer available from this club.'};
     p={...sourcePlayer,...(sourceClub?{club:sourceClub}:{})};
@@ -10230,6 +10251,7 @@
 
   function seasonManagerVisualProfile(manager,club){
     if(!manager)return null;
+    if(manager.humanControlled&&manager.appearanceProfile)return manager.appearanceProfile;
     if(manager.id===PLAYER_MANAGER_ID)return ensureManagerProfile();
     enrichAiManagerIdentity(manager,club);
     return ensureAiManagerAppearanceProfile(manager,club);
@@ -10237,15 +10259,15 @@
 
   function seasonClubManagerCardHtml(manager,club){
     if(!manager)return `<div class="vm-club-manager is-vacant"><b>MANAGER</b><strong>CLUB APPOINTMENT</strong><small>Club coaching structure</small></div>`;
-    const profile=seasonManagerVisualProfile(manager,club),isPlayer=manager.id===PLAYER_MANAGER_ID,tactics=isPlayer?normalizeAiTacticalProfile({defensive:careerPreferences?.tactics?.defensive,attacking:careerPreferences?.tactics?.attacking,mentality:careerPreferences?.tactics?.mentality}):aiManagerTacticalProfile(manager,club);
-    return `<button type="button" class="vm-club-manager" data-season-manager="${escapeHtml(manager.id)}" aria-label="Open manager profile for ${escapeHtml(manager.name||'club manager')}"><div class="vm-club-manager-portrait">${managerPortraitHTML(profile,'vm-club-manager-paperdoll','office')}</div><section><b>MANAGER · ${escapeHtml(isPlayer?'YOUR MANAGER':v44ManagerStatusLabel(manager))}</b><strong>${escapeHtml(manager.name||'CLUB MANAGER')}</strong><small>${escapeHtml(managerStyleLabel(manager.preferredStyle))} · ${escapeHtml(aiTacticalProfileShort(tactics))}</small><em>VIEW MANAGER PROFILE ›</em></section></button>`;
+    const profile=seasonManagerVisualProfile(manager,club),isHuman=!!manager.humanControlled||manager.id===PLAYER_MANAGER_ID,isSelf=isHuman&&String(manager.userId||'')===String(multiplayerSession?.userId||'')||manager.id===PLAYER_MANAGER_ID,tactics=isHuman?normalizeAiTacticalProfile(manager.tactics||{defensive:'Balanced',attacking:'Balanced',mentality:manager.preferredStyle||'Balanced'}):aiManagerTacticalProfile(manager,club);
+    return `<button type="button" class="vm-club-manager" data-season-manager="${escapeHtml(manager.id)}" aria-label="Open manager profile for ${escapeHtml(manager.name||'club manager')}"><div class="vm-club-manager-portrait">${managerPortraitHTML(profile,'vm-club-manager-paperdoll','office')}</div><section><b>MANAGER · ${escapeHtml(isSelf?'YOUR MANAGER':isHuman?'ONLINE MANAGER':v44ManagerStatusLabel(manager))}</b><strong>${escapeHtml(manager.name||'CLUB MANAGER')}</strong><small>${escapeHtml(managerStyleLabel(manager.preferredStyle))} · ${escapeHtml(aiTacticalProfileShort(tactics))}</small><em>VIEW MANAGER PROFILE ›</em></section></button>`;
   }
 
   function seasonManagerDossierHtml(manager,club){
     if(!manager)return `<section class="vm-manager-dossier"><button type="button" data-season-manager-back>‹ <span>BACK TO ${escapeHtml(club.name.toUpperCase())}</span></button><div class="vm-club-profile-empty"><strong>NO MANAGER APPOINTED</strong><span>This club currently has no active manager profile.</span></div></section>`;
-    const isPlayer=manager.id===PLAYER_MANAGER_ID,profile=seasonManagerVisualProfile(manager,club),identity=profile?.identity||{},record=isPlayer?playerSpellRecord(managerMarket.playerSpell):aiManagerSpellRecord(manager,club),careerRecord=isPlayer?(roadToGlory.managerCareerTotals||{}):(manager.careerRecord||record||{}),honours=isPlayer?{titles:Number(roadToGlory.managerCareerTotals?.leagueTitles||0),promotions:Number(roadToGlory.managerCareerTotals?.promotions||0),cups:Number(roadToGlory.managerCareerTotals?.domesticCups||0)+Number(roadToGlory.managerCareerTotals?.continentalCups||0)}:(manager.honours||{}),tactics=isPlayer?normalizeAiTacticalProfile({defensive:careerPreferences?.tactics?.defensive,attacking:careerPreferences?.tactics?.attacking,mentality:careerPreferences?.tactics?.mentality}):aiManagerTacticalProfile(manager,club),contract=isPlayer?managerMarket.playerContract:null,security=isPlayer?managerMarketJobSecurity():managerSecurityLabel(manager.jobSecurity||62),rep=isPlayer?Number(roadToGlory.managerReputation||18):Number(manager.reputation||0),appointed=isPlayer?(managerMarket.playerSpell?.startDate||currentCareerISO()):(manager.appointedDate||currentCareerISO()),contractEnd=isPlayer?contract?.endDate:manager.contractEnd,winPct=Number(record?.matches||0)?Math.round(Number(record.wins||0)/Number(record.matches||1)*100):0;
-    const nationality=isPlayer?managerNationName(identity.nationId):(manager.nationality||club.country||'—'),age=isPlayer?identity.age:manager.age;
-    const traits=isPlayer?[['PERSONALITY',careerPreferences?.managerPersonality||'PRAGMATIC'],['STATUS','PLAYER MANAGER'],['MEDIA','CAREER MANAGER'],['YOUTH','CLUB CONTROL']]:[['ARCHETYPE',manager.archetype||'TACTICIAN'],['TEMPERAMENT',manager.temperament||'CALM'],['MEDIA STYLE',manager.mediaStyle||'DIPLOMATIC'],['YOUTH TRUST',`${Number(manager.youthTrust||0)}/100`]];
+    const isHuman=!!manager.humanControlled||manager.id===PLAYER_MANAGER_ID,isSelf=manager.id===PLAYER_MANAGER_ID||String(manager.userId||'')===String(multiplayerSession?.userId||''),profile=seasonManagerVisualProfile(manager,club),identity=profile?.identity||{},record=isSelf?playerSpellRecord(managerMarket.playerSpell):isHuman?v104HumanManagerRecord(club):aiManagerSpellRecord(manager,club),careerRecord=isSelf?(roadToGlory.managerCareerTotals||{}):(manager.careerRecord||record||{}),honours=isSelf?{titles:Number(roadToGlory.managerCareerTotals?.leagueTitles||0),promotions:Number(roadToGlory.managerCareerTotals?.promotions||0),cups:Number(roadToGlory.managerCareerTotals?.domesticCups||0)+Number(roadToGlory.managerCareerTotals?.continentalCups||0)}:(manager.honours||{}),tactics=isSelf?normalizeAiTacticalProfile({defensive:careerPreferences?.tactics?.defensive,attacking:careerPreferences?.tactics?.attacking,mentality:careerPreferences?.tactics?.mentality}):isHuman?normalizeAiTacticalProfile(manager.tactics||{}):aiManagerTacticalProfile(manager,club),contract=isSelf?managerMarket.playerContract:null,security=isSelf?managerMarketJobSecurity():isHuman?'HUMAN CONTROLLED':managerSecurityLabel(manager.jobSecurity||62),rep=isSelf?Number(roadToGlory.managerReputation||18):Number(manager.reputation||18),appointed=isSelf?(managerMarket.playerSpell?.startDate||currentCareerISO()):(manager.appointedDate||`${careerYear}-08-01`),contractEnd=isSelf?contract?.endDate:manager.contractEnd,winPct=Number(record?.matches||0)?Math.round(Number(record.wins||0)/Number(record.matches||1)*100):0;
+    const nationality=isHuman?managerNationName(identity.nationId)||(manager.nationality||club.country||'—'):(manager.nationality||club.country||'—'),age=isHuman?identity.age:manager.age;
+    const traits=isHuman?[['PERSONALITY',isSelf?careerPreferences?.managerPersonality||'PRAGMATIC':'ONLINE MANAGER'],['STATUS',isSelf?'YOUR MANAGER':'HUMAN MANAGER'],['MEDIA','CAREER MANAGER'],['YOUTH','CLUB CONTROL']]:[['ARCHETYPE',manager.archetype||'TACTICIAN'],['TEMPERAMENT',manager.temperament||'CALM'],['MEDIA STYLE',manager.mediaStyle||'DIPLOMATIC'],['YOUTH TRUST',`${Number(manager.youthTrust||0)}/100`]];
     return `<section class="vm-manager-dossier"><button type="button" data-season-manager-back>‹ <span>BACK TO ${escapeHtml(club.name.toUpperCase())}</span></button><header><div class="vm-manager-dossier-portrait">${managerPortraitHTML(profile,'vm-manager-dossier-paperdoll','office')}</div><section><span>${escapeHtml(club.name.toUpperCase())} · MANAGER</span><h2>${escapeHtml(String(manager.name||'CLUB MANAGER').toUpperCase())}</h2><p>${escapeHtml(nationality)} · AGE ${Number(age||0)} · ${escapeHtml(v44ManagerStatusLabel(manager))}</p><div>${badgeHTML(club)}<strong>${escapeHtml(club.name)}</strong><small>APPOINTED ${escapeHtml(shortDateLabel(appointed))}</small></div></section><aside><span>REPUTATION</span><strong>${Math.round(rep)}/100</strong><small>${escapeHtml(security)}</small></aside></header><div class="vm-manager-facts"><article><span>STYLE</span><strong>${escapeHtml(managerStyleLabel(manager.preferredStyle))}</strong></article><article><span>DEFENSIVE</span><strong>${escapeHtml(tactics.defensive)}</strong></article><article><span>ATTACKING</span><strong>${escapeHtml(tactics.attacking)}</strong></article><article><span>MENTALITY</span><strong>${escapeHtml(tactics.mentality)}</strong></article><article><span>CONTRACT</span><strong>${contractEnd?escapeHtml(shortDateLabel(contractEnd)):'—'}</strong></article><article><span>JOB SECURITY</span><strong>${escapeHtml(security)}</strong></article></div><div class="vm-manager-profile-grid"><section><header>MANAGER IDENTITY</header>${traits.map(([k,v])=>`<article><span>${escapeHtml(k)}</span><strong>${escapeHtml(String(v).replace(/_/g,' '))}</strong></article>`).join('')}</section><section><header>CURRENT CLUB RECORD</header><div class="vm-manager-record"><b>${Number(record?.matches||0)}<small>MATCHES</small></b><b>${Number(record?.wins||0)}<small>WINS</small></b><b>${Number(record?.draws||0)}<small>DRAWS</small></b><b>${Number(record?.losses||0)}<small>LOSSES</small></b><b>${winPct}%<small>WIN RATE</small></b></div></section><section class="is-wide"><header>CAREER RECORD &amp; HONOURS</header><div class="vm-manager-record is-career"><b>${Number(careerRecord?.matches||0)}<small>CAREER MATCHES</small></b><b>${Number(careerRecord?.wins||0)}<small>CAREER WINS</small></b><b>${Number(honours?.titles||0)}<small>LEAGUE TITLES</small></b><b>${Number(honours?.promotions||0)}<small>PROMOTIONS</small></b><b>${Number(honours?.cups||0)}<small>CUPS</small></b></div></section></div></section>`;
   }
 
@@ -12927,7 +12949,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!p||!buyer)return 0;return aiClubRoleNeedScore(buyer,p.role,p,currentCareerISO());
   }
   function livingBuyerSuitability(p,buyer,date=currentCareerISO()){
-    if(!p||!buyer||buyer.id===currentClub?.id)return-999;const squad=getSquad(buyer),market=livingPlayerMarketValue(p),budget=moneyNumber(buyer.budget);if(squad.length>=AI_SENIOR_SQUAD_CAP||budget<market*.58)return-999;
+    if(!p||!buyer||buyer.id===currentClub?.id||v104HumanControlledClub(buyer))return-999;const squad=getSquad(buyer),market=livingPlayerMarketValue(p),budget=moneyNumber(buyer.budget);if(squad.length>=AI_SENIOR_SQUAD_CAP||budget<market*.58)return-999;
     const levelGap=Math.abs(divisionLevel(buyer)-divisionLevel(currentClub||clubById(p.clubId))),strength=backgroundClubStrength(buyer),qualityGap=Number(p.ovr||0)-strength,manager=currentClubManager(buyer),archetype=String(manager?.archetype||'TACTICIAN'),traits=playerStoryTraits(p),plan=aiClubSquadPlanReview(buyer,date),need=buyerRoleNeedScore(p,buyer),sameRole=squad.filter(x=>x.role===p.role),fit=aiPlayerTacticalFitScore(p,buyer,plan?.tacticalProfile,manager);if(need<14&&sameRole.length>=4&&qualityGap<5)return-999;let score=40-levelGap*9+need;
     score-=Math.abs(qualityGap)*1.35;if(qualityGap>=-3&&qualityGap<=6)score+=13;score+=(fit-55)*.16;if(Number(p.age||0)<=23&&(archetype==='DEVELOPER'||Number(manager?.youthTrust||0)>=70))score+=14;if(Number(p.age||0)>=29&&archetype==='FIREFIGHTER')score+=8;if(archetype==='PRAGMATIST'&&Number(p.age||0)>=24&&Number(p.age||0)<=31)score+=7;if(archetype==='BUILDER'&&Number(p.age||0)<=27)score+=6;
     if(clubWorldName(buyer)===clubWorldName(currentClub||clubById(p.clubId)))score+=4;else if(String(traits.name)==='Homebody')score-=10;const askRatio=marketAskingRatio(p);if(askRatio>1.15)score-=Math.min(35,(askRatio-1.15)*55);if(budget>=market*1.6)score+=7;if(transferMarketWindowPhase(date)==='LATE')score+=4;if(transferMarketWindowPhase(date)==='DEADLINE')score+=7;return clamp(Math.round(score),0,100);
@@ -12968,11 +12990,11 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function livingRoleSatisfaction(p,club){const w=v37PlayingTimeWindow(p,club,10),expected=({Crucial:.75,Important:.55,Rotation:.30,Prospect:.15,Reserve:.05}[p.squadRole]??.3),share=w.total?Math.max(w.starts/w.total,w.minutes/(w.total*90)):expected;return clamp(Math.round(75+(share-expected)*85),0,100);}
   function maybeLivingTransferRequest(p,club,date){if(!p||p.transferRequested||p.captain||p.onLoan||Number(p.age||0)<19)return null;ensurePlayerStoryMeta(p,club);const sat=livingRoleSatisfaction(p,club),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p);p.playingTimeSatisfaction=Math.round(Number(p.playingTimeSatisfaction||70)*.72+sat*.28);const ambitious=Number(p.ovr||0)>backgroundClubStrength(club)+7&&divisionLevel(club)<=2&&Number(traits.ambition||60)>=70,unhappy=moraleIndex(p.morale)<=1||h.overall<36,trustBroken=Number(p.managerTrust||60)<30,trigger=p.playingTimeSatisfaction<26||unhappy||ambitious||trustBroken;if(!trigger||!eventCooldownReady(`MOVE-${p.id}`,date,100))return null;const threshold=clamp(10+(100-Number(traits.loyalty||60))*.18+(100-Number(traits.patience||60))*.12+(h.overall<32?10:0)+(ambitious?7:0),10,38),roll=hashString(`${worldSeed}-MOVE-REQUEST-${date}-${p.id}`)%100;if(roll>threshold)return null;setEventCooldown(`MOVE-${p.id}`,date);p.transferRequested=true;recordPlayerStory(p,'TRANSFER_REQUEST',date,{reason:ambitious?'AMBITION':trustBroken?'TRUST':'HAPPINESS'});if(Number(p.playerReputation||0)>=45||['Crucial','Important'].includes(p.squadRole))addCareerNews({id:`player-future-${p.id}-${date}`,category:'PLAYER FUTURE',world:clubWorldName(club),clubId:club.id,relatedClubIds:[club.id],title:`${p.name.toUpperCase()} FUTURE IN DOUBT AT ${club.name.toUpperCase()}`,body:[`${p.name} has asked for clarity over the next stage of their career.`,ambitious?'The player believes the time may be right to test themselves at a higher level.':'The situation follows a period of frustration around role, form or the relationship with the manager.'],image:p.avatar,date});return queueDecisionEvent({id:`DEC-MOVE-${p.id}-${date}`,kind:'TRANSFER_REQUEST',category:'PLAYER FUTURE',playerId:p.id,cooldownKey:`MOVE-${p.id}`,title:'I want to discuss my future',body:ambitious?'I feel ready to test myself at a higher level and I want the club to consider serious offers.':trustBroken?'I do not think the relationship between us is working. I need to think seriously about a move.':'I am not happy with how my situation is developing and I think a move may be best.',choices:[{id:'convince',label:'CONVINCE TO STAY',copy:'Explain the project and ask the player to remain.'},{id:'role-talk',label:'PROMISE A ROLE',copy:'Offer an immediate playing-time pathway.'},{id:'accept-request',label:'ACCEPT REQUEST',copy:'Place the player on the transfer list.'}]});}
   function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processDressingRoomIncidentFollowUps(date);processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
-  function processLivingSquadMonthly(date=currentCareerISO()){if(livingSquad.lastMonthlyProcess===date.slice(0,7))return;livingSquad.lastMonthlyProcess=date.slice(0,7);processLivingLoanMonth(date);clubs.forEach(club=>{getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);p.playerReputation=Math.round(Number(p.playerReputation||50)*.65+livingPlayerReputationScore(p,club)*.35);});if(club.id!==currentClub?.id)livingAiSquadPlan(club,date);});recordMonthlyAwards(date);}
-  function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(club.id!==currentClub?.id){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,date);if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
+  function processLivingSquadMonthly(date=currentCareerISO()){if(livingSquad.lastMonthlyProcess===date.slice(0,7))return;livingSquad.lastMonthlyProcess=date.slice(0,7);processLivingLoanMonth(date);clubs.forEach(club=>{getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);p.playerReputation=Math.round(Number(p.playerReputation||50)*.65+livingPlayerReputationScore(p,club)*.35);});if(!v104HumanControlledClub(club))livingAiSquadPlan(club,date);});recordMonthlyAwards(date);}
+  function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(!v104HumanControlledClub(club)){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,currentCareerISO());if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
   function recordLivingInjuryState(p,date){if(!p)return;const active=Number(p.injuryDaysRemaining||0)>0;if(active){const last=p.injuryHistory.at(-1);if(!last||last.endDate){p.injuryHistory.push({startDate:date,endDate:null,type:p.injury||'Injury',initialDays:Number(p.injuryDaysRemaining||0)});p.injuryHistory=p.injuryHistory.slice(-10);}}else{const last=p.injuryHistory.at(-1);if(last&&!last.endDate)last.endDate=date;}}
   function livingAiSquadPlan(club,date){
-    if(!club||club.id===currentClub?.id)return;
+    if(!club||v104HumanControlledClub(club))return;
     const squad=getSquad(club),plan=aiClubSquadPlanReview(club,date,true),manager=currentClubManager(club),avg=aiClubRawStrength(club);
     squad.forEach(p=>{if(p.v34Precontract||p.onLoan)return;
       ensureLivingPlayerMeta(p,club);const status=plan?.playerStatuses?.[p.id]?.status||'ROTATION';
@@ -13025,9 +13047,18 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   }
 
   function livingOfferById(id){return livingSquad.incomingOffers.find(o=>o.id===id)||null;}
+  function v104OpenHumanIncomingOffer(offer){
+    const p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId),buyerManager=v104HumanManagerForClub(buyer);if(!offer||!p||!buyer||currentClub?.id!==offer.sellerClubId)return;
+    let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>ONLINE MANAGER TRANSFER OFFER</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}
+    const body=root.querySelector('[data-living-offer-body]'),open=offer.status==='OPEN';body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${Number(p.ovr||0)} OVR · AGE ${Number(p.age||0)}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub.name)} → ${escapeHtml(buyer.name)}</p></section><aside>${badgeHTML(buyer)}</aside></div><div class="living-negotiation-values"><div><span>OFFER</span><strong>${formatMoney(offer.currentFee)}</strong></div><div><span>BUYING MANAGER</span><strong>${escapeHtml(buyerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>PLAYER STATUS</span><strong>${escapeHtml(p.transferStatus?.replace(/_/g,' ')||'AT CLUB')}</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div><div class="living-offer-status ${open?'':'is-final'}"><strong>${open?'YOUR DECISION':'DECISION SAVED'}</strong><span>${escapeHtml(open?'This is another human manager. The game will not accept, reject or negotiate for you.':offer.statusCopy||offer.status.replace(/_/g,' '))}</span></div>${open?`<div class="living-negotiation-actions"><button type="button" data-human-reject>REJECT</button><button type="button" class="is-primary" data-human-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:''}`;
+    const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;
+    body.querySelector('[data-human-reject]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_REJECT:${offer.id}`,event.currentTarget,async()=>{const result=await v104RespondHumanTransferOffer(offer,'REJECTED');if(!result.ok){showToast(result.message);return false;}close();renderTransferHub();showToast('Offer rejected · the other manager has been notified');return true;},{releaseDelay:360,busyText:'REJECTING…'}));
+    body.querySelector('[data-human-accept]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_ACCEPT:${offer.id}`,event.currentTarget,async()=>{const result=await v104RespondHumanTransferOffer(offer,'ACCEPTED');if(!result.ok){showToast(result.message);return false;}close();renderTransferHub();showToast('Fee approved · the buyer may now speak to the player');return true;},{releaseDelay:420,busyText:'ACCEPTING…'}));
+    root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);
+  }
   function validateLivingSaleOfferOwnership(offer,p,notify=true){const seller=clubById(offer?.sellerClubId)||currentClub,allowed=!!offer&&!!p&&seller?.id===currentClub?.id&&clubCanMarketPlayer(seller,p);if(allowed)return true;if(offer&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(offer.status)){offer.status='CLOSED';offer.statusCopy='The offer closed because this club no longer controls the player’s permanent registration.';}if(notify&&p)showToast(loanOwnershipActionMessage(currentClub,p,'negotiate a permanent sale'));return false;}
   function openLivingIncomingOffer(id){
-    const offer=livingOfferById(id),p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId);if(!offer||!p||!buyer)return;if(!validateLivingSaleOfferOwnership(offer,p)){saveCareerState();renderTransferHub();return;}let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>INCOMING TRANSFER NEGOTIATION</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]'),status=offer.status,market=livingPlayerMarketValue(p),canCounter=['OPEN','COUNTERED'].includes(status),isFinal=status==='FINAL_OFFER';
+    const offer=livingOfferById(id),p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId);if(!offer||!p||!buyer)return;if(offer.onlineHuman)return v104OpenHumanIncomingOffer(offer);if(!validateLivingSaleOfferOwnership(offer,p)){saveCareerState();renderTransferHub();return;}let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>INCOMING TRANSFER NEGOTIATION</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]'),status=offer.status,market=livingPlayerMarketValue(p),canCounter=['OPEN','COUNTERED'].includes(status),isFinal=status==='FINAL_OFFER';
     body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${p.ovr} OVR · AGE ${Number(p.age||0)} · ${escapeHtml(livingContractLabel(p))}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub?.name||'Your club')} → ${escapeHtml(buyer.name)}</p></section><aside>${badgeHTML(buyer)}</aside></div><div class="living-negotiation-values"><div><span>${isFinal?'FINAL OFFER':'CURRENT OFFER'}</span><strong>${formatMoney(offer.currentFee)}</strong></div><div><span>MARKET VALUE</span><strong>${formatMoney(market)}</strong></div><div><span>ASKING PRICE</span><strong>${p.askingPrice?formatMoney(p.askingPrice):'NOT SET'}</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div>${canCounter?`<label class="living-counter-field"><span>YOUR COUNTER OFFER</span><div><b>£</b><input id="livingCounterAmount" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${Math.round(Math.max(offer.currentFee*1.15,market*1.04)/50000)*50000}"></div></label><div class="living-offer-status"><strong>NEGOTIATION POSITION</strong><span>${escapeHtml(offer.statusCopy||'The opening bid may not reflect the buyer’s full willingness to pay. Counter carefully: repeated unrealistic demands can end talks.')}</span></div><div class="living-negotiation-actions"><button type="button" data-living-reject>REJECT</button><button type="button" data-living-counter>COUNTER</button><button type="button" class="is-primary" data-living-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:isFinal?`<div class="living-offer-status is-final"><strong>FINAL OFFER</strong><span>${escapeHtml(offer.statusCopy||`${buyer.name} have reached their final position. Accept it or end the negotiation.`)}</span></div><div class="living-negotiation-actions is-final"><button type="button" data-living-reject>DECLINE FINAL OFFER</button><button type="button" class="is-primary" data-living-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:`<div class="living-offer-status"><strong>${escapeHtml(status.replace(/_/g,' '))}</strong><span>${escapeHtml(offer.statusCopy||'Negotiation closed.')}</span></div>`}`;
     const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;body.querySelector('[data-living-reject]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_REJECT:${offer.id}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status))return false;offer.status='REJECTED';offer.statusCopy=isFinal?'You declined the buyer’s final offer.':'You rejected the offer.';offer.finalOffer=false;saveCareerState();close();renderTransferHub();return true;},{releaseDelay:300,busyText:'REJECTING…'}));body.querySelector('[data-living-accept]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_ACCEPT:${offer.id}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status))return false;resolveLivingIncomingFee(offer,offer.currentFee,'ACCEPT');close();renderTransferHub();return true;},{releaseDelay:420,busyText:'ACCEPTING…'}));body.querySelector('[data-living-counter]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_COUNTER:${offer.id}:R${offer.round||0}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED'].includes(offer.status))return false;const amount=Math.max(offer.currentFee,Math.max(1_000,moneyNumber(body.querySelector('#livingCounterAmount')?.value)));counterLivingIncomingOffer(offer,amount);openLivingIncomingOffer(offer.id);renderTransferHub();return true;},{releaseDelay:340,busyText:'COUNTERING…'}));root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);
     if(['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status)&&careerExpansion){body.insertAdjacentHTML('beforeend','<details class="v35-sale-details"><summary>NEGOTIATE A SELL-ON CLAUSE</summary><div id="v35SaleTerms"></div></details>');careerExpansion.embed(body.querySelector('#v35SaleTerms'),'sales',offer.id);}
@@ -13080,7 +13111,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
 
   function livingLoanForPlayer(id){return livingSquad.loanHistory.find(l=>l.playerId===id&&l.status==='ACTIVE')||null;}
   function activeLivingLoansForClub(club){if(!club)return[];return livingSquad.loanHistory.filter(l=>l.status==='ACTIVE'&&(l.parentClubId===club.id||l.loanClubId===club.id));}
-  function maybeGenerateLivingSquadLoanOffer(date=currentCareerISO()){if(!currentClub||hashString(`${worldSeed}-LOAN-OFFER-${date}-${currentClub.id}`)%100>8)return null;const candidates=getSquad(currentClub).filter(p=>p.loanListed&&!p.onLoan&&!p.captain&&Number(p.age||99)<=26&&!livingSquad.loanOffers.some(o=>o.playerId===p.id&&o.status==='OPEN'));if(!candidates.length)return null;const p=candidates[hashString(`${date}-${currentClub.id}-LOANP`)%candidates.length],level=divisionLevel(currentClub),clubsFit=clubs.filter(c=>c.id!==currentClub.id&&getSquad(c).length<AI_SENIOR_SQUAD_CAP&&divisionLevel(c)<=Math.min(4,level+1)&&divisionLevel(c)>=Math.max(1,level-2)&&Math.abs(backgroundClubStrength(c)-p.ovr)<=10);if(!clubsFit.length)return null;const loanClub=clubsFit[hashString(`${date}-${p.id}-LOANC`)%clubsFit.length],role=p.ovr>=backgroundClubStrength(loanClub)-1?'Important':'Rotation',offer={id:livingSquadNextId('LOF'),playerId:p.id,parentClubId:currentClub.id,loanClubId:loanClub.id,createdDate:date,expiresDate:addDaysISO(date,5),duration:'SEASON',expectedRole:role,wageContribution:50+(hashString(`${p.id}-${loanClub.id}`)%6)*10,status:'OPEN'};livingSquad.loanOffers.push(offer);addCareerInboxMessage({id:`loan-offer-${offer.id}`,type:'TRANSFERS',sender:loanClub.name.toUpperCase(),subject:`Loan offer: ${p.name}`,preview:`${role} role · ${offer.wageContribution}% wage contribution.`,title:`${loanClub.name} request ${p.name} on loan`,body:[`Loan duration: until the end of the season.`,`Expected role: ${role}.`,`Wage contribution: ${offer.wageContribution}%.`],signoff:`${loanClub.name} Transfer Office`,action:{label:'OPEN TRANSFER HUB',route:'transfers'},date});return offer;}
+  function maybeGenerateLivingSquadLoanOffer(date=currentCareerISO()){if(!currentClub||hashString(`${worldSeed}-LOAN-OFFER-${date}-${currentClub.id}`)%100>8)return null;const candidates=getSquad(currentClub).filter(p=>p.loanListed&&!p.onLoan&&!p.captain&&Number(p.age||99)<=26&&!livingSquad.loanOffers.some(o=>o.playerId===p.id&&o.status==='OPEN'));if(!candidates.length)return null;const p=candidates[hashString(`${date}-${currentClub.id}-LOANP`)%candidates.length],level=divisionLevel(currentClub),clubsFit=clubs.filter(c=>c.id!==currentClub.id&&!v104HumanControlledClub(c)&&getSquad(c).length<AI_SENIOR_SQUAD_CAP&&divisionLevel(c)<=Math.min(4,level+1)&&divisionLevel(c)>=Math.max(1,level-2)&&Math.abs(backgroundClubStrength(c)-p.ovr)<=10);if(!clubsFit.length)return null;const loanClub=clubsFit[hashString(`${date}-${p.id}-LOANC`)%clubsFit.length],role=p.ovr>=backgroundClubStrength(loanClub)-1?'Important':'Rotation',offer={id:livingSquadNextId('LOF'),playerId:p.id,parentClubId:currentClub.id,loanClubId:loanClub.id,createdDate:date,expiresDate:addDaysISO(date,5),duration:'SEASON',expectedRole:role,wageContribution:50+(hashString(`${p.id}-${loanClub.id}`)%6)*10,status:'OPEN'};livingSquad.loanOffers.push(offer);addCareerInboxMessage({id:`loan-offer-${offer.id}`,type:'TRANSFERS',sender:loanClub.name.toUpperCase(),subject:`Loan offer: ${p.name}`,preview:`${role} role · ${offer.wageContribution}% wage contribution.`,title:`${loanClub.name} request ${p.name} on loan`,body:[`Loan duration: until the end of the season.`,`Expected role: ${role}.`,`Wage contribution: ${offer.wageContribution}%.`],signoff:`${loanClub.name} Transfer Office`,action:{label:'OPEN TRANSFER HUB',route:'transfers'},date});return offer;}
   function openLivingLoanOffer(id){const offer=livingSquad.loanOffers.find(o=>o.id===id),p=careerPlayerById(offer?.playerId),club=clubById(offer?.loanClubId);if(!offer||!p||!club)return;let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>LOAN OFFER</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]');body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${p.ovr} OVR · AGE ${p.age}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub?.name||'Parent club')} → ${escapeHtml(club.name)}</p></section><aside>${badgeHTML(club)}</aside></div><div class="living-negotiation-values"><div><span>DURATION</span><strong>1 SEASON</strong></div><div><span>EXPECTED ROLE</span><strong>${escapeHtml(offer.expectedRole)}</strong></div><div><span>WAGE SHARE</span><strong>${offer.wageContribution}%</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div><div class="living-offer-status"><strong>LOAN MANAGER ASSESSMENT</strong><span>${offer.expectedRole==='Important'?'This should provide strong first-team minutes and meaningful development.':'This is a useful rotation pathway, but minutes are not guaranteed every match.'}</span></div><div class="living-negotiation-actions"><button type="button" data-loan-reject>REJECT</button><button type="button" class="is-primary" data-loan-accept>ACCEPT LOAN</button></div>`;const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;body.querySelector('[data-loan-reject]').onclick=e=>runLockedAction(`LOAN_REJECT:${offer.id}`,e.currentTarget,()=>{if(offer.status!=='OPEN')return false;offer.status='REJECTED';saveCareerState();close();renderTransferHub();return true;},{releaseDelay:300,busyText:'REJECTING…'});body.querySelector('[data-loan-accept]').onclick=e=>runLockedAction(`LOAN_ACCEPT:${offer.id}`,e.currentTarget,()=>{if(offer.status!=='OPEN')return false;const ok=completeLivingLoan(offer,p,club);if(ok!==false){close();renderTransferHub();}return ok;},{releaseDelay:450,busyText:'ACCEPTING…'});root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);}
   function completeLivingLoan(offer,p,loanClub){if(p?.v34Precontract||p?.onLoan)return false;const parent=clubById(offer.parentClubId);if(!parent||!clubCanMarketPlayer(parent,p))return false;const parentSquad=getSquad(parent),dest=getSquad(loanClub),idx=parentSquad.findIndex(x=>x.id===p.id);if(idx<0||dest.length+(careerExpansion?.reservedPlaces(loanClub)||0)>=squadCapForClub(loanClub))return false;removePlayerFromLineup(parent,p.id);parentSquad.splice(idx,1);p.parentClubId=parent.id;p.ownerClubId=parent.id;p.clubId=loanClub.id;p.clubName=loanClub.name;p.onLoan=true;p.loanListed=false;p.transferListed=false;p.transferRequested=false;p.transferStatus='LISTEN';p.askingPrice=null;p.loanEndDate=`${careerYear+1}-06-30`;dest.push(p);addPlayerToLineup(loanClub,p.id,'bench');offer.status='ACCEPTED';const loan={id:livingSquadNextId('LOAN'),playerId:p.id,parentClubId:parent.id,loanClubId:loanClub.id,startDate:currentCareerISO(),endDate:p.loanEndDate,expectedRole:offer.expectedRole,wageContribution:offer.wageContribution,startOvr:Number(p.ovr||0),lastMonthStarts:0,developmentGrade:'NEW',status:'ACTIVE'};livingSquad.loanHistory.push(loan);livingSquad.incomingOffers.forEach(row=>{if(row.playerId===p.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(row.status)){row.status='CLOSED';row.statusCopy='Permanent transfer talks closed when the loan registration was completed.';}});const marketState=marketStateFor(p,false);if(marketState){marketState.status='ON_LOAN';marketState.interest=[];marketState.listedDate=null;}recordLivingCareerEvent(p,'LOAN',parent,loanClub,0,currentCareerISO(),{endDate:loan.endDate,role:loan.expectedRole});saveCareerState();renderSquad();renderTransferHub();showToast(`${p.name} loaned to ${loanClub.name}`);return true;}
   function processLivingLoanReturns(date=currentCareerISO()){livingSquad.loanHistory.filter(l=>l.status==='ACTIVE'&&l.endDate<=date).forEach(l=>returnLivingLoan(l,date));}
@@ -13232,6 +13263,43 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function v104Core(){return window.VelmoraMultiplayerCore||null;}
   function v104Active(){return!!(multiplayerSession&&multiplayerSession.careerId);}
   function v104Status(){return multiplayerSession?.status||null;}
+  function v104HumanMembers(){
+    if(!v104Active())return[];
+    const rows=v104Status()?.members||multiplayerSession?.members||multiplayerSession?.claims||[];
+    return rows.filter(row=>row?.club_id&&row.status!=='AI_CONTROLLED');
+  }
+  function v104HumanMemberForClub(clubOrId){
+    const id=String(typeof clubOrId==='object'?clubOrId?.id:clubOrId||'');
+    return v104Core()?.humanMemberForClub(v104HumanMembers(),id)||null;
+  }
+  function v104HumanControlledClub(clubOrId){return!!v104HumanMemberForClub(clubOrId);}
+  function v104PublicManagerProfile(member,club){
+    if(!member)return null;
+    const own=String(member.user_id||'')===String(multiplayerSession?.userId||'');
+    const source=own?ensureManagerProfile():(member.manager_profile||{});
+    const profile=normalizeManagerProfile(deepClone(source),{legacyFallback:false});
+    profile.identity.name=String(member.manager_name||member.display_name||profile.identity.name||'Career Manager').slice(0,32);
+    if(club)profile.clubBranding=aiManagerBrandingSnapshot(club);
+    return profile;
+  }
+  function v104HumanManagerForClub(club){
+    const member=v104HumanMemberForClub(club);if(!member||!club)return null;
+    const own=String(member.user_id||'')===String(multiplayerSession?.userId||'');
+    return{id:v104Core()?.humanManagerId(member.user_id)||`HUMAN-MANAGER:${member.user_id}`,
+      userId:member.user_id,name:String(member.manager_name||member.display_name||'Career Manager'),
+      humanControlled:true,isLocalHuman:own,status:'EMPLOYED',currentClubId:club.id,
+      reputation:own?Number(roadToGlory.managerReputation||18):18,preferredStyle:'Balanced',
+      archetype:'HUMAN_MANAGER',temperament:'PERSONAL',mediaStyle:'PERSONAL',youthTrust:65,
+      appointedDate:`${careerYear}-08-01`,appearanceProfile:v104PublicManagerProfile(member,club),
+      tactics:{defensive:'Balanced',attacking:'Balanced',mentality:'Balanced'}};
+  }
+  function v104HumanManagerRecord(club){
+    if(!club)return{matches:0,wins:0,draws:0,losses:0};
+    const list=fixtures.filter(f=>f.played&&(f.homeClubId===club.id||f.awayClubId===club.id));
+    let wins=0,draws=0,losses=0;
+    list.forEach(f=>{const home=f.homeClubId===club.id,gf=Number(home?f.homeScore:f.awayScore),ga=Number(home?f.awayScore:f.homeScore);if(gf>ga)wins++;else if(gf<ga)losses++;else draws++;});
+    return{matches:list.length,wins,draws,losses};
+  }
 
   function v104SyncReservedClubs(clubIds){
     v104ReservedClubIds.clear();
@@ -13293,7 +13361,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   // A local save is also an offer of this manager's club to the shared world.
   function v104NoteLocalSave(){
     if(!v104Active())return;
-    try{multiplayerSession.client?.scheduleClubPublish('autosave');}catch(_){}
+    try{multiplayerSession.client?.scheduleClubPublish('autosave');multiplayerSession.client?.schedulePrivatePublish?.();}catch(_){}
   }
 
   // A completed fixture is submitted once. If another device already stored
@@ -13461,6 +13529,132 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     return true;
   }
 
+  // Human-to-human business is an explicit three-step shared transaction:
+  // offer (buyer), response (seller), completion (buyer after player terms).
+  // Every step is an ordered event and the final player subject is exclusive.
+  function v104HumanTransferOffers(){livingSquad=normalizeLivingSquadState(livingSquad);return livingSquad.incomingOffers.filter(row=>row?.onlineHuman);}
+  function v104HumanOfferForPlayer(playerId,buyerClubId=currentClub?.id){
+    return [...v104HumanTransferOffers()].reverse().find(row=>String(row.playerId)===String(playerId)&&String(row.buyerClubId)===String(buyerClubId))||null;
+  }
+  function v104TransferMemberAllowed(kind,payload,event){
+    const actor=event?.actor_user_id||payload?.actorUserId||'';
+    return!!v104Core()?.humanTransferActorAllowed(kind,payload,actor,v104HumanMembers());
+  }
+  async function v104SubmitHumanTransferOffer(p,fee){
+    if(!v104Active()||!p?.club||!v104HumanControlledClub(p.club))return{ok:false,message:'This is not a human-controlled club.'};
+    const buyer=currentClub,seller=p.club,buyerMember=v104HumanMemberForClub(buyer),sellerMember=v104HumanMemberForClub(seller),status=v104Status();
+    if(!buyer||!buyerMember||!sellerMember||buyer.id===seller.id)return{ok:false,message:'The online manager seats could not be verified.'};
+    if(status?.readOnly)return{ok:false,message:'Reconnect to the online career before submitting an offer.'};
+    const amount=negotiationMoney(fee),attempt=v104HumanTransferOffers().filter(row=>row.playerId===p.id&&row.buyerClubId===buyer.id).length+1;
+    const offerId=`HTO-${Math.abs(hashString(`${multiplayerSession.careerId}|${buyer.id}|${seller.id}|${p.id}|${currentCareerISO()}|${attempt}|${amount}`)).toString(36).toUpperCase()}`;
+    const payload={offerId,playerId:p.id,playerName:p.name,buyerClubId:buyer.id,sellerClubId:seller.id,
+      buyerUserId:buyerMember.user_id,sellerUserId:sellerMember.user_id,fee:amount,
+      createdDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),7)};
+    const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_OFFER',
+      subjectKey:`HUMAN_TRANSFER_OFFER:${offerId}`,payload,idempotencyKey:`human-offer:${offerId}`,clubId:buyer.id});
+    if(!result?.claimed)return{ok:false,message:result?.message||'The offer could not be submitted.'};
+    return{ok:true,offer:v104HumanOfferForPlayer(p.id,buyer.id)};
+  }
+  async function v104RespondHumanTransferOffer(offer,decision){
+    const status=String(decision||'').toUpperCase();
+    if(!offer?.onlineHuman||!['ACCEPTED','REJECTED'].includes(status)||offer.status!=='OPEN')return{ok:false,message:'This offer is no longer awaiting a decision.'};
+    if(String(currentClub?.id)!==String(offer.sellerClubId))return{ok:false,message:'Only the selling manager can decide this offer.'};
+    const payload={offerId:offer.id,playerId:offer.playerId,buyerClubId:offer.buyerClubId,sellerClubId:offer.sellerClubId,
+      buyerUserId:offer.buyerUserId,sellerUserId:offer.sellerUserId,fee:Number(offer.currentFee||0),status,respondedDate:currentCareerISO()};
+    const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_RESPONSE',
+      subjectKey:`HUMAN_TRANSFER_RESPONSE:${offer.id}`,payload,idempotencyKey:`human-response:${offer.id}:${status}`,clubId:offer.sellerClubId});
+    if(!result?.claimed)return{ok:false,message:result?.message||'The decision could not be saved.'};
+    return{ok:true};
+  }
+  async function v104CompleteOnlineTransfer(p,agreedFee,wage,bonus,role,years,releaseClause=0){
+    if(!v104Active())return completeTransferSigning(p,agreedFee,wage,bonus,role,years,releaseClause);
+    const buyer=currentClub,seller=p.freeAgent?null:(p.club||clubById(p.clubId)),humanSeller=seller&&v104HumanControlledClub(seller),offer=humanSeller?v104HumanOfferForPlayer(p.id,buyer?.id):null;
+    if(humanSeller&&(!offer||offer.status!=='FEE_AGREED'))return{ok:false,message:`${seller.name}'s manager has not approved this transfer.`};
+    if(humanSeller&&Number(offer.currentFee)!==Number(agreedFee))return{ok:false,message:'The fee no longer matches the amount approved by the selling manager.'};
+    if(!isTransferWindowOpen())return{ok:false,message:'The shared registration can only complete while the transfer window is open.'};
+    if(![agreedFee,wage,bonus,years,releaseClause].every(value=>Number.isFinite(Number(value)))||Number(agreedFee)<0||Number(wage)<0||Number(bonus)<0||Number(releaseClause)<0)return{ok:false,message:'The shared transfer package contains an invalid amount.'};
+    if(!buyer||String(v104HumanMemberForClub(buyer)?.user_id||'')!==String(multiplayerSession?.userId||''))return{ok:false,message:'Only the buying manager can complete this transfer.'};
+    if(!v25CanAffordWage(buyer,p,wage))return{ok:false,message:'This contract exceeds the club’s weekly wage allocation.'};
+    if(Number(agreedFee)+Number(bonus)>availableTransferBudget(buyer))return{ok:false,message:'The club no longer has enough uncommitted funds for this transfer.'};
+    const clauseCheck=careerExpansion?.validateClause(p,releaseClause);if(clauseCheck&&!clauseCheck.ok)return clauseCheck;
+    const windowId=transferWindowForDate(currentCareerISO())?.id||currentCareerISO().slice(0,7),core=v104Core();
+    const subjectKey=core?.subjectKeys.player(p.id,windowId)||`PLAYER:${p.id}:${windowId}`;
+    const transferId=`ONLINE-${Math.abs(hashString(`${multiplayerSession.careerId}|${subjectKey}|${buyer?.id}`)).toString(36).toUpperCase()}`;
+    const payload={transferId,offerId:offer?.id||null,playerId:p.id,playerName:p.name,
+      buyerClubId:buyer?.id||null,sellerClubId:seller?.id||null,fee:Number(agreedFee||0),
+      wage:Number(wage||0),bonus:Number(bonus||0),role:String(role||'Rotation'),years:Number(years||3),
+      releaseClause:Number(releaseClause||0),date:currentCareerISO(),freeAgent:!!p.freeAgent};
+    const kind=humanSeller?'HUMAN_TRANSFER_COMPLETE':'TRANSFER';
+    const result=await multiplayerSession.client.claimWorldAction({kind,subjectKey,payload,
+      idempotencyKey:`online-transfer:${transferId}`,clubId:buyer?.id||null});
+    if(!result?.claimed)return{ok:false,message:result?.message||'Another manager completed a deal for this player first.'};
+    const signed=careerPlayerById(p.id);
+    if(!signed||String(signed.clubId)!==String(buyer?.id))return{ok:false,message:'The shared transfer could not be applied. Refresh the online career before trying again.'};
+    return{ok:true,player:signed,group:playerLineupPosition(buyer,signed.id)?.group||'reserve',cost:Number(agreedFee||0)+Number(bonus||0)};
+  }
+  function v104ApplyHumanTransferOffer(payload,event){
+    if(!v104TransferMemberAllowed('HUMAN_TRANSFER_OFFER',payload,event))return false;
+    const seller=clubById(payload.sellerClubId),buyer=clubById(payload.buyerClubId),p=careerPlayerById(payload.playerId);
+    if(!seller||!buyer||!p||String(p.clubId)!==String(seller.id))return false;
+    livingSquad=normalizeLivingSquadState(livingSquad);
+    if(livingSquad.incomingOffers.some(row=>row.id===payload.offerId))return true;
+    const offer={id:String(payload.offerId),onlineHuman:true,playerId:p.id,buyerClubId:buyer.id,sellerClubId:seller.id,
+      buyerUserId:payload.buyerUserId,sellerUserId:payload.sellerUserId,createdDate:payload.createdDate||currentCareerISO(),
+      expiresDate:payload.expiresDate||addDaysISO(currentCareerISO(),7),originalFee:Number(payload.fee||0),currentFee:Number(payload.fee||0),
+      status:'OPEN',statusCopy:`${currentClub?.id===seller.id?'The other manager is waiting for your decision.':'Waiting for the selling manager to respond.'}`};
+    livingSquad.incomingOffers.push(offer);
+    transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Awaiting Human Manager',offer:offer.currentFee,humanOfferId:offer.id});
+    if(currentClub?.id===seller.id&&!careerInboxMessages.some(row=>row.id===`human-offer-${offer.id}`))addCareerInboxMessage({id:`human-offer-${offer.id}`,type:'TRANSFERS',sender:`${buyer.name.toUpperCase()} · ONLINE MANAGER`,subject:`Manager offer: ${p.name}`,preview:`${formatMoney(offer.currentFee)} · your approval is required.`,title:`${buyer.name} want to sign ${p.name}`,body:[`${buyer.name}'s manager has submitted ${formatMoney(offer.currentFee)}.`,`Nothing can happen without your explicit approval.`,`Open the Transfer Hub to accept or reject the offer.`],signoff:'Online Career Transfer Office',action:{label:'OPEN TRANSFER HUB',route:'transfers'},date:offer.createdDate});
+    saveCareerState();refreshActiveCareerScreen();return true;
+  }
+  function v104ApplyHumanTransferResponse(payload,event){
+    if(!v104TransferMemberAllowed('HUMAN_TRANSFER_RESPONSE',payload,event))return false;
+    const offer=livingSquad.incomingOffers.find(row=>row.id===payload.offerId&&row.onlineHuman);if(!offer||offer.status!=='OPEN')return!!offer;
+    const decision=String(payload.status||'').toUpperCase();if(!['ACCEPTED','REJECTED'].includes(decision))return false;
+    offer.status=decision==='ACCEPTED'?'FEE_AGREED':'REJECTED';offer.respondedDate=payload.respondedDate||currentCareerISO();
+    offer.statusCopy=decision==='ACCEPTED'?'The selling manager approved the fee. The buyer may now negotiate with the player.':'The selling manager rejected the offer.';
+    transferActivity.set(offer.playerId,{...(transferActivity.get(offer.playerId)||{}),status:decision==='ACCEPTED'?'Fee Agreed':'Offer Rejected',offer:Number(offer.currentFee||0),humanOfferId:offer.id});
+    if(currentClub?.id===offer.buyerClubId&&!careerInboxMessages.some(row=>row.id===`human-response-${offer.id}`)){const seller=clubById(offer.sellerClubId),p=careerPlayerById(offer.playerId);addCareerInboxMessage({id:`human-response-${offer.id}`,type:'TRANSFERS',sender:`${seller?.name?.toUpperCase()||'SELLING CLUB'} · ONLINE MANAGER`,subject:`${decision==='ACCEPTED'?'Offer accepted':'Offer rejected'}: ${p?.name||offer.playerId}`,preview:decision==='ACCEPTED'?'The fee is agreed · player talks may begin.':'The selling manager declined the proposal.',title:decision==='ACCEPTED'?`${seller?.name||'The selling club'} approve the transfer fee`:`${seller?.name||'The selling club'} reject the offer`,body:[offer.statusCopy],signoff:'Online Career Transfer Office',action:{label:'OPEN TRANSFERS',route:'transfers'},date:offer.respondedDate});}
+    saveCareerState();refreshActiveCareerScreen();return true;
+  }
+  function v104ApplyTransferComplete(kind,payload,event){
+    const buyer=clubById(payload.buyerClubId),seller=payload.sellerClubId?clubById(payload.sellerClubId):null,actorMember=v104HumanMemberForClub(buyer),fee=Number(payload.fee),bonus=Number(payload.bonus),wage=Number(payload.wage),years=Number(payload.years),releaseClause=Number(payload.releaseClause||0);
+    if(!buyer||!actorMember||String(actorMember.user_id)!==String(event?.actor_user_id||''))return false;
+    if([fee,bonus,wage,years,releaseClause].some(value=>!Number.isFinite(value)||value<0)||!Number.isInteger(years)||years<1||years>5)return false;
+    if(kind==='TRANSFER'&&seller&&v104HumanControlledClub(seller))return false;
+    livingSquad=normalizeLivingSquadState(livingSquad);
+    if(livingSquad.transferHistory.some(row=>row.id===payload.transferId))return true;
+    if(kind==='HUMAN_TRANSFER_COMPLETE'){
+      if(!v104TransferMemberAllowed(kind,payload,event))return false;
+      const approved=livingSquad.incomingOffers.find(row=>row.id===payload.offerId&&row.onlineHuman&&row.status==='FEE_AGREED'&&row.playerId===payload.playerId&&row.sellerClubId===payload.sellerClubId&&row.buyerClubId===payload.buyerClubId);
+      if(!approved||Number(approved.currentFee)!==fee)return false;
+    }
+    let source=null;
+    if(payload.freeAgent){source=getFreeAgents().find(row=>row.id===payload.playerId)||null;}
+    else if(seller){source=getSquad(seller).find(row=>row.id===payload.playerId)||null;}
+    if(!source){return getSquad(buyer).some(row=>row.id===payload.playerId);}
+    if(getSquad(buyer).length+livingOwnedLoansCount(buyer)+(careerExpansion?.reservedPlaces(buyer)||0)>=SENIOR_SQUAD_CAP)return false;
+    if(payload.freeAgent){const index=getFreeAgents().findIndex(row=>row.id===source.id);if(index>=0)getFreeAgents().splice(index,1);}
+    else if(seller){removePlayerFromLineup(seller,source.id);const index=getSquad(seller).findIndex(row=>row.id===source.id);if(index>=0)getSquad(seller).splice(index,1);seller.budget=formatExactMoney(moneyNumber(seller.budget)+fee);getSquad(seller).forEach((row,index)=>row.captain=index===0);}
+    const signed={...source};delete signed.club;delete signed.rosterIndex;signed.freeAgent=false;signed.clubId=buyer.id;signed.clubName=buyer.name;signed.ownerClubId=buyer.id;signed.parentClubId=null;signed.onLoan=false;signed.contractYears=years;signed.wage=wage;signed.squadRole=String(payload.role||'Rotation');signed.joinedSeason=careerSeason;signed.morale='Very Happy';signed.form='New Signing';signed.careerClubs=Array.from(new Set([...(signed.careerClubs||[]),buyer.id]));setLivingPlayerContract(signed,buyer,signed.contractYears,signed.wage,signed.squadRole,payload.date||currentCareerISO(),payload.freeAgent?'FREE_AGENT':'TRANSFER');
+    getSquad(buyer).push(signed);addPlayerToLineup(buyer,signed.id,'reserve');getSquad(buyer).forEach((row,index)=>row.captain=index===0);buyer.budget=formatExactMoney(Math.max(0,moneyNumber(buyer.budget)-fee-bonus));
+    const record={id:String(payload.transferId),date:payload.date||currentCareerISO(),seasonId:careerTime.seasonId,playerId:signed.id,playerName:signed.name,fromClubId:seller?.id||null,toClubId:buyer.id,fee,type:payload.freeAgent?'FREE_AGENT':'PERMANENT',source:kind==='HUMAN_TRANSFER_COMPLETE'?'ONLINE_HUMAN':'ONLINE'};
+    livingSquad.transferHistory.push(record);livingSquad.transferHistory=livingSquad.transferHistory.slice(-3000);signed.lastTransferDate=record.date;
+    const history=livingPlayerHistoryRecord(signed);if(history&&!history.transfers.some(row=>row.id===record.id))history.transfers.push(record);
+    recordCareerMemory({id:`MEM-${record.id}`,key:`ONLINE-TRANSFER|${record.id}`,type:'TRANSFER_COMPLETED',clubId:buyer.id,playerId:signed.id,date:record.date,transferId:record.id,importance:'NOTABLE',metadata:{fromClubId:seller?.id||null,toClubId:buyer.id,fee,source:record.source}});
+    updateLivingTransferRecords(record);careerExpansion?.setClause(signed,releaseClause);
+    livingSquad.incomingOffers.forEach(row=>{if(row.playerId===signed.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(row.status)){row.status=row.id===payload.offerId?'COMPLETED':'CLOSED';row.statusCopy=row.id===payload.offerId?'Transfer completed.':'Player transferred elsewhere.';}});
+    transferActivity.set(signed.id,{...(transferActivity.get(signed.id)||{}),status:'Completed',offer:fee,signingBonus:bonus,squadRole:signed.squadRole,contractLength:signed.contractYears,completedSeason:careerSeason,humanOfferId:payload.offerId||null});
+    if(currentClub?.id===buyer.id||currentClub?.id===seller?.id){addCareerInboxMessage({id:`online-transfer-${record.id}`,type:'TRANSFERS',sender:'ONLINE CAREER TRANSFER OFFICE',subject:`Transfer complete: ${signed.name}`,preview:`${seller?.name||'Free agent'} → ${buyer.name} · ${fee?formatMoney(fee):'free'}.`,title:`${signed.name} joins ${buyer.name}`,body:[`The shared transfer has completed with one authoritative registration.`,`Every manager now sees the same squad and budget change.`],signoff:'Online Career Transfer Office',date:record.date});}
+    saveCareerState();multiplayerSession?.client?.scheduleClubPublish?.('online-transfer');refreshActiveCareerScreen();return true;
+  }
+  function v104ApplyWorldAction(kind,payload,subjectKey,event){
+    if(kind==='HUMAN_TRANSFER_OFFER')return v104ApplyHumanTransferOffer(payload,event);
+    if(kind==='HUMAN_TRANSFER_RESPONSE')return v104ApplyHumanTransferResponse(payload,event);
+    if(kind==='HUMAN_TRANSFER_COMPLETE'||kind==='TRANSFER')return v104ApplyTransferComplete(kind,payload,event);
+    return window.VELMORA_MP_WORLD_ACTIONS?.[kind]?.(payload,subjectKey,event)||false;
+  }
+
   window.VelmoraMultiplayerBridge={
     // ---- world snapshots ----
     buildSnapshot(){
@@ -13489,7 +13683,9 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
         if(core)core.PRIVATE_KEYS.forEach(key=>{
           if(Object.prototype.hasOwnProperty.call(identity,key))merged[key]=identity[key];
         });
-        merged.currentClubId=identity.currentClubId||multiplayerSession?.clubId||null;
+        // The server-side seat is authoritative. A stale local save must
+        // never turn both devices into the same club.
+        merged.currentClubId=multiplayerSession?.clubId||identity.currentClubId||null;
         merged.employmentStatus='employed';
         if(identity.manager)merged.manager=identity.manager;
         if(identity.managerName)merged.managerName=identity.managerName;
@@ -13507,7 +13703,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     // ---- world mutations from the shared log ----
     applyMatchResult(fixtureId,result,meta){return v104ApplyAuthoritativeResult(fixtureId,result,meta);},
     advanceSharedDay(fromDate,toDate){return v104ApplySharedAdvance(fromDate,toDate);},
-    applyWorldAction(kind,payload){return window.VELMORA_MP_WORLD_ACTIONS?.[kind]?.(payload)||false;},
+    applyWorldAction(kind,payload,subjectKey,event){return v104ApplyWorldAction(kind,payload,subjectKey,event);},
     onManagerConvertedToAi(userId,clubId){
       if(clubId)v104ReservedClubIds.delete(String(clubId));
       if(multiplayerSession)multiplayerSession.humanClubIds=
@@ -13522,7 +13718,11 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     onRemoteChange(status){
       if(!multiplayerSession)return;
       multiplayerSession.status=status;
+      multiplayerSession.members=status?.members||multiplayerSession.members||[];
       multiplayerSession.submissions=status?.barrier?.participants||[];
+      multiplayerSession.claims=(status?.members||[]).filter(row=>row.club_id)
+        .map(row=>({user_id:row.user_id,club_id:row.club_id,club_name:row.club_name,
+          manager_name:row.manager_name,manager_profile:row.manager_profile||null,status:row.status}));
       multiplayerSession.humanClubIds=(status?.members||[]).map(row=>row.club_id).filter(Boolean);
       v104SyncReservedClubs(multiplayerSession.humanClubIds);
       window.VelmoraMultiplayerUI?.render(status);
@@ -13599,6 +13799,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       if(!club)return false;
       currentClub=club;selectedClub=club;employmentStatus='employed';
       assignManagerClubBranding(club);
+      initializeChairmanSystem(ownershipState);ensureBoardConfidence();
       return true;
     },
     reducedMotion(){return mainMenuMotionReduced();},
@@ -13833,7 +14034,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       player:id=>careerPlayerById(id)||getFreeAgents().find(p=>p.id===id),freeAgents:getFreeAgents,transferPool:()=>[...getTransferPool(),...getFreeAgents()],sales:()=>livingSquad.incomingOffers,sell:completeLivingUserSale,fixtures:()=>fixtures,loans:()=>livingSquad.loanHistory,
       inbox:addCareerInboxMessage,save:saveCareerState,toast:showToast,value:livingPlayerMarketValue,interest:transferInterestFor,windowOpen:isTransferWindowOpen,nextWindow:nextTransferWindowStart,
       canWage:v25CanAffordWage,weeklyWages:v25ClubWeeklyWages,wageBudget:c=>v25ClubFinance(c).wageBudget,expectedWage:p=>expectedWage(p,currentClub||selectedClub),availableBudget:availableTransferBudget,squadCap:squadCapForClub,ownedLoans:livingOwnedLoansCount,
-      evaluateClub:evaluateClubTransferOffer,loanEligibility:loanRegistrationEligibility,
+      evaluateClub:evaluateClubTransferOffer,loanEligibility:loanRegistrationEligibility,humanControlledClub:v104HumanControlledClub,
       knowledge:effectiveKnowledge,knowledgeStage:knowledgeStageFor,scouted:isScouted,
       setContract:setLivingPlayerContract,removeLineup:removePlayerFromLineup,addLineup:addPlayerToLineup,recordTransfer:recordLivingTransfer,memory:recordCareerMemory,facilityCompleted:v44OnFacilityCompleted,facilityVisual:v44FacilityVisualHTML,
       onLegacyStaffHired:onRetiredPlayerStaffHired,onLegacyStaffExpired:onRetiredPlayerStaffExpired,

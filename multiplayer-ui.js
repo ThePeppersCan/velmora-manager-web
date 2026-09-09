@@ -603,14 +603,27 @@
     // for a while may not yet know the second manager has taken their seat.
     await loadLobby(lobby.careerId);
     const me=(lobby.members||[]).find(row=>row.user_id===lobby.userId);
+    const localIdentity=game()?.captureIdentity?.()||{};
+    const savedIdentity=await client.loadPrivateState(lobby.careerId).catch(()=>null);
+    const identity=savedIdentity&&typeof savedIdentity==='object'?savedIdentity:localIdentity;
+    // Club-bound private state from an unrelated local career must never
+    // override the seat claimed in this online career.
+    if(me?.club_id&&String(identity.currentClubId||'')!==String(me.club_id)){
+      delete identity.currentClubId;
+      delete identity.careerRuntime;
+      delete identity.firstWeekState;
+      delete identity.jobSearchState;
+    }
     game()?.begin({
       careerId:lobby.careerId,
       clubId:me?.club_id||null,
       userId:lobby.userId,
       humanClubIds:(lobby.members||[]).map(row=>row.club_id).filter(Boolean),
       claims:(lobby.members||[]).filter(row=>row.club_id)
-        .map(row=>({user_id:row.user_id,club_id:row.club_id})),
-      identity:game()?.captureIdentity?.()||{},
+        .map(row=>({user_id:row.user_id,club_id:row.club_id,club_name:row.club_name,
+          manager_name:row.manager_name,manager_profile:row.manager_profile||null,status:row.status})),
+      members:lobby.members||[],
+      identity,
       client,
       status:client.status()
     });
