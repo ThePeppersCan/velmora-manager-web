@@ -9165,9 +9165,14 @@
     if(p.freeAgent)return{kind:'free',text:'FREE AGENT',lo:0,hi:0,mid:0};
     const rec=recruitmentIntelRecord(p,false);
     if(Number(rec?.knownAskingPrice||0)>0)return{kind:'club-ask',text:formatMoney(Number(rec.knownAskingPrice)),lo:Number(rec.knownAskingPrice),hi:Number(rec.knownAskingPrice),mid:Number(rec.knownAskingPrice)};
-    const stage=knowledgeStageFor(p),k=effectiveKnowledge(p),scout=estimateJudgement(p),market=livingPlayerMarketValue(p);
+    const stage=knowledgeStageFor(p),assignment=scoutAssignment(p),scout=estimateJudgement(p),market=livingPlayerMarketValue(p);
     if(stage.key==='full')return{kind:'exact',text:formatMoney(market),lo:market,hi:market,mid:market};
-    if(stage.key==='unknown')return{kind:'unknown',text:'UNKNOWN',lo:0,hi:0,mid:0};
+    // Assigning a scout is not intelligence by itself. A player whose value
+    // was genuinely unknown stays unknown until the first report checkpoint;
+    // an existing public profile may keep the broad estimate it already had.
+    const publicValueKnown=baseKnowledgeScore(p)>=38||publicReputationScore(p)>=60;
+    if(stage.key==='unknown'||(assignment&&stage.key==='limited'&&!publicValueKnown))
+      return{kind:'unknown',text:'UNKNOWN',lo:0,hi:0,mid:0};
     const spread=stage.key==='limited'?.62:stage.key==='partial'?.42:stage.key==='good'?.24:.14;
     const judgementShrink=(scout.judgement-1)*.025+(scout.specialism==='VALUE'?0.035:0);
     const actualSpread=Math.max(.09,spread-judgementShrink);

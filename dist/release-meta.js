@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.3.0',
-    label:'V104.3',
-    channel:'ONLINE CAREER FIX',
-    cacheKey:'v104-3-enter-online-20260909',
+    version:'104.4.0',
+    label:'V104.4',
+    channel:'SCOUTING INTEL FIX',
+    cacheKey:'v104-4-scouting-intel-20260909',
     saveSchema:86
   });
 });
