@@ -131,6 +131,31 @@
     managerAi:userId=>`MANAGER_AI:${userId}`
   });
 
+  // Human seats are part of the shared world, not AI manager slots. These
+  // helpers deliberately use only the public lobby roster so every client
+  // resolves the same club owner and stable manager id.
+  function humanMemberForClub(members,clubId){
+    const id=String(clubId||'');
+    if(!id)return null;
+    return (members||[]).find(row=>row&&row.status!=='AI_CONTROLLED'&&
+      String(row.club_id||'')===id)||null;
+  }
+  function humanManagerId(userId){
+    const id=String(userId||'').trim();
+    return id?`HUMAN-MANAGER:${id}`:null;
+  }
+  function humanTransferActorAllowed(kind,payload,actorUserId,members){
+    const p=payload&&typeof payload==='object'?payload:{};
+    const actor=String(actorUserId||'');
+    const buyer=humanMemberForClub(members,p.buyerClubId||p.buyer_club_id);
+    const seller=humanMemberForClub(members,p.sellerClubId||p.seller_club_id);
+    if(!actor||!buyer||!seller||buyer.user_id===seller.user_id)return false;
+    if(kind==='HUMAN_TRANSFER_OFFER'||kind==='HUMAN_TRANSFER_COMPLETE')
+      return String(buyer.user_id)===actor;
+    if(kind==='HUMAN_TRANSFER_RESPONSE')return String(seller.user_id)===actor;
+    return false;
+  }
+
   // ---------------------------------------------------------------
   // Determinism
   //
@@ -392,6 +417,7 @@
     SHARED_KEYS,PRIVATE_KEYS,CLUB_SCOPED_KEYS,PARTICIPANT_STATES,ACTIVITY_LABELS,
     classifyKey,splitCareerState,composeCareerState,
     idempotencyKey,subjectKeys,
+    humanMemberForClub,humanManagerId,humanTransferActorAllowed,
     simulationSeed,assertDeterministicSeed,
     requiredParticipants,barrierState,humanFixtureReady,humanFixtureResolver,
     isStale,conflictPlan,

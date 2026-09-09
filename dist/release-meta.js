@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.4.0',
-    label:'V104.4',
-    channel:'SCOUTING INTEL FIX',
-    cacheKey:'v104-4-scouting-intel-20260909',
+    version:'104.5.0',
+    label:'V104.5',
+    channel:'MULTIPLAYER INTEGRITY',
+    cacheKey:'v104-5-multiplayer-integrity-20260909',
     saveSchema:86
   });
 });

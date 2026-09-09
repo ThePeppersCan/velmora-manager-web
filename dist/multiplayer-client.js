@@ -23,6 +23,7 @@
   const T={
     careers:'velmora_multiplayer_careers',
     members:'velmora_multiplayer_members',
+    profiles:'velmora_multiplayer_manager_profiles',
     claims:'velmora_multiplayer_club_claims',
     clubState:'velmora_multiplayer_club_state',
     events:'velmora_multiplayer_events',
@@ -64,7 +65,7 @@
     let lastSeq=0;
     let eventsSinceSnapshot=0;
     let channel=null;
-    let presenceTimer=0,pollTimer=0,clubTimer=0;
+    let presenceTimer=0,pollTimer=0,clubTimer=0,privateTimer=0;
     let attached=false,applying=false;
     let queue=[];                    // offline / failed writes, replayed in order
     let queueRunning=false;
@@ -110,6 +111,8 @@
         user_id:row.user_id,
         display_name:row.display_name,
         manager_name:row.manager_name||row.display_name,
+        manager_profile:row.manager_profile&&typeof row.manager_profile==='object'
+          ? JSON.parse(JSON.stringify(row.manager_profile)):null,
         club_id:row.club_id||null,
         club_name:row.club_name||null,
         role:row.role,
@@ -192,6 +195,17 @@
       let query=client.from(table).select('*');
       if(build)query=build(query);
       return unwrap(await query,table)||[];
+    }
+    async function hydrateManagerProfiles(careerId,sync){
+      if(!careerId||!sync||!Array.isArray(sync.members))return sync;
+      const rows=await selectRows(T.profiles,q=>q.eq('career_id',careerId));
+      const byUser=new Map(rows.map(row=>[String(row.user_id),row]));
+      sync.members=sync.members.map(member=>{
+        const profile=byUser.get(String(member.user_id));
+        return profile?{...member,manager_name:profile.manager_name||member.manager_name,
+          manager_profile:profile.profile&&typeof profile.profile==='object'?profile.profile:null}:member;
+      });
+      return sync;
     }
 
     // ---------------------------------------------------------------
@@ -310,6 +324,7 @@
       lastSeq=0;clubStateRevisions=new Map();eventsSinceSnapshot=0;
 
       const sync=await rpc('velmora_mp_sync',{p_career_id:careerId,p_since_seq:0});
+      await hydrateManagerProfiles(careerId,sync);
       applySyncMetadata(sync);
 
       const compatibility=core.versionCompatibility(clientVersion,career.game_version);
@@ -356,7 +371,11 @@
     function applySyncMetadata(sync){
       if(!sync)return;
       career=sync.career||career;
-      members=Array.isArray(sync.members)?sync.members:members;
+      if(Array.isArray(sync.members)){
+        const previous=new Map(members.map(row=>[String(row.user_id),row.manager_profile]));
+        members=sync.members.map(row=>({...row,
+          manager_profile:row.manager_profile||previous.get(String(row.user_id))||null}));
+      }
       barrier=sync.barrier||null;
       submissions=Array.isArray(sync.submissions)?sync.submissions:submissions;
       const mine=members.find(row=>row.user_id===user?.id);
@@ -430,7 +449,7 @@
         }
         case'WORLD_ACTION':
         case'TRANSFER':{
-          bridge.applyWorldAction?.(event.kind,event.payload||{},event.subject_key);
+          bridge.applyWorldAction?.(event.kind,event.payload||{},event.subject_key,event);
           break;
         }
         default:break;                       // lifecycle events need no world change
@@ -469,12 +488,15 @@
     // screen and the online-careers list.
     async function syncFor(careerId){
       if(!await ensureSignedIn())throw new Error('VELMORA_NOT_SIGNED_IN');
-      return rpc('velmora_mp_sync',{p_career_id:careerId,p_since_seq:0});
+      const sync=await rpc('velmora_mp_sync',{p_career_id:careerId,p_since_seq:0});
+      await hydrateManagerProfiles(careerId,sync);
+      return sync;
     }
 
     async function refreshLobby(careerId=career?.career_id){
       if(!careerId)return null;
       const sync=await rpc('velmora_mp_sync',{p_career_id:careerId,p_since_seq:lastSeq});
+      await hydrateManagerProfiles(careerId,sync);
       applySyncMetadata(sync);
       if(Array.isArray(sync.events)&&sync.events.length)await pullEvents(careerId);
       else{
@@ -501,8 +523,8 @@
       },pollIntervalMs);
     }
     function detachTimers(){
-      [presenceTimer,pollTimer,clubTimer].forEach(id=>{if(id)clearTimer(id);});
-      presenceTimer=pollTimer=clubTimer=0;
+      [presenceTimer,pollTimer,clubTimer,privateTimer].forEach(id=>{if(id)clearTimer(id);});
+      presenceTimer=pollTimer=clubTimer=privateTimer=0;
     }
 
     async function detach(){
@@ -680,6 +702,11 @@
       try{return await run();}
       catch(error){enqueue({key:'private',run});return null;}
     }
+    function schedulePrivatePublish(){
+      if(!career||state.readOnly)return;
+      if(privateTimer)clearTimer(privateTimer);
+      privateTimer=timer(()=>{privateTimer=0;savePrivateState().catch(()=>{});},clubPublishDebounceMs);
+    }
     async function loadPrivateState(careerId=career?.career_id){
       if(!careerId)return null;
       try{
@@ -737,7 +764,7 @@
       listCareers,createCareer,previewCareer,joinCareer,
       claimClub,releaseClub,setReady,startCareer,
       attach,detach,refreshLobby,syncFor,pullEvents,restoreWorld,
-      scheduleClubPublish,publishClubState,savePrivateState,loadPrivateState,
+      scheduleClubPublish,publishClubState,schedulePrivatePublish,savePrivateState,loadPrivateState,
       openBarrier,submitMatchState,recordMatchResult,resolveBarrier,claimWorldAction,
       touchPresence,convertToAi,claimHost,leaveCareer,archiveCareer,
       goReadOnly,runQueue,
