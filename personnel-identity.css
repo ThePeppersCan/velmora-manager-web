@@ -1,0 +1,50 @@
+/* Recurring personnel characters shared by Staff, Training, Academy and Inbox. */
+body.v20-ui img[src*="assets/career/personnel-v2/"]{image-rendering:auto!important}
+
+body.v20-ui #officeStaffContent .v36-list-portrait{
+  position:relative;width:42px;height:48px;display:block;overflow:hidden;border:2px solid #075da9;border-radius:7px;
+  background:linear-gradient(145deg,#dff7ff,#91d8ef);box-shadow:inset 0 0 0 2px #fff9,0 3px 0 #06306e
+}
+body.v20-ui #officeStaffContent .v36-list-portrait img{position:absolute;left:50%;top:-3%;width:112%;height:112%;max-width:none;object-fit:contain;object-position:center top;transform:translateX(-50%)}
+body.v20-ui #officeStaffContent .v36-person-heading{grid-template-columns:clamp(112px,9.5cqw,170px) minmax(0,1fr) auto!important;min-height:clamp(180px,13cqw,230px);padding-top:12px!important;padding-bottom:12px!important;overflow:hidden}
+body.v20-ui #officeStaffContent .v36-person-portrait{position:relative;align-self:stretch;min-height:160px;display:block;overflow:hidden;border:0;border-radius:0;background:radial-gradient(circle at 50% 45%,#fff 0,#dff4ff 53%,transparent 72%)}
+body.v20-ui #officeStaffContent .v36-person-portrait::after{content:"";position:absolute;left:8%;right:8%;bottom:4px;height:8px;border-radius:50%;background:#082e6933;filter:blur(4px)}
+body.v20-ui #officeStaffContent .v36-person-portrait img{position:absolute;z-index:1;left:50%;bottom:-12%;width:116%;height:116%;max-width:none;object-fit:contain;object-position:center bottom;transform:translateX(-50%);filter:drop-shadow(0 8px 7px #082e6930)}
+
+body.v20-ui .v97-personnel-brief{position:relative;min-height:142px;display:grid;grid-template-columns:120px minmax(0,1fr) auto;align-items:center;gap:18px;margin:0 0 16px;padding:12px 18px 12px 10px;overflow:hidden;border:2px solid #0b70bf;border-radius:9px;background:linear-gradient(105deg,#dff6ff,#fff 58%,#fff4bd);box-shadow:0 4px 0 #bad3e3;color:#123a6a}
+body.v20-ui .v97-personnel-brief::after{content:"";position:absolute;inset:auto -35px -60px auto;width:180px;height:180px;border:28px solid #0b70bf12;border-radius:50%}
+body.v20-ui .v97-personnel-art{position:relative;align-self:stretch;min-height:116px;overflow:hidden;background:radial-gradient(circle,#fff 0,#c8eeff 58%,transparent 73%)}
+body.v20-ui .v97-personnel-art img{position:absolute;left:50%;bottom:-24%;width:122%;height:132%;max-width:none;object-fit:contain;object-position:center bottom;transform:translateX(-50%);filter:drop-shadow(0 5px 4px #09356b35)}
+body.v20-ui .v97-personnel-copy{position:relative;z-index:1;min-width:0}
+body.v20-ui .v97-personnel-copy>span{display:block;color:#087194;font:700 8px/1 "Silkscreen",monospace}
+body.v20-ui .v97-personnel-copy h3{margin:6px 0 5px!important;color:#082e69!important;font:400 clamp(22px,1.35cqw,34px)/1 "Lilita One",Impact,sans-serif!important}
+body.v20-ui .v97-personnel-copy p{margin:0!important;max-width:64ch;color:#315879!important;font:700 12px/1.4 "Nunito Sans",Arial,sans-serif!important}
+body.v20-ui .v97-personnel-status{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}
+body.v20-ui .v97-personnel-status strong{color:#0b3c77;font:900 13px/1.2 "Nunito Sans",Arial,sans-serif}
+body.v20-ui .v97-personnel-status small{padding:5px 7px;border-radius:5px;background:#159b58;color:#fff;font:700 7px/1 "Silkscreen",monospace}
+
+body.v20-ui .tr-detail>header.tr-coach-header{position:relative;min-height:250px;padding-right:44%;overflow:hidden;background:linear-gradient(105deg,#123747 0,#123747 54%,#205c4c 100%)}
+body.v20-ui .tr-coach-copy{position:relative;z-index:2}
+body.v20-ui .tr-assistant-art{position:absolute;z-index:1;right:-3%;bottom:-20%;width:49%;height:122%;margin:0;pointer-events:none}
+body.v20-ui .tr-assistant-art::before{content:"";position:absolute;inset:14% 8% 20%;border-radius:50%;background:#63d09f33;filter:blur(18px)}
+body.v20-ui .tr-assistant-art img{position:relative;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(-8px 8px 8px #071d2580)}
+body.v20-ui .tr-assistant-art figcaption{position:absolute;z-index:2;right:10%;bottom:12%;display:flex;flex-direction:column;align-items:flex-end;padding:5px 7px;border:1px solid #80dac0;background:#0c3029dc;color:#fff;font:700 10px/1.2 Arial,sans-serif}
+body.v20-ui .tr-assistant-art figcaption small{color:#93dfc9;font-size:8px;letter-spacing:.09em;text-transform:uppercase}
+
+body.v20-ui .v37-mail-avatar img[src*="personnel-v2"],body.v20-ui .office-sim-actor-portrait img[src*="personnel-v2"]{image-rendering:auto!important}
+body.v20-ui .v37-mail-avatar img[src*="personnel-v2"]{top:-4%!important;width:142%!important;height:142%!important}
+body.v20-ui .office-sim-actor-portrait img[src*="personnel-v2"]{top:-4%!important;width:148%!important;height:148%!important}
+
+@media(max-width:900px){
+  body.v20-ui #officeStaffContent .v36-person-heading{grid-template-columns:84px minmax(0,1fr) auto!important;min-height:150px}
+  body.v20-ui #officeStaffContent .v36-person-portrait{min-height:126px}
+  body.v20-ui .v97-personnel-brief{grid-template-columns:82px minmax(0,1fr)}
+  body.v20-ui .v97-personnel-status{grid-column:2;align-items:flex-start;text-align:left}
+}
+@media(max-width:650px){
+  body.v20-ui #officeStaffContent .v36-person-heading{grid-template-columns:68px minmax(0,1fr)!important}
+  body.v20-ui #officeStaffContent .v36-quality{grid-column:2}
+  body.v20-ui .tr-detail>header.tr-coach-header{min-height:230px;padding-right:26px}
+  body.v20-ui .tr-coach-copy{max-width:68%}
+  body.v20-ui .tr-assistant-art{right:-12%;width:54%;opacity:.72}
+}

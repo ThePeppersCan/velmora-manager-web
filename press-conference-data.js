@@ -1,8 +1,10 @@
 (function(){
   const category=(id,label,stages,target,weight,templates,requires='')=>({id,label,stages,target,weight,templates,requires});
   const library=window.VELMORA_PRESS_CONFERENCE_LIBRARY={
-    version:'V56.0',
+    version:'V95.0',
     questionsPerConference:4,
+    questionRange:[3,5],
+    answerRange:[3,5],
     categories:[
       category('PLAYER_FORM','PLAYER FORM',['pre','post'],'player',12,[
         "{player} has been one of the most discussed players around {club}. How would you assess their current form?",
@@ -328,14 +330,265 @@
     ],'victory')
   );
 
-  library.responseArchetypes=[
-    {id:'supportive',label:'BACK THE GROUP',stance:'SUPPORTIVE',expression:'expression_02'},
-    {id:'accountable',label:'TAKE RESPONSIBILITY',stance:'ACCOUNTABLE',expression:'expression_01'},
-    {id:'demanding',label:'RAISE THE STANDARD',stance:'DEMANDING',expression:'expression_03'},
-    {id:'guarded',label:'SHUT IT DOWN',stance:'GUARDED',expression:'expression_11'},
-    {id:'bold',label:'MAKE A STATEMENT',stance:'BOLD',expression:'expression_09'},
-    {id:'human',label:'SPEAK FROM THE HEART',stance:'PERSONAL',expression:'expression_07'}
-  ];
+  const answer=(id,label,text,effects={},expression='expression_01',stance='ON RECORD')=>({id,label,text,effects,expression,stance});
+  library.answerBanks={
+    PLAYER_FORM:[
+      answer('form-earned','THE FORM IS REAL','{player} is affecting matches. That is why the attention is there. The next test is doing it again.',{targetMorale:1,targetTrust:1,reporter:1,tone:'respectful'},'expression_02','BACKING THE PLAYER'),
+      answer('form-more','THERE IS MORE TO COME','The numbers are good. {player} will tell you there are parts of the game that still need work.',{targetTest:'professionalism',board:1,reporter:1},'expression_03','SETTING A CHALLENGE'),
+      answer('form-team','LOOK AT THE TEAM','{player} has played well because the team has put them in good positions. I will not turn one player into the whole story.',{squadMorale:1,squadCount:3,reporter:-1},'expression_01','SHARING THE CREDIT'),
+      answer('form-private','I TELL HIM IN PRIVATE','He knows exactly what I think of his form. Praise and criticism mean more when they are said to the player first.',{targetTrust:2,reporter:-2},'expression_11','KEEPING IT PRIVATE'),
+      answer('form-bench','FORM DOES NOT GUARANTEE A PLACE','He has earned the shirt today. He still has to earn it again next week.',{targetTest:'ambition',squadMorale:1,squadCount:2,reporter:1},'expression_03','KEEPING PLACES OPEN')
+    ],
+    SELECTION:[
+      answer('selection-training','HE TRAINED HIS WAY IN','{player} was excellent in training. The team sheet should reflect what happens all week, not only what happened last match.',{targetMorale:1,targetTrust:2,squadMorale:1,squadCount:2,reporter:1},'expression_02','REWARDING TRAINING'),
+      answer('selection-tactical','THIS ONE IS TACTICAL','We need {player} for a specific job against {opponent}. It is a decision for this match, not a ranking of the squad.',{targetTrust:1,reporter:2,tone:'analytical'},'expression_01','EXPLAINING THE PLAN'),
+      answer('selection-reaction','I WANT A REACTION','{player} has not been at his best. Starting today is a challenge, not a reward.',{targetTest:'professionalism',board:1,reporter:1,tone:'provocative'},'expression_03','PUBLIC CHALLENGE'),
+      answer('selection-no-guarantees','NOBODY OWNS THE SHIRT','Reputation did not pick this team. The players who are ready for {opponent} are playing.',{squadMorale:1,squadCount:3,reporter:1,headline:true},'expression_09','OPEN COMPETITION'),
+      answer('selection-private','THE PLAYER KNOWS WHY','I spoke to {player} before the team was announced. I will not repeat a private selection conversation in here.',{targetTrust:2,reporter:-2},'expression_11','NO PUBLIC DETAIL')
+    ],
+    CAPTAINCY:[
+      answer('captain-standard','HE SETS THE LINE','{captain} knows the standards I expect. The important part is enforcing them when no coach is in the room.',{targetMorale:1,targetTrust:2,board:1},'expression_02','BACKING THE CAPTAIN'),
+      answer('captain-challenge','THE ARMBAND IS NOT PROTECTION','Captain or not, {captain} is judged on performance. Leadership cannot become immunity.',{targetTest:'professionalism',squadMorale:1,squadCount:2,reporter:1},'expression_03','CHALLENGING THE CAPTAIN'),
+      answer('captain-voice','I EXPECT HIM TO DISAGREE','I do not need {captain} to agree with every decision. I need an honest voice who speaks at the right time.',{targetTrust:3,reporter:2},'expression_07','INVITING LEADERSHIP'),
+      answer('captain-group','LEADERSHIP IS BIGGER THAN ONE PLAYER','The armband matters. So do the other senior voices. This cannot become one person’s dressing room.',{squadMorale:1,squadCount:3,targetTrust:-1},'expression_01','SHARING AUTHORITY')
+    ],
+    BREAKTHROUGH:[
+      answer('breakthrough-ready','HE IS READY TO BE HERE','{player} is young. He is also here on merit. I will not lower the expectation because of his age.',{targetMorale:1,targetTrust:2,reputation:1,headline:true},'expression_09','BACKING THE PROSPECT'),
+      answer('breakthrough-patient','DO NOT RUSH THE STORY','He has taken a good step. Turning that into a verdict on his whole career would not help him.',{targetTrust:2,reporter:-1,tone:'respectful'},'expression_01','PROTECTING DEVELOPMENT'),
+      answer('breakthrough-next','NOW HE HAS TO KEEP HIS PLACE','The first appearance gets attention. The hard part for {player} is being ready when the excitement has gone.',{targetTest:'ambition',board:1},'expression_03','RAISING THE TEST'),
+      answer('breakthrough-path','THE PATHWAY HAS TO BE REAL','Young players notice whether chances are genuine. {player} has shown the next one can earn a place too.',{squadMorale:1,squadCount:3,reputation:1,reporter:1},'expression_02','BACKING THE ACADEMY')
+    ],
+    SQUAD_MOOD:[
+      answer('mood-strong','THE ROOM IS STRONG','There are hard conversations. There should be. The important thing is that the group leaves them pulling in the same direction.',{squadMorale:1,squadCount:4,reporter:1},'expression_02','CONFIDENT IN THE GROUP'),
+      answer('mood-friction','IT IS NOT ALL COMFORTABLE','Players want to play. Some are unhappy. I would worry more if nobody cared enough to challenge me.',{squadMorale:-1,squadCount:2,board:1,reporter:2,headline:true},'expression_07','ADMITTING TENSION'),
+      answer('mood-results','RESULTS WILL TELL YOU','I can describe the mood any way I like. What the players do against {opponent} is the honest answer.',{reporter:-1,board:1},'expression_11','DEFLECTING TO THE MATCH'),
+      answer('mood-work','THE WEEK HAS BEEN SERIOUS','The noise outside has not changed the work. Training was sharp and the team is ready.',{squadMorale:1,squadCount:3,targetTrust:1},'expression_01','FOCUSING ON WORK')
+    ],
+    RECENT_FORM:[
+      answer('run-performance','THE RESULTS HIDE SOME PROGRESS','The run is {form}. I have seen parts of our game improve. We now need that work to decide results.',{squadMorale:1,squadCount:2,reporter:1,tone:'analytical'},'expression_01','DEFENDING THE PROCESS'),
+      answer('run-not-enough','THE RETURN IS NOT GOOD ENOUGH','There is no point dressing up {form}. We need more points and the players know it.',{squadTest:'professionalism',board:1,reporter:2,headline:true},'expression_03','DEMANDING RESULTS'),
+      answer('run-own','I HAVE TO CHANGE IT','The decisions are mine. If the run continues, I am the first person who has to find a better answer.',{board:2,reputation:1,squadMorale:1,squadCount:2,reporter:2},'expression_07','TAKING RESPONSIBILITY'),
+      answer('run-next','ONLY THE NEXT MATCH MATTERS','We have reviewed the run. I am not carrying all five results onto the pitch against {opponent}.',{reporter:-1,squadMorale:1,squadCount:3},'expression_11','CLOSING THE RUN')
+    ],
+    MATCH_RESULT:[
+      answer('result-fair','THE SCORE WAS FAIR','At {score}, there is no need to invent another match. The better side in the decisive moments got the result.',{reporter:2,board:1,tone:'analytical'},'expression_01','ACCEPTING THE RESULT'),
+      answer('result-details','WE LOST IT IN THE DETAILS','The margin looks simple. The match was decided by moments we had prepared for and did not execute.',{squadTest:'professionalism',reporter:2,board:1},'expression_03','FOCUSING ON EXECUTION'),
+      answer('result-manager','THAT RESULT IS ON ME','I picked the team and set the plan. The players should not carry my decisions for me.',{squadMorale:1,squadCount:3,board:1,reputation:1,reporter:2},'expression_07','OWNING THE RESULT'),
+      answer('result-unfair','THE SCORE DOES NOT TELL THE MATCH','Anyone who watched the full game saw more than {score}. We were not as far away as that result suggests.',{squadMorale:1,squadCount:2,reporter:-1,headline:true},'expression_09','DISPUTING THE VERDICT'),
+      answer('result-no-review','I WILL REVIEW IT FIRST','I have an immediate reaction. I would rather give the players a proper analysis than perform one for the cameras.',{targetTrust:1,squadMorale:1,squadCount:2,reporter:-2},'expression_11','RESERVING JUDGEMENT')
+    ],
+    TACTICS:[
+      answer('tactics-space','WE ARE ATTACKING A SPECIFIC SPACE','{opponent} leave an area we believe we can reach. The shape is designed to get our strongest players there.',{reporter:2,tone:'analytical',headline:true},'expression_01','REVEALING THE IDEA'),
+      answer('tactics-us','WE WILL PLAY OUR GAME','I respect {opponent}. I am not rebuilding our identity for one opponent.',{squadMorale:1,squadCount:3,reputation:1,reporter:1},'expression_09','TRUSTING THE IDENTITY'),
+      answer('tactics-adapt','THE PLAYERS HAVE TWO PLANS','We know how we want to start. If the match changes, the players know the second answer as well.',{board:1,reporter:2,tone:'analytical'},'expression_02','SHOWING FLEXIBILITY'),
+      answer('tactics-private','I AM NOT GIVING THEM THE PLAN','{opponent} can wait for the first whistle like everyone else. I will not coach their team from this desk.',{reporter:-2,rivalHeat:2,headline:true},'expression_11','HIDING THE PLAN'),
+      answer('tactics-risk','WE ARE TAKING A RISK','There is a trade-off in the plan. We accept it because being passive would be the greater risk.',{squadMorale:1,squadCount:2,board:1,reporter:2,headline:true},'expression_09','ACCEPTING THE GAMBLE')
+    ],
+    OPPONENT:[
+      answer('opp-respect','THEY DESERVE RESPECT','{opponent} are organised and dangerous. If we are even slightly below our level, they will punish us.',{rivalRespect:2,reporter:1,tone:'respectful'},'expression_01','RESPECTING THE OPPOSITION'),
+      answer('opp-weakness','THEY CAN BE HURT','They have strengths. They also leave chances. We have not come here only to contain them.',{squadMorale:1,squadCount:3,rivalHeat:3,headline:true},'expression_09','BACKING YOUR THREAT'),
+      answer('opp-player','ONE PLAYER WILL NOT DECIDE IT','We know their key threats. The mistake would be forgetting everything else {opponent} can do.',{reporter:1,tone:'analytical'},'expression_01','WIDENING THE FOCUS'),
+      answer('opp-none','ASK ME AFTER THE MATCH','I will tell you how difficult they were when we have played them. Beforehand, it is only talk.',{reporter:-2,rivalHeat:1},'expression_11','REFUSING THE PREVIEW')
+    ],
+    RIVAL_MANAGER:[
+      answer('rival-respect','I RESPECT HIS WORK','{rivalManager} has built a clear team. Respect does not mean I want him to enjoy this match.',{rivalRespect:4,rivalHeat:-2,reporter:1},'expression_02','PROFESSIONAL RESPECT'),
+      answer('rival-no-friendship','WE ARE NOT HERE TO BE FRIENDS','Our relationship is competitive. That is enough. I care about beating {opponent}.',{rivalHeat:5,rivalRespect:-1,reporter:2,headline:true},'expression_03','DRAWING THE LINE'),
+      answer('rival-better','I BELIEVE I HAVE THE BETTER SIDE','He will back his team. I will back mine. Today I believe ours has more answers.',{squadMorale:1,squadCount:3,rivalHeat:7,rivalRespect:-2,reputation:1,headline:true},'expression_09','PUBLIC CHALLENGE'),
+      answer('rival-tactical','THE CONTEST IS TACTICAL','The relationship is not the story for me. The decisions each manager makes during the match are.',{rivalRespect:1,reporter:-1,tone:'analytical'},'expression_01','KEEPING IT TECHNICAL'),
+      answer('rival-dismiss','I DO NOT THINK ABOUT HIM','I prepare for {opponent}. I do not spend the week thinking about the person in the other dugout.',{rivalHeat:4,rivalRespect:-3,reporter:1,headline:true},'expression_11','DISMISSING THE RIVALRY')
+    ],
+    BOARD:[
+      answer('board-aligned','WE AGREE ON THE DIRECTION','The board know what we are building and what it will take. There are no mixed messages inside the club.',{board:2,reporter:1},'expression_02','SHOWING UNITY'),
+      answer('board-football','THE TEAM COMES FIRST','Targets matter. They do not pick the line-up or change the work we believe this team needs.',{board:-1,reputation:1,reporter:2,headline:true},'expression_09','ASSERTING CONTROL'),
+      answer('board-resources','AMBITION NEEDS SUPPORT','The objectives are clear. To reach them, the football side must receive the support we discussed.',{board:-2,reporter:2,headline:true,callback:'BOARD_SUPPORT'},'expression_03','PRESSURING THE BOARD'),
+      answer('board-private','THOSE TALKS STAY PRIVATE','The board hear my honest view. I will not negotiate the club’s direction through a press conference.',{board:1,reporter:-2},'expression_11','KEEPING TALKS PRIVATE')
+    ],
+    TRANSFERS:[
+      answer('transfers-ready','WE WILL ACT IF IT IMPROVES US','We are not collecting names. If the right player makes the team better, the club is ready to move.',{board:1,reporter:2,headline:true,callback:'TRANSFER_INTENT'},'expression_09','SIGNALLING INTENT'),
+      answer('transfers-content','I TRUST THIS SQUAD','I will not ask these players to prepare for {opponent} while talking as though replacements are the answer.',{squadMorale:1,squadCount:4,reporter:-1},'expression_02','BACKING THE SQUAD'),
+      answer('transfers-gap','WE STILL HAVE A GAP','There is one area where we are short. The recruitment team know it and the work is active.',{board:-1,reporter:3,headline:true,callback:'SQUAD_GAP'},'expression_03','ADMITTING A NEED'),
+      answer('transfers-youth','THE ANSWER MAY ALREADY BE HERE','Before we block a pathway, we will look at the young players who have earned a chance.',{squadMorale:1,squadCount:2,reputation:1,reporter:1},'expression_01','PROTECTING THE PATHWAY'),
+      answer('transfers-none','I WILL NOT DISCUSS TARGETS','Names in public make deals harder and treat players badly. We will speak when something is complete.',{board:1,reporter:-3},'expression_11','NO RUNNING COMMENTARY')
+    ],
+    CONTRACTS:[
+      answer('contract-wanted','WE WANT HIM TO STAY','{player} knows how highly we value him. I hope the agreement reflects that soon.',{targetMorale:1,targetTrust:2,reporter:2,headline:true,callback:'CONTRACT_CONFIDENCE'},'expression_02','PUBLIC BACKING'),
+      answer('contract-earn','A CONTRACT HAS TO BE EARNED','The name does not decide the deal. Performance and the future role have to make sense for both sides.',{targetTest:'ambition',board:1,reporter:1},'expression_03','SETTING TERMS'),
+      answer('contract-playing','HE IS AVAILABLE TO PLAY','The contract is not picking the team. If {player} is the right player for the match, he will play.',{targetTrust:1,reporter:1},'expression_01','SEPARATING FOOTBALL'),
+      answer('contract-private','NEGOTIATIONS ARE PRIVATE','Both sides are talking. Running each conversation through this room would make an agreement less likely.',{targetTrust:1,reporter:-2},'expression_11','PROTECTING NEGOTIATIONS')
+    ],
+    AVAILABILITY:[
+      answer('absence-miss','OF COURSE WE MISS HIM','{player} gives us qualities nobody else copies exactly. The team has to solve the absence together.',{targetMorale:1,targetTrust:2,squadMorale:1,squadCount:2,reporter:1},'expression_07','ACKNOWLEDGING THE LOSS'),
+      answer('absence-depth','THIS IS WHY WE HAVE A SQUAD','One player is unavailable. Another has earned the chance to show why they are here.',{squadMorale:1,squadCount:3,reporter:1},'expression_02','BACKING THE DEPTH'),
+      answer('absence-change','THE PLAN HAS CHANGED','We cannot pretend the same solution works without {player}. We have adjusted the way we will play.',{reporter:2,tone:'analytical'},'expression_01','CONFIRMING AN ADJUSTMENT'),
+      answer('absence-medical','I WILL NOT GUESS ON A RETURN','The medical team will decide when {player} is ready. A press-conference date will not speed that up.',{targetTrust:2,reporter:-2},'expression_11','PROTECTING RECOVERY')
+    ],
+    YOUTH_PATHWAY:[
+      answer('youth-merit','THE DOOR IS OPEN','Age will not keep a player out. It will not put a player in either. The level decides.',{squadMorale:1,squadCount:3,reputation:1,reporter:1},'expression_02','MERIT-BASED PATHWAY'),
+      answer('youth-risk','DEVELOPMENT NEEDS MINUTES','Young players will make mistakes. If we only use them when there is no risk, the pathway is not real.',{targetMorale:1,targetTrust:2,board:-1,reputation:1,headline:true},'expression_09','ACCEPTING THE RISK'),
+      answer('youth-patient','NOT EVERY STEP IS PUBLIC','A good month does not mean a young player needs a major role tomorrow. Patience is part of development.',{targetTrust:1,reporter:-1},'expression_01','SLOWING THE HYPE'),
+      answer('youth-senior','SENIOR PLAYERS MATTER TOO','A pathway works because experienced players set the level. This is not youth against experience.',{squadMorale:1,squadCount:4,reporter:1},'expression_07','BALANCING THE SQUAD')
+    ],
+    SUPPORTERS:[
+      answer('fans-need','WE NEED THEIR NOISE','There will be a moment when {opponent} have control. That is when the players need the crowd most.',{squadMorale:1,squadCount:3,reputation:1,reporter:1},'expression_02','CALLING ON THE CROWD'),
+      answer('fans-owe','WE OWE THEM A PERFORMANCE','Supporters can accept a difficult match. They should not have to accept a team that does not represent them.',{squadTest:'professionalism',board:1,reporter:2,headline:true},'expression_03','PROMISING A STANDARD'),
+      answer('fans-frustration','THE FRUSTRATION IS FAIR','They pay, travel and care. If the performances fall short, they are entitled to say so.',{reputation:1,reporter:2,squadMorale:-1,squadCount:2},'expression_07','ACCEPTING CRITICISM'),
+      answer('fans-football','WE HAVE TO GIVE THEM SOMETHING','The connection cannot be demanded from a microphone. Our football has to create it.',{board:1,reporter:1},'expression_01','EARNING SUPPORT')
+    ],
+    PRESSURE:[
+      answer('pressure-job','PRESSURE IS THE JOB','I wanted the responsibility. I cannot ask for the job and complain when the decisions are examined.',{board:1,reputation:1,reporter:2},'expression_01','ACCEPTING SCRUTINY'),
+      answer('pressure-team','KEEP IT ON ME','If somebody needs to carry the pressure this week, it should be the manager. The players need clarity.',{squadMorale:1,squadCount:3,targetTrust:1,reporter:1},'expression_07','SHIELDING THE TEAM'),
+      answer('pressure-noise','I DO NOT MANAGE THE NOISE','The pressure outside changes by the hour. The work inside the club cannot.',{reporter:-1,board:1},'expression_11','IGNORING THE NOISE'),
+      answer('pressure-love','I LIKE THIS PART','Important matches should feel important. I would rather have this pressure than manage games nobody cares about.',{squadMorale:1,squadCount:3,reputation:1,reporter:2,headline:true},'expression_09','EMBRACING THE MOMENT')
+    ],
+    PERSONAL_LIFE:[
+      answer('personal-boundary','THAT PART STAYS MINE','The job is public. My life away from it is not. I keep that boundary for a reason.',{reporter:-1},'expression_11','SETTING A BOUNDARY'),
+      answer('personal-people','GOOD PEOPLE KEEP ME LEVEL','The people close to me tell me when football has taken over the whole room. I need that honesty.',{reporter:3,reputation:1},'expression_07','PERSONAL ANSWER'),
+      answer('personal-work','THE WORK HELPS ME SWITCH OFF','I do not have a perfect routine. A clear plan for the next day is usually what lets me leave the day behind.',{reporter:2},'expression_01','HONEST REFLECTION'),
+      answer('personal-city','THIS PLACE FEELS LIKE HOME','Living in {world} has changed the rhythm of my life. I understand the club better because I understand more of the place around it.',{reputation:1,reporter:2},'expression_02','CONNECTING LOCALLY')
+    ],
+    CLUB_CULTURE:[
+      answer('culture-behaviour','WATCH WHAT WE ALLOW','Culture is not a slogan. It is the behaviour staff and players walk past without challenging.',{squadTest:'professionalism',board:1,reporter:2},'expression_03','ENFORCING BEHAVIOUR'),
+      answer('culture-players','THE PLAYERS OWN IT','Coaches can set rules. The strongest culture is protected by the players when we are not there.',{squadMorale:1,squadCount:3,targetTrust:1},'expression_02','PLAYER OWNERSHIP'),
+      answer('culture-results','IT HAS TO SURVIVE DEFEAT','Anyone can talk about values after a win. I learn about this club when the result hurts.',{board:1,reporter:1},'expression_01','TESTING THE CULTURE'),
+      answer('culture-change','SOME HABITS HAVE TO CHANGE','Respecting the club does not mean preserving every old habit. We are here to improve it.',{board:-1,reputation:1,reporter:2,headline:true},'expression_09','CHANGING THE CLUB')
+    ],
+    COMPETITION:[
+      answer('league-open','THE LEVEL IS CLOSER THAN PEOPLE THINK','There are no quiet weeks in {competition}. A small drop in performance changes the table quickly.',{reporter:1,tone:'analytical'},'expression_01','ASSESSING THE LEAGUE'),
+      answer('league-target','WE WANT TO SET THE LEVEL','I am not interested in admiring the strongest teams. I want {club} to become one of them.',{squadMorale:1,squadCount:3,board:1,reputation:1,headline:true},'expression_09','DECLARING AMBITION'),
+      answer('league-table','THE TABLE IS HONEST','After enough matches, the table stops lying. If we want a better place, we have to earn it.',{squadTest:'professionalism',board:1,reporter:1},'expression_03','ACCEPTING THE TABLE'),
+      answer('league-early','IT IS TOO EARLY FOR VERDICTS','The competition will look different after another month. I will judge patterns, not one weekend.',{reporter:-1},'expression_11','RESERVING JUDGEMENT')
+    ],
+    CURRENT_STORY:[
+      answer('story-no-impact','IT HAS NOT CHANGED THE WORK','The players know what is real and what is noise. Preparation for {opponent} has not moved.',{squadMorale:1,squadCount:2,reporter:-1},'expression_01','DISMISSING THE NOISE'),
+      answer('story-wrong','PART OF THE STORY IS WRONG','People can discuss {story}. They should not treat speculation as something the club has confirmed.',{reporter:-2,headline:true},'expression_03','CHALLENGING THE COVERAGE'),
+      answer('story-address','WE DEALT WITH IT DIRECTLY','The people involved have spoken inside the club. That matters more than another public exchange.',{targetTrust:1,squadMorale:1,squadCount:2,reporter:1},'expression_02','INTERNAL RESOLUTION'),
+      answer('story-answer','THE MATCH CAN CHANGE THE STORY','We have a chance against {opponent} to give everyone something real to discuss.',{squadMorale:1,squadCount:3,reputation:1,reporter:2},'expression_09','TURNING TO THE MATCH')
+    ],
+    PLAYER_OF_MATCH:[
+      answer('potm-complete','THAT WAS A COMPLETE PERFORMANCE','{player} influenced the match with and without the ball. The award recognises more than one highlight.',{targetMorale:1,targetTrust:2,reporter:2,headline:true},'expression_02','FULL PRAISE'),
+      answer('potm-team','THE TEAM CREATED THAT DISPLAY','{player} was outstanding. He will be the first to recognise the work around him.',{targetMorale:1,squadMorale:1,squadCount:3,reporter:1},'expression_01','SHARING THE CREDIT'),
+      answer('potm-standard','NOW THAT IS HIS STANDARD','The performance was excellent. The challenge is making that level normal.',{targetTest:'ambition',board:1,reporter:1},'expression_03','SETTING THE NEXT TEST'),
+      answer('potm-plan','HE DELIVERED THE PLAN','We asked {player} to solve a specific problem. He understood it and executed it under pressure.',{targetTrust:2,reporter:2,tone:'analytical'},'expression_01','TACTICAL PRAISE')
+    ],
+    GOAL_SCORER:[
+      answer('scorer-work','THE MOVEMENT WAS REHEARSED','That finish gets the replay. The movement before it came from work we did all week.',{targetMorale:1,targetTrust:2,reporter:2,tone:'analytical'},'expression_02','PRAISING THE DETAIL'),
+      answer('scorer-instinct','YOU CANNOT COACH ALL OF THAT','The plan put {player} there. What he did next was instinct and quality.',{targetMorale:2,targetTrust:1,reporter:2,headline:true},'expression_07','PRAISING THE TALENT'),
+      answer('scorer-more','ONE GOAL IS NOT THE TARGET','It was an important moment. {player} is capable of affecting more matches like this.',{targetTest:'ambition',reporter:1},'expression_03','DEMANDING CONSISTENCY'),
+      answer('scorer-result','THE GOAL ONLY MATTERS WITH THE RESULT','I am pleased for him. The contribution belongs inside the team performance first.',{squadMorale:1,squadCount:3,targetMorale:1},'expression_01','TEAM BEFORE INDIVIDUAL')
+    ],
+    OPPONENT_PLAYER:[
+      answer('oppstar-special','HE IS A SPECIAL PLAYER','We respect what {opponentPlayer} can do. Pretending otherwise would be poor preparation.',{rivalRespect:2,reporter:1},'expression_01','ACKNOWLEDGING THE THREAT'),
+      answer('oppstar-system','STOPPING ONE PLAYER IS NOT ENOUGH','{opponentPlayer} gets the attention. The structure around him is what makes {opponent} dangerous.',{reporter:2,tone:'analytical'},'expression_01','READING THE SYSTEM'),
+      answer('oppstar-duel','OUR PLAYER CAN WIN THAT DUEL','There will be a direct contest. I trust our player to make it difficult for him.',{squadMorale:1,squadCount:2,rivalHeat:2,headline:true},'expression_09','BACKING THE MATCHUP'),
+      answer('oppstar-us','MAKE HIM DEFEND US','If we spend the whole match reacting to {opponentPlayer}, we have already given up too much.',{squadMorale:1,squadCount:3,reporter:1},'expression_03','TAKING THE INITIATIVE')
+    ],
+    TABLE_POSITION:[
+      answer('table-honest','THE TABLE IS THE TABLE','We are {position}. That is what we have earned so far. Excuses do not add points.',{board:1,reporter:2},'expression_01','ACCEPTING THE POSITION'),
+      answer('table-ceiling','IT IS NOT OUR CEILING','The position is real. It is not where I believe this group has to finish.',{squadMorale:1,squadCount:3,board:1,reputation:1,headline:true},'expression_09','AIMING HIGHER'),
+      answer('table-process','I LOOK AT THE GAP','The number beside our name matters less than the points between us and where we want to be.',{reporter:2,tone:'analytical'},'expression_01','READING THE RACE'),
+      answer('table-ignore','NOT IN THE DRESSING ROOM','The players know the table. They do not need me turning every team talk into a calculation.',{reporter:-1,squadMorale:1,squadCount:2},'expression_11','KEEPING THE FOCUS')
+    ],
+    DISCIPLINE:[
+      answer('cards-ours','WE LOST OUR DISCIPLINE','Commitment is not an excuse for poor decisions. We made the match harder for ourselves.',{squadTest:'professionalism',board:1,reporter:2},'expression_03','CRITICISING CONTROL'),
+      answer('cards-official','THE TEMPERATURE WAS NOT MANAGED','Both teams felt the line moving. Players need consistency if they are expected to stay calm.',{reporter:1,headline:true,board:-1},'expression_09','QUESTIONING CONTROL'),
+      answer('cards-private','I WILL DEAL WITH THE PLAYERS','The incidents will be reviewed. The players involved will hear from me before you do.',{targetTrust:1,squadMorale:1,squadCount:2,reporter:-2},'expression_11','HANDLING IT INTERNALLY'),
+      answer('cards-edge','I WILL NOT REMOVE OUR EDGE','We must make better decisions. I do not want a committed team becoming frightened of every challenge.',{squadMorale:1,squadCount:3,reporter:1},'expression_02','PROTECTING INTENSITY')
+    ],
+    OFFICIATING:[
+      answer('ref-no-excuse','THE OFFICIAL DID NOT DECIDE EVERYTHING','There were decisions I disliked. We still had enough control over our own performance.',{board:1,reporter:2,squadTest:'professionalism'},'expression_01','REFUSING THE EXCUSE'),
+      answer('ref-cost','ONE DECISION CHANGED THE MATCH','I have watched the moment back. It was a major decision and it hurt us.',{headline:true,reporter:3,board:-1,callback:'OFFICIATING'},'expression_09','CALLING OUT THE DECISION'),
+      answer('ref-clarity','WE NEED AN EXPLANATION','I am not asking for special treatment. I am asking for a clear explanation of what the official saw.',{reporter:2,reputation:1,callback:'OFFICIATING'},'expression_03','REQUESTING CLARITY'),
+      answer('ref-fine','THE OFFICIAL HAD A DIFFICULT MATCH','The game moved quickly and the major calls were consistent. I have no complaint.',{reporter:1,rivalRespect:1},'expression_02','ACCEPTING THE OFFICIATING'),
+      answer('ref-private','I WILL SEND THE REPORT','There is a process for our concerns. I will use it instead of risking a fine for a headline.',{board:1,reporter:-2},'expression_11','USING THE PROCESS')
+    ],
+    ROTATION:[
+      answer('rotation-fresh','THE SCHEDULE FORCED A DECISION','Some players needed protection. Freshness today is part of keeping the squad available next week.',{squadMorale:1,squadCount:2,reporter:2},'expression_01','MANAGING THE LOAD'),
+      answer('rotation-earned','THE CHANGES WERE EARNED','The players coming in trained well. Rotation is not a gift when the place has been won.',{targetMorale:1,targetTrust:2,squadMorale:1,squadCount:2},'expression_02','REWARDING THE SQUAD'),
+      answer('rotation-message','YES, IT IS A MESSAGE','A place has to remain competitive. If the level drops, somebody else gets the opportunity.',{squadTest:'professionalism',board:1,headline:true},'expression_03','CHALLENGING THE XI'),
+      answer('rotation-tactical','IT IS ABOUT THIS MATCH','Different opponents demand different qualities. Do not read a permanent hierarchy into one team sheet.',{targetTrust:1,reporter:2,tone:'analytical'},'expression_01','TACTICAL ROTATION')
+    ],
+    FATIGUE:[
+      answer('fatigue-real','THE LOAD IS REAL','The data and the players are telling us the same thing. Ignoring fatigue would be negligence.',{targetTrust:1,squadMorale:1,squadCount:2,reporter:2},'expression_01','ACKNOWLEDGING FATIGUE'),
+      answer('fatigue-ready','NO EXCUSES TODAY','The schedule is hard for everyone. The selected players are ready to perform.',{squadTest:'professionalism',board:1,reporter:1},'expression_03','REJECTING EXCUSES'),
+      answer('fatigue-depth','THE SQUAD HAS TO CARRY IT','This is where players outside the usual line-up become important. We trust them.',{squadMorale:1,squadCount:4,reporter:1},'expression_02','USING THE DEPTH'),
+      answer('fatigue-calendar','THE SCHEDULE SHOULD BE EXAMINED','Player welfare cannot become a slogan while recovery time keeps shrinking.',{reputation:1,reporter:2,headline:true},'expression_09','CHALLENGING THE SCHEDULE')
+    ],
+    TRAINING_WEEK:[
+      answer('training-name','{player} CHANGED MY THINKING','{player} forced the decision with his work this week. Managers should notice when a player makes the plan harder to ignore.',{targetMorale:1,targetTrust:2,reporter:2,headline:true},'expression_02','NAMING THE PLAYER'),
+      answer('training-sharp','THE WHOLE GROUP WAS SHARP','The intensity was good from the first session. Nobody trained as though the team was already decided.',{squadMorale:1,squadCount:4,reporter:1},'expression_02','PRAISING THE WEEK'),
+      answer('training-change','WE CHANGED THE LOAD','The last performance told us the work needed to change. This week was shorter and more specific.',{reporter:2,tone:'analytical',board:1},'expression_01','EXPLAINING THE ADJUSTMENT'),
+      answer('training-private','THE DETAIL STAYS ON THE GRASS','I can tell you the week was productive. The useful tactical detail belongs to the players.',{reporter:-2},'expression_11','KEEPING THE DETAIL')
+    ],
+    TACTICAL_CHANGE:[
+      answer('change-planned','WE HAD REHEARSED IT','The match reached the trigger we had discussed. The players recognised it and changed without panic.',{reporter:2,board:1,tone:'analytical'},'expression_02','PLANNED ADJUSTMENT'),
+      answer('change-fix','THE FIRST PLAN WAS NOT WORKING','I could protect my original idea or help the team. The change was needed.',{board:1,reputation:1,reporter:2},'expression_07','ADMITTING THE ERROR'),
+      answer('change-players','THE PLAYERS SOLVED IT','The message from the side was small. The players read the spaces and made the adjustment work.',{squadMorale:1,squadCount:3,targetTrust:1,reporter:1},'expression_02','CREDITING THE TEAM'),
+      answer('change-opponent','THEY FORCED THE CHANGE','{opponent} created a problem. Respecting that quickly is management, not surrender.',{rivalRespect:2,reporter:2},'expression_01','CREDITING THE OPPOSITION')
+    ],
+    RIVALRY_FIXTURE:[
+      answer('derby-feel','THIS ONE IS DIFFERENT','The points count the same. The week does not feel the same and the players understand why.',{squadMorale:1,squadCount:3,rivalHeat:3,reporter:2},'expression_07','EMBRACING THE RIVALRY'),
+      answer('derby-control','EMOTION CANNOT DRIVE THE PLAN','We can use the atmosphere. We cannot let it choose our decisions for us.',{board:1,reporter:2,tone:'analytical'},'expression_01','CONTROLLING THE OCCASION'),
+      answer('derby-win','THEY KNOW WHAT VICTORY MEANS','I do not need to manufacture motivation for {opponent}. The responsibility is performing with it.',{squadTest:'professionalism',rivalHeat:4,headline:true},'expression_03','DEMANDING A DERBY DISPLAY'),
+      answer('derby-respect','RIVALRY STILL NEEDS RESPECT','Intensity is part of the fixture. Losing discipline would betray what the match deserves.',{rivalRespect:3,rivalHeat:-1,reporter:1},'expression_02','RESPECTING THE OCCASION')
+    ],
+    SOCIAL_MEDIA:[
+      answer('social-ignore','I DO NOT PICK TEAMS ONLINE','Supporters can debate every decision. The team sheet still comes from the work we see at the club.',{reporter:-1,board:1},'expression_11','IGNORING ONLINE NOISE'),
+      answer('social-listen','SOME CRITICISM IS FAIR','The volume does not make an opinion right. That does not mean we should refuse to listen.',{reputation:1,reporter:2},'expression_07','LISTENING WITHOUT FOLLOWING'),
+      answer('social-players','PLAYERS SHOULD NOT HAVE TO ABSORB IT ALL','Criticism of performance is part of the game. Personal abuse is not.',{targetTrust:2,squadMorale:1,squadCount:3,reputation:1,headline:true},'expression_03','DEFENDING THE PLAYERS'),
+      answer('social-answer','THE BEST RESPONSE IS A PERFORMANCE','We can spend the week replying or give people a better conversation after {opponent}.',{squadMorale:1,squadCount:2,reporter:1},'expression_09','ANSWERING ON THE PITCH')
+    ],
+    MANAGER_PHILOSOPHY:[
+      answer('philosophy-core','THE PRINCIPLES STAY','The results can force adjustments. They should not make the team forget what it is trying to become.',{squadMorale:1,squadCount:3,board:1,reputation:1},'expression_02','HOLDING THE IDENTITY'),
+      answer('philosophy-adapt','PRINCIPLES ARE NOT A PRISON','A manager who never adapts is asking players to solve his pride. We will change when the match demands it.',{board:1,reporter:2,tone:'analytical'},'expression_01','PRAGMATIC ADAPTATION'),
+      answer('philosophy-win','WINNING IS PART OF THE IDEA','Style without results is not enough here. The way we play has to help us win.',{squadTest:'ambition',board:1,reporter:2},'expression_03','RESULTS WITH IDENTITY'),
+      answer('philosophy-time','JUDGE IT OVER A SEASON','One match can make any idea look perfect or foolish. The body of work is the fair test.',{reporter:-1},'expression_11','ASKING FOR TIME')
+    ],
+    CLUB_AMBITION:[
+      answer('ambition-now','WE SHOULD COMPETE NOW','The badge and the squad give us no reason to think small. We should be in the important matches.',{squadMorale:1,squadCount:3,board:1,reputation:1,headline:true,callback:'AMBITION'},'expression_09','DECLARING AMBITION'),
+      answer('ambition-build','AMBITION NEEDS A FOUNDATION','I can promise a finish today. That will not build the squad, standards or depth needed to sustain it.',{board:1,reporter:-1},'expression_01','LONG-TERM BUILD'),
+      answer('ambition-board','THE CLUB MUST MATCH THE WORDS','If {club} wants the next level, every part of the club has to support that target.',{board:-2,reporter:3,headline:true,callback:'BOARD_AMBITION'},'expression_03','CHALLENGING THE CLUB'),
+      answer('ambition-table','EARN THE NEXT STEP','We are {position}. The honest ambition is winning the next match and moving from there.',{squadMorale:1,squadCount:2,reporter:1},'expression_02','GROUNDING THE TARGET')
+    ],
+    TRANSFER_RUMOUR:[
+      answer('rumour-stays','HE IS PART OF MY PLANS','{player} is preparing with us and I expect that to continue. There is nothing more useful to add.',{targetMorale:1,targetTrust:2,reporter:-1,headline:true,callback:'PLAYER_STAYS'},'expression_02','CLOSING THE RUMOUR'),
+      answer('rumour-price','EVERY SERIOUS OFFER IS CONSIDERED','I will not pretend football stands still. If a real proposal arrives, the club will judge it.',{targetMorale:-1,targetTrust:-2,board:1,reporter:3,headline:true,callback:'TRANSFER_OPEN'},'expression_03','LEAVING THE DOOR OPEN'),
+      answer('rumour-false','THE STORY DID NOT COME FROM US','No club has put the reported offer in front of me. A rumour is not a negotiation.',{targetTrust:1,reporter:-2},'expression_11','DENYING THE REPORT'),
+      answer('rumour-player','ASK THE PLAYER ABOUT HIS FUTURE','I know what I want. {player} also has a voice in what comes next.',{targetTrust:-1,reporter:2,headline:true,callback:'PLAYER_FUTURE'},'expression_07','PUTTING IT TO THE PLAYER'),
+      answer('rumour-window','NOT BEFORE THIS MATCH','The window can wait. {player} has a job against {opponent} and that is the only conversation today.',{targetTrust:2,reporter:-1},'expression_01','FOCUSING ON MATCHDAY')
+    ],
+    STAFF_ROLE:[
+      answer('staff-credit','THE STAFF BUILT THE WEEK','The plan you saw started with hours of work from people who never stand at this microphone.',{board:1,reputation:1,reporter:1},'expression_02','CREDITING THE STAFF'),
+      answer('staff-challenge','THEY DO NOT AGREE WITH ME BY DEFAULT','Good staff make the decision stronger by challenging it before the players see it.',{board:1,reporter:2},'expression_07','VALUING DISAGREEMENT'),
+      answer('staff-manager','THE FINAL CALL IS MINE','The staff give me the best information they can. Responsibility for the decision still ends with me.',{board:1,reputation:1,reporter:1},'expression_01','OWNING THE CALL'),
+      answer('staff-private','I WILL NOT NAME PRIVATE DEBATES','Disagreement is healthy because it stays honest and internal. I will not turn it into a staff ranking.',{reporter:-2},'expression_11','PROTECTING THE STAFF')
+    ],
+    DEFEAT_RESPONSE:[
+      answer('defeat-hurts','THIS SHOULD HURT','I do not want the players comfortable after that. We use the feeling, then we work.',{squadTest:'professionalism',board:1,reporter:2},'expression_03','DEMANDING A RESPONSE'),
+      answer('defeat-own','I GOT PART OF IT WRONG','The plan did not give the players enough help. I will correct that before I ask them for answers.',{squadMorale:1,squadCount:3,board:1,reputation:1,reporter:3},'expression_07','ADMITTING THE ERROR'),
+      answer('defeat-together','WE LOSE TOGETHER','Nobody will be isolated for one mistake. We review the match as a team and respond as one.',{squadMorale:1,squadCount:4,targetTrust:1,reporter:1},'expression_02','PROTECTING THE GROUP'),
+      answer('defeat-changes','PLACES ARE OPEN NOW','That performance cannot pass without consequence. Training this week will decide who starts next.',{squadTest:'professionalism',board:2,headline:true,reporter:2,callback:'SELECTION_RESPONSE'},'expression_03','WARNING THE SQUAD'),
+      answer('defeat-move','WE CANNOT REPLAY IT','The review will be honest and short. Carrying the defeat into the next match would make it cost us twice.',{squadMorale:1,squadCount:2,reporter:-1},'expression_01','DRAWING A LINE')
+    ],
+    VICTORY_MOMENT:[
+      answer('win-enjoy','THEY SHOULD ENJOY THIS','The players earned the room tonight. Recovery starts tomorrow. For now, the win is theirs.',{squadMorale:1,squadCount:4,targetTrust:1,reporter:2},'expression_02','CELEBRATING THE WIN'),
+      answer('win-standard','THIS HAS TO BECOME NORMAL','It was a strong performance. The best teams do not treat their level as a special event.',{squadTest:'ambition',board:1,reporter:1},'expression_03','RAISING EXPECTATIONS'),
+      answer('win-statement','WE SHOWED WHAT WE CAN BE','Against {opponent}, in this moment, the team gave a real picture of its ceiling.',{squadMorale:1,squadCount:3,reputation:1,reporter:2,headline:true,callback:'WINNING_CLAIM'},'expression_09','MAKING A STATEMENT'),
+      answer('win-details','THE RESULT CAME FROM THE WORK','The decisive moments were not accidents. The players delivered details we had rehearsed.',{targetTrust:1,squadMorale:1,squadCount:2,reporter:2,tone:'analytical'},'expression_01','PRAISING EXECUTION'),
+      answer('win-next','IT BUYS US NOTHING NEXT WEEK','The points are valuable. They do not give us a head start in the next match.',{squadMorale:0,board:1,reporter:-1},'expression_11','MOVING ON QUICKLY')
+    ],
+    FOLLOW_UP:[
+      answer('follow-stand','I STAND BY IT','You heard the answer. I will not soften it because it might become a headline.',{reporter:-1,headline:true,rivalHeat:2},'expression_03','STANDING FIRM'),
+      answer('follow-clarify','LET ME BE PRECISE','I am talking about {subject} in this situation. Do not turn that into a judgement on everything else.',{reporter:2,tone:'analytical'},'expression_01','CLARIFYING THE POINT'),
+      answer('follow-evidence','JUDGE THE NEXT ACTION','The answer matters only if our next decision supports it. Hold me to that.',{reporter:2,reputation:1,callback:'PRESS_PROMISE'},'expression_09','ACCEPTING THE TEST'),
+      answer('follow-end','THAT IS ALL I WILL SAY','The people involved have heard more detail than I will give publicly. We can move on.',{reporter:-3,targetTrust:1},'expression_11','ENDING THE EXCHANGE')
+    ],
+    DEFAULT:[
+      answer('default-direct','HERE IS MY ANSWER','I have given the players a clear position on this. I am comfortable putting the same answer on record.',{reporter:1},'expression_01','DIRECT ANSWER'),
+      answer('default-detail','THE DETAIL MATTERS','There is not one simple explanation. We will judge the facts before making the next decision.',{reporter:1,tone:'analytical'},'expression_01','MEASURED ANSWER'),
+      answer('default-private','THAT STAYS INSIDE','The people affected deserve to hear the full conversation before the public does.',{reporter:-2,targetTrust:1},'expression_11','PRIVATE ANSWER'),
+      answer('default-challenge','WE HAVE TO BE BETTER','Whatever the explanation, the next performance has to show a response.',{squadTest:'professionalism',board:1},'expression_03','PUBLIC CHALLENGE')
+    ]
+  };
   library.framings={
     pre:["Looking at the way this week has unfolded,","With the team sheet now public,","There has been plenty of discussion outside the club.","Supporters have debated this all week.","Before we turn to the fixture itself,"],
     post:["With the emotion of full-time still fresh,","Watching from the press box,","There was a lot happening beneath the scoreline.","Supporters will leave discussing this.","Before you leave the stadium,"]

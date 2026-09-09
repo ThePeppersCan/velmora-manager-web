@@ -2,12 +2,24 @@
   'use strict';
   const PREFIX='velmora-manager-career-v32-slot-', LEGACY='velmora-manager-career-v3-2', SLOT_COUNT=5;
   function create(options={}){
-    const idb=options.indexedDB, local=options.localStorage, cache=new Map(), committed=new Map(), listeners=new Set(), unsaved=new Map();
+    const idb=options.indexedDB, local=options.localStorage, cache=new Map(), committed=new Map(), listeners=new Set(), commitListeners=new Set(), unsaved=new Map();
     let db=null, queue=Promise.resolve(), pending=0, lastError=null, mode='initialising';
     const status=()=>({mode,pending,error:lastError,unsaved:unsaved.size});
     function notify(){listeners.forEach(fn=>fn(status()));}
+    function notifyCommit(key,value){commitListeners.forEach(fn=>{try{fn({key,value,deleted:value===null,committedAt:Date.now()});}catch(error){console.error?.('[Velmora] Save observer failed',error);}});}
     function readLocal(key){try{return local?.getItem(key)||null;}catch(_){return null;}}
-    function transaction(work){return new Promise((resolve,reject)=>{const tx=db.transaction('careers','readwrite');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Career storage write failed'));tx.onabort=()=>reject(tx.error||new Error('Career storage write cancelled'));work(tx.objectStore('careers'));});}
+    function transaction(work){return new Promise((resolve,reject)=>{
+      let tx=null,settled=false,timer=0;
+      const finish=(callback,value)=>{if(settled)return;settled=true;clearTimeout(timer);callback(value);};
+      try{
+        tx=db.transaction('careers','readwrite');
+        tx.oncomplete=()=>finish(resolve);
+        tx.onerror=()=>finish(reject,tx.error||new Error('Career storage write failed'));
+        tx.onabort=()=>finish(reject,tx.error||new Error('Career storage write cancelled'));
+        timer=setTimeout(()=>{try{tx.abort();}catch(_e){}finish(reject,new Error('Career storage timed out. Close other Velmora tabs and retry.'));},Number(options.transactionTimeoutMs||10000));
+        work(tx.objectStore('careers'));
+      }catch(error){try{tx?.abort();}catch(_e){}finish(reject,error);}
+    });}
     function valid(raw){try{const d=JSON.parse(options.codec.decode(raw));return !!d.worldSeed&&Array.isArray(d.fixtures)&&d.squads&&typeof d.squads==='object';}catch(_){return false;}}
     const ready=(async()=>{
       if(!idb){mode='limited';notify();return;}
@@ -29,6 +41,7 @@
       if(mode==='unavailable'||mode==='initialising')throw new Error(lastError||'Career storage is not ready');
       if(mode==='limited'){
         if(value===null)local.removeItem(key);else local.setItem(key,value);
+        notifyCommit(key,value);
         return;
       }
       if(value===null)cache.delete(key);else cache.set(key,value);
@@ -44,11 +57,13 @@
           else{committed.set(key,value);cache.delete(key+':deleted');if(previous&&valid(previous))cache.set(key+':backup',previous);}
           if(unsaved.get(key)===value)unsaved.delete(key);
           if(!unsaved.size)lastError=null;
+          notifyCommit(key,value);
         }catch(error){lastError=error.message||'Unable to save career';if(cache.get(key)===value||value===null){if(previous)cache.set(key,previous);else cache.delete(key);}}
         finally{pending--;notify();}
       });
     }
     return {ready,status,subscribe(fn){listeners.add(fn);fn(status());return()=>listeners.delete(fn);},
+      subscribeCommits(fn){commitListeners.add(fn);return()=>commitListeners.delete(fn);},
       getItem(key){return mode==='indexeddb'?(cache.get(key)??null):readLocal(key);},
       setItem(key,value){enqueue(key,String(value));},removeItem(key){enqueue(key,null);},
       async flush(){await ready;while(pending)await queue;if(lastError)throw new Error(lastError);},

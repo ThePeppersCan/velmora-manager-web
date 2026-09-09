@@ -1,0 +1,441 @@
+/* ==========================================================================
+   V72 — Season hub MAJOR overhaul: Fixtures, Calendar and Player Stats.
+   Loaded after every other stylesheet so these rules win the cascade.
+
+   This pass fixes the three root causes identified after user feedback:
+   1) The Player Stats tab never got the "wide, no side-panel" treatment
+      that Table/Fixtures/Calendar already have — it was stuck in the
+      narrow 67.5%-width boxed layout. That's why it looked small.
+   2) Every screen used raw `cqw` font-sizes with no pixel floor, so on a
+      letterboxed/narrower game frame the text/badges shrank to near-
+      unreadable sizes. Every size below uses clamp(min,ideal,max).
+   3) The fixtures list was single-column with unconstrained flexible
+      team-name columns, wasting horizontal space and fitting few
+      matches on screen. It now flows two columns.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------- */
+/* STRUCTURAL — give Player Stats the same full-width stage as Table/     */
+/* Fixtures/Calendar instead of the cramped default boxed layout.         */
+/* (Paired with a small app.js change that toggles is-stats-view.)        */
+/* ---------------------------------------------------------------------- */
+body.v20-ui #screenSeason.is-stats-view .season-main-content{
+  left:1.65cqw!important;right:1.65cqw!important;top:10.25cqw!important;bottom:1.25cqw!important;
+  width:auto!important;height:auto!important;
+  padding:.85cqw!important;overflow:auto!important;
+  border-color:#cadde2!important;background:#eef5f6!important;
+  box-shadow:0 .45cqw 1.5cqw rgba(9,30,58,.12)!important;
+}
+body.v20-ui #screenSeason.is-stats-view .season-side-content{display:none!important}
+@media (max-width:1200px){
+  body.v20-ui #screenSeason.is-stats-view .season-main-content{left:1.25cqw!important;right:1.25cqw!important;width:auto!important}
+}
+@media (max-width:900px){
+  body.v20-ui #screenSeason.is-stats-view .season-main-content{left:1cqw!important;right:1cqw!important;width:auto!important}
+}
+
+/* ---------------------------------------------------------------------- */
+/* FIXTURES — match list cards, now flowing two columns                   */
+/* ---------------------------------------------------------------------- */
+body.v20-ui .vm-match-centre{
+  background:linear-gradient(180deg,#eef2f8 0%,#e3e9f1 100%)!important;
+}
+body.v20-ui .vm-match-centre-hero h1{font-size:clamp(22px,1.3cqw,30px)!important}
+body.v20-ui .vm-match-centre-hero>div>p{font-size:clamp(11px,.42cqw,14px)!important}
+body.v20-ui .vm-match-centre-hero>div>span{font-size:clamp(10px,.36cqw,12px)!important}
+body.v20-ui .vm-match-centre-hero article span{font-size:clamp(9px,.28cqw,11px)!important}
+body.v20-ui .vm-match-centre-hero article strong{font-size:clamp(18px,1cqw,26px)!important}
+body.v20-ui .vm-match-centre-hero article small{font-size:clamp(9px,.27cqw,11px)!important}
+
+body.v20-ui .vm-match-filters{padding:.6cqw .9cqw!important}
+body.v20-ui .vm-match-filters>div span{font-size:clamp(9px,.28cqw,11px)!important}
+body.v20-ui .vm-match-filters select{height:clamp(32px,2cqw,40px)!important;font-size:clamp(12px,.5cqw,14px)!important}
+body.v20-ui .vm-match-filters>strong{font-size:clamp(11px,.36cqw,13px)!important}
+
+/* Two-column flow so far more matchdays are visible at once without cards shrinking */
+body.v20-ui .vm-match-list{
+  column-count:2!important;column-gap:1cqw!important;column-fill:balance!important;
+  padding:.85cqw 1.1cqw 1.1cqw!important;
+}
+body.v20-ui .vm-matchday-group{
+  display:inline-block!important;width:100%!important;
+  break-inside:avoid!important;-webkit-column-break-inside:avoid!important;page-break-inside:avoid!important;
+  border:1px solid #c3cee0!important;
+  border-radius:.55cqw!important;
+  box-shadow:0 .3cqw .85cqw rgba(12,43,75,.09)!important;
+  margin-bottom:.85cqw!important;
+}
+@media (max-width:1300px){
+  body.v20-ui .vm-match-list{column-count:1!important}
+}
+
+body.v20-ui .vm-matchday-group>header{
+  position:relative!important;
+  min-height:clamp(30px,2.1cqw,40px)!important;
+  padding:0 .85cqw 0 1cqw!important;
+  background:linear-gradient(120deg,#0c2647,#154079 62%,#125e8c)!important;
+  border-bottom:0!important;
+}
+body.v20-ui .vm-matchday-group>header::before{
+  content:""!important;position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:.2cqw!important;
+  background:#29c7d4!important;
+}
+body.v20-ui .vm-matchday-group>header span{color:#8fe3ea!important;font-size:clamp(9px,.27cqw,11px)!important}
+body.v20-ui .vm-matchday-group>header strong{color:#fff!important;font-size:clamp(14px,.62cqw,17px)!important}
+body.v20-ui .vm-matchday-group>header small{
+  padding:.16cqw .42cqw!important;border-radius:999px!important;
+  background:rgba(255,255,255,.14)!important;color:#dcecff!important;
+  letter-spacing:.08em!important;font-size:clamp(9px,.25cqw,11px)!important;
+}
+
+/* Fixed, legible px columns for date/score/status; team-name columns flex to
+   fill whatever width this column of the 2-up layout actually has. */
+body.v20-ui .vm-match-card{
+  min-height:clamp(58px,4.1cqw,74px)!important;
+  grid-template-columns:clamp(52px,4.4cqw,66px) minmax(0,1fr) clamp(48px,3.8cqw,58px) minmax(0,1fr) clamp(54px,3.9cqw,66px)!important;
+  gap:.65cqw!important;
+  padding:.5cqw .85cqw!important;
+  background:#fff!important;
+  border-bottom:1px solid #e6ebf1!important;
+  transition:background .14s ease,box-shadow .14s ease,transform .14s ease!important;
+}
+body.v20-ui .vm-match-card:nth-child(even){background:#f6f9fc!important}
+body.v20-ui .vm-match-card:hover,body.v20-ui .vm-match-card:focus-visible{
+  background:#e8f2ff!important;
+  box-shadow:inset .22cqw 0 #2676c4,0 .2cqw .55cqw rgba(15,45,80,.1)!important;
+  transform:translateY(-.03cqw)!important;
+}
+body.v20-ui .vm-match-card.is-own{box-shadow:inset .22cqw 0 #1bb0b8!important}
+body.v20-ui .vm-match-card.is-own:hover{box-shadow:inset .22cqw 0 #1bb0b8,0 .2cqw .55cqw rgba(15,45,80,.1)!important}
+body.v20-ui .vm-match-card time b{color:#16324f!important;font-size:clamp(13px,.5cqw,16px)!important}
+body.v20-ui .vm-match-card time span{
+  display:inline-block!important;margin-top:.24cqw!important;padding:.05cqw .28cqw!important;
+  border-radius:999px!important;background:#eef2f7!important;color:#5f7086!important;
+  font-size:clamp(9px,.32cqw,11px)!important;width:fit-content!important;
+}
+body.v20-ui .vm-match-card>div{gap:.55cqw!important}
+body.v20-ui .vm-match-card>div img,
+body.v20-ui .vm-match-card>div .v34-club-crest{
+  width:clamp(30px,2.2cqw,42px)!important;height:clamp(30px,2.2cqw,42px)!important;
+  filter:drop-shadow(0 .1cqw .16cqw rgba(8,28,51,.22))!important;
+  font-size:clamp(10px,.5cqw,13px)!important;
+}
+body.v20-ui .vm-match-card>div span{font-size:clamp(14px,.62cqw,18px)!important;font-weight:900!important}
+body.v20-ui .vm-match-card>strong{
+  min-width:clamp(54px,3.6cqw,66px)!important;
+  padding:.24cqw .1cqw!important;
+  border-radius:.4cqw!important;
+  background:linear-gradient(160deg,#0f2f57,#123f77)!important;
+  color:#fff!important;
+  font-size:clamp(17px,.85cqw,22px)!important;
+  box-shadow:0 .16cqw .4cqw rgba(15,45,80,.22)!important;
+}
+body.v20-ui .vm-match-card>strong i{color:rgba(255,255,255,.55)!important;font-size:clamp(10px,.4cqw,13px)!important}
+body.v20-ui .vm-match-card.is-scheduled>strong{background:linear-gradient(160deg,#5b6b80,#41505f)!important}
+body.v20-ui .vm-match-card.is-own>strong{background:linear-gradient(160deg,#0d5f66,#128089)!important}
+body.v20-ui .vm-match-card>em{
+  padding:.28cqw .48cqw!important;border-radius:.3cqw!important;
+  font-size:clamp(9px,.28cqw,11px)!important;letter-spacing:.07em!important;
+}
+
+/* Club-profile fixtures columns (used inside club dossier) get the same floor */
+body.v20-ui .vm-club-fixture-columns .vm-match-card time b{font-size:clamp(12px,.46cqw,15px)!important}
+body.v20-ui .vm-club-fixture-columns .vm-match-card>div img{width:clamp(24px,1.9cqw,34px)!important;height:clamp(24px,1.9cqw,34px)!important}
+body.v20-ui .vm-club-fixture-columns .vm-match-card>div span{font-size:clamp(12px,.5cqw,15px)!important}
+
+/* ---------------------------------------------------------------------- */
+/* PLAYER STATS — leaderboard table, rebuilt to fill the wide stage       */
+/* ---------------------------------------------------------------------- */
+body.v20-ui .v43-stats-browser{gap:.85cqw!important}
+body.v20-ui .v43-stats-hero{
+  padding:clamp(16px,1cqw,22px) clamp(18px,1.1cqw,24px)!important;
+  border-radius:.6cqw!important;
+  box-shadow:0 .4cqw 1cqw rgba(10,34,46,.16),inset 0 1px rgba(255,255,255,.08)!important;
+}
+body.v20-ui .v43-stats-hero>div>span{font-size:clamp(10px,.32cqw,12px)!important}
+body.v20-ui .v43-stats-hero h2{font-size:clamp(24px,1.4cqw,32px)!important}
+body.v20-ui .v43-stats-hero p{font-size:clamp(12px,.44cqw,14px)!important;max-width:none!important}
+body.v20-ui .v43-stats-hero>aside article{padding:clamp(10px,.65cqw,15px) clamp(11px,.7cqw,16px)!important;transition:background .15s ease!important}
+body.v20-ui .v43-stats-hero>aside article:hover{background:rgba(5,26,36,.4)!important}
+body.v20-ui .v43-stats-hero>aside span,
+body.v20-ui .v43-stats-hero>aside small{font-size:clamp(9px,.3cqw,11px)!important}
+body.v20-ui .v43-stats-hero>aside strong{font-size:clamp(16px,.85cqw,22px)!important}
+
+body.v20-ui .v43-stats-filters{padding:clamp(10px,.65cqw,14px)!important;gap:.55cqw!important}
+body.v20-ui .v43-stats-filters label>span{font-size:clamp(9px,.3cqw,11px)!important}
+body.v20-ui .v43-stats-filters select,
+body.v20-ui .v43-stats-filters input{height:clamp(34px,2.2cqw,42px)!important;font-size:clamp(12px,.5cqw,14px)!important}
+body.v20-ui .v43-stats-filters>button,
+body.v20-ui .v43-stats-footer button{min-height:clamp(34px,2.2cqw,42px)!important;padding:0 clamp(12px,.8cqw,18px)!important;font-size:clamp(10px,.36cqw,12px)!important}
+body.v20-ui .v43-data-note strong,
+body.v20-ui .v43-data-note span{font-size:clamp(11px,.36cqw,13px)!important}
+
+body.v20-ui .v43-stat-table{
+  border-radius:10px!important;
+  box-shadow:0 .35cqw .9cqw rgba(12,43,75,.07)!important;
+  overflow:hidden!important;
+  overflow-x:auto!important;
+}
+/* Fill the now much-wider container: fixed rank/numeric columns, flexible
+   player/club columns that expand to use the real available width. */
+body.v20-ui .v43-stat-head,
+body.v20-ui .v43-stat-row{
+  grid-template-columns:
+    clamp(34px,2cqw,44px)
+    minmax(220px,1.7fr)
+    minmax(190px,1.3fr)
+    clamp(96px,5cqw,120px)
+    clamp(56px,3cqw,68px)
+    clamp(56px,3cqw,68px)
+    clamp(68px,3.4cqw,80px)
+    clamp(54px,2.8cqw,64px)
+    clamp(54px,2.8cqw,64px)
+    clamp(72px,3.6cqw,84px)
+    clamp(64px,3.2cqw,74px)
+    clamp(50px,2.6cqw,60px)
+    clamp(50px,2.6cqw,60px)
+    minmax(130px,1fr)
+  !important;
+  min-width:0!important;
+}
+body.v20-ui .v43-stat-head{
+  background:linear-gradient(120deg,#0e2b3a,#153e4d 60%,#1e5960)!important;
+  border-bottom:0!important;
+  min-height:clamp(40px,2.6cqw,52px)!important;
+}
+body.v20-ui .v43-stat-head>span,body.v20-ui .v43-stat-head>button{
+  height:clamp(40px,2.6cqw,52px)!important;
+  line-height:clamp(40px,2.6cqw,52px)!important;
+  border-right:1px solid rgba(255,255,255,.1)!important;
+  color:#bfe5e3!important;
+  font-size:clamp(10px,.42cqw,12px)!important;
+}
+body.v20-ui .v43-stat-head>button.is-sorted{background:rgba(255,255,255,.14)!important;color:#fff!important}
+
+body.v20-ui .v43-stat-body{max-height:none!important}
+body.v20-ui .v43-stat-row{min-height:clamp(58px,3.4cqw,76px)!important;border-bottom:1px solid #eef3f4!important}
+body.v20-ui .v43-stat-row:nth-child(even){background:#f7fbfb!important}
+body.v20-ui .v43-stat-row:hover{background:#e9f6f5!important;box-shadow:inset 3px 0 #1e5960!important}
+body.v20-ui .v43-stat-row>*{padding:clamp(6px,.5cqw,10px) clamp(8px,.55cqw,12px)!important}
+body.v20-ui .v43-stat-row>b:first-child{font-size:clamp(12px,.5cqw,15px)!important}
+body.v20-ui .v43-stat-row>strong{font-size:clamp(14px,.6cqw,17px)!important}
+body.v20-ui .v43-stat-row>strong.is-goals{font-size:clamp(18px,.85cqw,22px)!important}
+body.v20-ui .v43-stat-row>strong.is-assists{font-size:clamp(18px,.85cqw,22px)!important}
+body.v20-ui .v43-stat-row>strong.is-rating{font-size:clamp(16px,.7cqw,19px)!important}
+body.v20-ui .v43-stat-row>span:not(.is-player):not(.is-club),
+body.v20-ui .v43-stat-row>small{font-size:clamp(10px,.42cqw,12px)!important}
+body.v20-ui .v43-stat-row .is-player,
+body.v20-ui .v43-stat-row .is-club{gap:clamp(8px,.55cqw,12px)!important}
+body.v20-ui .v43-stat-row .is-player strong,
+body.v20-ui .v43-stat-row .is-club strong{font-size:clamp(14px,.6cqw,17px)!important}
+
+/* Podium accent for the top three visible rows */
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(1){box-shadow:inset 3px 0 #d8ac2c!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(1):hover{box-shadow:inset 3px 0 #d8ac2c!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(1)>b:first-child{
+  background:#d8ac2c!important;color:#fff!important;border-radius:50%!important;
+  width:clamp(22px,1.2cqw,28px)!important;height:clamp(22px,1.2cqw,28px)!important;display:inline-grid!important;place-items:center!important;
+}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(2){box-shadow:inset 3px 0 #9aa7b3!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(2):hover{box-shadow:inset 3px 0 #9aa7b3!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(2)>b:first-child{
+  background:#9aa7b3!important;color:#fff!important;border-radius:50%!important;
+  width:clamp(22px,1.2cqw,28px)!important;height:clamp(22px,1.2cqw,28px)!important;display:inline-grid!important;place-items:center!important;
+}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(3){box-shadow:inset 3px 0 #b57a45!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(3):hover{box-shadow:inset 3px 0 #b57a45!important}
+body.v20-ui .v43-stat-body>.v43-stat-row:nth-child(3)>b:first-child{
+  background:#b57a45!important;color:#fff!important;border-radius:50%!important;
+  width:clamp(22px,1.2cqw,28px)!important;height:clamp(22px,1.2cqw,28px)!important;display:inline-grid!important;place-items:center!important;
+}
+
+body.v20-ui .v43-stat-row .is-player img,
+body.v20-ui .v43-stat-row .is-player .avatar,
+body.v20-ui .v43-stat-row .is-player .player-avatar{
+  width:clamp(38px,2.1cqw,48px)!important;height:clamp(44px,2.4cqw,54px)!important;min-width:clamp(38px,2.1cqw,48px)!important;
+  border-radius:6px!important;
+  background:#eef3f4!important;
+  box-shadow:0 0 0 1px #dde7e8!important;
+}
+body.v20-ui .v43-stat-row .is-club{padding:2px 6px 2px 2px!important}
+body.v20-ui .v43-stat-row .is-club img,
+body.v20-ui .v43-stat-row .is-club .club-badge,
+body.v20-ui .v43-stat-row .is-club .v34-club-crest{
+  width:clamp(32px,1.8cqw,40px)!important;height:clamp(32px,1.8cqw,40px)!important;min-width:clamp(32px,1.8cqw,40px)!important;
+  padding:2px!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  box-shadow:0 0 0 1px #dde7e8!important;
+  font-size:clamp(9px,.4cqw,11px)!important;
+}
+body.v20-ui .v43-stat-row>strong.is-goals{
+  display:inline-block!important;padding:2px 8px!important;border-radius:5px!important;
+  background:#e7f0f8!important;
+}
+body.v20-ui .v43-stat-row>strong.is-assists{
+  display:inline-block!important;padding:2px 8px!important;border-radius:5px!important;
+  background:#e2f4f2!important;
+}
+body.v20-ui .v43-stat-row>strong.is-rating{
+  display:inline-block!important;padding:2px 8px!important;border-radius:5px!important;
+  background:#fbf3dc!important;
+}
+body.v20-ui .v43-stat-empty{font-size:clamp(12px,.5cqw,15px)!important;padding:clamp(28px,2cqw,44px) 18px!important}
+body.v20-ui .v43-stats-footer{font-size:clamp(11px,.4cqw,13px)!important}
+body.v20-ui .v43-stats-footer strong{font-size:clamp(12px,.44cqw,14px)!important}
+
+/* Career-history sub-panels beneath the table get the same legibility floor */
+body.v20-ui .v43-career-statistics>header strong{font-size:clamp(14px,.62cqw,17px)!important}
+body.v20-ui .v43-career-statistics>header aside b{font-size:clamp(14px,.62cqw,17px)!important}
+body.v20-ui .v43-career-statistics>header aside small{font-size:clamp(9px,.32cqw,11px)!important}
+body.v20-ui .v43-career-club b{font-size:clamp(12px,.5cqw,15px)!important}
+body.v20-ui .v43-career-club small{font-size:clamp(10px,.4cqw,12px)!important}
+body.v20-ui .v43-career-comp span{font-size:clamp(10px,.4cqw,12px)!important}
+body.v20-ui .v43-career-comp strong{font-size:clamp(12px,.48cqw,14px)!important}
+body.v20-ui .v43-career-comp small{font-size:clamp(10px,.4cqw,12px)!important}
+
+/* ---------------------------------------------------------------------- */
+/* CALENDAR — full visual rebuild: card-tile days, bold numbers, and      */
+/* real crest+score matchday cells instead of tiny spreadsheet chips.     */
+/* Targets both legacy rule-sets that touch .calendar-day so neither can  */
+/* win the cascade over this pass.                                       */
+/* ---------------------------------------------------------------------- */
+body.v20-ui .vm-calendar-hero h1{font-size:clamp(24px,1.35cqw,32px)!important}
+body.v20-ui .vm-calendar-hero p{font-size:clamp(11px,.4cqw,14px)!important}
+body.v20-ui .vm-calendar-hero>div:first-child>span{font-size:clamp(10px,.36cqw,12px)!important}
+body.v20-ui .vm-calendar-month-metrics strong{font-size:clamp(18px,1cqw,25px)!important}
+body.v20-ui .vm-calendar-month-metrics span{font-size:clamp(9px,.28cqw,11px)!important}
+body.v20-ui .vm-calendar-hero .calendar-toolbar-actions button{font-size:clamp(14px,.55cqw,18px)!important}
+body.v20-ui .vm-calendar-hero .calendar-toolbar-actions button:nth-child(2){font-size:clamp(10px,.34cqw,12px)!important}
+
+body.v20-ui .vm-calendar-layout{gap:.75cqw!important;padding:.75cqw!important}
+body.v20-ui .vm-calendar-layout .calendar-weekdays span{font-size:clamp(10px,.34cqw,12px)!important;padding:clamp(6px,.4cqw,9px) 0!important}
+
+/* Card-tile grid: give every day a little breathing room and a rounded,
+   elevated tile instead of a hairline spreadsheet border. */
+body.v20-ui .vm-calendar-layout .calendar-days,
+body.v20-ui .v19-calendar-days{
+  gap:.38cqw!important;
+  background:transparent!important;
+  padding:.38cqw!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-day,
+body.v20-ui .v19-calendar-days .calendar-day{
+  border:1px solid #d7e0e8!important;
+  border-radius:.5cqw!important;
+  background:#fff!important;
+  padding:clamp(7px,.5cqw,11px)!important;
+  box-shadow:0 .12cqw .3cqw rgba(20,45,80,.05)!important;
+  transition:background .14s ease,box-shadow .14s ease,transform .14s ease!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-day:nth-child(7n),
+body.v20-ui .vm-calendar-layout .calendar-day:nth-child(7n-1){background:#fafcfe!important}
+body.v20-ui .vm-calendar-layout .calendar-day:hover,
+body.v20-ui .v19-calendar-days .calendar-day:hover{
+  z-index:2!important;
+  background:#f4f8ff!important;
+  box-shadow:0 .22cqw .55cqw rgba(20,45,80,.12),inset 0 0 0 1.5px #9dc0e6!important;
+  transform:translateY(-1px)!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-day.is-out-month,
+body.v20-ui .v19-calendar-days .calendar-day.is-out-month{background:#f4f6f8!important;opacity:.5!important;box-shadow:none!important}
+body.v20-ui .vm-calendar-layout .calendar-day.is-today,
+body.v20-ui .v19-calendar-days .calendar-day.is-today{
+  background:#eefaf8!important;
+  box-shadow:inset 0 0 0 2px #1e9c8f!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-day.is-selected,
+body.v20-ui .v19-calendar-days .calendar-day.is-selected{
+  z-index:3!important;
+  background:#eef4ff!important;
+  box-shadow:inset 0 0 0 2.5px #17449a!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-day.has-match,
+body.v20-ui .v19-calendar-days .calendar-day.has-match,
+body.v20-ui .vm-calendar-layout .calendar-day.has-cup-match,
+body.v20-ui .v19-calendar-days .calendar-day.has-cup-match,
+body.v20-ui .vm-calendar-layout .calendar-day.has-playoff-match,
+body.v20-ui .v19-calendar-days .calendar-day.has-playoff-match{
+  background:linear-gradient(160deg,#fffaf0 0%,#fff 55%)!important;
+  box-shadow:inset 2px 0 #d8ac2c,0 .12cqw .3cqw rgba(20,45,80,.06)!important;
+}
+
+body.v20-ui .vm-calendar-layout .vm-calendar-date,
+body.v20-ui .v19-calendar-days .vm-calendar-date{margin-bottom:.2cqw!important}
+body.v20-ui .vm-calendar-layout .vm-calendar-date>b,
+body.v20-ui .v19-calendar-days .calendar-day>b{
+  font-weight:900!important;
+  font-size:clamp(15px,.75cqw,20px)!important;
+  color:#142b45!important;
+}
+body.v20-ui .vm-calendar-layout .vm-calendar-date>em{
+  padding:.16cqw .3cqw!important;border-radius:.2cqw!important;font-size:clamp(8px,.3cqw,10px)!important;
+}
+
+body.v20-ui .vm-calendar-layout .calendar-event-stack{gap:.2cqw!important;margin-top:.3cqw!important}
+
+/* Generic (non-match) event chips get a legibility floor */
+body.v20-ui .vm-calendar-layout .calendar-event-chip{
+  min-height:clamp(20px,1.15cqw,26px)!important;
+  padding:.15cqw .32cqw!important;
+  border-radius:.28cqw!important;
+}
+body.v20-ui .vm-calendar-layout .calendar-event-chip>b{font-size:clamp(9px,.32cqw,11px)!important}
+body.v20-ui .vm-calendar-layout .calendar-event-chip>small,
+body.v20-ui .v19-calendar-days .calendar-event-chip>small{font-size:clamp(8px,.28cqw,10px)!important}
+body.v20-ui .v19-calendar-days .calendar-event-chip{
+  min-height:clamp(20px,1.1cqw,26px)!important;
+  padding:.15cqw .3cqw!important;
+  border-radius:.28cqw!important;
+}
+body.v20-ui .v19-calendar-days .calendar-event-chip>b{font-size:clamp(9px,.32cqw,11px)!important}
+
+/* Matchday chip becomes the hero of the cell: bigger crests, bold score */
+body.v20-ui .calendar-event-chip.is-match{
+  min-height:clamp(26px,1.5cqw,32px)!important;
+  padding:.18cqw .4cqw!important;
+  gap:.3cqw!important;
+  background:linear-gradient(90deg,#fef6df,#fffdf6)!important;
+  border-color:#e7cf94!important;
+}
+body.v20-ui .calendar-event-chip.is-match .advance-mini-badge{
+  width:clamp(18px,1.05cqw,24px)!important;height:clamp(18px,1.05cqw,24px)!important;
+}
+body.v20-ui .calendar-event-chip.is-match>b{
+  font-size:clamp(13px,.6cqw,17px)!important;
+  color:#0a4662!important;
+}
+body.v20-ui .calendar-event-chip.is-match>small{
+  font-size:clamp(8px,.28cqw,10px)!important;
+  color:#8a6f1f!important;
+}
+body.v20-ui .calendar-more{font-size:clamp(9px,.3cqw,11px)!important;padding:.1cqw .3cqw!important}
+
+/* Day detail side panel */
+body.v20-ui .vm-calendar-selected>div{width:clamp(48px,3.4cqw,58px)!important;height:clamp(48px,3.4cqw,58px)!important}
+body.v20-ui .vm-calendar-selected>div span{font-size:clamp(8px,.28cqw,10px)!important}
+body.v20-ui .vm-calendar-selected>div strong{font-size:clamp(20px,1.3cqw,28px)!important}
+body.v20-ui .vm-calendar-selected h2{font-size:clamp(14px,.62cqw,18px)!important}
+body.v20-ui .vm-calendar-selected section>small{font-size:clamp(9px,.3cqw,11px)!important}
+
+body.v20-ui .vm-calendar-fixture header span,
+body.v20-ui .vm-calendar-fixture header b{font-size:clamp(9px,.3cqw,11px)!important}
+body.v20-ui .vm-calendar-fixture>div section img{width:clamp(34px,2.2cqw,44px)!important;height:clamp(34px,2.2cqw,44px)!important}
+body.v20-ui .vm-calendar-fixture>div section strong{font-size:clamp(13px,.55cqw,16px)!important}
+body.v20-ui .vm-calendar-fixture>div>b{font-size:clamp(20px,1.05cqw,26px)!important}
+body.v20-ui .vm-calendar-fixture footer{font-size:clamp(10px,.34cqw,12px)!important}
+
+body.v20-ui .vm-calendar-agenda>header span,
+body.v20-ui .vm-calendar-agenda>header strong{font-size:clamp(10px,.34cqw,12px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-agenda-row{min-height:clamp(38px,2.6cqw,48px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-agenda-row>b{width:clamp(20px,1.35cqw,26px)!important;height:clamp(20px,1.35cqw,26px)!important;font-size:clamp(11px,.4cqw,13px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-agenda-row div span{font-size:clamp(9px,.3cqw,11px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-agenda-row div strong{font-size:clamp(12px,.48cqw,15px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-agenda-row>small{font-size:clamp(9px,.3cqw,11px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-empty-day strong{font-size:clamp(13px,.55cqw,16px)!important}
+body.v20-ui .vm-calendar-agenda .calendar-empty-day small{font-size:clamp(10px,.38cqw,13px)!important}
+body.v20-ui .vm-calendar-key span{font-size:clamp(9px,.3cqw,11px)!important}
+
+@media(prefers-reduced-motion:reduce){
+  body.v20-ui .vm-match-card,body.v20-ui .v43-stat-row,body.v20-ui .vm-calendar-layout .calendar-day,body.v20-ui .v19-calendar-days .calendar-day{transition:none!important}
+}

@@ -7,4 +7,5 @@ _archive/
 *.zip
 tools/__pycache__/
 *.pyc
-
+test-results/
+playwright-report/

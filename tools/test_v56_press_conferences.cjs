@@ -2,6 +2,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {JSDOM}=require('jsdom');
+// The release cache key is read from release-meta.js so a version bump
+// never has to be chased through the test suite by hand.
+const RELEASE_CACHE_KEY=require('../release-meta.js').cacheKey;
 
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
@@ -11,7 +14,7 @@ const css=read('press-conference.css');
 const dataSource=read('press-conference-data.js');
 const engineSource=read('press-conference-engine.js');
 
-assert(html.includes('press-conference.css?v=v60-manager-media'));
+assert(html.includes(`press-conference.css?v=${RELEASE_CACHE_KEY}`));
 assert(html.indexOf('press-conference-data.js')<html.indexOf('press-conference-engine.js'));
 assert(html.indexOf('press-conference-engine.js')<html.indexOf('career-bootstrap.js'));
 assert(app.includes("openFixturePressConference('pre'"),'Match start must offer the pre-match conference');
@@ -49,11 +52,16 @@ window.eval(engineSource);
 window.setTimeout=callback=>{callback();return 1;};
 const library=window.VELMORA_PRESS_CONFERENCE_LIBRARY;
 assert(library,'Question library must register globally');
-assert.equal(library.questionsPerConference,4);
 assert(library.categories.length>=38,'Expected broad press-room topic coverage');
 assert(library.categories.reduce((sum,item)=>sum+item.templates.length,0)>=220,'Expected hundreds of authored question stems');
-assert.equal(library.responseArchetypes.length,6,'Every question must have six response directions');
+assert(library.answerBanks&&Object.keys(library.answerBanks).length>=40,'Every press topic needs its own authored answer bank');
+assert(library.categories.every(category=>library.answerBanks[category.id]?.length>=4), 'Every press topic needs at least four believable answers');
+const authoredAnswers=Object.values(library.answerBanks).flat();
+assert(authoredAnswers.length>=170,'Expected a broad library of authored statements');
+assert(new Set(authoredAnswers.map(answer=>answer.label)).size>=150,'Answer headlines should not be recycled across the press room');
+for(const stock of ['BACK THE GROUP','TAKE RESPONSIBILITY','RAISE THE STANDARD','SHUT IT DOWN','MAKE A STATEMENT','SPEAK FROM THE HEART'])assert(!authoredAnswers.some(answer=>answer.label===stock),`Removed stock answer: ${stock}`);
 assert(library.estimatedQuestionVariants>=10000,'Contextual question combinations must reach five figures');
+assert(engineSource.includes('active.questions.splice(active.questionIndex+1,0,follow)'),'A follow-up must be inserted after the answer that caused it, not replace a later question');
 
 let continued=0;
 let impacts=0;
@@ -83,8 +91,9 @@ const context={
     opponentStar:{id:'p-7',name:'Leo Storm'}
   }
 };
+let currentContext=context;
 const conference=window.VelmoraPressConferences.create({
-  context:stage=>({...context,stage}),
+  context:stage=>({...currentContext,stage}),
   managerHTML:expression=>`<div data-expression="${expression}"></div>`,
   saveSession:(_key,value)=>{saved=value;},
   getSession:()=>null,
@@ -96,9 +105,12 @@ assert.equal(conference.open('pre',fixture,()=>continued++,'GO TO MATCH'),true);
 assert(window.document.querySelector('.pc-intro'),'Invitation should render before the conference');
 assert.equal(window.document.querySelectorAll('[data-pc-attend]').length,1);
 window.document.querySelector('[data-pc-attend]').click();
-assert.equal(window.document.querySelectorAll('[data-pc-answer]').length,6,'Question screen must expose six answers');
-assert.equal(saved.questions.length,4,'Standard conference must contain four contextual questions');
-assert(new Set(saved.questions.map(item=>item.categoryId)).size>=4,'A conference should avoid repetitive categories');
+const firstAnswerCount=window.document.querySelectorAll('[data-pc-answer]').length;
+assert(firstAnswerCount>=3&&firstAnswerCount<=5,'Question-specific answer count must vary between three and five');
+assert(saved.questions.length>=3&&saved.questions.length<=5,'Conference length must vary between three and five contextual questions');
+assert(new Set(saved.questions.map(item=>item.categoryId)).size===saved.questions.length,'A conference should avoid repetitive categories');
+assert(window.document.querySelector('.pc-evidence'),'The player must see why the question belongs in this career context');
+assert(![...window.document.querySelectorAll('[data-pc-answer] strong')].some(node=>/BACK THE GROUP|SPEAK FROM THE HEART/.test(node.textContent)),'The old universal response wheel must not render');
 window.document.querySelector('[data-pc-answer]').click();
 assert.equal(impacts,1,'Selecting an answer must apply career consequences');
 assert(window.document.querySelector('.pc-response-panel'),'Answer must produce a cinematic spoken response');
@@ -107,12 +119,34 @@ window.document.querySelector('[data-pc-leave]').click();
 assert.equal(continued,1,'Leaving an optional conference must continue the match flow');
 assert.equal(window.document.querySelector('#pressConferenceOverlay').getAttribute('aria-hidden'),'true');
 
+const postContext={
+  ...context,
+  stage:'post',
+  score:'3–1',
+  resultCode:'W',
+  resultLabel:'WIN',
+  cards:2,
+  players:{...context.players,potm:{id:'p-8',name:'Milo Reed'},scorer:{id:'p-9',name:'Eli Shaw'}}
+};
+currentContext=postContext;
+assert.equal(conference.open('post',fixture,()=>continued++,'CONTINUE'),true);
+window.document.querySelector('[data-pc-attend]').click();
+assert.equal(saved.questions[0].categoryId,'MATCH_RESULT','Post-match conferences must open on the actual result');
+assert(saved.questions.some(question=>['VICTORY_MOMENT','PLAYER_OF_MATCH','GOAL_SCORER','DISCIPLINE'].includes(question.categoryId)),'Post-match conferences must prioritise what happened in the match');
+window.document.querySelector('[data-pc-leave]').click();
+assert.equal(continued,2,'Leaving a post-match conference must continue the result flow');
+
 dom.window.close();
-console.log(JSON.stringify({status:'PASS',version:'V56.0',checks:[
+console.log(JSON.stringify({status:'PASS',version:'V95.0',authoredAnswers:authoredAnswers.length,checks:[
   'optional pre- and post-match hooks are connected',
-  '38+ contextual categories and 10,000+ variants are available',
-  'all questions expose six distinct response directions',
+  '39 contextual categories and 170+ authored statements are available',
+  'question and answer counts vary with the fixture',
+  'the old universal six-answer wheel is removed',
+  'result, player and storyline evidence is visible',
+  'post-match conferences lead with the score and relevant match events',
+  'reporter follow-ups are inserted without deleting unrelated questions',
   'manager speaking presentation, layered scenes and career impacts are wired',
+  'answers carry their own trade-offs and follow-up risk',
   'skip and early-exit paths continue safely',
   'all four production scene assets are present'
 ]},null,2));

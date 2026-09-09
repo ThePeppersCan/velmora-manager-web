@@ -4,11 +4,14 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'themes.css'),'utf8');
 const {runtimeFiles}=require('./release_manifest.cjs');
+// The release cache key is read from release-meta.js so a version bump
+// never has to be chased through the test suite by hand.
+const RELEASE_CACHE_KEY=require('../release-meta.js').cacheKey;
 const checks=[];
 function ok(name,fn){fn();checks.push(name);}
 ok('theme stylesheet loaded after AAA career pass',()=>{
-  assert(html.includes('themes.css?v=v46-2-interface-themes'));
-  assert(html.indexOf('themes.css?v=v46-2-interface-themes')>html.indexOf('aaa-career-pass.css'));
+  assert(html.includes(`themes.css?v=${RELEASE_CACHE_KEY}`));
+  assert(html.indexOf(`themes.css?v=${RELEASE_CACHE_KEY}`)>html.indexOf('aaa-career-pass.css'));
 });
 ok('early theme boot avoids a light-theme flash',()=>{
   assert(html.includes('velmora-manager-interface-theme-v1'));

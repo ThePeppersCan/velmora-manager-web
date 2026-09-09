@@ -1,0 +1,749 @@
+/* ========================================================================
+   V76 — OFFICE WORLDS
+   Board, finances, contracts and staff now share the bright, tactile pixel
+   language of Club Post. The global white navigation and manager tab remain
+   deliberately untouched.
+   ======================================================================== */
+
+body.v20-ui .office-pane[data-office-pane="board"],
+body.v20-ui .office-pane[data-office-pane="finances"],
+body.v20-ui .office-pane[data-office-pane="contracts"],
+body.v20-ui .office-pane[data-office-pane="staff"] {
+  --office-world-blue: #087be0;
+  --office-world-deep: #06285f;
+  --office-world-cyan: #18cfff;
+  --office-world-yellow: #ffe532;
+  --office-world-green: #39c96b;
+  --office-world-ink: #092f67;
+  --office-world-paper: #fffdf3;
+  position: relative !important;
+  min-height: 0 !important;
+  color: var(--office-world-ink) !important;
+  font-family: "Nunito Sans", Arial, sans-serif !important;
+  background-color: #eaf7ff !important;
+  background-position: center top !important;
+  background-size: 100% auto !important;
+  background-repeat: no-repeat !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui .office-pane[data-office-pane="board"] {
+  background-image:
+    linear-gradient(180deg, rgba(0, 64, 143, .2), rgba(232, 248, 255, .92) 35%, #eaf7ff 58%),
+    url("assets/inbox-pixel-v2/scene-boardroom.png") !important;
+}
+
+body.v20-ui .office-pane[data-office-pane="finances"] {
+  background-image:
+    linear-gradient(180deg, rgba(0, 72, 152, .12), rgba(235, 250, 255, .94) 34%, #eaf7ff 58%),
+    url("assets/inbox-pixel-v2/office-header-campus.png") !important;
+}
+
+body.v20-ui .office-pane[data-office-pane="contracts"] {
+  background-image:
+    linear-gradient(180deg, rgba(0, 53, 126, .18), rgba(236, 249, 255, .94) 34%, #eaf7ff 58%),
+    url("assets/inbox-pixel-v2/scene-recruitment.png") !important;
+}
+
+body.v20-ui .office-pane[data-office-pane="staff"] {
+  background-image:
+    linear-gradient(180deg, rgba(0, 58, 135, .15), rgba(236, 249, 255, .95) 35%, #eaf7ff 60%),
+    url("assets/inbox-pixel-v2/scene-academy.png") !important;
+}
+
+body.v20-ui .office-pane[data-office-pane="board"]::after,
+body.v20-ui .office-pane[data-office-pane="finances"]::after,
+body.v20-ui .office-pane[data-office-pane="contracts"]::after,
+body.v20-ui .office-pane[data-office-pane="staff"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border: 2px solid rgba(255,255,255,.72);
+  box-shadow: inset 0 0 0 2px rgba(12, 124, 217, .2);
+}
+
+body.v20-ui :is(
+  .office-board-content,
+  .office-finances-content,
+  .office-contracts-layout,
+  #officeStaffContent
+) {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Shared tactile surfaces and display type. */
+body.v20-ui :is(
+  .board-confidence-card,
+  .board-directive-card,
+  .office-objective-card,
+  .office-finance-metric,
+  .finance-ledger-card,
+  .finance-health-card,
+  .office-contract-list-wrap,
+  .office-contract-detail,
+  #officeStaffContent .v36-staff-list,
+  #officeStaffContent .v36-staff-dossier
+) {
+  border: 2px solid #0d5aa8 !important;
+  border-radius: 9px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(246,251,255,.99)) !important;
+  box-shadow: inset 0 0 0 2px #fff, 0 4px 0 rgba(6,40,95,.18), 0 9px 18px rgba(6,42,91,.1) !important;
+}
+
+body.v20-ui :is(
+  .board-confidence-copy span,
+  .board-directive-card > span,
+  .objective-tag,
+  .office-finance-metric > span,
+  .finance-card-heading span,
+  .finance-health-card > span,
+  .contract-detail-copy > span,
+  #officeStaffContent .v36-backroom-heading small,
+  #officeStaffContent .v36-list-heading strong,
+  #officeStaffContent .v36-impact > small
+) {
+  color: #0877c5 !important;
+  font-family: "Silkscreen", monospace !important;
+  font-weight: 700 !important;
+  letter-spacing: .035em !important;
+}
+
+/* Board expectations — a boardroom dashboard, with every objective visible. */
+body.v20-ui #officeBoardPane .office-board-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: clamp(8px, .55cqw, 14px) !important;
+  display: grid !important;
+  grid-template-rows: minmax(148px, 42%) minmax(0, 1fr) !important;
+  gap: clamp(8px, .55cqw, 14px) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #officeBoardPane .office-board-hero {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1.08fr .92fr !important;
+  gap: clamp(8px, .55cqw, 14px) !important;
+}
+
+body.v20-ui #officeBoardPane .board-confidence-card,
+body.v20-ui #officeBoardPane .board-directive-card {
+  min-height: 0 !important;
+  padding: clamp(11px, .7cqw, 17px) !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui #officeBoardPane .board-confidence-card {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: clamp(15px, 1cqw, 25px) !important;
+  border-color: #0797b5 !important;
+  background:
+    linear-gradient(90deg, rgba(230,251,255,.99), rgba(255,255,255,.98)),
+    url("assets/inbox-pixel-v2/scene-boardroom.png") center/cover !important;
+}
+
+body.v20-ui #officeBoardPane .board-big-ring {
+  width: clamp(78px, 4.35cqw, 104px) !important;
+  height: clamp(78px, 4.35cqw, 104px) !important;
+  border: 3px solid #06285f !important;
+  background: conic-gradient(var(--office-world-yellow) calc(var(--confidence)*1%), #c8e2ef 0) !important;
+  box-shadow: inset 0 0 0 3px #fff, 0 4px 0 rgba(6,40,95,.28) !important;
+}
+
+body.v20-ui #officeBoardPane .board-big-ring::after {
+  inset: 12% !important;
+  border: 2px solid #0b5ca4 !important;
+  background: radial-gradient(circle at 42% 30%, #1b609d, #06275c 72%) !important;
+}
+
+body.v20-ui #officeBoardPane .board-big-ring strong {
+  color: var(--office-world-yellow) !important;
+  font: 400 clamp(27px, 1.75cqw, 42px)/1 "Lilita One", Impact, sans-serif !important;
+  text-shadow: 0 2px 0 #031638 !important;
+}
+
+body.v20-ui #officeBoardPane .board-big-ring span {
+  color: white !important;
+  font: 700 clamp(7px, .34cqw, 9px)/1 "Silkscreen", monospace !important;
+}
+
+body.v20-ui #officeBoardPane :is(.board-confidence-copy h3, .board-directive-card h3) {
+  margin: .28cqw 0 0 !important;
+  color: #082d66 !important;
+  font: 400 clamp(21px, 1.3cqw, 32px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeBoardPane :is(.board-confidence-copy p, .board-directive-card p) {
+  margin-top: .42cqw !important;
+  color: #496a87 !important;
+  font: 800 clamp(10px, .49cqw, 14px)/1.35 "Nunito Sans", sans-serif !important;
+}
+
+body.v20-ui #officeBoardPane .board-confidence-copy {
+  min-width: 0 !important;
+  align-self: center !important;
+  overflow: visible !important;
+}
+
+body.v20-ui #officeBoardPane .board-directive-card {
+  padding-right: 24% !important;
+  border-color: #d9a91b !important;
+  background: linear-gradient(135deg, #fff8d8, rgba(255,255,255,.98) 60%, #e8f7ff) !important;
+}
+
+body.v20-ui #officeBoardPane .board-crest-watermark {
+  right: 3% !important;
+  bottom: 4% !important;
+  width: 22% !important;
+  height: 88% !important;
+  opacity: .92 !important;
+  filter: drop-shadow(0 4px 0 rgba(6,40,95,.18)) !important;
+}
+
+body.v20-ui #officeBoardPane .board-crest-watermark img {
+  transform: scale(1.5) !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-grid {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: clamp(8px, .55cqw, 14px) !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-card {
+  min-height: 0 !important;
+  padding: clamp(13px, .85cqw, 21px) !important;
+  border-color: color-mix(in srgb, var(--objective-accent) 70%, #0c5da9) !important;
+  background: linear-gradient(180deg, #fffef9, #f4faff) !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-card::before {
+  display: block !important;
+  width: 100% !important;
+  height: 6px !important;
+  bottom: auto !important;
+  background: var(--objective-accent) !important;
+}
+
+body.v20-ui #officeBoardPane .objective-tag {
+  color: #3176aa !important;
+  font-size: clamp(8px, .38cqw, 10px) !important;
+}
+
+body.v20-ui #officeBoardPane .objective-tag b { color: #9d7000 !important; }
+
+body.v20-ui #officeBoardPane .office-objective-card h4 {
+  margin: clamp(8px, .55cqw, 13px) 0 0 !important;
+  color: #072d68 !important;
+  font: 400 clamp(20px, 1.15cqw, 29px)/1.05 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-card p {
+  min-height: 0 !important;
+  margin-top: .42cqw !important;
+  color: #4e6c87 !important;
+  font: 800 clamp(10px, .47cqw, 13px)/1.35 "Nunito Sans", sans-serif !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-progress > div {
+  height: clamp(9px, .55cqw, 13px) !important;
+  border: 2px solid #98bdd7 !important;
+  border-radius: 5px !important;
+  background: #dcecf5 !important;
+}
+
+body.v20-ui #officeBoardPane .office-objective-progress i {
+  background: linear-gradient(90deg, #25b665, #7be545) !important;
+  box-shadow: inset 0 2px rgba(255,255,255,.62) !important;
+}
+
+/* Finances — treasury cards, clear figures and the existing finance tools. */
+body.v20-ui #officeFinancesPane .office-finances-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: clamp(8px, .55cqw, 14px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: clamp(8px, .5cqw, 12px) !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finances-content:has(.office-finance-body) {
+  grid-template-rows: auto clamp(84px, 6cqw, 138px) minmax(0, 1fr) !important;
+}
+
+body.v20-ui #officeFinancesPane .v35-section-nav {
+  min-height: clamp(34px, 2.15cqw, 50px) !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  margin: 0 !important;
+  padding: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid var(--office-world-deep) !important;
+  border-radius: 8px !important;
+  background: #0752ad !important;
+  box-shadow: inset 0 0 0 2px var(--office-world-cyan), 0 3px 0 rgba(6,40,95,.35) !important;
+}
+
+body.v20-ui #officeFinancesPane .v35-section-nav button {
+  min-height: 0 !important;
+  padding: 5px 10px !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  background: linear-gradient(#0982e5, #0654ae) !important;
+  color: white !important;
+  font: 700 clamp(8px, .43cqw, 11px)/1 "Silkscreen", monospace !important;
+  text-shadow: 0 2px 0 #06316f !important;
+}
+
+body.v20-ui #officeFinancesPane .v35-section-nav button.is-active {
+  background: linear-gradient(#ffe835, #f4b919) !important;
+  color: #08295f !important;
+  box-shadow: inset 0 0 0 2px #fff69b, inset 0 -3px 0 #c98c00 !important;
+  text-shadow: none !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-metrics {
+  min-height: 0 !important;
+  gap: clamp(7px, .45cqw, 11px) !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-metric {
+  position: relative !important;
+  min-height: 0 !important;
+  padding: clamp(10px, .68cqw, 17px) clamp(11px, .76cqw, 19px) !important;
+  overflow: hidden !important;
+  border-color: #0c6eb9 !important;
+  border-top: 6px solid #f0bc17 !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-metric:nth-child(2) { border-top-color: #16c7d7 !important; }
+body.v20-ui #officeFinancesPane .office-finance-metric:nth-child(3) { border-top-color: #7f85d7 !important; }
+body.v20-ui #officeFinancesPane .office-finance-metric:nth-child(4) { border-top-color: #39ca69 !important; }
+
+body.v20-ui #officeFinancesPane .office-finance-metric > span {
+  color: #17649d !important;
+  font-size: clamp(8px, .37cqw, 10px) !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-metric strong {
+  margin-top: .34cqw !important;
+  color: #082e69 !important;
+  font: 400 clamp(24px, 1.35cqw, 34px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-metric small {
+  color: #55728e !important;
+  font: 800 clamp(9px, .4cqw, 11px)/1.2 "Nunito Sans", sans-serif !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-body {
+  min-height: 0 !important;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr) !important;
+  gap: clamp(8px, .55cqw, 14px) !important;
+}
+
+body.v20-ui #officeFinancesPane :is(.finance-ledger-card, .finance-health-card) {
+  min-height: 0 !important;
+  padding: clamp(12px, .8cqw, 20px) !important;
+  border-color: #0c6eb9 !important;
+}
+
+body.v20-ui #officeFinancesPane .finance-ledger-card {
+  background:
+    linear-gradient(rgba(11,106,183,.055) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(180deg, #fffef8, #f7fbff) !important;
+}
+
+body.v20-ui #officeFinancesPane :is(.finance-card-heading h3, .finance-health-card h3) {
+  color: #082e69 !important;
+  font: 400 clamp(19px, 1.05cqw, 27px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeFinancesPane .office-finance-chart .line { stroke: #0875d1 !important; stroke-width: 3 !important; }
+body.v20-ui #officeFinancesPane .office-finance-chart .dot { fill: #ffe128 !important; stroke: #075bb2 !important; stroke-width: 2 !important; }
+body.v20-ui #officeFinancesPane .office-finance-chart .grid { stroke: #bfd8e9 !important; }
+
+body.v20-ui #officeFinancesPane .finance-health-score {
+  border: 2px solid #83bdd6 !important;
+  border-radius: 7px !important;
+  background: linear-gradient(135deg, #e3fbec, #f8fffb) !important;
+}
+
+body.v20-ui #officeFinancesPane .finance-health-score b {
+  color: #07834f !important;
+  font: 400 clamp(30px, 1.8cqw, 45px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeFinancesPane .finance-health-row strong { color: #0669bc !important; }
+body.v20-ui #officeFinancesPane .finance-health-note {
+  border: 2px solid #e5bd3f !important;
+  border-left-width: 6px !important;
+  border-radius: 6px !important;
+  background: #fff8d8 !important;
+  color: #5c541e !important;
+}
+
+/* Expansion-backed finance screens keep the same language. */
+body.v20-ui #officeFinancesPane #v35FinanceWorkspace {
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: clamp(8px, .55cqw, 14px) !important;
+  border: 2px solid #0c68b3 !important;
+  border-radius: 9px !important;
+  background: rgba(247,252,255,.98) !important;
+  box-shadow: inset 0 0 0 2px white !important;
+}
+
+body.v20-ui #officeFinancesPane #v35FinanceWorkspace .v34-content { padding: 0 !important; }
+body.v20-ui #officeFinancesPane #v35FinanceWorkspace :is(.v34-card, .v34-summary > div, .v34-table-wrap) {
+  border: 2px solid #75aeda !important;
+  border-radius: 8px !important;
+  background: linear-gradient(#fff, #f4faff) !important;
+  box-shadow: 0 3px 0 #c3dae9 !important;
+}
+
+body.v20-ui #officeFinancesPane #v35FinanceWorkspace h3 {
+  color: #082e69 !important;
+  font-family: "Lilita One", Impact, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+/* Contracts — recruitment desk list on the left, player dossier on the right. */
+body.v20-ui #officeContractsPane { padding: clamp(7px, .45cqw, 11px) !important; }
+
+body.v20-ui #officeContractsPane .office-contracts-layout {
+  height: 100% !important;
+  min-height: 0 !important;
+  grid-template-columns: minmax(0, 1.42fr) minmax(310px, .68fr) !important;
+  gap: clamp(7px, .45cqw, 11px) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-list-wrap {
+  grid-template-rows: clamp(72px, 4.7cqw, 112px) clamp(34px, 2.1cqw, 49px) minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  border-right: 2px solid #0d5aa8 !important;
+}
+
+body.v20-ui #officeContractsPane .office-section-heading {
+  position: relative !important;
+  padding: clamp(11px, .75cqw, 18px) !important;
+  border: 0 !important;
+  border-bottom: 3px solid #06285f !important;
+  background:
+    linear-gradient(90deg, rgba(5,38,91,.96), rgba(5,91,169,.9) 56%, rgba(5,64,137,.54)),
+    url("assets/inbox-pixel-v2/scene-recruitment.png") center 48% / cover !important;
+  color: white !important;
+}
+
+body.v20-ui #officeContractsPane .office-section-heading .office-kicker { color: var(--office-world-yellow) !important; }
+body.v20-ui #officeContractsPane .office-section-heading h3 {
+  color: white !important;
+  font: 400 clamp(23px, 1.45cqw, 36px)/1 "Lilita One", Impact, sans-serif !important;
+  text-shadow: 0 3px 0 #041a43 !important;
+}
+body.v20-ui #officeContractsPane .office-section-heading p {
+  color: #d8efff !important;
+  font-weight: 800 !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-table-head {
+  padding: 0 clamp(10px, .65cqw, 16px) !important;
+  border-bottom: 2px solid #0b579f !important;
+  background: linear-gradient(#e6f5ff, #cfe7f7) !important;
+  color: #0a4d91 !important;
+  font: 700 clamp(8px, .38cqw, 10px)/1 "Silkscreen", monospace !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-list {
+  background: rgba(255,255,255,.97) !important;
+  scrollbar-color: var(--office-world-yellow) #0867bd !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-row {
+  min-height: clamp(66px, 4.55cqw, 108px) !important;
+  padding: clamp(7px, .46cqw, 11px) clamp(10px, .65cqw, 16px) !important;
+  border-bottom: 2px solid #d2e5f1 !important;
+  background: rgba(255,255,255,.96) !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-row:hover { background: #edf9ff !important; }
+body.v20-ui #officeContractsPane .office-contract-row.is-selected {
+  background: linear-gradient(90deg, #fff7c8, #f4fbff 64%, #e8f7ff) !important;
+  box-shadow: inset 7px 0 #ffd927 !important;
+}
+
+body.v20-ui #officeContractsPane .contract-avatar {
+  border: 2px solid #0873c6 !important;
+  border-radius: 50% !important;
+  background: #dff3ff !important;
+  box-shadow: inset 0 0 0 2px white !important;
+}
+
+body.v20-ui #officeContractsPane .contract-player-cell strong { color: #082e69 !important; }
+body.v20-ui #officeContractsPane .contract-cell strong { color: #123d72 !important; }
+
+body.v20-ui #officeContractsPane .contract-status-chip {
+  border: 2px solid #1a9a6b !important;
+  border-radius: 12px !important;
+  background: #dff8e9 !important;
+  color: #087647 !important;
+  box-shadow: inset 0 1px white !important;
+}
+
+body.v20-ui #officeContractsPane .office-contract-detail {
+  min-height: 0 !important;
+  padding: clamp(12px, .78cqw, 19px) !important;
+  overflow: auto !important;
+  border-color: #0d5aa8 !important;
+}
+
+body.v20-ui #officeContractsPane .contract-detail-hero {
+  margin: clamp(-19px, -.78cqw, -12px) clamp(-19px, -.78cqw, -12px) 0 !important;
+  padding: clamp(13px, .85cqw, 21px) !important;
+  border-bottom: 4px solid var(--office-world-yellow) !important;
+  background: linear-gradient(135deg, #06295f, #075eb5) !important;
+}
+
+body.v20-ui #officeContractsPane .contract-detail-avatar {
+  border: 2px solid var(--office-world-yellow) !important;
+  border-radius: 8px !important;
+  background: linear-gradient(#dff6ff, #a9d7ee) !important;
+}
+
+body.v20-ui #officeContractsPane .contract-detail-copy > span { color: #69dbff !important; }
+body.v20-ui #officeContractsPane .contract-detail-copy h3 {
+  color: white !important;
+  font: 400 clamp(22px, 1.25cqw, 31px)/1 "Lilita One", Impact, sans-serif !important;
+  text-shadow: 0 2px 0 #03183d !important;
+}
+body.v20-ui #officeContractsPane .contract-detail-copy p { color: #d8efff !important; }
+body.v20-ui #officeContractsPane .contract-detail-copy b {
+  border-color: #d19b00 !important;
+  background: var(--office-world-yellow) !important;
+  color: #06285f !important;
+}
+
+body.v20-ui #officeContractsPane .contract-detail-grid {
+  border: 2px solid #80b4d5 !important;
+  border-radius: 7px !important;
+  overflow: hidden !important;
+  background: white !important;
+}
+
+body.v20-ui #officeContractsPane .contract-detail-grid > div { background: linear-gradient(#fff, #f0f8fd) !important; }
+body.v20-ui #officeContractsPane .contract-detail-grid strong { color: #082e69 !important; }
+body.v20-ui #officeContractsPane .contract-advice {
+  border: 2px solid #d8ad29 !important;
+  border-left-width: 6px !important;
+  border-radius: 6px !important;
+  background: #fff8d7 !important;
+}
+
+/* Staff — a lively backroom hub with the existing hiring tools untouched. */
+body.v20-ui #officeStaffPane {
+  position: absolute !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: clamp(7px, .48cqw, 12px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.v20-ui #officeStaffContent,
+body.v20-ui #officeStaffContent .v34-content {
+  min-height: 100% !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+body.v20-ui #officeStaffContent .v36-backroom {
+  max-width: none !important;
+  color: #163c6a !important;
+  font-family: "Nunito Sans", Arial, sans-serif !important;
+}
+
+body.v20-ui #officeStaffContent .v36-backroom-heading {
+  min-height: clamp(88px, 6cqw, 142px) !important;
+  padding: clamp(14px, .9cqw, 22px) clamp(18px, 1.2cqw, 29px) !important;
+  border: 3px solid var(--office-world-deep) !important;
+  border-radius: 10px !important;
+  background:
+    linear-gradient(90deg, rgba(4,35,83,.96), rgba(5,99,177,.82) 55%, rgba(4,50,112,.64)),
+    url("assets/inbox-pixel-v2/scene-academy.png") center 40% / cover !important;
+  box-shadow: inset 0 0 0 2px var(--office-world-cyan), 0 4px 0 #042257 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-backroom-heading h2 {
+  color: white !important;
+  font: 400 clamp(28px, 1.8cqw, 44px)/1 "Lilita One", Impact, sans-serif !important;
+  letter-spacing: .02em !important;
+  text-shadow: 0 3px 0 #041d4a !important;
+}
+
+body.v20-ui #officeStaffContent .v36-backroom-heading small { color: var(--office-world-yellow) !important; }
+body.v20-ui #officeStaffContent .v36-backroom-totals {
+  padding: clamp(9px, .6cqw, 15px) !important;
+  border: 2px solid rgba(255,255,255,.82) !important;
+  border-radius: 8px !important;
+  background: rgba(4,37,88,.78) !important;
+  box-shadow: inset 0 0 0 2px rgba(18,202,255,.55) !important;
+}
+body.v20-ui #officeStaffContent .v36-backroom-totals span { color: #cbeaff !important; }
+body.v20-ui #officeStaffContent .v36-backroom-totals b {
+  color: white !important;
+  font-family: "Lilita One", Impact, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-departments {
+  gap: clamp(6px, .4cqw, 10px) !important;
+  margin: clamp(9px, .6cqw, 15px) 0 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-departments button {
+  min-height: clamp(61px, 4cqw, 96px) !important;
+  padding: clamp(8px, .55cqw, 13px) !important;
+  border: 2px solid #6ca5cf !important;
+  border-radius: 8px !important;
+  background: linear-gradient(#fff, #eaf6fd) !important;
+  color: #123f72 !important;
+  box-shadow: 0 3px 0 #b7d2e4 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-departments button:hover { background: #f7fcff !important; }
+body.v20-ui #officeStaffContent .v36-departments button.is-selected {
+  border-color: #d6a400 !important;
+  background: linear-gradient(#fff8bd, #ffe537) !important;
+  box-shadow: inset 0 0 0 2px white, 0 3px 0 #bc8400 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-department-number {
+  color: #0870c6 !important;
+  font: 400 clamp(22px, 1.35cqw, 33px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeStaffContent .v36-department-brief {
+  margin-bottom: clamp(8px, .5cqw, 12px) !important;
+  padding: clamp(9px, .6cqw, 15px) clamp(12px, .8cqw, 19px) !important;
+  border: 2px solid #81b4d5 !important;
+  border-radius: 7px !important;
+  background: rgba(255,255,255,.94) !important;
+  box-shadow: 0 3px 0 #c0d8e7 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-department-brief h3 {
+  color: #082e69 !important;
+  font: 400 clamp(20px, 1.15cqw, 29px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-tabs {
+  gap: 5px !important;
+  margin-bottom: clamp(8px, .5cqw, 12px) !important;
+  padding: 4px !important;
+  border: 2px solid var(--office-world-deep) !important;
+  border-radius: 7px !important;
+  background: #0754aa !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-tabs button {
+  min-height: 35px !important;
+  border: 0 !important;
+  background: linear-gradient(#0b7edc, #0753a7) !important;
+  color: white !important;
+  font: 700 clamp(9px, .45cqw, 12px)/1 "Silkscreen", monospace !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-tabs button[aria-pressed="true"] {
+  background: linear-gradient(#51df7b, #1fad54) !important;
+  color: #063868 !important;
+  box-shadow: inset 0 0 0 2px #a9ffbd, inset 0 -3px #087f35 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-workspace { gap: clamp(8px, .55cqw, 14px) !important; }
+body.v20-ui #officeStaffContent .v36-staff-list { padding: clamp(8px, .55cqw, 14px) !important; }
+
+body.v20-ui #officeStaffContent .v36-staff-pick {
+  border: 2px solid transparent !important;
+  border-radius: 7px !important;
+  color: #123a6a !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-pick:hover { background: #e7f6ff !important; }
+body.v20-ui #officeStaffContent .v36-staff-pick[aria-pressed="true"] {
+  border-color: #0b70bf !important;
+  background: linear-gradient(90deg, #fff7c4, white) !important;
+  box-shadow: inset 6px 0 var(--office-world-yellow), 0 3px 0 #c8dae7 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-list-monogram,
+body.v20-ui #officeStaffContent .v36-monogram {
+  border: 2px solid #075da9 !important;
+  background: linear-gradient(145deg, #1187df, #064f9f) !important;
+  color: white !important;
+  font-family: "Lilita One", Impact, sans-serif !important;
+  font-weight: 400 !important;
+  box-shadow: inset 0 0 0 2px #57d3ff, 0 3px 0 #06306e !important;
+}
+
+body.v20-ui #officeStaffContent .v36-person-heading {
+  border-bottom: 4px solid var(--office-world-yellow) !important;
+  background: linear-gradient(135deg, #e2f6ff, #fff 58%, #fff7c8) !important;
+}
+
+body.v20-ui #officeStaffContent .v36-person-heading h3 {
+  color: #082e69 !important;
+  font: 400 clamp(23px, 1.4cqw, 35px)/1 "Lilita One", Impact, sans-serif !important;
+}
+
+body.v20-ui #officeStaffContent .v36-quality strong {
+  color: #0875c9 !important;
+  font-family: "Lilita One", Impact, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-person-body h4 { color: #082e69 !important; }
+body.v20-ui #officeStaffContent :is(.v36-staff-decision > button, .v36-development > button) {
+  border: 2px solid #064a98 !important;
+  background: linear-gradient(#0c82df, #0654ac) !important;
+  color: white !important;
+  box-shadow: inset 0 2px #54cfff, 0 3px 0 #052e70 !important;
+}
+
+body.v20-ui #officeStaffContent .v36-staff-help {
+  border: 2px solid #72a9cf !important;
+  background: rgba(255,255,255,.94) !important;
+  box-shadow: 0 3px 0 #bfd7e6 !important;
+}
+
+@media (max-width: 1100px) {
+  body.v20-ui #officeBoardPane .office-board-content { grid-template-rows: minmax(140px, 42%) minmax(0, 1fr) !important; }
+  body.v20-ui #officeFinancesPane .office-finance-body { grid-template-columns: minmax(0, 1.35fr) minmax(250px, .8fr) !important; }
+  body.v20-ui #officeContractsPane .office-contracts-layout { grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr) !important; }
+}
+
+@media (max-width: 780px) {
+  body.v20-ui .office-pane[data-office-pane="board"],
+  body.v20-ui .office-pane[data-office-pane="finances"],
+  body.v20-ui .office-pane[data-office-pane="contracts"],
+  body.v20-ui .office-pane[data-office-pane="staff"] { overflow: auto !important; }
+  body.v20-ui #officeBoardPane .office-board-content { height: auto !important; grid-template-rows: auto auto !important; }
+  body.v20-ui #officeBoardPane :is(.office-board-hero, .office-objective-grid) { grid-template-columns: 1fr !important; }
+  body.v20-ui #officeFinancesPane .office-finances-content { height: auto !important; overflow: visible !important; }
+  body.v20-ui #officeFinancesPane :is(.office-finance-metrics, .office-finance-body) { grid-template-columns: 1fr 1fr !important; }
+  body.v20-ui #officeContractsPane .office-contracts-layout { height: auto !important; grid-template-columns: 1fr !important; }
+  body.v20-ui #officeContractsPane .office-contract-list-wrap { min-height: 620px !important; }
+}

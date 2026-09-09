@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <base href="../">
+  <title>V73 Negotiation Visual QA</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="negotiation-cinematic.css?v=v83-close-manager">
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02080c}.modal-backdrop{display:flex!important;position:fixed;inset:0}.negotiation-card{box-sizing:border-box}.negotiation-header>div:first-child{min-width:0}.negotiation-step{margin-left:auto}.offer-control{display:grid;grid-template-columns:34px 1fr 34px;gap:6px}.offer-shortcuts,.negotiation-actions{display:flex;gap:6px}.offer-shortcuts button{flex:1}.negotiation-response span,.negotiation-response strong,.negotiation-response small{display:block}.negotiation-intel-warning span{display:block}.negotiation-talks button{cursor:pointer}.v35-agreement-type label{display:none}
+  </style>
+</head>
+<body>
+  <div id="negotiationModal" class="modal-backdrop negotiation-backdrop is-open" aria-hidden="false">
+    <div class="negotiation-card">
+      <button class="modal-close" type="button" aria-label="Close">×</button>
+      <div id="negotiationContent">
+        <header class="negotiation-header"><div><div class="eyebrow">CLUB NEGOTIATION</div><h3>TRANSFER OFFER</h3><p>Agree a fee before opening personal terms.</p></div><div class="negotiation-step">OPENING TALKS</div></header>
+        <div class="negotiation-body"><aside class="negotiation-player"></aside><section class="negotiation-talks">
+          <div class="v35-agreement-type"><span>Approach type</span><select><option>Transfer fee</option><option>Transfer + sell-on</option></select></div>
+          <div class="negotiation-values"><div><span>Your estimate</span><strong>£1.2m–£1.8m</strong></div><div><span>Scouting</span><strong>REPORT COMPLETE</strong></div><div><span>Your budget</span><strong>£8.4m</strong></div></div>
+          <div class="offer-builder"><label>Your transfer fee</label><div class="offer-control"><button>−</button><input value="1450000"><button>+</button></div><div class="offer-shortcuts"><button>TEST VALUE</button><button>MID EST.</button><button>STRONG BID</button></div></div>
+          <div class="negotiation-response"><span>NEGOTIATION ROOM</span><strong>The selling club are ready to hear your proposal.</strong><small>Contract, importance, leverage and club circumstances all affect the seller’s position.</small></div>
+          <div class="negotiation-intel-warning is-clear"><b>FULL REPORT AVAILABLE</b><span>Your recruitment team has narrowed the valuation.</span></div>
+          <div class="negotiation-actions"><button>BACK</button><button class="submit-offer">SUBMIT OFFER</button></div>
+        </section></div>
+      </div>
+    </div>
+  </div>
+  <script src="negotiation-cinematic.js?v=v83-close-manager"></script>
+  <script>
+    const sprite=(id,name)=>`<img class="smart-avatar player-full-body-avatar" src="assets/player-avatars/${id}.png" alt="${name}">`;
+    const params=new URLSearchParams(location.search),stage=params.get('stage')||'boardroom',status=params.get('status')||'idle';
+    if(stage==='agent')document.getElementById('negotiationContent').innerHTML=`
+      <header class="negotiation-header"><div><div class="eyebrow">PLAYER NEGOTIATION</div><h3>CONTRACT TALKS</h3><p>Agree personal terms with Avery Stone.</p></div><div class="negotiation-step">OPENING TALKS</div></header>
+      <div class="negotiation-body"><aside class="negotiation-player"></aside><section class="negotiation-talks contract-talks">
+        <div class="negotiation-values"><div><span>Agreed fee</span><strong>£3.85m</strong></div><div><span>Current wage</span><strong>£6.3k/w</strong></div><div><span>Talks status</span><strong>OPEN TO TALKS</strong></div></div>
+        <div class="contract-grid"><label><span>Squad role</span><select><option>Rotation</option></select></label><label><span>Contract length</span><select><option>4 Years</option></select></label><label><span>Weekly wage</span><div class="contract-money"><b>£</b><input value="6600"></div></label><label><span>Signing bonus</span><div class="contract-money"><b>£</b><input value="42000"></div></label><label class="v35-clause-field"><span>Release clause</span><select><option>No release clause</option></select></label><label class="v35-clause-field" hidden><span>Buyout amount</span><input></label></div>
+        <div class="negotiation-response"><span>PLAYER REPRESENTATIVES</span><strong>Avery Stone's representatives are ready to discuss terms.</strong><small>The player evaluates the whole package: role, term, wage, signing bonus, club level and personal ambitions all matter.</small></div>
+        <div class="contract-note">Every visible term now matters. A stronger signing bonus can compensate for a slightly lower wage, but it cannot rescue an unrealistic role or an insulting overall package.</div>
+        <div class="negotiation-actions"><button>BACK TO CLUB TALKS</button><button class="submit-offer">SUBMIT CONTRACT</button></div>
+      </section></div>`;
+    const cast={
+      playerManager:{name:'Noa Bianchi',closedHTML:sprite('player-001','Noa Bianchi'),openHTML:sprite('player-001','Noa Bianchi')},
+      oppositionManager:{name:'Cassian Vale',closedHTML:sprite('player-018','Cassian Vale'),openHTML:sprite('player-018','Cassian Vale')},
+      agent:{name:'Mara Quinn',closedHTML:sprite('player-018','Mara Quinn'),openHTML:sprite('player-018','Mara Quinn')},
+      player:{name:'Avery Stone',closedHTML:sprite('player-020','Avery Stone'),openHTML:sprite('player-020','Avery Stone')}
+    };
+    VelmoraNegotiationScene.update(document.getElementById('negotiationModal'),{stage,status,playerId:'preview',clubName:'Morrow Quay',counterpart:stage==='agent'?'Mara Quinn':'Cassian Vale',session:{id:'preview',personality:'PRAGMATIC'},cast,speakerRole:stage==='agent'?'agent':'oppositionManager'});
+    if(params.get('desk')==='low')document.querySelector('.negotiation-card')?.style.setProperty('bottom','-284px','important');
+  </script>
+</body>
+</html>

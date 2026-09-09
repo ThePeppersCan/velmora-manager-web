@@ -1,0 +1,1534 @@
+/* V75 — Central dashboard rebuilt to the supplied game-menu reference.
+   This stylesheet is intentionally scoped to Central so the shared white
+   Velmora navigation remains the same on every career page. */
+
+body.v20-ui #screenCentral {
+  --cr-blue: #0b4fa7;
+  --cr-blue-dark: #082f67;
+  --cr-blue-line: #83afe7;
+  --cr-ink: #082552;
+  --cr-muted: #4e6b91;
+  --cr-cream: #fffdf6;
+  --cr-panel: #fbfdff;
+  overflow: hidden !important;
+  background: linear-gradient(180deg,#edf5ff 0%,#f8fbff 42%,#eef6ff 100%) !important;
+  color: var(--cr-ink) !important;
+  font-family: "Nunito Sans", Arial, sans-serif !important;
+}
+
+body.v20-ui #screenCentral *,
+body.v20-ui #screenCentral button {
+  font-family: "Nunito Sans", Arial, sans-serif !important;
+  box-sizing: border-box;
+}
+
+/* Preserve the original site-wide white navigation. */
+body.v20-ui #screenCentral > .career-topbar {
+  position: absolute !important;
+  z-index: 80 !important;
+  inset: 0 0 auto 0 !important;
+  height: 8.35% !important;
+  display: grid !important;
+  border: 0 !important;
+  border-bottom: 1px solid #dce6f2 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-shadow: 0 3px 12px rgba(18,52,91,.08) !important;
+  backdrop-filter: none !important;
+}
+
+body.v20-ui #screenCentral > .career-topbar .career-tabs button {
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: #5c6d80 !important;
+  font-weight: 800 !important;
+}
+
+body.v20-ui #screenCentral > .career-topbar .career-tabs button.is-current,
+body.v20-ui #screenCentral > .career-topbar .career-tabs button[aria-current="page"] {
+  background: #edf4ff !important;
+  color: #123b82 !important;
+}
+
+body.v20-ui #screenCentral > .career-topbar .career-util-btn {
+  border: 1px solid #d6e2ef !important;
+  background: #fff !important;
+  color: #17365d !important;
+  box-shadow: 0 2px 5px rgba(21,52,89,.05) !important;
+}
+
+body.v20-ui #screenCentral .central-template,
+body.v20-ui #screenCentral .central-nav-surface,
+body.v20-ui #screenCentral .central-center-clean,
+body.v20-ui #screenCentral .central-club-top,
+body.v20-ui #screenCentral .central-manager-portrait {
+  display: none !important;
+}
+
+/* Matchday action plus five-day career calendar. */
+body.v20-ui #screenCentral .central-advance-panel {
+  position: absolute !important;
+  z-index: 20 !important;
+  left: .72% !important;
+  right: .72% !important;
+  top: 9.35% !important;
+  width: auto !important;
+  height: 18.55% !important;
+  display: grid !important;
+  grid-template-columns: 23.85% minmax(0,1fr) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+body.v20-ui #screenCentral .central-advance-panel::after { display: none !important; }
+
+body.v20-ui #screenCentral .central-advance-actions {
+  position: relative !important;
+  display: block !important;
+  margin-right: 1.05cqw !important;
+  overflow: hidden !important;
+  border: 1px solid #153d73 !important;
+  border-radius: .72cqw !important;
+  background: radial-gradient(circle at 21% 15%,rgba(30,111,190,.28),transparent 34%),linear-gradient(135deg,#092f63,#031d40) !important;
+  box-shadow: 0 .32cqw .8cqw rgba(17,48,83,.14),inset 0 1px rgba(255,255,255,.12) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 1.15cqw 1.2cqw 1.15cqw 5.85cqw !important;
+  justify-content: center !important;
+  gap: .38cqw !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action::before {
+  left: 1.15cqw !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: 3.8cqw !important;
+  height: 4.6cqw !important;
+  transform: translateY(-50%) !important;
+  border-right: 1px solid rgba(130,183,235,.42) !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge {
+  position: absolute !important;
+  left: 1.35cqw !important;
+  top: 50% !important;
+  width: 3.2cqw !important;
+  height: 4cqw !important;
+  transform: translate(-170%,-50%) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge :is(img,.fitted-shield) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.42)) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action .advance-kicker {
+  color: #c5dbf4 !important;
+  font: 800 clamp(9px,.54cqw,13px)/1 "Nunito Sans",sans-serif !important;
+  letter-spacing: .07em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action strong {
+  color: #fff !important;
+  font: 400 clamp(24px,1.85cqw,40px)/.94 "Lilita One",Impact,sans-serif !important;
+  letter-spacing: .02em !important;
+  text-shadow: 0 2px 0 #001636 !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action small {
+  color: #c8daf0 !important;
+  font: 700 clamp(10px,.58cqw,14px)/1.2 "Nunito Sans",sans-serif !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action i {
+  right: 1cqw !important;
+  color: #d9ecff !important;
+  font-size: 1.55cqw !important;
+}
+
+body.v20-ui #screenCentral .central-advance-next { display: none !important; }
+
+body.v20-ui #screenCentral .central-advance-calendar {
+  position: relative !important;
+  display: grid !important;
+  grid-template-rows: 25% 75% !important;
+  overflow: hidden !important;
+  border: 1px solid #84ade3 !important;
+  border-radius: .78cqw !important;
+  background: rgba(255,255,255,.98) !important;
+  box-shadow: 0 .26cqw .72cqw rgba(28,72,124,.12),inset 0 1px #fff !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header {
+  min-height: 0 !important;
+  padding: 0 1.1cqw 0 4.25cqw !important;
+  border-bottom: 1px solid #8ab3e9 !important;
+  background: linear-gradient(180deg,#f1f7ff,#e7f1ff) !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header::before {
+  content: "";
+  position: absolute;
+  left: 1.05cqw;
+  top: .38cqw;
+  width: 2.6cqw;
+  height: 2.6cqw;
+  background: url("assets/central-reference-v2/ui-icon-sheet.png") 0 0 / 400% 300% no-repeat;
+  image-rendering: pixelated;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header span {
+  color: #0a2b5e !important;
+  font: 400 clamp(19px,1.48cqw,31px)/1 "Lilita One",Impact,sans-serif !important;
+  letter-spacing: .015em !important;
+  text-transform: uppercase !important;
+}
+
+body.v20-ui #screenCentral .central-advance-calendar > header strong {
+  color: #132f59 !important;
+  font: 400 clamp(17px,1.2cqw,27px)/1 "Lilita One",Impact,sans-serif !important;
+}
+
+body.v20-ui #screenCentral .central-advance-nextup {
+  position: absolute !important;
+  z-index: 4 !important;
+  left: .8cqw !important;
+  top: 4.2cqw !important;
+  width: 2.75cqw !important;
+  height: 5.15cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: .35cqw !important;
+  border-radius: .55cqw !important;
+  background: #0c3d7b !important;
+  color: #fff !important;
+  font: 700 clamp(9px,.55cqw,13px)/1.05 "Silkscreen",monospace !important;
+  text-align: center !important;
+  writing-mode: vertical-rl !important;
+  letter-spacing: .08em !important;
+}
+
+body.v20-ui #screenCentral .central-advance-days {
+  margin-left: 3.6cqw !important;
+  grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+  background: #fff !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day {
+  grid-template-rows: auto auto minmax(0,1fr) !important;
+  align-content: start !important;
+  gap: .1cqw !important;
+  padding: .62cqw .48cqw .45cqw !important;
+  border-right: 1px solid #d9e5f4 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day.is-today {
+  background: #edf5f9 !important;
+  box-shadow: inset 0 -3px #40bdb6 !important;
+}
+
+body.v20-ui #screenCentral .central-advance-day.is-today::before { display: none !important; }
+body.v20-ui #screenCentral .central-advance-day .advance-day-name {
+  justify-self: start !important;
+  margin: 0 !important;
+  color: #102d59 !important;
+  font: 900 clamp(10px,.62cqw,14px)/1 "Nunito Sans",sans-serif !important;
+  letter-spacing: .02em !important;
+}
+body.v20-ui #screenCentral .central-advance-day .advance-day-number {
+  justify-self: start !important;
+  color: #0b2855 !important;
+  font: 400 clamp(24px,1.6cqw,36px)/.92 "Lilita One",Impact,sans-serif !important;
+}
+
+body.v20-ui #screenCentral .advance-event {
+  width: 100% !important;
+  min-height: 2.9cqw !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0,1fr) !important;
+  align-items: center !important;
+  gap: .36cqw !important;
+  padding: .38cqw .48cqw !important;
+  overflow: hidden !important;
+  border: 1px solid #c8d9ed !important;
+  border-radius: .42cqw !important;
+  background: #f8fbff !important;
+  box-shadow: 0 2px 0 rgba(42,83,132,.12) !important;
+}
+
+body.v20-ui #screenCentral .advance-event-empty {
+  display: grid !important;
+  place-items: center !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.v20-ui #screenCentral .advance-event-symbol {
+  width: 1.75cqw !important;
+  height: 1.75cqw !important;
+  color: transparent !important;
+  background-image: url("assets/central-reference-v2/ui-icon-sheet.png") !important;
+  background-size: 400% 300% !important;
+  background-position: 100% 0 !important;
+  background-repeat: no-repeat !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral .advance-event-training .advance-event-symbol { background-position: 33.333% 0 !important; }
+body.v20-ui #screenCentral .advance-event-medical .advance-event-symbol { background-position: 66.666% 0 !important; }
+body.v20-ui #screenCentral .advance-event-deadline .advance-event-symbol { background-position: 100% 0 !important; }
+body.v20-ui #screenCentral .advance-event-contract .advance-event-symbol { background-position: 33.333% 50% !important; }
+body.v20-ui #screenCentral .advance-event :is(.advance-event-label,small) {
+  color: #102b56 !important;
+  font: 800 clamp(8px,.46cqw,11px)/1.05 "Nunito Sans",sans-serif !important;
+  letter-spacing: .01em !important;
+}
+body.v20-ui #screenCentral .advance-event small { grid-column: 2 !important; opacity: .65 !important; }
+body.v20-ui #screenCentral .advance-event-match { grid-template-columns: 1fr !important; padding: .2cqw !important; }
+body.v20-ui #screenCentral .advance-event-match .advance-event-label { display: none !important; }
+body.v20-ui #screenCentral .advance-match-clubs { gap: .34cqw !important; justify-content: center !important; }
+body.v20-ui #screenCentral .advance-mini-badge { width: 1.55cqw !important; height: 1.8cqw !important; }
+body.v20-ui #screenCentral .central-advance-upnext { display: none !important; }
+
+/* Shared card language and exact three-column dashboard geometry. */
+body.v20-ui #screenCentral :is(.central-side-panel,.central-manager-briefing,.central-season-snapshot) {
+  position: absolute !important;
+  z-index: 18 !important;
+  overflow: hidden !important;
+  border: 1px solid #b9cee8 !important;
+  border-radius: .7cqw !important;
+  background: rgba(255,255,255,.985) !important;
+  box-shadow: 0 .24cqw .66cqw rgba(30,68,109,.1),inset 0 1px #fff !important;
+}
+
+body.v20-ui #screenCentral .central-inbox-panel { left: .72% !important; top: 29.25% !important; width: 23.15% !important; height: 25.9% !important; }
+body.v20-ui #screenCentral .central-news-panel { left: .72% !important; top: 56.45% !important; width: 23.15% !important; height: 35.15% !important; }
+body.v20-ui #screenCentral .central-objectives-panel { left: 75.32% !important; top: 29.25% !important; width: 23.96% !important; height: 19.75% !important; }
+body.v20-ui #screenCentral .central-finances-panel { left: 75.32% !important; top: 50.25% !important; width: 23.96% !important; height: 19.55% !important; }
+body.v20-ui #screenCentral .central-calendar-panel { left: 75.32% !important; top: 71.05% !important; width: 23.96% !important; height: 20.55% !important; }
+
+body.v20-ui #screenCentral .central-panel-header,
+body.v20-ui #screenCentral .central-manager-briefing .central-panel-header {
+  height: 3.05cqw !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: .62cqw !important;
+  padding: 0 .85cqw !important;
+  border-bottom: 1px solid #b9d0eb !important;
+  background: linear-gradient(180deg,#edf5ff,#e4effc) !important;
+  color: #0d2c59 !important;
+  font: 400 clamp(14px,.9cqw,20px)/1 "Lilita One",Impact,sans-serif !important;
+  letter-spacing: .02em !important;
+  text-transform: uppercase !important;
+}
+
+body.v20-ui #screenCentral .central-panel-glyph {
+  width: 1.85cqw !important;
+  height: 1.85cqw !important;
+  flex: 0 0 1.85cqw !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  background-image: url("assets/central-reference-v2/ui-icon-sheet.png") !important;
+  background-size: 400% 300% !important;
+  background-repeat: no-repeat !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral .central-panel-glyph svg { display: none !important; }
+body.v20-ui #screenCentral .central-inbox-panel .central-panel-glyph,
+body.v20-ui #screenCentral .central-objectives-panel .central-panel-glyph { background-position: 0 50% !important; }
+body.v20-ui #screenCentral .central-news-panel .central-panel-glyph { background-position: 33.333% 50% !important; }
+body.v20-ui #screenCentral .central-finances-panel .central-panel-glyph { background-position: 66.666% 50% !important; }
+body.v20-ui #screenCentral .central-calendar-panel .central-panel-glyph { background-position: 100% 50% !important; }
+
+body.v20-ui #screenCentral .central-panel-body {
+  height: calc(100% - 3.05cqw) !important;
+  padding: .55cqw !important;
+  background: rgba(255,255,255,.98) !important;
+}
+
+body.v20-ui #screenCentral .central-attention-count {
+  margin-left: auto !important;
+  width: 1.65cqw !important;
+  height: 1.65cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 50% !important;
+  background: #0a315f !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+}
+
+body.v20-ui #screenCentral .central-inbox-list.v2077-task-list {
+  display: grid !important;
+  grid-auto-rows: minmax(0,1fr) !important;
+  gap: .38cqw !important;
+  padding: .55cqw !important;
+  overflow: hidden !important;
+}
+
+body.v20-ui #screenCentral .central-task-row {
+  min-height: 0 !important;
+  border-radius: .5cqw !important;
+}
+body.v20-ui #screenCentral .central-inbox-list.v45-task-list .v45-task-main {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: .45cqw max(2.8cqw,76px) .45cqw 3.1cqw !important;
+}
+body.v20-ui #screenCentral .central-task-category i {
+  position: absolute !important;
+  left: .7cqw !important;
+  top: 50% !important;
+  width: 1.95cqw !important;
+  height: 1.95cqw !important;
+  transform: translateY(-50%) !important;
+  border: 0 !important;
+  color: transparent !important;
+  background-image: url("assets/central-reference-v2/ui-icon-sheet.png") !important;
+  background-size: 400% 300% !important;
+  background-position: 0 50% !important;
+  background-repeat: no-repeat !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral .central-task-row.is-category-contract .central-task-category i { background-position: 33.333% 50% !important; }
+body.v20-ui #screenCentral .central-task-copy strong { font-size: clamp(11px,.5cqw,15px) !important; color: #123262 !important; }
+body.v20-ui #screenCentral .central-task-copy p { font-size: clamp(9px,.34cqw,11px) !important; color: #4c6688 !important; -webkit-line-clamp: 1 !important; }
+
+body.v20-ui #screenCentral .central-news-list {
+  grid-template-rows: repeat(3,minmax(0,1fr)) !important;
+  gap: 0 !important;
+  padding: .3cqw .65cqw !important;
+}
+body.v20-ui #screenCentral .news-row.central-news-row {
+  grid-template-columns: 3.4cqw minmax(0,1fr) !important;
+  gap: .7cqw !important;
+  padding: .45cqw 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #d8e4f1 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+body.v20-ui #screenCentral .news-row.central-news-row:last-child { border-bottom: 0 !important; }
+body.v20-ui #screenCentral .central-news-row .news-avatar {
+  width: 3.15cqw !important;
+  height: 3.15cqw !important;
+  min-height: 3.15cqw !important;
+  max-height: 3.15cqw !important;
+  overflow: hidden !important;
+  border: 1px solid #85afe4 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(180deg,#e8f4ff,#cfe4f7) !important;
+}
+body.v20-ui #screenCentral .central-news-row .news-avatar img {
+  width: 145% !important;
+  height: 145% !important;
+  object-fit: contain !important;
+  object-position: center 8% !important;
+  transform: translate(-15%,-5%) !important;
+}
+body.v20-ui #screenCentral .central-news-row .news-copy strong {
+  color: #0d2e60 !important;
+  font-size: clamp(11px,.51cqw,15px) !important;
+  line-height: 1.05 !important;
+  text-transform: uppercase !important;
+}
+body.v20-ui #screenCentral .central-news-row .news-copy :is(small,span) { color: #35659e !important; }
+
+/* Central match poster. */
+body.v20-ui #screenCentral .central-match-hero.vm27-match-card {
+  position: absolute !important;
+  z-index: 21 !important;
+  left: 24.72% !important;
+  top: 29.25% !important;
+  width: 49.62% !important;
+  height: 44.8% !important;
+  display: grid !important;
+  grid-template-rows: minmax(0,1fr) 2.25cqw !important;
+  overflow: hidden !important;
+  border: 1px solid #0c3767 !important;
+  border-radius: .72cqw !important;
+  background: #06182c !important;
+  box-shadow: 0 .3cqw .8cqw rgba(10,38,71,.22),inset 0 1px rgba(255,255,255,.2) !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-broadcast-backdrop {
+  position: absolute !important;
+  inset: 0 0 2.25cqw !important;
+  display: block !important;
+  background-image: linear-gradient(180deg,rgba(5,30,60,.06),rgba(3,17,33,.18) 55%,rgba(0,9,19,.82)),url("assets/central-reference-v2/matchday-stadium.png") !important;
+  background-size: cover !important;
+  background-position: center 48% !important;
+  filter: saturate(.95) contrast(1.04) brightness(.88) !important;
+  opacity: 1 !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-hero-header.vm27-match-header {
+  position: absolute !important;
+  z-index: 9 !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: .55cqw !important;
+  height: 1.25cqw !important;
+  display: flex !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.v20-ui #screenCentral .central-hero-eyebrow { display: none !important; }
+body.v20-ui #screenCentral .central-match-hero .central-hero-meta {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #ffd339 !important;
+  font: 700 clamp(9px,.64cqw,14px)/1 "Silkscreen",monospace !important;
+  letter-spacing: .14em !important;
+  text-shadow: 0 2px #06152c !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-broadcast-stage.vm27-fixture-stage {
+  position: absolute !important;
+  inset: 0 0 2.25cqw !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+body.v20-ui #screenCentral .central-match-summary {
+  position: absolute !important;
+  z-index: 10 !important;
+  top: 2.75cqw !important;
+  width: 24% !important;
+  display: block !important;
+  color: #fff !important;
+  text-align: center !important;
+}
+body.v20-ui #screenCentral .central-match-summary.is-home { left: 1.5cqw !important; }
+body.v20-ui #screenCentral .central-match-summary.is-away { right: 1.5cqw !important; }
+body.v20-ui #screenCentral .central-team-side-label {
+  display: block !important;
+  margin: 0 !important;
+  color: #cc76ff !important;
+  font: 400 clamp(14px,.95cqw,21px)/1 "Lilita One",Impact,sans-serif !important;
+  text-shadow: 0 2px #07152a !important;
+}
+body.v20-ui #screenCentral .central-match-summary.is-away .central-team-side-label { color: #b4e72f !important; }
+body.v20-ui #screenCentral .central-team-record { margin-top: .18cqw !important; color: #fff !important; font-size: clamp(9px,.48cqw,12px) !important; font-weight: 900 !important; text-shadow: 0 2px #07152a !important; }
+
+body.v20-ui #screenCentral .central-matchup-title {
+  position: absolute !important;
+  z-index: 5 !important;
+  inset: 0 !important;
+  height: 100% !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-nameplate {
+  position: absolute !important;
+  left: 4% !important;
+  right: 4% !important;
+  display: block !important;
+  overflow: hidden !important;
+  color: #fff9e8 !important;
+  font: 400 clamp(38px,5.2cqw,72px)/.88 "Lilita One",Impact,sans-serif !important;
+  letter-spacing: .01em !important;
+  text-align: center !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  -webkit-text-stroke: clamp(1px,.1cqw,2px) #07132a !important;
+  text-shadow: 0 .2cqw 0 #07132a,0 .32cqw .18cqw rgba(0,0,0,.55) !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-home-name { top: 5.2cqw !important; transform: none !important; }
+body.v20-ui #screenCentral .central-matchup-title .central-away-name { top: 17.15cqw !important; bottom: auto !important; transform: none !important; }
+
+body.v20-ui #screenCentral .central-versus-core.vm27-fixture-spine {
+  position: absolute !important;
+  z-index: 8 !important;
+  left: 50% !important;
+  top: 11.4cqw !important;
+  width: 3.3cqw !important;
+  height: 3.3cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  transform: translateX(-50%) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+body.v20-ui #screenCentral .central-versus-core :is(.central-club-badge,.central-competition-label) { display: none !important; }
+body.v20-ui #screenCentral .central-versus-core .central-versus-ring {
+  width: 3.3cqw !important;
+  height: 3.3cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  border: .18cqw solid #07192f !important;
+  border-radius: 25% !important;
+  background: linear-gradient(180deg,#26384b,#101c2a) !important;
+  box-shadow: inset 0 0 0 2px #60768c,0 .18cqw .3cqw rgba(0,0,0,.55) !important;
+  color: #fff !important;
+  font: 700 clamp(14px,1cqw,21px)/1 "Silkscreen",monospace !important;
+}
+
+body.v20-ui #screenCentral .central-captain-pair {
+  position: absolute !important;
+  z-index: 7 !important;
+  left: 50% !important;
+  top: 8.1cqw !important;
+  bottom: 7.5cqw !important;
+  width: 21cqw !important;
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  transform: translateX(-50%) !important;
+  pointer-events: none !important;
+}
+body.v20-ui #screenCentral .central-captain-pair .central-featured-player {
+  position: relative !important;
+  width: auto !important;
+  height: 100% !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+body.v20-ui #screenCentral .central-captain-pair .central-featured-player.is-home,
+body.v20-ui #screenCentral .central-captain-pair .central-featured-player.is-away {
+  transform: none !important;
+}
+body.v20-ui #screenCentral #centralHomeCaptainSprite,
+body.v20-ui #screenCentral #centralAwayCaptainSprite {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: -2.9cqw !important;
+  width: 14cqw !important;
+  height: 19cqw !important;
+  transform: translateX(-50%) scale(1.22) !important;
+  transform-origin: center bottom !important;
+  object-fit: contain !important;
+  object-position: center bottom !important;
+  filter: drop-shadow(0 .35cqw .28cqw rgba(0,0,0,.85)) brightness(1.05) contrast(1.04) !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral #centralAwayCaptainSprite { transform: translateX(-50%) scaleX(-1) scale(1.22) !important; }
+body.v20-ui #screenCentral .central-captain-pair :is(.central-player-shadow,.central-captain-marker) { display: none !important; }
+
+body.v20-ui #screenCentral .central-stadium { display: none !important; }
+
+body.v20-ui #screenCentral .central-roster-deck {
+  position: absolute !important;
+  z-index: 12 !important;
+  left: .72cqw !important;
+  right: .72cqw !important;
+  bottom: .35cqw !important;
+  height: 8.2cqw !important;
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(161,196,225,.55) !important;
+  border-radius: .58cqw !important;
+  background: rgba(2,17,31,.89) !important;
+  box-shadow: 0 .2cqw .5cqw rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.07) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-broadcast-side {
+  position: relative !important;
+  inset: auto !important;
+  width: auto !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-columns: 17% minmax(0,83%) !important;
+  background: rgba(2,20,26,.46) !important;
+  border: 0 !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-broadcast-side.is-away {
+  grid-template-columns: minmax(0,83%) 17% !important;
+  background: rgba(3,18,36,.48) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-roster-crest { padding: 15% !important; }
+body.v20-ui #screenCentral .central-roster-deck .central-team-sheet.vm27-roster-board,
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-team-sheet.vm27-roster-board {
+  grid-template-columns: .9fr 1.1fr !important;
+  gap: .34cqw !important;
+  padding: .55cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-block > span {
+  margin-bottom: .22cqw !important;
+  color: #df72ff !important;
+  font: 700 clamp(7px,.4cqw,10px)/1 "Silkscreen",monospace !important;
+  letter-spacing: .03em !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-lineup-block > span { color: #a8df33 !important; }
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list { gap: .08cqw !important; }
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list li,
+body.v20-ui #screenCentral .central-roster-deck .central-subs-list li {
+  height: .78cqw !important;
+  min-height: 10px !important;
+  border-width: 1px !important;
+  background: rgba(6,45,37,.52) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-lineup-list li { background: rgba(8,35,63,.55) !important; }
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list strong,
+body.v20-ui #screenCentral .central-roster-deck .central-subs-list strong { font-size: clamp(7px,.36cqw,10px) !important; }
+
+body.v20-ui #screenCentral .central-match-hero .central-fixture-footer {
+  position: absolute !important;
+  z-index: 16 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 2.25cqw !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  padding: .3cqw .75cqw !important;
+  background: rgba(2,13,24,.98) !important;
+}
+body.v20-ui #screenCentral .central-captain-credit { justify-content: center !important; font-size: clamp(7px,.38cqw,10px) !important; }
+body.v20-ui #screenCentral .central-match-hero .central-continue {
+  min-height: 1.45cqw !important;
+  height: 1.45cqw !important;
+  padding: .18cqw .48cqw !important;
+  font-size: clamp(7px,.36cqw,10px) !important;
+}
+body.v20-ui #screenCentral .central-match-hero .central-continue::after { width: 1.05cqw !important; height: 1.05cqw !important; font-size: .65cqw !important; }
+
+/* Weekly strip and season snapshot. */
+body.v20-ui #screenCentral .central-manager-briefing {
+  left: 24.72% !important;
+  top: 75.22% !important;
+  width: 49.62% !important;
+  height: 9.55% !important;
+}
+body.v20-ui #screenCentral .central-manager-briefing .central-panel-header {
+  height: 2.45cqw !important;
+  padding-left: .75cqw !important;
+  font-size: clamp(12px,.73cqw,17px) !important;
+}
+body.v20-ui #screenCentral .central-manager-briefing .central-panel-glyph { background-position: 0 0 !important; }
+body.v20-ui #screenCentral .central-manager-briefing-body {
+  height: calc(100% - 2.45cqw) !important;
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+  padding: .45cqw !important;
+}
+body.v20-ui #screenCentral .central-week-card { padding: .35cqw .7cqw !important; }
+body.v20-ui #screenCentral .central-week-card strong { font-size: clamp(8px,.39cqw,11px) !important; }
+body.v20-ui #screenCentral .central-week-card p { font-size: clamp(7px,.3cqw,9px) !important; -webkit-line-clamp: 1 !important; }
+
+body.v20-ui #screenCentral .central-season-snapshot {
+  left: 24.72% !important;
+  top: 85.98% !important;
+  width: 49.62% !important;
+  height: 9.88% !important;
+  padding: .42cqw .8cqw 1.55cqw !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot > header {
+  display: block !important;
+  margin: 0 0 .25cqw !important;
+  color: #294c7a !important;
+  font: 800 clamp(8px,.38cqw,10px)/1 "Nunito Sans",sans-serif !important;
+  letter-spacing: .05em !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid.living-snapshot {
+  height: calc(100% - .9cqw) !important;
+  grid-template-columns: repeat(5,1fr) !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid strong { color: #0b2f69 !important; font-size: clamp(18px,1.23cqw,27px) !important; }
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid span { font-size: clamp(7px,.3cqw,9px) !important; color: #5e7593 !important; }
+body.v20-ui #screenCentral .central-manager-security-strip { height: 1.25cqw !important; padding: 0 .65cqw !important; }
+
+/* Bottom club plate and generated meadow trim. */
+body.v20-ui #screenCentral .central-club-plate {
+  position: absolute !important;
+  z-index: 24 !important;
+  left: .72% !important;
+  top: 92.6% !important;
+  width: 23.15% !important;
+  height: 6.7% !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: .55cqw 1.25cqw !important;
+  border-radius: .7cqw 0 0 .7cqw !important;
+  background: linear-gradient(135deg,#06264c,#071b35) !important;
+  clip-path: polygon(0 0,82% 0,91% 100%,0 100%) !important;
+}
+body.v20-ui #screenCentral .central-club-plate-badge { width: 2.5cqw !important; height: 2.9cqw !important; }
+body.v20-ui #screenCentral .central-club-plate strong { color: #fff !important; font-size: clamp(12px,.66cqw,17px) !important; }
+body.v20-ui #screenCentral .central-club-plate small { color: #a7c2df !important; }
+
+body.v20-ui #screenCentral::after {
+  content: "" !important;
+  position: absolute !important;
+  z-index: 15 !important;
+  left: 18.4% !important;
+  right: 15.4% !important;
+  top: auto !important;
+  bottom: 0 !important;
+  height: 7.2% !important;
+  display: block !important;
+  background: url("assets/central-reference-v2/meadow-strip.png") center bottom / 100% auto no-repeat !important;
+  pointer-events: none !important;
+}
+
+/* Right column polish. */
+body.v20-ui #screenCentral .central-objectives { padding: .75cqw !important; }
+body.v20-ui #screenCentral .objective-row { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+body.v20-ui #screenCentral .objective-icon { font-size: 1.45cqw !important; }
+body.v20-ui #screenCentral .objective-copy strong { color: #16325d !important; font-size: clamp(10px,.45cqw,13px) !important; }
+body.v20-ui #screenCentral .objective-meta { color: #42648e !important; }
+body.v20-ui #screenCentral .progress { background: #dce7f4 !important; }
+body.v20-ui #screenCentral .progress i { background: #0b519f !important; }
+
+body.v20-ui #screenCentral .central-finances { padding: .65cqw !important; }
+body.v20-ui #screenCentral .finance-budget { border-color: #cdddef !important; background: #f2f7fd !important; }
+body.v20-ui #screenCentral .finance-value { color: #123364 !important; font-size: clamp(20px,1.2cqw,30px) !important; }
+body.v20-ui #screenCentral .finance-line { stroke: #0c5bb0 !important; }
+body.v20-ui #screenCentral .finance-dot { fill: #0c5bb0 !important; }
+
+body.v20-ui #screenCentral .central-club-pulse { padding: .55cqw !important; }
+body.v20-ui #screenCentral .v65-club-pulse { border-color: #c9dcef !important; background: linear-gradient(145deg,#f7fbff,#fff) !important; box-shadow: none !important; }
+body.v20-ui #screenCentral .v65-pulse-metrics article { border-color: #d8e3ef !important; }
+body.v20-ui #screenCentral .v65-pulse-icon {
+  border-radius: 0 !important;
+  background-image: url("assets/central-reference-v2/ui-icon-sheet.png") !important;
+  background-size: 400% 300% !important;
+  background-position: 0 100% !important;
+  background-repeat: no-repeat !important;
+  image-rendering: pixelated !important;
+  color: transparent !important;
+}
+body.v20-ui #screenCentral .v65-pulse-metrics article:nth-child(2) .v65-pulse-icon { background-position: 33.333% 100% !important; }
+body.v20-ui #screenCentral .v65-pulse-metrics article:nth-child(3) .v65-pulse-icon { background-position: 66.666% 100% !important; }
+body.v20-ui #screenCentral .v65-pulse-icon svg { display: none !important; }
+
+@media (max-aspect-ratio: 4/3) {
+  body.v20-ui #screenCentral .central-matchup-title .central-nameplate { font-size: clamp(25px,3.1cqw,54px) !important; }
+  body.v20-ui #screenCentral .central-captain-pair { width: 18cqw !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.v20-ui #screenCentral * { transition: none !important; animation: none !important; }
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.1 — density, portrait and match-card corrections
+   ======================================================================== */
+
+/* Keep every live Board objective visible inside the card. */
+body.v20-ui #screenCentral .central-objectives-panel .central-panel-body.central-objectives {
+  display: grid !important;
+  grid-template-rows: repeat(var(--central-objective-count, 3), minmax(0, 1fr)) !important;
+  gap: .12cqw !important;
+  padding: .28cqw .62cqw .38cqw !important;
+  overflow: hidden !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .objective-row.central-objective-row {
+  min-height: 0 !important;
+  height: 100% !important;
+  grid-template-columns: 1.6cqw minmax(0, 1fr) !important;
+  gap: .42cqw !important;
+  padding: .16cqw .18cqw !important;
+  align-items: center !important;
+  overflow: hidden !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .objective-icon {
+  font-size: clamp(12px, .76cqw, 17px) !important;
+  line-height: 1 !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .objective-copy {
+  min-width: 0 !important;
+  align-self: center !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .objective-copy strong {
+  display: block !important;
+  font: 800 clamp(10px, .48cqw, 13px)/1.05 "Nunito Sans", sans-serif !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .objective-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-top: .1cqw !important;
+  font-size: clamp(7px, .29cqw, 9px) !important;
+  line-height: 1 !important;
+}
+body.v20-ui #screenCentral .central-objectives-panel .progress {
+  height: .2cqw !important;
+  min-height: 3px !important;
+  margin-top: .14cqw !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+/* The meadow is a page-wide grounding layer behind both corner widgets. */
+body.v20-ui #screenCentral::after {
+  left: .72% !important;
+  right: .72% !important;
+  height: 9.5% !important;
+  background-size: 100% auto !important;
+  background-position: center bottom !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Clearer, better-balanced fixture lockup with a deliberately tiny VS. */
+body.v20-ui #screenCentral .central-matchup-title {
+  z-index: 15 !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-nameplate {
+  left: 5% !important;
+  right: 5% !important;
+  font-size: clamp(32px, 4.18cqw, 62px) !important;
+  line-height: .88 !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-home-name {
+  top: 4.55cqw !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-away-name {
+  top: 13.75cqw !important;
+}
+body.v20-ui #screenCentral .central-versus-core.vm27-fixture-spine {
+  display: none !important;
+}
+body.v20-ui #screenCentral .central-matchup-title::after {
+  content: "VS" !important;
+  position: absolute !important;
+  z-index: 3 !important;
+  left: 50% !important;
+  top: 10.95cqw !important;
+  transform: translate(-50%, -50%) !important;
+  color: #fff !important;
+  font: 700 clamp(9px, .48cqw, 12px)/1 "Silkscreen", monospace !important;
+  letter-spacing: .1em !important;
+  text-shadow: 0 1px 0 #07152a, 0 2px 4px rgba(0, 0, 0, .9) !important;
+}
+
+/* Pixel character art is framed as a portrait, not as a miniature full body. */
+body.v20-ui #screenCentral .central-news-row .news-avatar {
+  place-items: start center !important;
+}
+body.v20-ui #screenCentral .central-news-row .news-avatar img.news-smart-avatar {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center top !important;
+  transform: scale(1.72) !important;
+  transform-origin: center 16% !important;
+}
+
+/* Keep the authored pixel-art icons. Crop their pedestal inside an inner
+   layer so it cannot read as a second sprite beneath the icon. */
+body.v20-ui #screenCentral .central-panel-glyph {
+  background-image: none !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+body.v20-ui #screenCentral .central-panel-glyph::before,
+body.v20-ui #screenCentral .central-task-category i::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  clip-path: inset(0 0 10% 0) !important;
+  background-image: url("assets/central-reference-v2/ui-icon-sheet.png") !important;
+  background-size: 400% 300% !important;
+  background-repeat: no-repeat !important;
+  background-position: 0 50% !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral .central-task-category i {
+  background-image: none !important;
+  background-color: rgba(255, 255, 255, .84) !important;
+  color: transparent !important;
+  border: 1px solid rgba(90, 139, 190, .18) !important;
+  border-radius: .32cqw !important;
+  overflow: hidden !important;
+}
+body.v20-ui #screenCentral .central-panel-glyph svg,
+body.v20-ui #screenCentral .central-task-category i svg {
+  display: none !important;
+}
+body.v20-ui #screenCentral .central-news-panel .central-panel-glyph::before {
+  background-position: 33.333% 50% !important;
+}
+body.v20-ui #screenCentral .central-finances-panel .central-panel-glyph::before {
+  background-position: 66.666% 50% !important;
+}
+body.v20-ui #screenCentral .central-calendar-panel .central-panel-glyph::before {
+  background-position: 100% 50% !important;
+}
+body.v20-ui #screenCentral .central-manager-briefing .central-panel-glyph::before {
+  background-position: 0 0 !important;
+}
+body.v20-ui #screenCentral .central-task-row.is-category-contract .central-task-category i::before {
+  background-position: 33.333% 50% !important;
+}
+
+/* Lift the roster clear of the footer, then give every player row enough
+   height and type weight to remain legible without losing a substitute. */
+body.v20-ui #screenCentral .central-roster-deck {
+  bottom: 2.32cqw !important;
+  height: 10.2cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-broadcast-side {
+  grid-template-columns: 11% minmax(0, 89%) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-broadcast-side.is-away {
+  grid-template-columns: minmax(0, 89%) 11% !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-roster-crest {
+  padding: 10% !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-team-sheet.vm27-roster-board,
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-team-sheet.vm27-roster-board {
+  grid-template-columns: .86fr 1.2fr !important;
+  gap: .5cqw !important;
+  padding: .62cqw .56cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-block > span {
+  margin-bottom: .28cqw !important;
+  font-size: clamp(9px, .48cqw, 12px) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list {
+  gap: .12cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list li,
+body.v20-ui #screenCentral .central-roster-deck .central-subs-list li {
+  height: 1.22cqw !important;
+  min-height: 16px !important;
+  grid-template-columns: 1.52cqw minmax(0, 1fr) auto !important;
+  gap: .28cqw !important;
+  padding: 0 .28cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-lineup-list li,
+body.v20-ui #screenCentral .central-roster-deck .is-away .central-subs-list li {
+  grid-template-columns: auto minmax(0, 1fr) 1.52cqw !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-role {
+  height: .8cqw !important;
+  min-height: 11px !important;
+  font-size: clamp(8px, .31cqw, 10px) !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-list strong,
+body.v20-ui #screenCentral .central-roster-deck .central-subs-list strong {
+  font: 900 clamp(11px, .55cqw, 14px)/1 "Nunito Sans", sans-serif !important;
+}
+body.v20-ui #screenCentral .central-roster-deck .central-lineup-status img {
+  width: .7cqw !important;
+  height: .7cqw !important;
+  min-width: 9px !important;
+  min-height: 9px !important;
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.3 — badge scale, calendar clarity and snapshot HUD
+   ======================================================================== */
+
+/* Enlarge only the crest inside the fixed matchday action. */
+body.v20-ui #screenCentral .central-advance-action {
+  padding-left: 6.9cqw !important;
+}
+body.v20-ui #screenCentral .central-advance-action::before {
+  left: .72cqw !important;
+  width: 5.25cqw !important;
+  height: 6.2cqw !important;
+}
+body.v20-ui #screenCentral .advance-club-badge {
+  left: 1cqw !important;
+  top: 50% !important;
+  width: 4.65cqw !important;
+  height: 5.65cqw !important;
+  transform: translateY(-50%) !important;
+  overflow: visible !important;
+}
+body.v20-ui #screenCentral .advance-club-badge img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  transform: scale(1.18) !important;
+  transform-origin: center !important;
+}
+body.v20-ui #screenCentral .advance-club-badge .fitted-shield,
+body.v20-ui #screenCentral .advance-club-badge .fitted-shield-media {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Give the fixed bottom club plate the same prominent crest treatment. */
+body.v20-ui #screenCentral .central-club-plate {
+  gap: .9cqw !important;
+}
+body.v20-ui #screenCentral .central-club-plate-badge {
+  width: 4.4cqw !important;
+  height: 5cqw !important;
+  flex: 0 0 4.4cqw !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+}
+body.v20-ui #screenCentral .central-club-plate-badge img,
+body.v20-ui #screenCentral .central-club-plate-badge .fitted-shield,
+body.v20-ui #screenCentral .central-club-plate-badge .fitted-shield-media {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+}
+body.v20-ui #screenCentral .central-club-plate-badge img {
+  transform: scale(1.2) !important;
+  transform-origin: center !important;
+}
+
+/* Calendar fixture crests need to identify the clubs at a glance. */
+body.v20-ui #screenCentral .advance-event-match {
+  min-height: 3.35cqw !important;
+  align-content: center !important;
+  padding: .12cqw .26cqw !important;
+}
+body.v20-ui #screenCentral .advance-event-match .advance-match-clubs {
+  min-height: 2.28cqw !important;
+  gap: .52cqw !important;
+}
+body.v20-ui #screenCentral .advance-event-match .advance-mini-badge {
+  width: 2.15cqw !important;
+  height: 2.38cqw !important;
+  flex: 0 0 2.15cqw !important;
+  overflow: visible !important;
+}
+body.v20-ui #screenCentral .advance-event-match .advance-mini-badge img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: scale(1.12) !important;
+}
+body.v20-ui #screenCentral .advance-event-match .advance-match-clubs > b {
+  font-size: clamp(9px, .45cqw, 12px) !important;
+  color: #27446d !important;
+}
+
+/* Lift the calendar sprite clear of the header rule without resizing it. */
+body.v20-ui #screenCentral .central-advance-calendar > header::before {
+  top: .08cqw !important;
+}
+
+/* Premium game-status HUD using the existing footprint. */
+body.v20-ui #screenCentral .central-season-snapshot {
+  display: grid !important;
+  grid-template-rows: .9cqw minmax(0, 1fr) 1.25cqw !important;
+  gap: .18cqw !important;
+  padding: .34cqw .62cqw .36cqw !important;
+  border: 1px solid #80ace0 !important;
+  background:
+    radial-gradient(circle at 50% -35%, rgba(72, 157, 231, .2), transparent 56%),
+    linear-gradient(180deg, rgba(248, 252, 255, .99), rgba(232, 244, 255, .99)) !important;
+  box-shadow: 0 .32cqw .78cqw rgba(23, 63, 109, .17), inset 0 1px #fff !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot::before {
+  content: "" !important;
+  position: absolute !important;
+  z-index: 0 !important;
+  left: .7cqw !important;
+  right: .7cqw !important;
+  top: 1.18cqw !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, rgba(49, 108, 175, .34), transparent) !important;
+  pointer-events: none !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot > header {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: .42cqw !important;
+  margin: 0 !important;
+  color: #153c72 !important;
+  font: 900 clamp(8px, .4cqw, 11px)/1 "Silkscreen", monospace !important;
+  letter-spacing: .11em !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot > header::before {
+  content: "" !important;
+  width: .88cqw !important;
+  height: .88cqw !important;
+  flex: 0 0 .88cqw !important;
+  background: url("assets/central-reference-v2/ui-icon-sheet.png") 66.666% 50% / 400% 300% no-repeat !important;
+  image-rendering: pixelated !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid.living-snapshot {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: .34cqw !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div {
+  position: relative !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto auto !important;
+  place-content: center !important;
+  gap: .12cqw !important;
+  padding: .14cqw .32cqw !important;
+  overflow: hidden !important;
+  border: 1px solid #c0d7ee !important;
+  border-radius: .42cqw !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(241, 248, 255, .98)) !important;
+  box-shadow: 0 .11cqw .25cqw rgba(31, 77, 126, .11), inset 0 1px #fff !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: .18cqw !important;
+  background: #317ac5 !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div:nth-child(2)::after { background: #7961bd !important; }
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div:nth-child(3)::after { background: #e4b52f !important; }
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div:nth-child(4)::after { background: #2aaf79 !important; }
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid > div:nth-child(5)::after { background: #e17256 !important; }
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid strong {
+  color: #0b3168 !important;
+  font: 400 clamp(18px, 1.32cqw, 29px)/.92 "Lilita One", Impact, sans-serif !important;
+  letter-spacing: .015em !important;
+  text-shadow: 0 1px #fff !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid .snapshot-form {
+  font-size: clamp(14px, .83cqw, 20px) !important;
+  letter-spacing: .13em !important;
+}
+body.v20-ui #screenCentral .central-season-snapshot .snapshot-grid span {
+  color: #56759a !important;
+  font: 900 clamp(7px, .31cqw, 9px)/1 "Nunito Sans", sans-serif !important;
+  letter-spacing: .075em !important;
+}
+body.v20-ui #screenCentral .central-manager-security-strip {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  height: 1.25cqw !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 .66cqw !important;
+  grid-template-columns: auto auto minmax(0, 1fr) !important;
+  gap: .55cqw !important;
+  border: 1px solid rgba(103, 154, 205, .62) !important;
+  border-radius: .34cqw !important;
+  background: linear-gradient(90deg, #082c58, #0a4378 48%, #082d59) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .12) !important;
+}
+body.v20-ui #screenCentral .central-manager-security-strip:hover {
+  border-color: #55c3d0 !important;
+  background: linear-gradient(90deg, #0a376c, #0c4e88 48%, #0a376c) !important;
+}
+body.v20-ui #screenCentral .central-manager-security-strip span {
+  color: #a9c8e7 !important;
+  font-size: clamp(7px, .29cqw, 9px) !important;
+}
+body.v20-ui #screenCentral .central-manager-security-strip strong {
+  color: #77e1b2 !important;
+  font: 900 clamp(8px, .4cqw, 11px)/1 "Silkscreen", monospace !important;
+  letter-spacing: .06em !important;
+}
+body.v20-ui #screenCentral .central-manager-security-strip small {
+  justify-self: end !important;
+  color: #d8e8f8 !important;
+  font-size: clamp(7px, .28cqw, 9px) !important;
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.4 — exact centre axis and header lockup corrections
+   ======================================================================== */
+
+/* Remove all inherited widths/offsets and centre the entire fixture lockup
+   against one explicit axis. */
+body.v20-ui #screenCentral .central-matchup-title {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+body.v20-ui #screenCentral .central-matchup-title .central-nameplate,
+body.v20-ui #screenCentral .central-matchup-title .central-home-name,
+body.v20-ui #screenCentral .central-matchup-title .central-away-name {
+  left: 50% !important;
+  right: auto !important;
+  width: 90% !important;
+  max-width: 90% !important;
+  margin: 0 !important;
+  transform: translateX(-50%) !important;
+  text-align: center !important;
+}
+body.v20-ui #screenCentral .central-matchup-title::after {
+  left: 50% !important;
+  right: auto !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  text-align: center !important;
+}
+
+/* Let the Velmora wordmark fill more of its existing brand cell. */
+body.v20-ui #screenCentral > .career-topbar .career-brand-logo {
+  width: auto !important;
+  height: 3.05cqw !important;
+  max-width: 12.6cqw !important;
+  max-height: 72% !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+
+/* A fixed percentage rail keeps the enlarged crest safely left of the copy
+   at every viewport size while the button itself remains untouched. */
+body.v20-ui #screenCentral .central-advance-action {
+  padding-left: 36% !important;
+  padding-right: 8% !important;
+}
+body.v20-ui #screenCentral .central-advance-action::before {
+  left: 4% !important;
+  top: 50% !important;
+  width: 27% !important;
+  height: 68% !important;
+  transform: translateY(-50%) !important;
+}
+body.v20-ui #screenCentral .advance-club-badge {
+  left: 7% !important;
+  top: 50% !important;
+  width: 21% !important;
+  height: 70% !important;
+  transform: translateY(-50%) !important;
+}
+body.v20-ui #screenCentral .advance-club-badge img {
+  transform: scale(1.04) !important;
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.5 — large crest, isolated from the matchday wording
+   ======================================================================== */
+
+body.v20-ui #screenCentral .central-advance-action {
+  padding-left: 43% !important;
+  padding-right: 7% !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action::before {
+  left: 4% !important;
+  width: 32% !important;
+  height: 76% !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge {
+  left: 4% !important;
+  top: 50% !important;
+  width: 32% !important;
+  height: 82% !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  transform: translateY(-50%) !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge :is(img, .fitted-shield, .v34-club-crest) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: scale(2.08) !important;
+  transform-origin: center !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge .fitted-shield-media {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.6 — structural two-column matchday button
+   ======================================================================== */
+
+body.v20-ui #screenCentral .central-advance-action {
+  display: grid !important;
+  grid-template-columns: 40% minmax(0, 1fr) !important;
+  grid-template-rows: 100% !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0 7% 0 0 !important;
+}
+
+body.v20-ui #screenCentral .central-advance-action::before {
+  left: 40% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: 1px !important;
+  height: 66% !important;
+  transform: translateY(-50%) !important;
+  border: 0 !important;
+  background: linear-gradient(transparent, rgba(132,190,238,.55) 16% 84%, transparent) !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge {
+  position: relative !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+  width: auto !important;
+  height: auto !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  transform: none !important;
+}
+
+body.v20-ui #screenCentral .advance-club-badge > img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: scale(2.08) !important;
+  transform-origin: center !important;
+}
+
+body.v20-ui #screenCentral .advance-action-copy {
+  position: relative !important;
+  z-index: 2 !important;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: .38cqw !important;
+  padding-left: clamp(15px, 1.05cqw, 25px) !important;
+  overflow: hidden !important;
+  text-align: left !important;
+}
+
+body.v20-ui #screenCentral .advance-action-copy > :is(span, strong, small) {
+  position: relative !important;
+  z-index: 1 !important;
+  max-width: 100% !important;
+}
+
+body.v20-ui #screenCentral .advance-action-copy > strong {
+  white-space: normal !important;
+  text-wrap: balance !important;
+}
+
+body.v20-ui #screenCentral .advance-action-copy > small {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* The old full-panel separator and earlier grid separator both occupied the
+   matchday card at different breakpoints. The structural columns no longer
+   need either decorative line. */
+body.v20-ui #screenCentral .central-advance-panel::after,
+body.v20-ui #screenCentral .central-advance-action::before {
+  content: none !important;
+  display: none !important;
+  border: 0 !important;
+  background: none !important;
+}
+
+/* ========================================================================
+   CENTRAL REFERENCE V2.7 — fixture countdown and portrait framing
+   ======================================================================== */
+
+body.v20-ui #screenCentral .central-match-hero .central-hero-header.vm27-match-header {
+  height: 2.35cqw !important;
+  align-items: flex-start !important;
+}
+
+body.v20-ui #screenCentral .central-match-hero .central-hero-meta {
+  display: grid !important;
+  justify-items: center !important;
+  gap: .28cqw !important;
+  line-height: 1 !important;
+}
+
+body.v20-ui #screenCentral .central-fixture-date,
+body.v20-ui #screenCentral .central-fixture-countdown {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+body.v20-ui #screenCentral .central-fixture-countdown {
+  color: #dcecff !important;
+  font: 900 clamp(8px, .42cqw, 11px)/1 "Nunito Sans", sans-serif !important;
+  letter-spacing: .09em !important;
+  text-shadow: 0 1px 0 #06152c, 0 2px 4px rgba(0, 0, 0, .82) !important;
+}
+
+body.v20-ui #screenCentral .central-fixture-countdown.is-matchday {
+  color: #b8f05a !important;
+}
+
+/* Lift the three-part matchup lockup as a unit to make room beneath it. */
+body.v20-ui #screenCentral .central-matchup-title .central-home-name {
+  top: 4.25cqw !important;
+}
+
+body.v20-ui #screenCentral .central-matchup-title .central-away-name {
+  top: 13.45cqw !important;
+}
+
+body.v20-ui #screenCentral .central-matchup-title::after {
+  top: 10.65cqw !important;
+}
+
+/* Keep each news character comfortably inside its circular portrait crop. */
+body.v20-ui #screenCentral .central-news-row .news-avatar {
+  place-items: center !important;
+}
+
+body.v20-ui #screenCentral .central-news-row .news-avatar img.news-smart-avatar {
+  object-position: center top !important;
+  transform: scale(1.36) !important;
+  transform-origin: center 18% !important;
+}

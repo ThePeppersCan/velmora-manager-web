@@ -44,20 +44,37 @@
 #screenMatchday.md2 .md2-hero {grid-area:hero!important;position:relative!important;inset:auto!important;min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;max-height:none!important;overflow:hidden!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:#f6f4ef!important}
 #screenMatchday.md2 .md2-hero-bg {position:absolute;inset:0;background:var(--matchday-arena,url('assets/matchday-presentation/backdrops/velmora-matchday-neutral.png')) center/cover no-repeat;opacity:.23;filter:grayscale(.85)}
 #screenMatchday.md2 .md2-hero-streaks {position:absolute;inset:0;background:linear-gradient(180deg,#f8f6f0ba,transparent 40%,#f8f6f066),linear-gradient(104deg,transparent 27%,#a9cb2266 27.08%,transparent 27.2%,transparent 74%,#a9cb2255 74.08%,transparent 74.2%);pointer-events:none}
-#screenMatchday.md2 .md2-hero-top {position:absolute;z-index:4;top:5.5%;left:29%;width:38%;display:flex;flex-direction:column;align-items:center;gap:2.1vh;padding:0}
-#screenMatchday.md2 .md2-hero-kicker {display:flex;flex-direction:column;gap:5px;align-self:flex-start;margin-left:15%}
+#screenMatchday.md2 .md2-hero-top {position:absolute;z-index:4;top:5.5%;left:25%;width:50%;display:flex;flex-direction:column;align-items:center;gap:2.1vh;padding:0}
+#screenMatchday.md2 .md2-hero-kicker {display:flex;flex-direction:column;gap:5px;align-items:center;width:100%;margin:0;text-align:center;text-wrap:balance}
 #screenMatchday.md2 #matchdayHeroCompetition {font:500 clamp(12px,1vw,17px)/1.3 Arial,sans-serif!important;color:#171717!important}
 #screenMatchday.md2 #matchdayRoundLabel {font:400 13px Arial,sans-serif!important;color:#444!important}
 #screenMatchday.md2 .md2-hero-badges {display:flex;align-items:center;justify-content:center;gap:24px}
 #screenMatchday.md2 .matchday-badge.md2-badge {position:relative!important;inset:auto!important;width:clamp(56px,5.2vw,90px)!important;height:clamp(62px,8.8vh,95px)!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;overflow:hidden!important}
 #screenMatchday.md2 .md2-badge-rule {width:1px;height:70px;background:#aaa}
 #screenMatchday.md2 .matchday-badge img {object-fit:contain!important;transform:scale(1.8)!important;filter:none!important}
-#screenMatchday.md2 .matchday-featured.md2-portrait {position:absolute!important;top:auto!important;bottom:0!important;height:94%!important;max-height:none!important;width:31%!important;max-width:none!important;min-width:0!important;overflow:visible!important;z-index:2!important;pointer-events:none;opacity:1!important}
+/* V73.1: 94% was sized as a ceiling for the tallest/narrowest outlier sprites, but
+   once every sprite was normalized to reach that same height (the V73 fix above),
+   ordinary/wider-built characters ballooned along with it — the box itself needed
+   to come down, not just the consistency fix. 58% keeps both sides visually
+   consistent (that's the point of the fix) without either side dominating the hero. */
+#screenMatchday.md2 .matchday-featured.md2-portrait {position:absolute!important;top:auto!important;bottom:0!important;height:58%!important;max-height:none!important;width:31%!important;max-width:none!important;min-width:0!important;overflow:visible!important;z-index:2!important;pointer-events:none;opacity:1!important}
 #screenMatchday.md2 .matchday-featured.md2-portrait.home {left:-3%!important;right:auto!important}
 #screenMatchday.md2 .matchday-featured.md2-portrait.away {right:-1%!important;left:auto!important}
 #screenMatchday.md2 .md2-portrait .matchday-ghost-crest {display:none!important}
-#screenMatchday.md2 .matchday-featured.md2-portrait img {position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center bottom!important;transform:scale(1.13)!important;transform-origin:center bottom!important;filter:drop-shadow(0 4px 2px #0002)!important;image-rendering:pixelated}
-#screenMatchday.md2 .matchday-featured.md2-portrait.home img {transform:scale(-1.13,1.13)!important}
+/* V73 fix: standing sprites in assets/quidditch-engine/standing/ are auto-trimmed
+   tightly to each character's silhouette, but their source canvases vary wildly in
+   pixel size and aspect ratio between characters/species. The old rule stretched the
+   <img> to 100%/100% of the box and used object-fit:contain, so whichever axis
+   happened to be the "tighter" fit against the box's own shape decided the render
+   size — a sprite whose raw aspect ratio was narrower than the box filled the full
+   box height (looked huge), while a differently-proportioned sprite was
+   width-limited and rendered far shorter (looked tiny), even though neither
+   difference had anything to do with the characters' intended relative size.
+   Fixing this by anchoring every sprite to the SAME height (100% of the box,
+   identical for home and away) and letting width follow the sprite's own aspect
+   ratio freely — the parent already declares overflow:visible for exactly this. */
+#screenMatchday.md2 .matchday-featured.md2-portrait img {position:absolute!important;left:50%!important;right:auto!important;top:auto!important;bottom:0!important;width:auto!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center bottom!important;transform:translateX(-50%) scale(1.13)!important;transform-origin:center bottom!important;filter:drop-shadow(0 4px 2px #0002)!important;image-rendering:pixelated}
+#screenMatchday.md2 .matchday-featured.md2-portrait.home img {transform:translateX(-50%) scale(-1.13,1.13)!important}
 #screenMatchday.md2 .md2-portrait[hidden],#screenMatchday.md2 .md2-portrait img[hidden] {display:none!important}
 #screenMatchday.md2 .md2-hero-body {position:absolute;z-index:3;left:27%;right:27%;top:32%;bottom:10%;padding:0;margin:0;text-align:center;display:flex;flex-direction:column;justify-content:center}
 #screenMatchday.md2 .md2-hero-title {display:flex;flex-direction:column;align-items:center;gap:0;margin:0;line-height:1}
@@ -85,12 +102,20 @@
 #screenMatchday.md2 .md2-icon-scout {color:var(--md2-red)}
 #screenMatchday.md2 .md2-icon-scout:after {content:'◎'}
 #screenMatchday.md2 .md2-icon-tactic:after {content:'⤴'}
-#screenMatchday.md2 .md2-btn {position:static!important;display:flex!important;align-items:center;justify-content:space-between;flex:none;width:100%!important;min-height:42px!important;height:44px!important;margin:8px 0 0!important;padding:0 16px!important;border-radius:3px!important;font:600 15px Arial,sans-serif!important;letter-spacing:0!important;cursor:pointer;box-shadow:none!important}
-#screenMatchday.md2 .md2-btn i {font:26px/1 Arial,sans-serif}
-#screenMatchday.md2 .md2-btn-primary {background:#0645d5!important;color:white!important;border:1px solid #0645d5!important}
-#screenMatchday.md2 .md2-btn-secondary {background:transparent!important;color:#171717!important;border:1px solid #999!important}
+#screenMatchday.md2 .md2-btn {position:static!important;display:flex!important;align-items:center;justify-content:space-between;gap:16px;flex:none;width:100%!important;min-height:56px!important;height:auto!important;box-sizing:border-box;margin:10px 0 0!important;padding:16px 18px!important;border-radius:5px!important;font:700 clamp(14px,.9vw,17px)/1.2 Arial,sans-serif!important;letter-spacing:.055em!important;cursor:pointer;box-shadow:none!important;transition:background-color .15s,border-color .15s,color .15s}
+#screenMatchday.md2 .md2-btn svg,#screenMatchday.md2 .md2-report-icon {width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#screenMatchday.md2 .md2-btn-primary {background:#252922!important;color:#faf9f6!important;border:1px solid #252922!important;border-left:3px solid var(--md2-green)!important}
+#screenMatchday.md2 .md2-btn-primary svg {color:#b8df35}
+#screenMatchday.md2 .md2-btn-secondary {background:#f0f1e9!important;color:#292d23!important;border:1px solid #9bA18b!important}
+#screenMatchday.md2 .md2-btn-secondary svg {color:#667632}
+#screenMatchday.md2 .md2-btn.md2-btn-edit {min-height:46px!important;padding:12px 4px!important;gap:12px;background:transparent!important;color:#56594e!important;border:1px solid transparent!important;border-bottom:1px solid var(--md2-line)!important;border-radius:0!important;font:500 12px/1.4 Arial,sans-serif!important;letter-spacing:0!important;text-align:left;text-transform:none!important;white-space:normal!important}
+#screenMatchday.md2 .md2-btn-edit span {flex:1;min-width:0}
+#screenMatchday.md2 .md2-btn-edit svg {width:19px;height:19px}
+#screenMatchday.md2 .md2-btn-primary:not(:disabled):hover {background:#383f2c!important;border-color:#383f2c!important;border-left-color:#b8df35!important}
+#screenMatchday.md2 .md2-btn-secondary:not(:disabled):hover {background:#e7ebd9!important;border-color:#6f7c4d!important}
+#screenMatchday.md2 .md2-btn-edit:not(:disabled):hover {background:#eeeee6!important;color:#252922!important;border-bottom-color:#87946a!important}
+#screenMatchday.md2 .md2-btn:focus-visible,#screenMatchday.md2 .md2-report > summary:focus-visible {outline:2px solid #657839;outline-offset:3px}
 #screenMatchday.md2 .md2-btn:disabled {opacity:.45;cursor:not-allowed}
-#screenMatchday.md2 .md2-btn:not(:disabled):hover {filter:brightness(1.12)}
 #screenMatchday.md2 .md2-action-status {display:none!important}
 #screenMatchday.md2 .md2-teams {grid-area:teams!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px;min-height:0!important;margin:16px 2.1% 0}
 #screenMatchday.md2 .matchday-lineup-panel.md2-team-card {position:static!important;inset:auto!important;width:auto!important;min-width:0!important;height:auto!important;min-height:146px!important;max-height:none!important;display:flex!important;flex-direction:column!important;padding:0 14px 10px!important;border:1px solid var(--md2-line)!important;border-top:3px solid var(--md2-green)!important;border-radius:9px!important;box-shadow:none!important;overflow:visible!important;background:#faf9f6!important}
@@ -128,7 +153,17 @@
 #screenMatchday.md2 .md2-footer-settings {margin-left:auto;border:0;background:none;color:#555;cursor:pointer}
 #screenMatchday.md2 .md2-footer-settings small {font:400 12px Arial,sans-serif;margin-left:6px}
 #screenMatchday.md2 .md2-report {grid-area:detail;margin:0 2.1% 14px;min-width:0}
-#screenMatchday.md2 .md2-report > summary {cursor:pointer;font:500 10px Arial,sans-serif;color:#666;padding:10px 0;border-top:1px solid var(--md2-line)}
+#screenMatchday.md2 .md2-report > summary {display:flex;align-items:center;gap:16px;min-height:68px;box-sizing:border-box;cursor:pointer;list-style:none;color:#30352a;padding:14px 18px;background:#f0f1e9;border:1px solid #d4d8c8;border-left:3px solid #91a44f;border-radius:5px;transition:background-color .15s,border-color .15s}
+#screenMatchday.md2 .md2-report > summary::-webkit-details-marker {display:none}
+#screenMatchday.md2 .md2-report-icon {color:#69784a}
+#screenMatchday.md2 .md2-report-copy {display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+#screenMatchday.md2 .md2-report-copy strong {font:700 12px/1.4 Arial,sans-serif;letter-spacing:.055em}
+#screenMatchday.md2 .md2-report-copy small {font:400 12px/1.4 Arial,sans-serif;color:#686d5e;letter-spacing:0}
+#screenMatchday.md2 .md2-report-toggle {display:grid;place-items:center;flex:none;width:30px;height:30px;border:1px solid #cbd1bb;border-radius:50%;color:#56653a;background:#fafbf5}
+#screenMatchday.md2 .md2-report-toggle::after {content:'';width:7px;height:7px;margin-top:-4px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg)}
+#screenMatchday.md2 .md2-report > summary:hover {background:#e9edde;border-color:#a7b48b}
+#screenMatchday.md2 .md2-report[open] > summary {margin-bottom:12px;background:#e9edde}
+#screenMatchday.md2 .md2-report[open] .md2-report-toggle::after {transform:rotate(225deg);margin-top:4px}
 #screenMatchday.md2 .matchday-summary.md2-detail {position:static!important;inset:auto!important;width:100%!important;min-width:0!important;height:auto!important;min-height:180px!important;overflow:visible!important}
 @media (max-width:1200px) {
   #screenMatchday.md2 .md2-hero-body {left:24%;right:24%}
@@ -145,6 +180,7 @@
   #screenMatchday.md2 .md2-card-label {font-size:9px;margin-bottom:12px}
   #screenMatchday.md2 .md2-card-row strong,#screenMatchday.md2 .md2-status-card .md2-card-row strong {font-size:25px}
   #screenMatchday.md2 .md2-action-status {grid-column:1/-1}
+  #screenMatchday.md2 .md2-side > .md2-btn {grid-column:1/-1}
   #screenMatchday.md2 .md2-teams {grid-template-columns:minmax(0,1fr)!important}
   #screenMatchday.md2 .md2-hero-title .matchday-name {font-size:70px!important}
   #screenMatchday.md2 .md2-hero-title .matchday-name.is-long-name {font-size:42px!important}
@@ -179,7 +215,7 @@
   #screenMatchday.md2 .md2-card-row strong,#screenMatchday.md2 .md2-status-card .md2-card-row strong {font-size:27px}
   #screenMatchday.md2 .md2-card p {font-size:11px;line-height:1.3;margin-top:5px}
   #screenMatchday.md2 .md2-card-icon {width:28px;height:28px;font-size:24px}
-  #screenMatchday.md2 .md2-btn {height:38px!important;min-height:38px!important;font-size:13px!important;margin-top:6px!important}
+  #screenMatchday.md2 .md2-btn {height:auto!important;min-height:50px!important;padding:12px 16px!important;font-size:14px!important;margin-top:8px!important}
   #screenMatchday.md2 .md2-action-status {font-size:9px;margin-top:6px}
   #screenMatchday.md2 .md2-hero-top {gap:12px;top:5%}
   #screenMatchday.md2 .md2-hero-title .matchday-name {font-size:clamp(45px,min(7vw,11vh),100px)!important}
@@ -203,7 +239,7 @@
    occupy the same visual depth as the reference. Secondary detail remains
    available by scrolling below the flat footer. */
 @media (min-width:801px){
-  #screenMatchday.md2 .matchday-shell-v2.md2-shell{grid-template-rows:min(38.4cqw,calc(100dvh - var(--md-nav-height) - 175px)) max-content max-content max-content!important}
+  #screenMatchday.md2 .matchday-shell-v2.md2-shell{grid-template-rows:max(560px,min(38.4cqw,calc(100dvh - var(--md-nav-height) - 175px))) max-content max-content max-content!important}
   #screenMatchday.md2 .matchday-lineup-panel.md2-team-card{min-height:132px!important}
   #screenMatchday.md2 .md2-lineup .match-lineup-player{min-height:62px!important}
   #screenMatchday.md2 .md2-lineup .matchday-lineup-portrait{height:60px!important}

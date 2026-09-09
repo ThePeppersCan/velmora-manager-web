@@ -889,7 +889,8 @@ body.v20-ui .vm-player-facts{display:grid;grid-template-columns:repeat(6,1fr);ga
 .negotiation-backdrop{z-index:40}.negotiation-card{position:relative;width:54%;min-height:34cqw;border:1px solid rgba(216,182,101,.58);background:linear-gradient(180deg,#0a3040,#061b28 72%,#04141f);box-shadow:0 28px 80px rgba(0,0,0,.72);overflow:hidden}
 .negotiation-card:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#67d0ce,transparent)}
 .negotiation-header{padding:1cqw 1.25cqw .85cqw;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid rgba(216,182,101,.26);background:linear-gradient(90deg,#082c3a,#071f2d)}
-.negotiation-header h3{margin:.15cqw 0 0;font-size:1.55cqw;letter-spacing:.04em}.negotiation-header p{margin:.18cqw 0 0;color:#7c9ca8;font:700 .48cqw/1.2 Arial,sans-serif}.negotiation-step{color:#d5b96d;font:800 .42cqw/1 Arial,sans-serif;letter-spacing:.14em}
+.negotiation-header h3{margin:.15cqw 0 0;color:#f7fbfc;font-size:1.55cqw;letter-spacing:.04em;text-shadow:0 1px 0 rgba(0,0,0,.28)}.negotiation-header p{margin:.18cqw 0 0;color:#a9c0c8;font:700 .48cqw/1.2 Arial,sans-serif}.negotiation-step{color:#d5b96d;font:800 .42cqw/1 Arial,sans-serif;letter-spacing:.14em}
+.negotiation-card .negotiation-header h3{color:#f7fbfc!important}
 .negotiation-body{display:grid;grid-template-columns:38% minmax(0,1fr);min-height:27cqw}
 .negotiation-player{padding:1.05cqw;background:radial-gradient(circle at 50% 31%,rgba(21,102,108,.3),transparent 38%),#051b28;border-right:1px solid rgba(112,156,171,.2);text-align:center}
 .negotiation-player .transfer-avatar{width:7.7cqw;height:7.7cqw;margin:0 auto .65cqw}.negotiation-player h4{margin:.25cqw 0;font-size:1.12cqw}.negotiation-player p{margin:0;color:#88a7b2;font:700 .48cqw/1.4 Arial,sans-serif}.negotiation-club-lockup{margin:.72cqw auto 0;display:flex;justify-content:center;align-items:center;gap:.45cqw;color:#d8c8ab;font:700 .5cqw/1 Arial,sans-serif}.negotiation-club-lockup img{width:1.8cqw;height:1.8cqw;object-fit:contain}
@@ -6411,7 +6412,7 @@ img.smart-avatar{object-fit:contain!important;object-position:center bottom!impo
 .manager-market-toolbar{display:flex;align-items:center;justify-content:space-between;gap:1cqw;padding:.8cqw .9cqw;border-radius:.43cqw;background:linear-gradient(145deg,#0b2034,#102d49);color:#fff}
 .manager-market-toolbar span{display:block;color:#7fd7d7;font:900 .28cqw/1 Arial,sans-serif;letter-spacing:.12em}.manager-market-toolbar strong{display:block;margin-top:.25cqw;color:#fff;font:900 .75cqw/1 Arial,sans-serif}.manager-market-toolbar>div:last-child{display:flex;gap:.28cqw;flex-wrap:wrap;justify-content:flex-end}.manager-market-toolbar button{min-width:3.5cqw;height:1.55cqw;padding:0 .45cqw;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#cedae5;font:900 .27cqw/1 Arial,sans-serif;letter-spacing:.07em;cursor:pointer}.manager-market-toolbar button.is-active{background:#fff;color:#0b3b98;border-color:#fff}
 .manager-vacancy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65cqw}.manager-vacancy-card{position:relative;border:1px solid #dfe5eb;border-top:.18cqw solid var(--manager-club-accent,#0b3b98);border-radius:.45cqw;background:linear-gradient(145deg,#fff,#f8fafc);padding:.78cqw;box-shadow:0 .25cqw .65cqw rgba(18,45,86,.04)}
-.manager-vacancy-card.is-compact{grid-column:auto}.manager-vacancy-head{display:grid;grid-template-columns:3cqw minmax(0,1fr) auto;gap:.65cqw;align-items:center}.manager-vacancy-crest{width:2.8cqw;height:2.8cqw;display:grid;place-items:center}.manager-vacancy-crest .club-badge,.manager-vacancy-crest .fitted-shield{width:100%;height:100%}.manager-vacancy-head span{color:#76828f;font:900 .28cqw/1.2 Arial,sans-serif;letter-spacing:.08em}.manager-vacancy-head h4{margin:.22cqw 0 0;color:#111b25;font:900 .75cqw/1 Arial,sans-serif}.manager-vacancy-head p{margin:.18cqw 0 0;color:#788491;font:700 .32cqw/1 Arial,sans-serif}.manager-interest{padding:.3cqw .43cqw;border-radius:999px;background:#edf2f7;color:#5d6875;font:900 .26cqw/1 Arial,sans-serif;letter-spacing:.07em}.manager-interest.is-very-high,.manager-interest.is-high{background:#eaf7f1;color:#1c6a52}.manager-interest.is-medium{background:#edf3ff;color:#0b4d9b}.manager-interest.is-low{background:#fff6df;color:#7a5b17}.manager-interest.is-none{background:#f1f2f4;color:#78818a}
+.manager-vacancy-card.is-compact{grid-column:auto}.manager-vacancy-head{display:grid;grid-template-columns:3cqw minmax(0,1fr) auto;gap:.65cqw;align-items:center}.manager-vacancy-crest{width:2.8cqw;height:2.8cqw;display:grid;place-items:center;overflow:hidden;border:1px solid #e3e8ed;border-radius:.3cqw;background:#fff}.manager-vacancy-crest .club-badge,.manager-vacancy-crest .fitted-shield,.manager-vacancy-crest img{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}.manager-vacancy-head span{color:#76828f;font:900 .28cqw/1.2 Arial,sans-serif;letter-spacing:.08em}.manager-vacancy-head h4{margin:.22cqw 0 0;color:#111b25;font:900 .75cqw/1 Arial,sans-serif}.manager-vacancy-head p{margin:.18cqw 0 0;color:#788491;font:700 .32cqw/1 Arial,sans-serif}.manager-interest{padding:.3cqw .43cqw;border-radius:999px;background:#edf2f7;color:#5d6875;font:900 .26cqw/1 Arial,sans-serif;letter-spacing:.07em}.manager-interest.is-very-high,.manager-interest.is-high{background:#eaf7f1;color:#1c6a52}.manager-interest.is-medium{background:#edf3ff;color:#0b4d9b}.manager-interest.is-low{background:#fff6df;color:#7a5b17}.manager-interest.is-none{background:#f1f2f4;color:#78818a}
 .manager-vacancy-facts{display:grid;grid-template-columns:1fr 1fr;gap:.42cqw;margin-top:.72cqw}.manager-vacancy-facts>div{padding:.52cqw .58cqw;border:1px solid #e3e8ed;border-radius:.3cqw;background:#fff}.manager-vacancy-facts span{display:block;color:#818b96;font:900 .25cqw/1 Arial,sans-serif;letter-spacing:.08em}.manager-vacancy-facts strong{display:block;margin-top:.2cqw;color:#17212b;font:900 .4cqw/1.2 Arial,sans-serif}.manager-vacancy-reason{margin-top:.55cqw;color:#687584;font:700 .34cqw/1.4 Arial,sans-serif}.manager-vacancy-actions{display:grid;grid-template-columns:1fr 1fr;gap:.4cqw;margin-top:.65cqw}.manager-vacancy-actions button{height:2cqw;border:1px solid #ccd6e0;border-radius:.3cqw;background:#fff;color:#354453;font:900 .3cqw/1 Arial,sans-serif;letter-spacing:.06em;cursor:pointer}.manager-vacancy-actions button.is-primary{background:#0b3b98;border-color:#0b3b98;color:#fff}.manager-vacancy-actions button:disabled{opacity:.55;cursor:default}
 .manager-market-empty{grid-column:1/-1;min-height:10cqw;display:grid;place-items:center;text-align:center;border:1px dashed #cad4de;border-radius:.45cqw;background:#f8fafc;padding:1.2cqw}.manager-market-empty span{color:#778390;font:900 .28cqw/1 Arial,sans-serif;letter-spacing:.12em}.manager-market-empty h3{margin:.3cqw 0 0;color:#15202a;font:900 .85cqw/1 Arial,sans-serif}.manager-market-empty p{margin:.35cqw auto 0;max-width:29cqw;color:#6e7b88;font:700 .38cqw/1.45 Arial,sans-serif}
 
@@ -6430,6 +6431,14 @@ img.smart-avatar{object-fit:contain!important;object-position:center bottom!impo
 .manager-dismissal-shell{text-align:center}.dismiss-club{width:5.8cqw;height:5.8cqw;margin:0 auto .6cqw}.dismiss-club .club-badge,.dismiss-club .fitted-shield{width:100%;height:100%}.manager-dismissal-shell h3{margin:.35cqw 0 0;color:#24313e;font:900 .78cqw/1 Arial,sans-serif}.dismiss-record{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45cqw;margin-top:.8cqw}.dismiss-record>div{padding:.7cqw;border:1px solid #dce3e9;border-radius:.36cqw;background:#fff}.dismiss-record strong{display:block;color:#0b3b98;font:900 .85cqw/1 Arial,sans-serif}.dismiss-record span{display:block;margin-top:.25cqw;color:#72808d;font:900 .27cqw/1 Arial,sans-serif;letter-spacing:.08em}.manager-dismissal-shell main>small{display:block;margin-top:.65cqw;color:#7a6060;font:900 .3cqw/1 Arial,sans-serif;letter-spacing:.08em}
 
 .job-offer-grid .manager-vacancy-card.is-compact{min-width:0}.job-market-open-button{grid-column:1/-1;margin-top:0}.manager-job-offer-card,.manager-interview-card{border-top:3px solid #0b3b98!important}
+/* Club crest images across the manager-market UI have no CSS class of their own (badgeHTML() returns a bare <img>),
+   so containers that only sized a ".club-badge"/".fitted-shield" child left the raw <img> unconstrained and it
+   rendered at native size, bleeding across the card. Constrain the actual <img> in every affected container. */
+.manager-active-offers article>img,
+.manager-interview-club>div img,
+.manager-offer-club>div img,
+.first24-club>div img,
+.dismiss-club>img{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center;display:block}
 .opponent-manager-strip{display:grid;gap:.14cqw;margin:.65cqw 0;padding:.55cqw .6cqw;border-left:.14cqw solid #0b3b98;background:rgba(12,59,152,.045)}.opponent-manager-strip span{color:#6f7d8a!important;font:900 .26cqw/1 Arial,sans-serif!important;letter-spacing:.09em!important}.opponent-manager-strip strong{color:#14202a!important;font:900 .5cqw/1 Arial,sans-serif!important}.opponent-manager-strip small{color:#6e7a86;font:700 .31cqw/1.2 Arial,sans-serif}
 
 @media(max-width:1200px){.manager-market-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}.manager-career-overview-grid{grid-template-columns:1fr}.manager-vacancy-grid{grid-template-columns:1fr}.manager-monitoring-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manager-spell-list article{grid-template-columns:3.5rem 7rem minmax(0,1fr)}.manager-spell-list article>strong{grid-column:2/-1}.manager-contract-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.manager-interview-question>div{grid-template-columns:1fr}.manager-offer-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -10636,6 +10645,7 @@ body.v20-ui .career-music-mini:hover,
   .career-music-copy strong{font-size:10px}
   #careerMusicNext{width:30px;height:30px;font-size:15px}
 }
+body:has(#negotiationModal.is-open) .career-music-mini{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 
 /* =========================================================
    V20.7.3.3 — OFFICE & INBOX WORLD IDENTITY PASS
@@ -13664,4 +13674,43 @@ body.v20-ui .v33-editorial.is-broadsheet .vm-news-section-label b{color:#d5b85f}
   body.v20-ui .v33-editorial .vm-news-content{grid-template-columns:1fr!important}
   body.v20-ui .v33-editorial .vm-news-sidebar-notes{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   body.v20-ui .v33-editorial .vm-news-article-body p{max-width:none!important}
+}
+
+/* ============================================================
+   V89 — Unified viewport and accessibility contract
+   The game frame is the only desktop coordinate system. Feature
+   scenes must size themselves from this frame, never from 100vw.
+   ============================================================ */
+html,body{width:100%;min-width:0;height:100%;min-height:100%;overflow:hidden;background:#020b12}
+.app-root{
+  width:100vw;
+  height:100vh;
+  height:100svh;
+  min-height:100svh;
+  padding:max(0px,env(safe-area-inset-top)) max(0px,env(safe-area-inset-right)) max(0px,env(safe-area-inset-bottom)) max(0px,env(safe-area-inset-left));
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+}
+.game-frame{
+  --vm-safe-inline:max(12px,1.25cqw);
+  --vm-safe-block:max(10px,1cqh);
+  width:min(100vw,calc(100svh * 16 / 9));
+  height:min(100svh,calc(100vw * 9 / 16));
+  max-width:100vw;
+  max-height:100svh;
+  aspect-ratio:16/9;
+  container-type:size;
+  container-name:velmora-frame;
+  flex:none;
+  isolation:isolate;
+}
+html[data-vm-reduced-motion="true"] *,
+html[data-vm-reduced-motion="true"] *::before,
+html[data-vm-reduced-motion="true"] *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
+#uiScaleValue{justify-self:end;color:#91aeb8;font:800 11px/1 Arial,sans-serif;letter-spacing:.08em}
+@media (orientation:portrait) and (max-width:760px){
+  html,body{overflow:auto}
+  .app-root{display:block;width:100%;height:auto;min-height:100svh;padding:0;overflow:visible}
+  .game-frame{width:100%;height:100svh;min-height:100svh;max-width:none;max-height:none;aspect-ratio:auto;overflow:auto;container-type:inline-size}
 }

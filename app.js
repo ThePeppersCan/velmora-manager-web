@@ -1,8 +1,13 @@
 (() => {
   const trainingRules = window.VelmoraTraining;
+  const performanceRules = window.VelmoraPerformance;
   const clubs = window.VELMORA_CLUBS || [];
   const careerStore = window.VelmoraCareerStore || localStorage;
   let careerExpansion = null;
+  // V104 online career. Empty and inert for every single-player career.
+  let multiplayerSession=null;
+  let v104CreatorReturn=null;
+  const v104ReservedClubIds=new Set();
   let v35FinanceView='overview',v35AcademyView='prospects';
   const v34OriginalClubs = new Map(clubs.map(c=>[c.id,JSON.parse(JSON.stringify(c))]));
   const clubByIdCache = new Map(clubs.map(c=>[c.id,c]));
@@ -11,7 +16,7 @@
   const namePools = window.VELMORA_NAMES || {};
   const expandedNamePools = window.VELMORA_NAME_EXPANSION || {velmoraFull:[],sportsFull:[],counts:{velmora:0,sports:0}};
   const defaultWorldMeta = {
-    Velmora:{key:'velmora',accent:'#1bb5b6',strength:100,cup:'Velmora Cup',divisions:[
+    Velmora:{key:'velmora',accent:'#1bb5b6',strength:100,cup:'Velmora Cup',leagueCup:'Velmora League Shield',cupFinalVenue:'Highspire National Arena',divisions:[
       {key:'rsl',name:'Repo Sports League',tier:1},
       {key:'championship',name:'Velmora Championship',tier:2},
       {key:'league-one',name:'Velmora League One',tier:3},
@@ -63,6 +68,9 @@
   const menuMusic = document.getElementById('menuMusic');
   const musicVolume = document.getElementById('musicVolume');
   const sfxVolume = document.getElementById('sfxVolume');
+  const uiScale = document.getElementById('uiScale');
+  const uiScaleValue = document.getElementById('uiScaleValue');
+  const reducedMotion = document.getElementById('reducedMotion');
   const uiClickSfx = document.getElementById('uiClickSfx');
   const clickSfxVoices = uiClickSfx ? Array.from({length:5},()=>{
     const a=new Audio(uiClickSfx.getAttribute('src')||'assets/audio/ui-click.mp3');
@@ -126,6 +134,24 @@
     syncInterfaceThemePicker();
   }
   applyInterfaceTheme(currentInterfaceTheme(),{persist:false});
+
+  const VM_ACCESSIBILITY_KEY='velmora-manager-accessibility-v1';
+  function readAccessibilityPreferences(){
+    let saved={};try{saved=JSON.parse(localStorage.getItem(VM_ACCESSIBILITY_KEY)||'{}')||{};}catch(_e){}
+    return{scale:Math.max(85,Math.min(115,Math.round(Number(saved.scale||100)/5)*5)),reducedMotion:!!saved.reducedMotion};
+  }
+  function applyAccessibilityPreferences(next,{persist=true}={}){
+    const value={scale:Math.max(85,Math.min(115,Math.round(Number(next?.scale||100)/5)*5)),reducedMotion:!!next?.reducedMotion};
+    document.documentElement.dataset.vmUiScale=String(value.scale);
+    document.documentElement.dataset.vmReducedMotion=value.reducedMotion?'true':'false';
+    document.documentElement.style.fontSize=`${value.scale}%`;
+    if(uiScale)uiScale.value=String(value.scale);
+    if(uiScaleValue)uiScaleValue.textContent=`${value.scale}%`;
+    if(reducedMotion)reducedMotion.checked=value.reducedMotion;
+    if(persist){try{localStorage.setItem(VM_ACCESSIBILITY_KEY,JSON.stringify(value));}catch(_e){}}
+    return value;
+  }
+  let accessibilityPreferences=applyAccessibilityPreferences(readAccessibilityPreferences(),{persist:false});
 
   // V20.7.3.1 — normalized career/menu music playlist.
   const CAREER_MUSIC_PLAYLIST = [
@@ -200,6 +226,8 @@
   let seasonFixtureClubId = 'all';
   let seasonFixtureScrollTop = 0;
   let seasonSelectedFixtureId = null;
+  let seasonCupWorld = null;
+  let seasonCupKind = 'national';
   let seasonMatchReportReturn = 'list';
   let seasonFixtureReturnClubId = null;
   let seasonSelectedPlayerId = null;
@@ -215,6 +243,11 @@
   let seasonStatsSort = 'goals';
   let seasonStatsSortDir = 'desc';
   let seasonStatsPage = 0;
+  // V96 — World History is a browseable living record book, not a placeholder panel.
+  let seasonRecordsView = 'overview';
+  let seasonRecordsWorld = 'all';
+  let seasonRecordsSeason = 'all';
+  let seasonRecordsMetric = 'goals';
   let championsCrownView = 'overview';
   let lastPresentationResult = null;
   let v2072CelebrationBlocking = false;
@@ -232,7 +265,9 @@
   let appointmentSource = 'direct';
   let appointmentOfferId = null;
   let firstWeekState = {active:false,completed:true,stage:0,source:null,appointedDate:null,staff:{},recommendedTargetIds:[],pressApplied:false};
-  let careerPreferences = {tactics:{defensive:'Balanced',attacking:'Balanced',mentality:'Balanced'},trainingFocus:'Balanced',focusPlayerIds:[],managerPersonality:'Pragmatic',captainId:null,firstWeekCompletedAt:null};
+  let careerPreferences = {tactics:{defensive:'Balanced',attacking:'Balanced',mentality:'Balanced',width:'Balanced',tempo:'Balanced',freedom:'Balanced'},trainingFocus:'Balanced',focusPlayerIds:[],managerPersonality:'Pragmatic',captainId:null,firstWeekCompletedAt:null};
+  let pendingCareerChallengeKey = null;
+  let careerChallenge = {version:1,key:null,status:'INACTIVE',seasonId:null,clubId:null,startedDate:null,completedDate:null,result:null,history:[]};
   const youthAcademies = new Map();
   let retiredPlayers = [];
   const avatarCooldowns = new Map();
@@ -363,6 +398,116 @@
     sequence:0
   };
 
+  // V102 — persistent club ownership. Portrait choice and behaviour are deliberately
+  // seeded independently: the art communicates identity, never a mechanical stereotype.
+  let ownershipState={version:1,profiles:{},relationships:{},takeovers:[],sequence:0,createdDate:null};
+  // V103 — four genuinely independent club audiences plus unresolved consequence threads.
+  // This extends Club Pulse; it does not replace the board, squad, supporter or media systems.
+  let audienceWorldState={version:1,sequence:0,clubs:{},pendingOutcomes:[],resolvedOutcomes:[],lastProcessDate:null};
+  function initializeChairmanSystem(existing=ownershipState){
+    const engine=window.VelmoraChairmen;if(!engine)return ownershipState;
+    const confidenceByClub={};
+    if(currentClub?.id&&careerRuntime?.boardConfidence!=null&&Number.isFinite(Number(careerRuntime.boardConfidence)))confidenceByClub[currentClub.id]=Number(careerRuntime.boardConfidence);
+    ownershipState=engine.createState({clubs,worldSeed,date:currentCareerISO(),existing,confidenceByClub});
+    clubs.forEach(club=>{
+      const managerId=employmentStatus==='employed'&&currentClub?.id===club.id?PLAYER_MANAGER_ID:(managerMarket?.clubManagers?.[club.id]||'UNASSIGNED');
+      engine.relationshipFor(ownershipState,club.id,managerId,confidenceByClub[club.id]??65,currentCareerISO());
+    });
+    return ownershipState;
+  }
+  function chairmanForClub(club=currentClub||selectedClub||clubs[0]){if(!club)return null;initializeChairmanSystem();return window.VelmoraChairmen?.profileFor(ownershipState,club.id)||null;}
+  function chairmanManagerId(club=currentClub){return employmentStatus==='employed'&&currentClub?.id===club?.id?PLAYER_MANAGER_ID:(managerMarket?.clubManagers?.[club?.id]||'UNASSIGNED');}
+  function chairmanRelationship(club=currentClub,managerId=chairmanManagerId(club)){if(!club||!window.VelmoraChairmen)return null;initializeChairmanSystem();return window.VelmoraChairmen.relationshipFor(ownershipState,club.id,managerId,club.id===currentClub?.id?Number(careerRuntime?.boardConfidence??objectiveConfidenceBaseline(club)):65,currentCareerISO());}
+  function chairmanRecord(club,managerId,entry){if(!club||!window.VelmoraChairmen)return null;initializeChairmanSystem();return window.VelmoraChairmen.recordMemory(ownershipState,club.id,managerId||chairmanManagerId(club),{date:currentCareerISO(),...entry});}
+  function chairmanPolicy(club=currentClub||selectedClub||clubs[0]){const profile=chairmanForClub(club);return window.VelmoraChairmen?.ownerPolicy(profile,club)||{reserveRatio:.1,transferAuthority:1,wageFlexibility:1,academyProtection:50,sellToBuy:false};}
+  function chairmanPortraitHTML(profile,className='chairman-portrait'){return profile?`<img class="${className}" src="${escapeHtml(profile.portrait)}" alt="${escapeHtml(profile.name)}, ${escapeHtml(profile.title)}" loading="lazy" decoding="async">`:'';}
+  function chairmanNameHTML(profile){if(!profile)return'<span>Club ownership</span>';const priorities=window.VelmoraChairmen?.priorityNames(profile)||[];return `<span class="chairman-name" tabindex="0">${escapeHtml(profile.name)}<span class="chairman-name-card" role="tooltip"><strong>${escapeHtml(profile.title)} · ${escapeHtml(profile.communicationStyleLabel)}</strong><small>${escapeHtml(profile.biography)}</small><em>${priorities.map(escapeHtml).join(' · ')}</em></span></span>`;}
+
+  const CLUB_PULSE_DECISION_MEMORIES={
+    'BAD_RUN:back':{dressing:[1,4,'Protected under pressure','The squad remember that blame stayed outside the room when results turned.'],supporters:[1,2,'The manager stood by the team','Public patience was asked for during a difficult run.'],board:[-1,2,'Protection before proof','The board noted that reassurance came before a visible response.'],press:[1,1,'No public scapegoat','The manager refused to turn poor form into a blame story.']},
+    'BAD_RUN:calm':{dressing:[1,1,'The temperature stayed low','The manager resisted an emotional reaction to the run.'],board:[1,2,'Control in a difficult week','The board saw a measured response rather than panic.'],supporters:[0,1,'Patience requested','Supporters were asked to wait for the performances to answer.'],press:[1,2,'A controlled line','The press received no crisis language to amplify.']},
+    'BAD_RUN:demand':{dressing:[-1,3,'Standards raised in public','Some players felt challenged; others felt exposed.'],board:[1,3,'A response was demanded','The board heard urgency and accountability.'],supporters:[1,3,'Frustration acknowledged','The manager matched the demand for better performances.'],press:[-1,2,'Pressure enters the story','A harder public line gave the poor run a sharper headline.']},
+    'GOOD_RUN:praise':{dressing:[1,3,'Credit shared with the squad','Players remember that the winning run belonged to the group.'],supporters:[1,3,'Momentum shared','Supporters were invited into the club’s positive moment.'],press:[1,1,'Warmth without a boast','The manager gave the story a human line.']},
+    'GOOD_RUN:grounded':{board:[1,3,'Momentum kept under control','The board valued focus over celebration.'],dressing:[-1,1,'Praise kept brief','The squad noticed that standards came before celebration.'],press:[1,2,'No victory parade','The manager resisted turning form into a grand claim.']},
+    'GOOD_RUN:push':{dressing:[1,2,'Leaders challenged again','Senior players were asked to carry the standard higher.'],board:[1,2,'Ambition after success','The board noted the refusal to settle.'],supporters:[1,2,'The ceiling was raised','Supporters heard ambition rather than satisfaction.'],press:[-1,1,'Expectation rises','The manager’s words increased the standard future results will be measured against.']},
+    'CAPTAIN_MEETING:listen':{dressing:[1,4,'Leaders were given a voice','The captain and senior group remember being consulted when the room was uneasy.'],board:[0,1,'Authority shared','The board noted a collaborative attempt to steady the squad.']},
+    'CAPTAIN_MEETING:protect':{dressing:[1,4,'The squad was shielded','Players remember the manager taking pressure away from the room.'],supporters:[-1,1,'Demands softened','Some supporters wanted a firmer response to the mood.'],press:[1,1,'Problems kept inside','The manager prevented internal tension becoming a public spectacle.']},
+    'CAPTAIN_MEETING:standards':{dressing:[-1,3,'The room was challenged','Professional players welcomed the demand; others felt the pressure personally.'],board:[1,3,'Authority asserted','The board saw a manager setting a non-negotiable standard.'],supporters:[1,2,'Accountability promised','Supporters heard that the current level would not be accepted.']},
+    'MEDIA_RESPONSE:respectful':{press:[1,3,'Respect on the record','The answer gave reporters substance without manufacturing hostility.'],supporters:[0,1,'A calm build-up','The rivalry was not used to inflame the fixture.'],dressing:[1,1,'The group stayed out of the noise','Players were left to prepare without a public feud.']},
+    'MEDIA_RESPONSE:neutral':{press:[1,1,'Very little given away','The press remember a controlled answer with few loose edges.'],board:[0,1,'Message discipline','The public line stayed within the club’s control.']},
+    'MEDIA_RESPONSE:provocative':{press:[-1,4,'A line built for headlines','The answer created a story that can be replayed after future results.'],supporters:[1,3,'The manager backed the badge','Supporters heard confidence and edge before the fixture.'],dressing:[1,1,'Public belief in the team','Players heard the manager lean into the contest.'],board:[-1,1,'Unnecessary public heat','The board will judge whether the extra pressure helped.']},
+    'TRAINING_CLASH:captain':{dressing:[-1,4,'One side was backed','The hierarchy remembers who received the manager’s support.']},
+    'TRAINING_CLASH:other':{dressing:[-1,4,'The hierarchy was challenged','The room remembers that status did not decide the argument.']},
+    'TRAINING_CLASH:internal':{dressing:[1,3,'The dispute stayed inside','Both accounts were heard away from public view.'],press:[1,1,'No leak became a story','The incident never became public currency.']},
+    'TRAINING_CLASH:standards':{dressing:[0,3,'The same rule applied','The squad remember that behaviour mattered more than status.'],board:[1,1,'A firm internal standard','The incident was handled without becoming a club crisis.']},
+    'TRANSFER_REQUEST:convince':{dressing:[0,3,'A future was discussed','The squad will judge whether the conversation produces a credible role.'],press:[0,2,'A player future remains live','The media know the situation has not ended with one conversation.']},
+    'TRANSFER_REQUEST:role-talk':{dressing:[1,3,'A pathway was promised','Players will remember whether the new role becomes real.'],board:[-1,1,'A selection promise was made','The board noted a commitment that may constrain future choices.']},
+    'TRANSFER_REQUEST:accept-request':{dressing:[1,2,'The request was respected','The player’s wish was acknowledged without a public fight.'],supporters:[-1,2,'A departure became possible','Supporters now associate the decision with the risk of losing a recognised player.'],press:[-1,2,'The market has a live story','The player’s future is now open to public speculation.']}
+  };
+  const CLUB_PULSE_DELAYED_KINDS=new Set(['BAD_RUN','GOOD_RUN','CAPTAIN_MEETING','MEDIA_RESPONSE','TRANSFER_REQUEST','UNEXPECTED_EVENT']);
+  function normalizeAudienceWorldState(value=audienceWorldState){audienceWorldState=window.VelmoraClubPulse?.normalizeState(value)||{version:1,sequence:0,clubs:{},pendingOutcomes:[],resolvedOutcomes:[],lastProcessDate:null};return audienceWorldState;}
+  function ensureAudienceClub(club=currentClub||selectedClub||clubs[0]){if(!club)return null;normalizeAudienceWorldState();return window.VelmoraClubPulse?.ensureClub(audienceWorldState,club.id,currentCareerISO())||null;}
+  function clubPulsePressBaseline(){const relations=Object.values(mediaWorld?.journalistRelations||{});const access=relations.length?relations.reduce((sum,row)=>sum+Number(row.score||50),0)/relations.length:52;const active=(mediaWorld?.narratives||[]).filter(row=>row.status==='ACTIVE'&&(row.clubIds||[]).includes(currentClub?.id));const heat=active.length?active.reduce((sum,row)=>sum+Number(row.heat||0),0)/active.length:35;return clamp(Math.round(access-(Math.max(0,heat-55)*.18)),20,88);}
+  function clubPulseBaselines(club=currentClub){
+    const form=recentClubForm(club,6),rows=standingsForDivision(club.divisionKey),row=leagueRowForClub(club),target=primaryTargetPosition(club.expectation,Math.max(1,rows.length)),tableLift=row?clamp((target-Number(row.pos||target))*2,-12,12):0,supporters=clamp(v65PulseFormScore(form)+tableLift,0,100),atmosphere=squadAtmosphereSnapshot(club);
+    return{board:ensureBoardConfidence(),dressing:Number(atmosphere.score||60),supporters,press:clubPulsePressBaseline()};
+  }
+  function v103PressStatus(score){return score>=80?'TRUSTED ACCESS':score>=66?'CREDIBLE':score>=51?'PROFESSIONAL':score>=37?'SCEPTICAL':'HOSTILE';}
+  function clubPulseSnapshot(club=currentClub){if(!club||!window.VelmoraClubPulse)return[];ensureAudienceClub(club);return window.VelmoraClubPulse.snapshot(audienceWorldState,{clubId:club.id,date:currentCareerISO(),baselines:clubPulseBaselines(club),statuses:{board:boardConfidenceTier,dressing:v65SquadStatus,supporters:v65SupporterStatus,press:v103PressStatus}});}
+  function rememberClubAudience(audience,payload={}){if(!currentClub||!window.VelmoraClubPulse)return null;ensureAudienceClub(currentClub);return window.VelmoraClubPulse.remember(audienceWorldState,{clubId:currentClub.id,audience,date:currentCareerISO(),...payload});}
+  function fallbackDecisionAudiencePlan(event,choice){
+    const category=String(event.category||'').toUpperCase(),id=String(choice?.id||'').toLowerCase(),label=String(choice?.label||'').toLowerCase(),positive=/back|protect|listen|reassure|thank|support|patient|respect|honest|community/.test(`${id} ${label}`),hard=/demand|challenge|pressure|statement|ambitious|standards/.test(`${id} ${label}`),publicFacing=/media|press|supporter/.test(`${event.kind} ${category}`.toLowerCase());const plan={};
+    if(/dressing|player|squad|training|captain|academy/.test(category.toLowerCase())||event.playerId)plan.dressing=[positive?1:hard?-1:0,hard?3:2,'The room took note',`The response to “${event.title||'the situation'}” is now part of how the squad reads the manager.`];
+    if(/board|finance|contract|objective/.test(category.toLowerCase()))plan.board=[hard?1:positive?0:-1,2,'The decision entered the board record',`The club leadership will compare the response with what follows.`];
+    if(publicFacing){plan.press=[hard?-1:positive?1:0,hard?3:2,'The public line was recorded','Reporters now have a position they can revisit.'];plan.supporters=[hard?1:positive?1:0,2,'Supporters heard the message','The response became part of the wider mood around the club.'];}
+    if(!Object.keys(plan).length)plan.board=[0,1,'A management call was made','The decision will be judged through its consequences rather than its wording.'];return plan;
+  }
+  function decisionAudiencePlan(event,choice){
+    const exact=CLUB_PULSE_DECISION_MEMORIES[`${event.kind}:${choice?.id}`];if(exact)return exact;
+    if(event.kind==='UNEXPECTED_EVENT'){const plan=fallbackDecisionAudiencePlan({...event,category:`${event.category||''} ${event.scenario||''}`},choice);if(String(event.scenario||'').includes('SUPPORTER'))plan.supporters=plan.supporters||[0,3,'Supporters await the follow-through','The liaison response will be judged against results and visible action.'];return plan;}
+    return fallbackDecisionAudiencePlan(event,choice);
+  }
+  function delayedEvaluationFor(event){if(event.kind==='CAPTAIN_MEETING'||event.kind==='TRAINING_CLASH')return'DRESSING';if(event.kind==='MEDIA_RESPONSE')return'PRESS';if(event.kind==='TRANSFER_REQUEST')return'PLAYER_FUTURE';return'FORM';}
+  function recordDecisionAudienceMemory(event,choice){
+    if(!event||!choice||!currentClub||!window.VelmoraClubPulse)return null;const plan=decisionAudiencePlan(event,choice),date=currentCareerISO();
+    Object.entries(plan).forEach(([audience,row])=>rememberClubAudience(audience,{id:`AUD-${event.id}-${choice.id}-${audience}`,source:event.kind,title:row[2],summary:row[3],valence:row[0],strength:row[1],decayDays:audience==='board'?540:audience==='dressing'?360:audience==='supporters'?240:300,tags:[String(event.category||event.kind),choice.label],subjectId:event.playerId||null,choiceId:choice.id}));
+    const eligible=CLUB_PULSE_DELAYED_KINDS.has(event.kind)&&event.kind!=='UNEXPECTED_EVENT'||event.kind==='UNEXPECTED_EVENT'&&['SUPPORTER_UNREST','SUPPORTER_BACKING','BOARD_PRIORITY_SHIFT','FINANCIAL_PRESSURE','SPONSOR_OPPORTUNITY'].includes(event.scenario);
+    if(!eligible||event.delayedOutcomeId)return null;const delay=event.followUpDate?Math.max(7,diffDaysISO(date,event.followUpDate)):12+(hashString(`${worldSeed}-${event.id}-${choice.id}-DELAY`)%24),dueDate=event.followUpDate||addDaysISO(date,delay);
+    const thread=window.VelmoraClubPulse.schedule(audienceWorldState,{clubId:currentClub.id,sourceId:event.id,sourceKind:event.kind,createdDate:date,dueDate,title:event.title||'A decision remains live',choiceId:choice.id,choiceLabel:choice.label,subjectId:event.playerId||null,evaluation:delayedEvaluationFor(event),impacts:Object.fromEntries(Object.entries(plan).map(([key,row])=>[key,{initialValence:row[0],strength:row[1]}])),hint:'People have heard the decision. What happens next will decide how they remember it.'});
+    event.delayedOutcomeId=thread?.id||null;if(thread)event.outcome={eyebrow:'DECISION RECORDED',title:'THE CONSEQUENCES ARE STILL MOVING',copy:'People have heard your answer. Results, selection and what happens inside the club will decide how this moment is remembered.',tags:['NO INSTANT VERDICT','CLUB PULSE UPDATED','FOLLOW-THROUGH MATTERS']};return thread;
+  }
+  function delayedAudienceVerdict(thread,club){
+    if(thread.evaluation==='DRESSING'){const score=Number(squadAtmosphereSnapshot(club).score||55);return score>=64?'FAVOURABLE':score<=43?'ADVERSE':'MIXED';}
+    if(thread.evaluation==='PRESS'){const score=clubPulsePressBaseline(),form=v65PulseFormScore(recentClubForm(club,5));return score+form>=132?'FAVOURABLE':score+form<=91?'ADVERSE':'MIXED';}
+    if(thread.evaluation==='PLAYER_FUTURE'){const p=thread.subjectId?careerPlayerById(thread.subjectId):null;if(!p||p.clubId!==club.id)return thread.choiceId==='accept-request'?'MIXED':'ADVERSE';return Number(p.managerTrust||50)>=62?'FAVOURABLE':Number(p.managerTrust||50)<=35?'ADVERSE':'MIXED';}
+    const form=recentClubForm(club,5),points=form.reduce((sum,result)=>sum+(result==='W'?3:result==='D'?1:0),0);return points>=9?'FAVOURABLE':points<=4?'ADVERSE':'MIXED';
+  }
+  function processDelayedAudienceOutcomes(date=currentCareerISO()){
+    if(!currentClub||!window.VelmoraClubPulse)return[];normalizeAudienceWorldState();const due=window.VelmoraClubPulse.due(audienceWorldState,date,currentClub.id),resolved=[];
+    due.forEach(thread=>{const verdict=delayedAudienceVerdict(thread,currentClub),impacts={},favourable=verdict==='FAVOURABLE',adverse=verdict==='ADVERSE';
+      Object.entries(thread.impacts||{}).forEach(([audience,spec])=>{let valence=verdict==='MIXED'?Math.sign(Number(spec.initialValence||0)):favourable?1:-1;if(adverse&&audience==='dressing'&&Number(spec.initialValence||0)>0)valence=0;if(favourable&&audience==='board'&&Number(spec.initialValence||0)<0)valence=0;const strength=verdict==='MIXED'?1:clamp(Number(spec.strength||2)+1,2,5);impacts[audience]={valence,strength};rememberClubAudience(audience,{id:`AUD-RESOLVE-${thread.id}-${audience}`,date,source:'DELAYED_OUTCOME',title:favourable?'Follow-through strengthened the decision':adverse?'The decision has come back under scrutiny':'The consequences remain complicated',summary:favourable?`What followed “${thread.choiceLabel||thread.title}” gave ${window.VelmoraClubPulse.AUDIENCES[audience].singular} reason to believe in the call.`:adverse?`What followed “${thread.choiceLabel||thread.title}” made ${window.VelmoraClubPulse.AUDIENCES[audience].singular} question the original call.`:`The weeks after “${thread.choiceLabel||thread.title}” left ${window.VelmoraClubPulse.AUDIENCES[audience].singular} with a mixed view.`,valence,strength,decayDays:audience==='board'?600:360,tags:['DELAYED CONSEQUENCE',verdict],subjectId:thread.subjectId,choiceId:thread.choiceId,resolvedOutcomeId:thread.id});});
+      if(impacts.board?.valence)shiftBoardConfidence(impacts.board.valence,'Delayed consequence matured');if(impacts.dressing?.valence){getSquad(currentClub).sort((a,b)=>hashString(`${thread.id}-${a.id}`)-hashString(`${thread.id}-${b.id}`)).slice(0,3).forEach(player=>adjustPlayerManagerTrust(player,impacts.dressing.valence,'A previous decision was judged over time'));}
+      const title=favourable?'The decision has gained weight':adverse?'A previous decision returns':'The verdict remains mixed',copy=favourable?`The weeks since “${thread.choiceLabel||thread.title}” have strengthened how the decision is viewed.`:adverse?`Events since “${thread.choiceLabel||thread.title}” have changed how the original response is being judged.`:`There is still no single verdict on “${thread.choiceLabel||thread.title}”. Different parts of the club have taken different things from it.`;
+      window.VelmoraClubPulse.settle(audienceWorldState,thread.id,{date,verdict,title,copy,impacts});const voices=Object.entries(impacts).map(([key,value])=>`${window.VelmoraClubPulse.AUDIENCES[key].label}: ${value.valence>0?'the decision has aged well':value.valence<0?'questions have grown':'the view remains unresolved'}.`);
+      addCareerInboxMessage({id:`delayed-pulse-${thread.id}`,type:impacts.press?'MEDIA':impacts.dressing?'SQUAD':'BOARD',sender:'CLUB PULSE',subject:title,preview:copy,title,body:[copy,...voices],signoff:'Club Intelligence',action:{label:'OPEN CLUB PULSE',route:'central'},date,notificationPriority:adverse?'IMPORTANT':'INTERESTING'});resolved.push({...thread,verdict,impacts});
+    });audienceWorldState.lastProcessDate=date;return resolved;
+  }
+  function recordPressConferenceAudienceMemory(choice,question,context,text,session,effects={},assessment={}){
+    if(!currentClub||!window.VelmoraClubPulse)return null;const relationDelta=Number(effects.reporter||0),headline=!!effects.headline,callback=!!effects.callback,pressValence=relationDelta>0?1:relationDelta<0?-1:headline?-1:0,pressStrength=clamp(1+Math.abs(relationDelta)+(headline?2:0)+(callback?1:0),1,5),sourceId=`PRESS-${session.id}-${question.id}`;
+    rememberClubAudience('press',{id:`AUD-${sourceId}-press`,source:'PRESS_CONFERENCE',title:headline?'A headline leaves the room':callback?'A quote has been marked for later':'The press room took note',summary:text,valence:pressValence,strength:pressStrength,decayDays:360,tags:[question.categoryId||'PRESS CONFERENCE',choice.label],subjectId:question.targetId||null,choiceId:choice.id});
+    const impacts={press:{initialValence:pressValence,strength:pressStrength}};
+    if(Number(effects.squadMorale||0)||Number(effects.targetMorale||0)||Number(effects.targetTrust||0)||effects.squadTest||effects.targetTest){const value=Math.sign(Number(effects.squadMorale||0)+Number(effects.targetMorale||0)+Number(effects.targetTrust||0))||Number(assessment.valence||0);rememberClubAudience('dressing',{id:`AUD-${sourceId}-dressing`,source:'PRESS_CONFERENCE',title:'The answer reached the squad',summary:question.targetName?`${question.targetName} and the wider room heard exactly how the manager framed the issue.`:'Players heard the public position and compared it with what is said privately.',valence:value,strength:clamp(Number(assessment.strength||2),1,5),decayDays:330,tags:['PUBLIC WORDS',choice.label],subjectId:question.targetId||null,choiceId:choice.id});impacts.dressing={initialValence:value,strength:clamp(Number(assessment.strength||2),1,5)};}
+    if(Number(effects.board||0)){const value=Math.sign(Number(effects.board));rememberClubAudience('board',{id:`AUD-${sourceId}-board`,source:'PRESS_CONFERENCE',title:'The public line entered the board record',summary:'The club leadership noted whether the answer protected the institution or created avoidable pressure.',valence:value,strength:clamp(Math.abs(Number(effects.board))+1,1,4),decayDays:480,tags:['PUBLIC CONDUCT',choice.label],choiceId:choice.id});impacts.board={initialValence:value,strength:clamp(Math.abs(Number(effects.board))+1,1,4)};}
+    if(Number(effects.reputation||0)||headline){const value=Number(effects.reputation||0)>0?1:headline?1:0;rememberClubAudience('supporters',{id:`AUD-${sourceId}-supporters`,source:'PRESS_CONFERENCE',title:headline?'A line travelled beyond the press room':'The public message landed',summary:'Supporters heard the answer through headlines, clips and the conversation around the club.',valence:value,strength:headline?3:2,decayDays:210,tags:['PUBLIC MOOD',choice.label],choiceId:choice.id});impacts.supporters={initialValence:value,strength:headline?3:2};}
+    const shouldDelay=headline||callback||(hashString(`${worldSeed}-${sourceId}-CALLBACK`)%100)<28;if(!shouldDelay)return null;return window.VelmoraClubPulse.schedule(audienceWorldState,{clubId:currentClub.id,sourceId,sourceKind:'PRESS_CONFERENCE',createdDate:context.date||currentCareerISO(),dueDate:addDaysISO(context.date||currentCareerISO(),16+(hashString(`${sourceId}-DUE`)%29)),title:question.prompt||question.text||'A press-conference answer remains live',choiceId:choice.id,choiceLabel:choice.label,subjectId:question.targetId||null,evaluation:'PRESS',impacts,hint:'The quote is on the record. Its meaning will depend on the weeks that follow.'});
+  }
+  function closeClubPulseDossier(){const root=document.getElementById('clubPulseDossier');if(root){root.classList.remove('is-open');root.setAttribute('aria-hidden','true');}scheduleOverlaySync();}
+  function openClubPulseDossier(focus=''){
+    if(!currentClub)return;let root=document.getElementById('clubPulseDossier');if(!root){root=document.createElement('div');root.id='clubPulseDossier';root.className='club-pulse-dossier';root.setAttribute('aria-hidden','true');root.innerHTML='<section role="dialog" aria-modal="true" aria-labelledby="clubPulseDossierTitle"><button type="button" class="club-pulse-dossier-close" aria-label="Close Club Pulse">×</button><div data-club-pulse-dossier-body></div></section>';document.body.appendChild(root);root.querySelector('.club-pulse-dossier-close').onclick=closeClubPulseDossier;root.addEventListener('click',event=>{if(event.target===root)closeClubPulseDossier();});root.addEventListener('keydown',event=>{if(event.key==='Escape')closeClubPulseDossier();});}
+    const snapshots=clubPulseSnapshot(currentClub),pending=(audienceWorldState.pendingOutcomes||[]).filter(row=>row.clubId===currentClub.id&&row.status==='PENDING'),resolved=(audienceWorldState.resolvedOutcomes||[]).filter(row=>row.clubId===currentClub.id).slice(-4).reverse(),threadRows=`${pending.slice(0,3).map(row=>`<article><b>UNDER OBSERVATION</b><strong>${escapeHtml(row.title)}</strong><small>${escapeHtml(row.hint)}</small></article>`).join('')}${resolved.map(row=>`<article class="is-resolved"><b>${escapeHtml(row.verdict||'RESOLVED')}</b><strong>${escapeHtml(row.resolutionTitle||row.title)}</strong><small>${escapeHtml(row.resolutionCopy||'The consequences are now part of the club record.')}</small></article>`).join('')}`||'<article class="is-resolved"><b>CLEAR RECORD</b><strong>No delayed verdict is waiting</strong><small>New decisions can create threads without revealing their outcome in advance.</small></article>';root.querySelector('[data-club-pulse-dossier-body]').innerHTML=`<header class="club-pulse-dossier-head"><span>CLUB INTELLIGENCE · ${escapeHtml(currentClub.name.toUpperCase())}</span><h2 id="clubPulseDossierTitle">FOUR AUDIENCES. FOUR MEMORIES.</h2><p>Each group notices different things and carries its own history. A strong relationship with one does not erase a problem with another.</p></header><div class="club-pulse-dossier-grid">${snapshots.map(item=>`<article class="is-${item.key} ${focus===item.key?'is-focused':''}"><header><i>${v65PulseMetricGlyph(item.key)}</i><span><small>${escapeHtml(item.label)}</small><strong>${escapeHtml(item.status)}</strong></span><b>${item.score}</b></header><p>${escapeHtml(item.priority)}</p><div class="club-pulse-memory-list">${item.memories.slice(0,4).map(memory=>`<section class="is-${memory.valence>0?'positive':memory.valence<0?'negative':'neutral'}"><time>${escapeHtml(shortDateLabel(memory.date))}</time><span><strong>${escapeHtml(memory.title)}</strong><small>${escapeHtml(memory.summary)}</small></span></section>`).join('')}</div>${item.pending?`<footer>${item.pending} unresolved thread${item.pending===1?'':'s'} may still change this view</footer>`:'<footer>No unresolved decisions for this audience</footer>'}</article>`).join('')}</div><div class="club-pulse-thread-rail"><section><span>STILL DEVELOPING</span><strong>${pending.length} LIVE THREAD${pending.length===1?'':'S'}</strong><p>${pending.length?'These choices have been made, but their real consequences depend on what happens next.':'No previous decision is waiting for a delayed verdict.'}</p></section><div>${threadRows}</div></div>`;
+    root.classList.add('is-open');root.setAttribute('aria-hidden','false');scheduleOverlaySync();root.querySelector(`.is-${focus}`)?.scrollIntoView({block:'nearest'});
+  }
+
 
   // V19.8 — Champions Crown. The flagship four-world continental competition.
   const CHAMPIONS_CROWN_ID='champions_crown';
@@ -420,7 +565,7 @@
     {name:'Lively',ambition:68,loyalty:74,professionalism:67,temperament:66,leadership:58,adaptability:86,patience:64}
   ];
   let livingSquad={
-    version:7,
+    version:8,
     sequence:0,
     incomingOffers:[],
     loanOffers:[],
@@ -438,17 +583,18 @@
     lastSeasonArchive:null,
     statistics:{version:1,trackingStartedDate:null,migratedLegacyVersion:0,rows:{}},
     careerMemory:{version:1,events:[],eventKeys:[],environment:{version:1,slots:{}}},
-    clubLife:{version:2,frequency:'STANDARD',lastEvaluationDate:null,lastInteractiveDate:null,lastPassiveDate:null,categoryCooldowns:{},playerCooldowns:{},pairCooldowns:{},relationships:{},continuity:[],continuityFacts:[],history:[]}
+    clubLife:{version:3,frequency:'STANDARD',lastEvaluationDate:null,lastInteractiveDate:null,lastPassiveDate:null,lastHierarchyReviewDate:null,categoryCooldowns:{},playerCooldowns:{},pairCooldowns:{},relationships:{},hierarchyHistory:[],continuity:[],continuityFacts:[],history:[]}
   };
 
 
   // V20.6.3 — Living Media. Persistent storylines, journalists, press memory and rivalry narrative state.
   let mediaWorld={
-    version:1,
+    version:3,
     sequence:0,
     narratives:[],
     journalistRelations:{},
     statements:[],
+    peopleMemories:[],
     lastProcessDate:null,
     lastWeeklyProcess:null,
     lastMajorStoryDate:null,
@@ -551,6 +697,17 @@
     return club?.country===filter;
   }
   function cupNameForWorld(world){return worldMeta[world]?.cup || 'Domestic Cup';}
+  function leagueCupNameForWorld(world){return worldMeta[world]?.leagueCup || `${world} League Cup`;}
+  function domesticCupWorldKey(world){return String(worldMeta[world]?.key||world||'velmora').toLowerCase().replace(/[^a-z0-9]+/g,'-');}
+  function domesticCupCompetitionId(world,kind='national'){const key=domesticCupWorldKey(world);return kind==='league'?`${key}_league_cup`:`${key}_cup`;}
+  function domesticCupDefinition(world,kind='national'){
+    const league=kind==='league',startYear=Number((careerTime?.seasonId||`${careerYear||2026}-27`).slice(0,4))||2026;
+    return{world,kind:league?'league':'national',competitionId:domesticCupCompetitionId(world,league?'league':'national'),name:league?leagueCupNameForWorld(world):cupNameForWorld(world),formatVersion:2,registeredClubs:clubs.filter(c=>clubWorldName(c)===world).length,finalVenue:worldMeta[world]?.cupFinalVenue||`${world} National Arena`,roundDates:league?[`${startYear}-08-27`,`${startYear}-09-17`,`${startYear}-10-09`,`${startYear}-11-06`,`${startYear}-12-03`,`${startYear+1}-01-14`,`${startYear+1}-03-08`]:[`${startYear}-09-10`,`${startYear}-10-15`,`${startYear}-11-19`,`${startYear+1}-01-10`,`${startYear+1}-02-14`,`${startYear+1}-03-22`,`${startYear+1}-05-09`]};
+  }
+  function domesticCupDefinitionById(id){for(const world of worldNames){for(const kind of ['national','league']){const def=domesticCupDefinition(world,kind);if(def.competitionId===id)return def;}}return null;}
+  function domesticCupRoundDate(def,round,leg=1,lastDate=null){let date=def.roundDates[Math.max(0,Number(round||1)-1)]||addDaysISO(lastDate||currentCareerISO(),21);if(def.kind==='league'&&Number(round)===6&&Number(leg)===2)date=addDaysISO(date,14);if(lastDate&&date<=lastDate)date=addDaysISO(lastDate,Number(leg)===2?14:21);return date;}
+  function domesticCupStageForPool(def,poolSize,round){const r=Number(round||1);if(def.kind==='national'){return['','OPENING_ROUND','ROUND_OF_64','ROUND_OF_32','ROUND_OF_16','QUARTER_FINALS','SEMI_FINALS','FINAL'][r]||`ROUND_${r}`;}if(poolSize===2)return'FINAL';if(poolSize===4)return'SEMI_FINALS';if(poolSize<=8)return'QUARTER_FINALS';return`ROUND_${r}`;}
+  function domesticCupStageLabel(value,fixture=null){const stage=fixture?.cupStage||value;if(stage==='OPENING_ROUND')return'Opening Round';if(stage==='ROUND_OF_64')return'Round of 64';if(stage==='ROUND_OF_32')return'Round of 32';if(stage==='ROUND_OF_16')return'Round of 16';if(stage==='QUARTER_FINALS')return'Quarter-finals';if(stage==='SEMI_FINALS')return'Semi-finals';if(stage==='FINAL')return'Final';const number=String(stage||'').match(/ROUND_(\d+)/)?.[1]||fixture?.round||value;return`Round ${number}`;}
   function moraleIndex(value){const i=MORALE_LEVELS.indexOf(value);return i>=0?i:2;}
   function adjustPlayerMorale(player,delta=0){
     if(!player)return'Content';
@@ -598,6 +755,7 @@
   const V44_ROLE_THRESHOLDS=[50,65,75,85];
   function v44RoleFit(p,role){
     if(!p||!V44_ROLES.includes(role))return 0;
+    if(performanceRules)return performanceRules.roleRating(p,role);
     const st=p.stats||{},keys=({ATTACKER:['PAC','SHO','HAN'],PLAYMAKER:['PAS','HAN','STA'],DEFENDER:['DEF','STA','HAN'],'ALL-ROUNDER':['PAC','SHO','PAS','HAN','DEF','STA']})[role]||[];
     return keys.length?keys.reduce((sum,k)=>sum+Number(st[k]||0),0)/keys.length:0;
   }
@@ -623,7 +781,7 @@
   }
   function v44RoleFamiliarity(p,role=p?.role){if(!p||!V44_ROLES.includes(role))return 0;const map=v44EnsureRoleFamiliarity(p);return role===p.role?100:Number(map[role]||0);}
   function v44RoleBand(value){const n=Number(value||0);return n>=90?'FULLY COMFORTABLE':n>=85?'NATURAL':n>=75?'COMFORTABLE':n>=65?'USEFUL':n>=50?'SERVICEABLE':n>=35?'EMERGENCY':'UNFAMILIAR';}
-  function v44RoleSuitabilityModifier(p,role){if(!p||role===p.role)return 1;const f=v44RoleFamiliarity(p,role);return Number(clamp(.84+f*.00165,.84,.995).toFixed(3));}
+  function v44RoleSuitabilityModifier(p,role){if(!p||role===p.role)return 1;const f=v44RoleFamiliarity(p,role);return performanceRules?performanceRules.roleSuitability(f,false):Number(clamp(.78+f*.00215,.78,.995).toFixed(3));}
   function v44SecondaryRoles(p,minimum=35){return V44_ROLES.filter(r=>r!==p?.role).map(role=>({role,familiarity:v44RoleFamiliarity(p,role),fit:Math.round(v44RoleFit(p,role))})).filter(x=>x.familiarity>=minimum).sort((a,b)=>b.familiarity-a.familiarity||b.fit-a.fit).slice(0,2);}
   function v44SetPreferredMatchRole(p,role){if(!p||!V44_ROLES.includes(role))return false;v44EnsureRoleFamiliarity(p);if(role!==p.role&&v44RoleFamiliarity(p,role)<35)return false;p.preferredMatchRole=role;saveCareerState();return true;}
   function v44DeployedRoleFor(p,club,fixture){
@@ -712,12 +870,12 @@
   function v2075ProcessRoleConversionMonth(p,club,date=currentCareerISO()){if(!p?.roleConversionTarget)return null;const target=p.roleConversionTarget,validTarget=['ATTACKER','PLAYMAKER','DEFENDER','ALL-ROUNDER'].includes(target)&&target!==p.role;if(!validTarget){p.roleConversionTarget=null;p.roleConversionProgress=0;p.roleConversionStartedDate=null;return null;}const listed=v2075RoleConversionOptions(p).find(x=>x.target===target),fit=v2075RoleConversionFit(p,target),agePenalty=Math.max(0,Number(p.age||0)-23)*.45,option=listed||{target,fit:Math.round(fit),months:clamp(Math.round(10-(fit-55)/7+agePenalty),4,14)};const moraleMod=moraleIndex(p.morale)>=3?1.06:moraleIndex(p.morale)<=1?.88:1,minutesMod=Number(p.seasonStats?.starts||0)>=4?1.08:1;p.roleConversionProgress=clamp(Number(p.roleConversionProgress||0)+(1/option.months)*moraleMod*minutesMod,0,1);v44GrowRoleFamiliarity(p,club,target,1.8*moraleMod,date);if(p.roleConversionProgress<1)return{completed:false,target:p.roleConversionTarget,progress:p.roleConversionProgress};const from=p.role,to=p.roleConversionTarget;v44EnsureRoleFamiliarity(p);p.role=to;p.roleFamiliarity[to]=100;p.roleFamiliarity[from]=Math.max(85,Number(p.roleFamiliarity[from]||0));p.preferredMatchRole=to;p.roleConversionTarget=null;p.roleConversionProgress=0;p.roleConversionStartedDate=null;recordLivingCareerEvent(p,'ROLE_CONVERSION',club,null,0,date,{fromRole:from,toRole:to});markAiClubPlanDirty(club);if(club?.id===currentClub?.id)addCareerInboxMessage({id:`role-conversion-${p.id}-${date}`,type:'SQUAD',sender:'PERFORMANCE TEAM',subject:`Role conversion complete: ${p.name}`,preview:`${from} → ${to}.`,title:`${p.name} completes role conversion`,body:[`${p.name} has completed the planned transition from ${from.toLowerCase()} to ${to.toLowerCase()}.`,`The change affects squad planning and tactical fit, but does not grant an artificial OVR increase.`],signoff:'Performance Team',action:{label:'VIEW SQUAD',route:'squad'},date});return{completed:true,from,to};}
   function v2075AcademyPathwayState(p,club=currentClub){if(!p||!club)return{key:'ACADEMY',label:'CONTINUE ACADEMY',copy:'Continue development and review at the next checkpoint.'};const strength=backgroundClubStrength(club),age=Number(p.age||0),ovr=Number(p.ovr||0),pot=Number(p.potential||ovr);if(age>=18&&ovr>=strength-5)return{key:'READY',label:'READY FOR THE SENIOR SQUAD',copy:'The academy staff believe this prospect is close enough to senior level to justify promotion and controlled first-team minutes.'};if(age>=18&&ovr>=54&&pot>=80)return{key:'LOAN',label:'LOAN PATHWAY',copy:'Promotion followed by a development loan is recommended if senior minutes are unlikely.'};if(age>=20)return{key:'DECISION',label:'PATHWAY DECISION',copy:'A senior promotion, loan pathway or release decision should be made soon.'};return{key:'ACADEMY',label:'CONTINUE ACADEMY',copy:'Another academy development cycle is currently the best pathway.'};}
   function v2075RenewalReadiness(p,club=currentClub,date=currentCareerISO()){
-    if(!p||!club)return{key:'UNAVAILABLE',label:'UNAVAILABLE',tone:'bad',canNegotiate:false,copy:'Renewal information is unavailable.'};ensurePlayerCareerMeta(p);syncLivingContractYears(p,date);const existing=contractNegotiationSession(p,'RENEWAL',false);if(existing&&['ACTIVE','AGREED'].includes(existing.state))return{key:'OPEN',label:'OPEN TO RENEWAL',tone:'good',canNegotiate:true,copy:'Talks are already active with the player’s representatives.'};if(p.retiringAtEnd)return{key:'RETIRING',label:'RETIRING',tone:'bad',canNegotiate:false,copy:'The player has confirmed retirement and will not negotiate a new deal.'};const days=Math.max(0,diffDaysISO(date,p.contractEndDate||date)),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p),trust=Number(p.managerTrust||60),sat=Number(p.playingTimeSatisfaction||65),loyalty=Number(traits.loyalty||60),ambition=Number(traits.ambition||60),morale=moraleIndex(p.morale);let score=Number(h.overall||60)*.36+trust*.28+sat*.18+loyalty*.10+morale*3;if(p.transferRequested)score-=35;if(Number(p.ovr||0)>backgroundClubStrength(club)+7&&ambition>=74)score-=8;if(days<=365)score+=6;if(days>900)score-=8;score=clamp(Math.round(score),0,100);
+    if(!p||!club)return{key:'UNAVAILABLE',label:'UNAVAILABLE',tone:'bad',canNegotiate:false,copy:'Renewal information is unavailable.'};if(!clubCanRenewPlayer(club,p)){const owner=clubById(playerRegistrationRights(club,p).ownerClubId);return{key:'ON_LOAN',label:'PARENT CLUB CONTROLLED',tone:'neutral',canNegotiate:false,copy:`${owner?.name||'The parent club'} hold the player's permanent contract and renewal rights.`};}ensurePlayerCareerMeta(p);syncLivingContractYears(p,date);const existing=contractNegotiationSession(p,'RENEWAL',false);if(existing&&['ACTIVE','AGREED'].includes(existing.state))return{key:'OPEN',label:'OPEN TO RENEWAL',tone:'good',canNegotiate:true,copy:'Talks are already active with the player’s representatives.'};if(p.retiringAtEnd)return{key:'RETIRING',label:'RETIRING',tone:'bad',canNegotiate:false,copy:'The player has confirmed retirement and will not negotiate a new deal.'};const days=Math.max(0,diffDaysISO(date,p.contractEndDate||date)),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p),trust=Number(p.managerTrust||60),sat=Number(p.playingTimeSatisfaction||65),loyalty=Number(traits.loyalty||60),ambition=Number(traits.ambition||60),morale=moraleIndex(p.morale);let score=Number(h.overall||60)*.36+trust*.28+sat*.18+loyalty*.10+morale*3;if(p.transferRequested)score-=35;if(Number(p.ovr||0)>backgroundClubStrength(club)+7&&ambition>=74)score-=8;if(days<=365)score+=6;if(days>900)score-=8;score=clamp(Math.round(score),0,100);
     if(p.transferRequested||score<30)return{key:'UNWILLING',label:'UNWILLING TO RENEW',tone:'bad',canNegotiate:false,score,copy:p.transferRequested?'The player wants to leave and will not currently discuss an extension.':'The player’s current relationship, role or happiness is too weak for productive renewal talks.'};if(days>950)return{key:'NOT_READY',label:'NOT READY TO DISCUSS',tone:'neutral',canNegotiate:false,score,copy:'There is substantial time remaining. The player prefers to reassess the sporting situation later.'};if(days>700&&score<68)return{key:'NOT_READY',label:'NOT READY TO DISCUSS',tone:'neutral',canNegotiate:false,score,copy:'The player is not closing the door, but does not want to enter formal talks yet.'};if(score>=62||days<=365&&score>=52)return{key:'OPEN',label:'OPEN TO RENEWAL',tone:'good',canNegotiate:true,score,copy:'The player’s camp are prepared to discuss a new contract now.'};return{key:'CONSIDER',label:'WILL CONSIDER',tone:'warn',canNegotiate:true,score,copy:'The player will listen, but sporting role and the quality of the package will matter heavily.'};
   }
   function v2075RefreshRenewalState(p,club,date=currentCareerISO(),notify=false){const next=v2075RenewalReadiness(p,club,date),previous=p.renewalState;p.renewalState=next.key;p.renewalLastChecked=date;p.renewalReason=next.copy;if(notify&&previous&&previous!==next.key&&Number(p.contractYears||0)<=2&&eventCooldownReady(`RENEWAL-STATE-${p.id}`,date,60)){setEventCooldown(`RENEWAL-STATE-${p.id}`,date);if(next.key==='OPEN'||next.key==='UNWILLING')addCareerInboxMessage({id:`renewal-state-${p.id}-${date}`,type:'CONTRACTS',sender:'PLAYER REPRESENTATIVE',subject:`Contract position: ${p.name}`,preview:`${next.label}.`,title:`${p.name}: ${next.label.toLowerCase()}`,body:[next.copy,next.key==='OPEN'?'The club can open formal negotiations from the Contracts area.':'The situation may change with playing time, results, morale or the player’s future plans.'],signoff:'Player Representative',action:{label:'OPEN CONTRACTS',route:'contracts'},date});}return next;}
   function v2075LoanDevelopmentGrade(p,loan){const starts=Number(loan?.lastMonthStarts||0),role=String(loan?.expectedRole||'Rotation'),roleTarget=({Crucial:5,Important:4,Rotation:2,Prospect:1}[role]||2),ratio=starts/Math.max(1,roleTarget),growth=Math.max(0,Number(p?.ovr||0)-Number(loan?.startOvr ?? p?.ovr ?? 0));if((ratio>=1&&['Excellent','Good'].includes(p?.form))||growth>=2)return{label:'STRONG',tone:'good',copy:'The loan is delivering the regular competitive minutes the pathway was designed for.'};if(ratio>=.65)return{label:'USEFUL',tone:'steady',copy:'The loan is providing useful senior exposure, although the role should still be monitored.'};return{label:'LIMITED',tone:'warn',copy:'Minutes are below the intended level and the loan may not be maximising development.'};}
-  function v2075AiRenewalScore(p,club,status='ROTATION'){const avg=backgroundClubStrength(club),age=Number(p.age||0),wagePressure=Number(p.wage||0)/Math.max(700,expectedWage(p)),fit=aiPlayerTacticalFitScore(p,club,aiClubPlan(club)?.tacticalProfile,currentClubManager(club));let score=50+(Number(p.ovr||0)-avg)*4+Math.max(-10,Math.min(10,(fit-55)*.2));score+=({CORE:28,STARTER:18,DEVELOP:16,ROTATION:4,LOAN:2,SURPLUS:-30}[status]||0);if(age<=23&&Number(p.potential||p.ovr)>=avg+3)score+=12;if(age>=33)score-=10;if(wagePressure>1.35)score-=10;return clamp(Math.round(score),0,100);}
+  function v2075AiRenewalScore(p,club,status='ROTATION'){const avg=backgroundClubStrength(club),age=Number(p.age||0),wagePressure=Number(p.wage||0)/Math.max(700,expectedWage(p,club)),fit=aiPlayerTacticalFitScore(p,club,aiClubPlan(club)?.tacticalProfile,currentClubManager(club));let score=50+(Number(p.ovr||0)-avg)*4+Math.max(-10,Math.min(10,(fit-55)*.2));score+=({CORE:28,STARTER:18,DEVELOP:16,ROTATION:4,LOAN:2,SURPLUS:-30}[status]||0);if(age<=23&&Number(p.potential||p.ovr)>=avg+3)score+=12;if(age>=33)score-=10;if(wagePressure>1.35)score-=10;return clamp(Math.round(score),0,100);}
   function v37CaptureSelectionEligibility(fixture,...teams){
     if(!fixture.selectionEligibility)fixture.selectionEligibility={};
     for(const club of teams)for(const p of getSquad(club))fixture.selectionEligibility[p.id]={clubId:club.id,eligible:!matchdayUnavailable(p,fixture)};
@@ -863,14 +1021,21 @@
     if(club.id===currentClub?.id)processUserSquadRelationshipsAfterMatch(club,fixture,resultForClub,starterIds);
   }
   function objectiveConfidenceBaseline(club=currentClub){
-    if(!club)return65;const row=leagueRowForClub(club),rows=standingsForDivision(club.divisionKey),target=primaryTargetPosition(club.expectation,Math.max(1,rows.length));
-    if(!row)return68;const delta=target-row.pos;return clamp(66+delta*3+Math.min(8,row.wins)-Math.min(8,row.losses),28,92);
+    if(!club)return 65;const row=leagueRowForClub(club),rows=standingsForDivision(club.divisionKey),target=primaryTargetPosition(club.expectation,Math.max(1,rows.length));
+    if(!row)return 68;const delta=target-row.pos;return clamp(66+delta*3+Math.min(8,row.wins)-Math.min(8,row.losses),28,92);
   }
   function ensureBoardConfidence(){
     if(careerRuntime.boardConfidence==null||!Number.isFinite(Number(careerRuntime.boardConfidence)))careerRuntime.boardConfidence=objectiveConfidenceBaseline(currentClub);
-    careerRuntime.boardConfidence=clamp(Math.round(Number(careerRuntime.boardConfidence)),0,100);return careerRuntime.boardConfidence;
+    careerRuntime.boardConfidence=clamp(Math.round(Number(careerRuntime.boardConfidence)),0,100);
+    if(currentClub&&window.VelmoraChairmen){const relation=chairmanRelationship(currentClub,PLAYER_MANAGER_ID);if(relation){if(!Number.isFinite(Number(relation.confidence)))relation.confidence=careerRuntime.boardConfidence;careerRuntime.boardConfidence=clamp(Math.round(Number(relation.confidence)),0,100);}}
+    return careerRuntime.boardConfidence;
   }
-  function shiftBoardConfidence(delta,reason=''){careerRuntime.boardConfidence=clamp(ensureBoardConfidence()+Number(delta||0),0,100);careerRuntime.lastBoardConfidenceDate=currentCareerISO();careerRuntime.lastBoardReason=reason;return careerRuntime.boardConfidence;}
+  function shiftBoardConfidence(delta,reason=''){
+    const date=currentCareerISO(),before=ensureBoardConfidence();
+    if(currentClub&&window.VelmoraChairmen){const relation=window.VelmoraChairmen.adjustConfidence(ownershipState,currentClub.id,PLAYER_MANAGER_ID,delta,reason,date,'BOARD_ASSESSMENT');careerRuntime.boardConfidence=relation.confidence;}
+    else careerRuntime.boardConfidence=clamp(before+Number(delta||0),0,100);
+    careerRuntime.lastBoardConfidenceDate=date;careerRuntime.lastBoardReason=reason;return careerRuntime.boardConfidence;
+  }
   function boardConfidenceTier(value=ensureBoardConfidence()){
     if(value>=85)return'UNTOUCHABLE';if(value>=70)return'VERY SECURE';if(value>=50)return'STABLE';if(value>=35)return'UNDER PRESSURE';if(value>=20)return'AT RISK';return'CRITICAL';
   }
@@ -917,7 +1082,7 @@
     if(prospect&&eventCooldownReady(`UE-ACADEMY-${prospect.id}`,date,150)&&!unexpectedEventActive('ACADEMY_BREAKTHROUGH').length)pool.push({scenario:'ACADEMY_BREAKTHROUGH',severity:'MEDIUM',weight:6,inboxType:'YOUTH',playerId:prospect.id});
     if(nextAway&&diffDaysISO(date,nextAway.date)<=7&&eventCooldownReady('UE-TRAVEL',date,80))pool.push({scenario:'TRAVEL_DISRUPTION',severity:'MINOR',weight:4,inboxType:'STAFF',fixtureId:nextAway.fixtureId});
     if(squad.length>=8&&eventCooldownReady('UE-TRAINING-DISRUPTION',date,100))pool.push({scenario:'TRAINING_DISRUPTION',severity:'MINOR',weight:3,inboxType:'TRAINING'});
-    if(topPlayer&&isTransferWindowOpen(date)&&Number(topPlayer.ovr||0)>=Math.max(68,Math.round(squad.reduce((n,p)=>n+Number(p.ovr||0),0)/Math.max(1,squad.length))+5)&&eventCooldownReady(`UE-STAR-${topPlayer.id}`,date,120))pool.push({scenario:'STAR_INTEREST',severity:'MEDIUM',weight:5,inboxType:'TRANSFERS',playerId:topPlayer.id});
+    if(topPlayer&&clubCanMarketPlayer(currentClub,topPlayer)&&isTransferWindowOpen(date)&&Number(topPlayer.ovr||0)>=Math.max(68,Math.round(squad.reduce((n,p)=>n+Number(p.ovr||0),0)/Math.max(1,squad.length))+5)&&eventCooldownReady(`UE-STAR-${topPlayer.id}`,date,120))pool.push({scenario:'STAR_INTEREST',severity:'MEDIUM',weight:5,inboxType:'TRANSFERS',playerId:topPlayer.id});
     if(row&&row.played>=7&&ahead>=3&&!unexpectedEventActive('BOARD_PRIORITY_SHIFT').length&&eventCooldownReady('UE-PRIORITY-SHIFT',date,120))pool.push({scenario:'BOARD_PRIORITY_SHIFT',severity:'MEDIUM',weight:5,inboxType:'BOARD'});
     if((wins>=3||ahead>=2)&&eventCooldownReady('UE-SPONSOR',date,110))pool.push({scenario:'SPONSOR_OPPORTUNITY',severity:'MINOR',weight:4,inboxType:'FINANCE'});
     return pool;
@@ -952,7 +1117,7 @@
     if(event.scenario==='ACADEMY_BREAKTHROUGH'&&p){if(choiceId==='fasttrack'){const base=Number(p.seasonStats?.starts||0);unexpectedStartObjective({type:'ACADEMY_BREAKTHROUGH',title:`Senior pathway: ${p.name}`,tag:'EVENT · MEDIUM',impact:'Medium',copy:'Promote the prospect when appropriate and deliver meaningful senior exposure.',expiresDate:addDaysISO(date,90),objective:{kind:'YOUTH_STARTS',playerId:p.id,targetStarts:2,baselineStarts:base},rewardConfidence:3,failureConfidence:2,inboxType:'YOUTH',public:false,successCopy:`${p.name} has received the senior exposure requested by the academy staff.`,failureCopy:`${p.name} did not receive the targeted senior starts during the pathway window.`});setEventCooldown(`UE-ACADEMY-${p.id}`,date);}if(choiceId==='patient'){p.decisionRequired=false;shiftBoardConfidence(1,'Protected academy pathway');}if(choiceId==='openpath'){p.decisionRequired=Number(p.age||0)>=20;}}
     if(event.scenario==='TRAVEL_DISRUPTION'){const cost=Number(data.cost||0);if(choiceId==='early'){club.budget=formatExactMoney(Math.max(0,moneyNumber(club.budget)-cost));squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)+2,0,100));}if(choiceId==='standard')squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)-1,0,100));if(choiceId==='economy'){squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)-3,0,100));shiftBoardConfidence(1,'Protected operating budget');}}
     if(event.scenario==='TRAINING_DISRUPTION'){const cost=Number(data.cost||0);if(choiceId==='alternate'){club.budget=formatExactMoney(Math.max(0,moneyNumber(club.budget)-cost));squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)+1,0,100));}if(choiceId==='recovery')squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)+2,0,100));if(choiceId==='push')squad.forEach(x=>x.fitness=clamp(Number(x.fitness||80)-2,0,100));}
-    if(event.scenario==='STAR_INTEREST'&&p){if(choiceId==='reassure'){adjustPlayerManagerTrust(p,7,'Reassured amid outside interest');adjustPlayerMorale(p,1);}if(choiceId==='listen'){p.transferStatus='LISTEN';const s=marketStateFor(p,true);s.exposure=clamp(Number(s.exposure||playerMarketExposure(p))+12,0,100);}if(choiceId==='notforsale'){p.transferStatus='NOT_FOR_SALE';p.transferListed=false;adjustPlayerManagerTrust(p,3,'Club made not-for-sale stance clear');}}
+    if(event.scenario==='STAR_INTEREST'&&p&&clubCanMarketPlayer(currentClub,p)){if(choiceId==='reassure'){adjustPlayerManagerTrust(p,7,'Reassured amid outside interest');adjustPlayerMorale(p,1);}if(choiceId==='listen'){p.transferStatus='LISTEN';const s=marketStateFor(p,true);s.exposure=clamp(Number(s.exposure||playerMarketExposure(p))+12,0,100);}if(choiceId==='notforsale'){p.transferStatus='NOT_FOR_SALE';p.transferListed=false;adjustPlayerManagerTrust(p,3,'Club made not-for-sale stance clear');}}
     if(event.scenario==='BOARD_PRIORITY_SHIFT'){if(choiceId==='ambitious')unexpectedStartObjective({type:'BOARD_PRIORITY_SHIFT',title:'Accelerated league target',tag:'EVENT · HIGH',impact:'High',copy:'The board want the club to capitalise on the stronger-than-expected league position.',expiresDate:addDaysISO(date,50),objective:{kind:'POINTS_TARGET',targetPoints:7,targetMatches:4},rewardConfidence:4,failureConfidence:3,inboxType:'BOARD',successCopy:'The team delivered the accelerated league target.',failureCopy:'The team fell short of the accelerated league target.'});if(choiceId==='measured')unexpectedStartObjective({type:'BOARD_PRIORITY_SHIFT',title:'Short-term league push',tag:'EVENT · MEDIUM',impact:'Medium',copy:'The board have agreed a measured push while preserving the original season objective.',expiresDate:addDaysISO(date,50),objective:{kind:'POINTS_TARGET',targetPoints:5,targetMatches:4},rewardConfidence:3,failureConfidence:2,inboxType:'BOARD',successCopy:'The measured league push delivered the requested return.',failureCopy:'The measured league target was not reached.'});if(choiceId==='decline')shiftBoardConfidence(-2,'Declined expanded short-term target');}
     if(event.scenario==='SPONSOR_OPPORTUNITY'){const g=Number(data.grant||0);if(choiceId==='media'){club.budget=formatExactMoney(moneyNumber(club.budget)+g);}if(choiceId==='community'){club.budget=formatExactMoney(moneyNumber(club.budget)+Math.round(g*.7));squad.forEach(x=>adjustPlayerMorale(x,1));shiftBoardConfidence(1,'Community-first commercial activation');}if(choiceId==='decline')shiftBoardConfidence(1,'Protected sporting focus');}
     unexpectedEvents.history.unshift({id:unexpectedEventNextId('UEH'),date,clubId:club.id,type:event.scenario,status:'RESOLVED',choiceId,severity:event.severity,title:event.title});unexpectedEvents.history=unexpectedEvents.history.slice(0,180);if(event.severity!=='MINOR')addCareerNews({id:`news-unexpected-${event.id}`,category:event.scenario.includes('SUPPORTER')?'SUPPORTERS':event.scenario.includes('ACADEMY')?'DEVELOPMENT':'CLUB',clubId:club.id,relatedClubIds:[club.id],title:`${club.name.toUpperCase()}: ${String(event.title||'CLUB UPDATE').toUpperCase()}`,body:[`The manager has responded to a new ${String(event.severity||'club').toLowerCase()} situation.`,event.choices?.find(c=>c.id===choiceId)?.copy||'The club has confirmed its chosen response.'],image:club.badge,date});
@@ -961,6 +1126,126 @@
     const modal=$('#settingsModal .modal-card');if(!modal)return;const anchor=modal.querySelector('.career-management-panel');let wrap=modal.querySelector('#v2077CareerSettings');
     if(!wrap){wrap=document.createElement('section');wrap.id='v2077CareerSettings';wrap.className='v2077-career-settings';wrap.innerHTML=`<header><div><span>CAREER EXPERIENCE</span><strong>MANAGER CAREER SETTINGS</strong></div><small>Only settings that change real career behaviour are shown here.</small></header><div class="v2077-settings-grid"><label><span><b>Club Life</b><small>Controls optional personality moments without changing match simulation.</small></span><select id="clubLifeFrequency"><option value="QUIET">Quiet</option><option value="STANDARD">Standard</option><option value="LIVELY">Lively</option></select></label><label><span><b>Unexpected Events</b><small>Frequency of contextual living-club situations.</small></span><select id="unexpectedEventsFrequency"><option value="OFF">Off</option><option value="LOW">Low</option><option value="NORMAL">Normal</option><option value="HIGH">High</option></select></label><label><span><b>Manager Approaches</b><small>Allow other clubs to make unsolicited approaches while you are employed.</small></span><select id="v2077ManagerApproaches"><option value="ON">On</option><option value="OFF">Off</option></select></label><label><span><b>Board Strictness</b><small>Adjusts how much tolerance the board gives your job-security context.</small></span><select id="v2077BoardStrictness"><option value="RELAXED">Relaxed</option><option value="AUTHENTIC">Authentic</option><option value="STRICT">Strict</option></select></label><label><span><b>Central Task Detail</b><small>Controls how many lower-priority management tasks Central surfaces.</small></span><select id="v2077TaskDensity"><option value="ESSENTIAL">Essential</option><option value="STANDARD">Standard</option><option value="DETAILED">Detailed</option></select></label></div><footer><span>SAVE STATUS</span><strong id="v2077SaveStamp">Career autosave active</strong></footer>`;anchor?.parentElement?.insertBefore(wrap,anchor);const save=()=>{careerPreferences=normalizeCareerPreferences(careerPreferences);if(careerHasStarted())saveCareerState();};wrap.querySelector('#clubLifeFrequency').addEventListener('change',e=>{livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.clubLife.frequency=e.target.value;save();showToast(`Club Life · ${e.target.options[e.target.selectedIndex].text}`);});wrap.querySelector('#unexpectedEventsFrequency').addEventListener('change',e=>{unexpectedEvents=normalizeUnexpectedEventsState({...unexpectedEvents,frequency:e.target.value});save();showToast(`Unexpected Events · ${e.target.options[e.target.selectedIndex].text}`);});wrap.querySelector('#v2077ManagerApproaches').addEventListener('change',e=>{v2077CareerSettings().managerApproaches=e.target.value;save();showToast(`Manager Approaches · ${e.target.options[e.target.selectedIndex].text}`);});wrap.querySelector('#v2077BoardStrictness').addEventListener('change',e=>{v2077CareerSettings().boardStrictness=e.target.value;save();showToast(`Board Strictness · ${e.target.options[e.target.selectedIndex].text}`);});wrap.querySelector('#v2077TaskDensity').addEventListener('change',e=>{v2077CareerSettings().taskDensity=e.target.value;save();if(activePrimaryScreen==='central')renderCentral();showToast(`Central Tasks · ${e.target.options[e.target.selectedIndex].text}`);});}
     livingSquad=normalizeLivingSquadState(livingSquad);const settings=v2077CareerSettings(),cl=wrap.querySelector('#clubLifeFrequency'),ue=wrap.querySelector('#unexpectedEventsFrequency'),ma=wrap.querySelector('#v2077ManagerApproaches'),bs=wrap.querySelector('#v2077BoardStrictness'),td=wrap.querySelector('#v2077TaskDensity'),stamp=wrap.querySelector('#v2077SaveStamp');if(cl)cl.value=livingSquad.clubLife.frequency;if(ue)ue.value=String(unexpectedEvents?.frequency||'NORMAL').toUpperCase();if(ma)ma.value=settings.managerApproaches;if(bs)bs.value=settings.boardStrictness;if(td)td.value=settings.taskDensity;if(stamp){const raw=careerRuntime?.lastSavedAt;let label='Autosave ready';if(raw){try{label=`Last saved ${new Date(raw).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}`;}catch(_e){label='Career autosave active';}}stamp.textContent=label;}
+  }
+
+  // V90 — Clubhouse Stories. Existing full-body player artwork is staged inside real club
+  // environments; the event data carries dialogue, intent and delayed consequences.
+  const IMMERSIVE_DECISION_KINDS=new Set(['TRAINING_CLASH','BAD_RUN','GOOD_RUN','CAPTAIN_MEETING','PLAYER_RELATIONSHIP','PLAYING_TIME','LOAN_PATHWAY','TRANSFER_REQUEST','PROSPECT','CLUB_LIFE','MEDIA_RESPONSE']);
+  const DRESSING_ROOM_INCIDENT_LIBRARY=[
+    {id:'LATE_CONTACT',title:'The challenge nobody let go',location:'training-ground',stakes:'COMPETITIVE EDGE · PLAYER SAFETY',staff:(a,b)=>`${a.name} arrived late into a full-speed drill. ${b.name} got back up immediately, but the next challenge carried even more force.`,a:(a,b)=>`I was competing properly. ${b.name} turned it into something personal after that.`,b:(a)=>`There is competing and there is making a point. Everyone saw which one that was.`},
+    {id:'TACTICAL_CALLOUT',title:'A tactical argument followed them inside',location:'dressing-room',stakes:'TACTICAL TRUST · SQUAD HIERARCHY',staff:(a,b)=>`${a.name} criticised ${b.name}'s positioning in front of the group. The reply was immediate, and the tactics board ended up between them.`,a:(a,b)=>`I said what the coaches have been saying for weeks. We cannot keep covering the same space.`,b:(a)=>`If ${a.name} wants to coach me, they can do it without trying to embarrass me.`},
+    {id:'STARTING_PLACE',title:'Selection tension breaks the surface',location:'dressing-room',stakes:'TEAM SELECTION · DRESSING-ROOM STATUS',staff:(a,b)=>`${a.name} and ${b.name} are competing for the same space in the side. A comment about who “deserves” the next start changed the mood of the whole room.`,a:(a,b)=>`I have earned my place. I am not apologising because ${b.name} does not like hearing it.`,b:(a)=>`A place is earned on the pitch, not announced beside the lockers.`},
+    {id:'BROKEN_BROOM',title:'A damaged broom sparks accusations',location:'dressing-room',stakes:'TRUST · PROFESSIONAL STANDARDS',staff:(a,b)=>`A training broom assigned to ${b.name} was found damaged after the session. ${a.name} made a joke about it; ${b.name} believes it was not a joke at all.`,a:()=>`I touched nothing. It was one comment, and now I am being treated like I sabotaged a teammate.`,b:()=>`It is easy to call it a joke when you are not the one flying the next morning.`},
+    {id:'DRILL_BLAME',title:'A failed drill turns into blame',location:'training-ground',stakes:'ACCOUNTABILITY · TRAINING INTENSITY',staff:(a,b)=>`A repeated drill kept breaking down on the same rotation. ${a.name} blamed the timing of ${b.name}; ${b.name} questioned whether ${a.name} was following the plan at all.`,a:(a,b)=>`I cannot make the movement and cover ${b.name}'s job at the same time.`,b:(a)=>`${a.name} changed the call twice and then looked for someone else to blame.`},
+    {id:'CAPTAIN_TONE',title:'The captaincy line is tested',location:'dressing-room',stakes:'LEADERSHIP · AUTHORITY',staff:(a,b)=>`${a.name} tried to shut down a noisy debrief. ${b.name} challenged the tone in front of everyone rather than waiting for a private word.`,a:()=>`When the room needs order, somebody has to bring it. I will not apologise for that.`,b:()=>`Leadership is not the same as speaking to teammates however you want.`},
+    {id:'EXTRA_WORK',title:'Extra work becomes a point of pride',location:'training-ground',stakes:'WORK ETHIC · RESENTMENT',staff:(a,b)=>`${a.name} stayed late and then questioned why ${b.name} left at the end of the scheduled session. What began as a comment about standards became an argument about commitment.`,a:()=>`We say we want to improve, then some people disappear the second the session ends.`,b:()=>`I completed every minute the staff asked for. Nobody gets to invent extra rules for me.`},
+    {id:'JOKE_CROSSED_LINE',title:'The joke stopped being funny',location:'dressing-room',stakes:'BELONGING · RESPECT',staff:(a,b)=>`${a.name} kept a dressing-room joke going after ${b.name} asked for it to stop. The laughter disappeared, but neither player backed down.`,a:()=>`I misread the room, maybe, but there was no malice in it.`,b:()=>`I said enough. Being told to laugh after that made it worse.`},
+    {id:'YOUNG_PLAYER',title:'A young teammate is caught in the middle',location:'dressing-room',stakes:'MENTORSHIP · GROUP CULTURE',staff:(a,b)=>`${a.name} and ${b.name} gave a young teammate opposite instructions during a drill, then argued over whose standards the player should follow.`,a:()=>`I was trying to help. Mixed messages are exactly how bad habits begin.`,b:()=>`Helping does not mean overruling everyone else in front of the player.`},
+    {id:'POST_DEFEAT',title:'Defeat follows the squad home',location:'dressing-room',stakes:'ACCOUNTABILITY · MORALE',staff:(a,b)=>`${a.name} questioned the effort behind the last result. ${b.name} heard it as a direct accusation and the post-match silence finally broke.`,a:()=>`Someone had to say it. We did not lose only because of tactics.`,b:()=>`Say the team fell short. Do not look across the room and pretend one person caused it.`},
+    {id:'MEDIA_QUOTE',title:'A public quote divides the room',location:'dressing-room',stakes:'PUBLIC LOYALTY · TEAM UNITY',staff:(a,b)=>`${a.name} gave an interview about “players taking responsibility”. ${b.name} believes the comment was aimed at them and confronted the issue before training.`,a:()=>`I spoke about all of us. If one person thinks it was about them, maybe that says something.`,b:()=>`You do not send messages through reporters and then hide behind the word “team”.`},
+    {id:'RECOVERY_ARGUMENT',title:'Recovery work becomes a confrontation',location:'training-ground',stakes:'PLAYER WELFARE · COMPETITIVENESS',staff:(a,b)=>`${b.name} was placed on a lighter programme. ${a.name} questioned the intensity, and the exchange became personal before staff could move the drill on.`,a:()=>`We all have knocks. The standard cannot change depending on who is tired.`,b:()=>`The medical team set the programme. I am not risking weeks out to prove something in one drill.`}
+  ];
+  const CLUB_LIFE_INTERACTION_LIBRARY={
+    EXTRA_TRAINING:{location:'training-ground',prompt:'How do you acknowledge the extra work?',stakes:'DEVELOPMENT · MANAGER ATTENTION',secondary:'The effort has been obvious all week.',choices:[['NOTICE THE WORK','Tell {player} privately that the staff have seen the commitment.','RECOGNITION','TRUST'],['PICK UP A BROOM','Join the final drill and turn it into a shared moment.','CONNECTION','MOOD'],['SET A PRIVATE TARGET','Use the moment to agree the next measurable step.','DEVELOPMENT','EXPECTATION']]},
+    MILESTONE_CELEBRATION:{location:'dressing-room',prompt:'What part do you play in the celebration?',stakes:'PRIDE · SQUAD CULTURE',secondary:'They tried to keep this quiet. The room had other ideas.',choices:[['MAKE IT PERSONAL','Say exactly why the milestone matters to the club.','RECOGNITION','BELONGING'],['JOIN THE SURPRISE','Let the manager become part of the dressing-room joke.','CONNECTION','MOOD'],['PASS THE STANDARD ON','Ask {player} to help the next teammate reach their mark.','LEADERSHIP','RESPONSIBILITY']]},
+    NEW_SIGNING_SETTLING:{location:'dressing-room',prompt:'How do you help the connection grow?',stakes:'INTEGRATION · TEAM BONDS',secondary:'A club feels different once somebody shows you the unwritten routines.',choices:[['THANK THE GUIDE','Recognise {other} for helping the newcomer settle.','RECOGNITION','BOTH PLAYERS'],['JOIN THEM AFTER TRAINING','Spend informal time with both players away from the tactics board.','CONNECTION','INTEGRATION'],['MAKE THE PAIRING OFFICIAL','Keep them together through the next week of club work.','DEVELOPMENT','DEPENDENCE']]},
+    FRIENDLY_COMPETITION:{location:'training-ground',prompt:'What do you do with the rivalry?',stakes:'SELECTION · COMPETITIVE EDGE',secondary:'Neither of us wants the other to have an easy session.',choices:[['PRAISE BOTH PLAYERS','Make clear that both have raised the level.','RECOGNITION','SHARED CREDIT'],['SET A LIGHT-HEARTED CHALLENGE','Give the contest a playful target for the week.','CONNECTION','COMPETITION'],['TURN IT INTO A DRILL','Use the rivalry as a structured coaching exercise.','DEVELOPMENT','INTENSITY']]},
+    ACADEMY_NERVES:{location:'dressing-room',prompt:'How do you prepare the prospect?',stakes:'CONFIDENCE · FIRST IMPRESSIONS',secondary:'The first big day feels smaller when somebody explains what nobody else mentions.',choices:[['TAKE THE PRESSURE OFF','Tell {player} that one moment will not define their future.','REASSURANCE','CONFIDENCE'],['SHARE YOUR OWN NERVES','Make the fear ordinary instead of something to hide.','CONNECTION','MOOD'],['GIVE ONE SIMPLE JOB','Replace the noise with a clear matchday responsibility.','FOCUS','EXPECTATION']]},
+    PRACTICAL_JOKE:{location:'dressing-room',prompt:'How does the manager enter the joke?',stakes:'HUMOUR · DRESSING-ROOM TONE',secondary:'I should be annoyed. I am mostly impressed they committed to it.',choices:[['CHECK IT LANDED WELL','Make sure the joke stayed harmless before smiling.','CARE','TRUST'],['RETURN THE FAVOUR','Promise the room that the manager gets the next move.','CONNECTION','MOOD'],['CALL TIME AT THE RIGHT MOMENT','Enjoy it, then bring the group back to work.','FOCUS','AUTHORITY']]},
+    MENTORSHIP:{location:'training-ground',prompt:'How do you support the mentorship?',stakes:'LEADERSHIP · DEVELOPMENT',secondary:'Those details are making the level feel possible for me.',choices:[['RECOGNISE THE MENTOR','Tell {player} their influence matters beyond matchday.','RECOGNITION','LEADERSHIP'],['ASK FOR ONE OLD STORY','Let personality make the lesson memorable.','CONNECTION','HISTORY'],['BUILD A WEEKLY ROUTINE','Give the pair protected time to continue the work.','DEVELOPMENT','COMMITMENT']]},
+    TEAMMATE_PRAISE:{location:'dressing-room',prompt:'How do you reinforce the praise?',stakes:'STATUS · TEAM RECOGNITION',secondary:'Hearing it from a teammate meant more than another staff report.',choices:[['ECHO THE PRAISE','Confirm the same qualities have stood out to staff.','RECOGNITION','CONFIDENCE'],['LET THE ROOM ADD TO IT','Invite teammates to turn the moment into a celebration.','CONNECTION','MOOD'],['NAME THE NEXT STANDARD','Link the praise to a clear responsibility.','FOCUS','EXPECTATION']]},
+    CAPTAIN_ENCOURAGEMENT:{location:'dressing-room',prompt:'How do you respond to the captain’s intervention?',stakes:'CARE · LEADERSHIP',secondary:'I did not ask for a speech. I needed somebody to notice.',choices:[['BACK THE CAPTAIN PRIVATELY','Thank {player} for seeing what the staff missed.','RECOGNITION','LEADERSHIP'],['SIT WITH BOTH PLAYERS','Turn the check-in into an honest three-way conversation.','CONNECTION','TRUST'],['AGREE A SMALL RESET','Give {other} one achievable target for the coming week.','FOCUS','RECOVERY']]},
+    RESPONSIBILITY_AFTER_DEFEAT:{location:'dressing-room',prompt:'What message follows the defeat?',stakes:'ACCOUNTABILITY · RECOVERY',secondary:'The room is waiting to see whether this becomes blame or a response.',choices:[['SHARE THE RESPONSIBILITY','Make clear the manager carries the result too.','REASSURANCE','UNITY'],['BREAK THE TENSION','Give the group permission to breathe before the review.','CONNECTION','MOOD'],['LET THE PLAYER LEAD REVIEW','Turn the words into visible responsibility next session.','FOCUS','PRESSURE']]},
+    REGION_CURIOSITY:{location:'manager-office',prompt:'How do you welcome the player into the club’s world?',stakes:'BELONGING · CLUB IDENTITY',secondary:'The stories make the badge feel less like something printed on a shirt.',choices:[['SHARE A CLUB TRADITION','Explain one ritual that matters to supporters.','BELONGING','IDENTITY'],['PLAN A LOCAL AFTERNOON','Encourage teammates to show {player} the region properly.','CONNECTION','INTEGRATION'],['CONNECT IT TO MATCHDAY','Use the history to explain what the next home fixture means.','FOCUS','EXPECTATION']]},
+    VETERAN_REFLECTION:{location:'dressing-room',prompt:'What do you do with the veteran’s memory?',stakes:'HISTORY · CLUB STANDARDS',secondary:'Some habits deserve to survive even when everything else changes.',choices:[['LISTEN WITHOUT INTERRUPTING','Give the player space to tell the story in full.','RESPECT','TRUST'],['BRING THE SQUAD IN','Let the room compare how the club has changed.','CONNECTION','HISTORY'],['ASK WHAT MUST SURVIVE','Turn memory into one living standard for the squad.','FOCUS','LEGACY']]},
+    DRESSING_ROOM_MUSIC:{location:'dressing-room',prompt:'Who controls the room’s soundtrack?',stakes:'HUMOUR · SHARED SPACE',secondary:'A compromise is possible, but neither playlist deserves to win.',choices:[['LET THE PLAYERS DECIDE','Trust the room to settle its own harmless argument.','TRUST','PLAYER VOICE'],['CLAIM ONE MANAGER PICK','Add a song and accept whatever reaction follows.','CONNECTION','MOOD'],['CREATE A MATCHDAY ROTATION','Give everyone a turn and end the weekly debate.','STRUCTURE','ROUTINE']]},
+    RETURN_FROM_INJURY:{location:'training-ground',prompt:'How do you welcome the player back?',stakes:'RECOVERY · BELONGING',secondary:'The noise helped. It finally felt like I was part of the week again.',choices:[['MARK THE WORK BEHIND IT','Recognise the lonely recovery sessions nobody saw.','RECOGNITION','TRUST'],['JOIN THE WELCOME','Let the return be joyful before talking about selection.','CONNECTION','MORALE'],['SET A PATIENT TARGET','Agree the next physical step without promising minutes.','FOCUS','RECOVERY']]},
+    ROLE_VERSATILITY:{location:'training-ground',prompt:'How do you reinforce the new role?',stakes:'TACTICAL GROWTH · PLAYER IDENTITY',secondary:'The movements are beginning to feel natural instead of rehearsed.',choices:[['PRAISE THE ADAPTATION','Recognise the discomfort behind learning a new role.','RECOGNITION','CONFIDENCE'],['LET THE MENTOR TEST IT','Invite a playful one-on-one examination of the new habits.','CONNECTION','COMPETITION'],['ADD A MATCHDAY DETAIL','Give the role one specific responsibility in the next plan.','FOCUS','EXPECTATION']]}
+  };
+  const decisionSceneBackdrop=location=>({
+    'dressing-room':'assets/career/dressing-room.png',
+    'training-ground':'assets/career/training-ground.png',
+    'manager-office':'assets/career/office.png',
+    'medical-room':'assets/inbox-pixel-v2/scene-medical.png',
+    'press-room':'assets/career/press-room.png'
+  }[location]||'assets/career/dressing-room.png');
+  function eventCopyTokens(text,p,q){return String(text||'').replaceAll('{player}',p?.name||'the player').replaceAll('{other}',q?.name||'their teammate').replaceAll('{club}',currentClub?.name||'the club');}
+  function buildTrainingClashDecision(a,b,date=currentCareerISO()){
+    if(!a||!b)return null;const incident=DRESSING_ROOM_INCIDENT_LIBRARY[Math.abs(hashString(`${worldSeed}-${currentClub?.id}-${date}-${a.id}-${b.id}-INCIDENT`))%DRESSING_ROOM_INCIDENT_LIBRARY.length],opening=incident.staff(a,b),aLine=incident.a(a,b),bLine=incident.b(a,b),tension=62+Math.abs(hashString(`${date}-${incident.id}-TENSION`))%28;
+    return{id:`DEC-CLASH-${date}`,kind:'TRAINING_CLASH',category:incident.location==='training-ground'?'TRAINING GROUND':'CHANGING ROOM',playerId:a.id,secondaryPlayerId:b.id,cooldownKey:'TRAINING-CLASH',incidentId:incident.id,title:incident.title,body:opening,scene:{version:1,location:incident.location,backdrop:decisionSceneBackdrop(incident.location),stakes:incident.stakes,tension,beats:[{speaker:'ASSISTANT COACH',role:'staff',text:opening},{speaker:a.name,role:'primary',text:aLine},{speaker:b.name,role:'secondary',text:bLine}]},choices:[
+      {id:'captain',intent:'TAKE A SIDE',risk:`${b.name.toUpperCase()} · TRUST`,label:`BACK ${a.name.toUpperCase()}`,copy:`Support ${a.name}'s account and reinforce their standing in the group.`},
+      {id:'other',intent:'TAKE A SIDE',risk:`${a.name.toUpperCase()} · TRUST`,label:`BACK ${b.name.toUpperCase()}`,copy:`Side with ${b.name}, even if it challenges the existing hierarchy.`},
+      {id:'internal',intent:'MEDIATE',risk:'PERSONALITIES MATTER',label:'HEAR THEM OUT TOGETHER',copy:'Keep both players in the room, test each account and make them agree the reset.'},
+      {id:'standards',intent:'DRAW A LINE',risk:'GROUP REACTION',label:'SANCTION BOTH PLAYERS',copy:'Make the behaviour—not either personality—the issue and hold both responsible.'}
+    ]};
+  }
+  function clubLifeInteractionProfile(sceneId){return CLUB_LIFE_INTERACTION_LIBRARY[sceneId]||{location:'dressing-room',prompt:'How do you respond?',stakes:'CLUB LIFE · MANAGER RELATIONSHIP',secondary:'It is one of those small moments the group will remember.',choices:[['ACKNOWLEDGE IT','Recognise what the moment means.','RECOGNITION','TRUST'],['JOIN THE MOMENT','Respond as part of the group.','CONNECTION','MOOD'],['CHANNEL IT FORWARD','Connect it to what comes next.','FOCUS','EXPECTATION']]};}
+  function clubLifeInteractiveChoices(sceneId,p,q){return clubLifeInteractionProfile(sceneId).choices.map((row,index)=>({id:['supportive','playful','focused'][index],tone:['SUPPORTIVE','PLAYFUL','FOCUSED'][index],intent:row[2],risk:row[3],label:eventCopyTokens(row[0],p,q),copy:eventCopyTokens(row[1],p,q)}));}
+  function clubLifeDecisionScene(scene,actors,body,date=currentCareerISO()){
+    const p=actors.player,q=actors.secondary,profile=clubLifeInteractionProfile(scene.id),beats=[{speaker:'AROUND THE CLUB',role:'staff',text:body[0]||clubLifeTitle(scene,actors)},{speaker:p?.name||'PLAYER',role:'primary',text:body[1]||clubLifeVoiceLine(p,scene,date)}];
+    if(q)beats.push({speaker:q.name,role:'secondary',text:eventCopyTokens(profile.secondary,p,q)});
+    return{version:1,location:profile.location,backdrop:decisionSceneBackdrop(profile.location),stakes:profile.stakes,tension:20+Math.abs(hashString(`${date}-${scene.id}-ENERGY`))%35,prompt:profile.prompt,beats};
+  }
+  function mediaDecisionReporter(event){
+    const raw=mediaReporterById(event?.reporterId),world=raw?.world||clubWorldName(currentClub),profile=raw?mediaJournalistProfile(raw,world):null,pool=WORLD_REPORTERS[world]||WORLD_REPORTERS.Velmora||[],index=Math.max(0,pool.findIndex(row=>row.name===raw?.name)),brands=WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora||[],brand=brands[index%Math.max(1,brands.length)]||{short:'VELMORA SPORT',name:'Velmora Sport'};
+    if(!profile)return{name:'MEDIA REPORTER',role:'Matchday correspondent',outlet:brand.short||brand.name||'VELMORA SPORT',specialism:'MATCHDAY',tone:'Measured',relationship:50,avatar:mediaAssetPath(1)};
+    return{...profile,outlet:brand.short||brand.name||'VELMORA SPORT',avatar:officeIdentityAsset(`portrait-${String(9+(hashString(`${world}-${profile.name}`)%32)).padStart(2,'0')}.webp`)};
+  }
+  function mediaDecisionRival(event){
+    const manager=managerMarket.managers?.[event?.rivalManagerId]||null,club=clubById(event?.opponentClubId)||clubById(manager?.currentClubId),rivalry=manager?managerMarket.rivalries?.[manager.id]||null:null;
+    if(manager)enrichAiManagerIdentity(manager,club);
+    return{manager,club,rivalry};
+  }
+  function mediaDecisionRivalLine(manager,club){
+    const style=String(manager?.mediaStyle||'GUARDED').toUpperCase(),name=manager?.name||'the opposition manager',team=club?.name||'the opposition';
+    if(style==='BOLD')return`“We know what we can do in this fixture.” ${name} has projected confidence around ${team} and is comfortable making the buildup personal.`;
+    if(style==='DIPLOMATIC')return`“The contest deserves respect from both sides.” ${name} has kept the buildup courteous, but has not played down ${team}'s chances.`;
+    if(style==='ANALYTICAL')return`“The decisive details will be tactical.” ${name} has avoided the personal angle and placed the emphasis on how ${team} can control the contest.`;
+    if(style==='STRAIGHT-TALKING')return`“We are going there to impose ourselves.” ${name} has made ${team}'s intention clear without dressing it up.`;
+    return`“The talking will not decide it.” ${name} has kept public discussion controlled and offered the press very little beyond that.`;
+  }
+  function mediaDecisionScene(event){
+    const reporter=mediaDecisionReporter(event),{manager,club,rivalry}=mediaDecisionRival(event),meetings=Number(rivalry?.meetings||0),record=meetings?`${Number(rivalry?.wins||0)} wins, ${Number(rivalry?.draws||0)} draws and ${Number(rivalry?.losses||0)} defeats from your perspective`:'no previous managerial meeting',story=mediaRivalryLabel(rivalry),fixtureLabel=`${currentClub?.name||'Your club'} against ${club?.name||'the opposition'}`;
+    const question=event?.question||`${manager?.name||'The opposition manager'} has become part of the story around this fixture. With ${record}, do you respect the threat they pose or believe ${currentClub?.name||'your side'} should be setting the terms?`;
+    return event.scene={version:2,location:'press-room',backdrop:decisionSceneBackdrop('press-room'),stakes:`${story} · ${event.topic||'MATCHDAY'}`,tension:clamp(Math.max(38,Number(rivalry?.heat||0)),0,100),prompt:`How do you answer ${reporter.name}?`,beats:[
+      {speaker:'PRESS OFFICER',role:'staff',title:'THE ROOM SETTLES',text:`The microphones are live before ${fixtureLabel}. Coverage has focused on ${manager?.name||'the opposing manager'} and ${meetings?`${meetings} previous meeting${meetings===1?'':'s'}`:'the first chapter of this matchup'}.`},
+      {speaker:reporter.name,role:'primary',title:'THE QUESTION',text:question},
+      {speaker:manager?.name||'OPPOSITION MANAGER',role:'secondary',title:'FROM THE OTHER DUGOUT',text:mediaDecisionRivalLine(manager,club)}
+    ]};
+  }
+  function decisionSceneBlueprint(event,p,q){
+    if(event.kind==='MEDIA_RESPONSE'&&Number(event.scene?.version||0)<2)return mediaDecisionScene(event);
+    if(event.scene?.beats?.length)return event.scene;const location=['BAD_RUN','GOOD_RUN','CAPTAIN_MEETING'].includes(event.kind)?'dressing-room':['PROSPECT'].includes(event.kind)?'training-ground':'manager-office',speaker=['PLAYING_TIME','PLAYER_RELATIONSHIP','LOAN_PATHWAY','TRANSFER_REQUEST'].includes(event.kind)?(p?.name||'PLAYER'):'ASSISTANT COACH';
+    return event.scene={version:1,location,backdrop:decisionSceneBackdrop(location),stakes:event.category||'MANAGER DECISION',tension:['BAD_RUN','TRANSFER_REQUEST','PLAYER_RELATIONSHIP'].includes(event.kind)?72:42,prompt:'How do you respond?',beats:[{speaker,role:p?'primary':'staff',text:event.body||event.title},{speaker:managerName||'MANAGER',role:'manager',text:'You take a moment to read the room before answering. The wording matters, but so does what you are prepared to do afterwards.'}]};
+  }
+  function immersiveDecisionEvent(event){return !!event&&IMMERSIVE_DECISION_KINDS.has(event.kind)&&(!!event.playerId||event.kind==='MEDIA_RESPONSE');}
+  function careerDecisionCharacterHTML(player,position,single=false){if(!player)return'';return`<article class="career-event-character is-${position}${single?' is-single':''}" data-event-character="${position}"><div class="career-event-portrait">${avatarHTML(player.avatar,player.name)}</div><div class="career-event-nameplate"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.squadRole||'SQUAD PLAYER')} · ${escapeHtml(player.role||'PLAYER')}</span></div></article>`;}
+  function careerDecisionIdentityHTML(person,position,portraitHTML){
+    if(!person)return'';const detail=person.detail||person.subtitle||person.role||'',label=`${person.name}. ${person.subtitle||''}. ${detail}`.replace(/\s+/g,' ').trim();
+    return`<article class="career-event-character career-event-person is-${position}" data-event-character="${position}"><div class="career-event-portrait">${portraitHTML}</div><div class="career-event-nameplate career-event-identity" tabindex="0" role="note" aria-label="${escapeHtml(label)}" data-person-context="${escapeHtml(detail)}"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(person.subtitle||person.role||'')}</span><small>HOVER FOR CONTEXT</small></div></article>`;
+  }
+  function careerDecisionMediaCastHTML(event){
+    const reporter=mediaDecisionReporter(event),{manager,club,rivalry}=mediaDecisionRival(event),managerNameLabel=manager?.name||'OPPOSITION MANAGER',managerStyle=String(manager?.mediaStyle||'GUARDED').replace(/_/g,' '),managerDetail=`${club?.name||'Opposition'} head coach. ${String(manager?.archetype||'TACTICIAN').replace(/_/g,' ').toLowerCase()} with a ${managerStyle.toLowerCase()} media style. ${mediaRivalryLabel(rivalry).toLowerCase()}; ${Number(rivalry?.meetings||0)} meetings, ${Number(rivalry?.wins||0)}W ${Number(rivalry?.draws||0)}D ${Number(rivalry?.losses||0)}L from your perspective.`,reporterDetail=`${reporter.role||'Correspondent'} for ${reporter.outlet}. Covers ${String(reporter.specialism||'matchday').replace(/_/g,' ').toLowerCase()} stories with a ${String(reporter.tone||'measured').toLowerCase()} interviewing style. Your access is ${mediaRelationshipLabel(reporter.relationship).toLowerCase()}.`,reporterPortrait=`<img class="career-event-reporter-image" src="${escapeHtml(reporter.avatar)}" alt="${escapeHtml(reporter.name)}">`,managerPortrait=manager?managerPaperdollHTML(ensureAiManagerAppearanceProfile(manager,club),'career-event-manager-paperdoll','press-live'):`<div class="career-event-rival-badge">${badgeHTML(club)}</div>`;
+    return`${careerDecisionIdentityHTML({name:reporter.name,subtitle:`${reporter.outlet} · ${reporter.role||'CORRESPONDENT'}`,detail:reporterDetail},'primary',reporterPortrait)}${careerDecisionIdentityHTML({name:managerNameLabel,subtitle:`${club?.name||'OPPOSITION'} · HEAD COACH`,detail:managerDetail},'secondary',managerPortrait)}`;
+  }
+  function careerDecisionChoiceMarkup(choice,index,count){const accents=['#62c8c6','#e2b957','#8bb5ef','#df8275'];return`<button type="button" data-career-decision-choice="${escapeHtml(choice.id)}" style="--choice-accent:${accents[index%accents.length]}"><span class="career-event-choice-top"><b>${String(index+1).padStart(2,'0')} · ${escapeHtml(choice.intent||choice.tone||'RESPONSE')}</b><span>${escapeHtml(choice.risk||'RELATIONSHIP')}</span></span><strong>${escapeHtml(choice.label)}</strong><span>${escapeHtml(choice.copy||'')}</span></button>`;}
+  function careerDecisionImmersiveMarkup(event,p,q,scene){const club=currentClub,beats=scene.beats||[],choices=event.choices||[],media=event.kind==='MEDIA_RESPONSE',cast=media?careerDecisionMediaCastHTML(event):`${careerDecisionCharacterHTML(p,'primary',!q)}${careerDecisionCharacterHTML(q,'secondary')}`;return`<div class="career-event-world${media?' is-media':''}" data-location="${escapeHtml(scene.location||'dressing-room')}" style="--career-event-backdrop:url(&quot;${escapeHtml(scene.backdrop||decisionSceneBackdrop(scene.location))}&quot;);--event-pressure:${Number(scene.tension||45)}"><header class="career-event-topline"><div class="career-event-clubmark">${badgeHTML(club)}</div><div class="career-event-heading"><span>${escapeHtml(event.category||'CLUBHOUSE STORY')}</span><strong id="careerDecisionTitle">${escapeHtml(event.title||'A moment around the club')}</strong><small>${escapeHtml(scene.stakes||'RELATIONSHIPS · CONSEQUENCES')}</small></div></header><div class="career-event-pressure"><span>${media?'STORY HEAT':'ROOM ENERGY'}</span><i></i><b>${Number(scene.tension||45)>=70?'HEATED':Number(scene.tension||45)>=45?'CHARGED':'OPEN'}</b></div><div class="career-event-cast">${cast}</div><section class="career-event-story"><div class="career-event-story-copy"><div class="career-event-story-meta"><b data-event-speaker>SCENE</b><span data-event-progress>1 / ${beats.length}</span></div><h2 data-event-beat-title>WHAT HAPPENED</h2><blockquote data-event-dialogue></blockquote></div><footer class="career-event-story-actions"><small>${media?'Hear the question and the wider context before going on record.':'Hear the room before choosing your response.'}</small><button type="button" data-event-next>CONTINUE</button></footer></section><section class="career-event-choice-tray" hidden><header><div><span>${media?'YOU ARE ON THE RECORD':'THE ROOM IS WAITING'}</span><h2>${escapeHtml(scene.prompt||'How do you step in?')}</h2></div><p>${media?'Your words will shape the headline, your relationship with the journalist and the temperature of the managerial rivalry.':'The same response will not land the same way with every personality or dressing-room hierarchy.'}</p></header><div class="career-event-choices" data-choice-count="${choices.length}">${choices.map((choice,index)=>careerDecisionChoiceMarkup(choice,index,choices.length)).join('')}</div></section><section class="career-event-outcome" hidden aria-live="polite"></section></div>`;}
+  function renderCareerDecisionBeat(root,event,index=0){const scene=event.scene||{},beats=scene.beats||[],beat=beats[clamp(index,0,Math.max(0,beats.length-1))]||{speaker:'SCENE',role:'staff',text:event.body||''};root.dataset.eventBeat=String(index);root.querySelector('[data-event-speaker]').textContent=beat.speaker||'SCENE';root.querySelector('[data-event-progress]').textContent=`${index+1} / ${beats.length}`;root.querySelector('[data-event-beat-title]').textContent=beat.title||(beat.role==='staff'?'WHAT HAPPENED':beat.role==='manager'?'DECISION POINT':'HEAR THEM OUT');root.querySelector('[data-event-dialogue]').textContent=beat.text||'';root.querySelectorAll('[data-event-character]').forEach(node=>{const speaking=node.dataset.eventCharacter===beat.role;node.classList.toggle('is-speaking',speaking);node.classList.toggle('is-listening',!speaking&&['primary','secondary'].includes(beat.role));});const next=root.querySelector('[data-event-next]');if(next)next.textContent=index>=beats.length-1?'CHOOSE YOUR RESPONSE':'CONTINUE';}
+  function openCareerDecisionChoices(root,event){root.querySelector('.career-event-story').hidden=true;root.querySelector('.career-event-choice-tray').hidden=false;root.querySelectorAll('[data-event-character]').forEach(node=>{node.classList.remove('is-speaking','is-listening');});root.querySelector('[data-career-decision-choice]')?.focus({preventScroll:true});}
+  function decisionOutcomeFallback(event,choice){return{eyebrow:'DECISION RECORDED',title:'THE ROOM HEARD YOU',copy:choice?.copy||'Your response has been recorded and will remain part of the career context.',tags:[choice?.intent||'MANAGER RESPONSE',choice?.risk||'RELATIONSHIPS UPDATED']};}
+  function renderCareerDecisionOutcome(root,event,choice){const outcome=event.outcome||decisionOutcomeFallback(event,choice),panel=root.querySelector('.career-event-outcome');root.querySelector('.career-event-choice-tray').hidden=true;root.querySelector('.career-event-cast').style.opacity='.38';panel.innerHTML=`<span>${escapeHtml(outcome.eyebrow||'CONSEQUENCE')}</span><h2>${escapeHtml(outcome.title||'DECISION RECORDED')}</h2><p>${escapeHtml(outcome.copy||'The moment has changed how the room sees the situation.')}</p><div class="career-event-consequences">${(outcome.tags||[]).map(tag=>`<span>${escapeHtml(tag)}</span>`).join('')}</div><button type="button" data-event-finish>RETURN TO CAREER</button>`;panel.hidden=false;panel.querySelector('[data-event-finish]')?.addEventListener('click',()=>{hideCareerDecisionOverlay();refreshActiveCareerScreen();});panel.querySelector('[data-event-finish]')?.focus({preventScroll:true});}
+  function resolveTrainingClashChoice(event,choiceId,p,q){
+    if(!p||!q)return null;const date=currentCareerISO(),aTraits=playerStoryTraits(p),bTraits=playerStoryTraits(q),pairKey=clubLifePairKey(p,q),state=clubLifeState(),relationship=state.relationships[pairKey]||{playerIds:[p.id,q.id],type:'TENSION',score:0,tension:0,since:date,sinceSeasonId:careerTime.seasonId,lastBeat:null,lastSeasonId:null,moments:0,milestones:[]};let tensionDelta=0,outcome;
+    if(choiceId==='captain'){adjustPlayerMorale(p,1);adjustPlayerManagerTrust(p,4,'Backed during squad incident');adjustPlayerMorale(q,-1);adjustPlayerManagerTrust(q,-7,'Manager took teammate’s side');tensionDelta=16;outcome={eyebrow:'A SIDE WAS TAKEN',title:`${p.name.toUpperCase()} FEELS BACKED`,copy:`${p.name} leaves certain of your support. ${q.name} accepts the decision in the room, but not the version of events behind it.`,tags:[`${p.name} · TRUST UP`,`${q.name} · TRUST DOWN`,'TENSION REMAINS','FOLLOW-UP IN 1–2 WEEKS']};}
+    if(choiceId==='other'){adjustPlayerMorale(p,-1);adjustPlayerManagerTrust(p,-6,'Manager backed teammate during squad incident');adjustPlayerMorale(q,1);adjustPlayerManagerTrust(q,5,'Backed during squad incident');tensionDelta=14;outcome={eyebrow:'THE HIERARCHY SHIFTED',title:`${q.name.toUpperCase()} FEELS HEARD`,copy:`Backing ${q.name} challenges the obvious hierarchy and lands strongly with the player. ${p.name} leaves feeling that their standing counted for very little.`,tags:[`${q.name} · TRUST UP`,`${p.name} · TRUST DOWN`,'HIERARCHY NOTICED','FOLLOW-UP IN 1–2 WEEKS']};}
+    if(choiceId==='internal'){const skill=(Number(aTraits.temperament||60)+Number(bTraits.temperament||60)+Number(aTraits.professionalism||60)+Number(bTraits.professionalism||60))/4,roll=Math.abs(hashString(`${worldSeed}-${event.id}-MEDIATION`))%100,settled=roll<clamp(skill+12,35,88);if(settled){adjustPlayerManagerTrust(p,3,'Heard during mediated squad incident');adjustPlayerManagerTrust(q,3,'Heard during mediated squad incident');adjustPlayerMorale(p,1);adjustPlayerMorale(q,1);tensionDelta=-28;outcome={eyebrow:'MEDIATION HELD',title:'BOTH PLAYERS OWN THE RESET',copy:`Once each account is tested, ${p.name} and ${q.name} agree where the line was crossed. It is not friendship, but it is a credible end to the argument.`,tags:['BOTH PLAYERS · TRUST UP','TENSION LOWER','NO SIDE TAKEN','FOLLOW-UP ARMED']};}else{adjustPlayerManagerTrust(p,-1,'Unconvincing mediation');adjustPlayerManagerTrust(q,-1,'Unconvincing mediation');tensionDelta=7;outcome={eyebrow:'AN UNEASY TRUCE',title:'THE WORDS STOP; THE ISSUE DOES NOT',copy:`Both players agree to move on in front of you, but neither changes their account. Staff will separate parts of their work and watch what happens next.`,tags:['BOTH PLAYERS · UNEASY','TENSION ACTIVE','STAFF MONITORING','FOLLOW-UP ARMED']};}}
+    if(choiceId==='standards'){const professional=(Number(aTraits.professionalism||60)+Number(bTraits.professionalism||60))/2,accepted=professional>=64;if(accepted){adjustPlayerManagerTrust(p,2,'Accepted shared discipline');adjustPlayerManagerTrust(q,2,'Accepted shared discipline');tensionDelta=-18;outcome={eyebrow:'THE STANDARD CAME FIRST',title:'BOTH PLAYERS ACCEPT RESPONSIBILITY',copy:`You refuse to referee the personalities and sanction the behaviour instead. Neither enjoys it, but both recognise that the same rule was applied.`,tags:['SHARED ACCOUNTABILITY','AUTHORITY UP','TENSION LOWER','FOLLOW-UP ARMED']};}else{adjustPlayerMorale(p,-1);adjustPlayerMorale(q,-1);adjustPlayerManagerTrust(p,-2,'Rejected shared discipline');adjustPlayerManagerTrust(q,-2,'Rejected shared discipline');tensionDelta=4;outcome={eyebrow:'THE LINE WAS DRAWN',title:'THE ROOM GOES QUIET, NOT SETTLED',copy:`The sanction ends the confrontation immediately. Both players feel the decision avoided the substance of the dispute, and the next sessions will matter.`,tags:['BOTH PLAYERS · MORALE DOWN','AUTHORITY TESTED','TENSION ACTIVE','FOLLOW-UP ARMED']};}}
+    relationship.type=relationship.type||'TENSION';relationship.tension=clamp(Number(relationship.tension||0)+tensionDelta,0,100);relationship.lastIncidentDate=date;relationship.lastBeat=date;relationship.lastSeasonId=careerTime.seasonId;relationship.moments=Math.max(0,Number(relationship.moments||0))+1;state.relationships[pairKey]=relationship;event.incidentOutcome={state:relationship.tension<=28?'SETTLED':relationship.tension>=62?'FRACTURED':'UNEASY',tension:relationship.tension,choiceId,copy:outcome?.copy||'',tags:outcome?.tags||[]};event.followUpDate=addDaysISO(date,6+Math.abs(hashString(`${event.id}-FOLLOWUP`))%8);event.outcome=outcome;recordPlayerStory(p,'DRESSING_ROOM_INCIDENT',date,{incidentId:event.incidentId,choiceId,secondaryPlayerId:q.id,tension:relationship.tension});recordPlayerStory(q,'DRESSING_ROOM_INCIDENT',date,{incidentId:event.incidentId,choiceId,secondaryPlayerId:p.id,tension:relationship.tension});return outcome;
+  }
+  function processDressingRoomIncidentFollowUps(date=currentCareerISO()){
+    for(const event of careerDecisionEvents.filter(row=>row.kind==='TRAINING_CLASH'&&row.resolved&&row.followUpDate&&row.followUpDate<=date&&!row.followUpDelivered)){
+      const p=careerPlayerById(event.playerId),q=careerPlayerById(event.secondaryPlayerId);if(!p||!q){event.followUpDelivered=date;continue;}const result=event.incidentOutcome||{},settled=result.state==='SETTLED',fractured=result.state==='FRACTURED',title=settled?'The reset has held':fractured?'The tension is still visible':'The room is moving on carefully',detail=settled?`${p.name} and ${q.name} have trained together without another flashpoint. Teammates have noticed that both are making the reset work.`:fractured?`${p.name} and ${q.name} are completing the work, but communication between them remains clipped. Staff do not consider the matter closed.`:`${p.name} and ${q.name} have avoided another confrontation. The relationship is functional, although neither player is pretending the disagreement never happened.`;if(settled){adjustPlayerManagerTrust(p,1,'Dressing-room resolution held');adjustPlayerManagerTrust(q,1,'Dressing-room resolution held');}addCareerInboxMessage({id:`incident-followup-${event.id}`,type:'SQUAD',sender:'ASSISTANT COACH',subject:`Dressing-room follow-up: ${p.name} & ${q.name}`,preview:detail,title,body:[detail,fractured?'Their selection, training groups and future interactions may keep this live.':'Your original response is now part of how both players interpret the relationship.'],signoff:'Assistant Coach',action:{label:'VIEW SQUAD',route:'squad'},date,notificationPriority:fractured?'IMPORTANT':'INTERESTING'});event.followUpDelivered=date;event.followUpResult=settled?'RESET_HELD':fractured?'TENSION_ACTIVE':'FUNCTIONAL_TRUCE';recordPlayerStory(p,'DRESSING_ROOM_FOLLOWUP',date,{secondaryPlayerId:q.id,result:event.followUpResult});
+    }
   }
   function queueDecisionEvent(event){
     if(!event?.id||careerDecisionEvents.some(e=>e.id===event.id))return null;
@@ -976,19 +1261,19 @@
     const promise={id:`PROMISE-${player.id}-${currentCareerISO()}-${playerPromises.length+1}`,playerId:player.id,type:'PLAYING_TIME',clubId:currentClub?.id,createdDate:currentCareerISO(),participationVersion:37,processedFixtureIds:fixtures.filter(f=>f.played&&f.date===currentCareerISO()&&[f.homeClubId,f.awayClubId].includes(currentClub?.id)).map(f=>f.fixtureId),matchesRemaining:Math.max(1,Number(options.matchesRemaining||3)),targetStarts:Math.max(1,Number(options.targetStarts||1)),startsDelivered:0,status:'active',label:options.label||'Playing-time pathway',trustAtCreation:Number(player.managerTrust||60)};
     playerPromises.push(promise);return promise;
   }
-  function resolveDecisionEvent(id,choiceId){
+  function resolveDecisionEvent(id,choiceId,options={}){
     const event=careerDecisionEvents.find(e=>e.id===id);if(!event||event.resolved)return;
     if(event.kind==='PLAYING_TIME'){v37RefreshPlayingTimeDecisions();if(event.resolved){hideCareerDecisionOverlay();refreshActiveCareerScreen();return;}}
     const p=event.playerId?careerPlayerById(event.playerId):null;event.choiceId=choiceId;event.resolved=true;event.resolvedDate=currentCareerISO();
     if(event.kind==='PLAYING_TIME'){
       if(choiceId==='promise'){event.promiseId=createPlayingTimePromise(p)?.id;adjustPlayerMorale(p,1);adjustPlayerManagerTrust(p,5,'Playing-time commitment');}
       if(choiceId==='work'){adjustPlayerMorale(p,0);adjustPlayerManagerTrust(p,-2,'No playing-time promise');}
-      if(choiceId==='plans'){adjustPlayerMorale(p,-2);adjustPlayerManagerTrust(p,-10,'Told outside plans');if(p)p.transferListed=true;}
+      if(choiceId==='plans'){adjustPlayerMorale(p,-2);adjustPlayerManagerTrust(p,-10,'Told outside plans');if(p&&clubCanMarketPlayer(currentClub,p)){p.transferListed=true;p.transferStatus='TRANSFER_LISTED';}}
     }
     if(event.kind==='CONTRACT'){
       if(choiceId==='negotiate'){officeActiveTab='contracts';selectedContractPlayerId=p?.id||null;}
       if(choiceId==='wait')adjustPlayerMorale(p,-1);
-      if(choiceId==='list'){if(p){p.transferListed=true;adjustPlayerMorale(p,-1);}}
+      if(choiceId==='list'){if(p&&clubCanMarketPlayer(currentClub,p)){p.transferListed=true;p.transferStatus='TRANSFER_LISTED';adjustPlayerMorale(p,-1);}}
     }
     if(event.kind==='BAD_RUN'){
       if(choiceId==='back'){getSquad(currentClub).forEach(x=>adjustPlayerMorale(x,1));shiftBoardConfidence(1,'Dressing room response');}
@@ -998,12 +1283,7 @@
       if(choiceId==='promote'){if(p){p.squadRole='Rotation';adjustPlayerMorale(p,1);}}
       if(choiceId==='develop'){if(p&&!careerPreferences.focusPlayerIds.includes(p.id)&&careerPreferences.focusPlayerIds.length<3)careerPreferences.focusPlayerIds.push(p.id);}
     }
-    if(event.kind==='TRAINING_CLASH'){
-      const other=careerPlayerById(event.secondaryPlayerId);
-      if(choiceId==='captain'){adjustPlayerMorale(p,1);adjustPlayerMorale(other,-1);}
-      if(choiceId==='other'){adjustPlayerMorale(p,-1);adjustPlayerMorale(other,1);}
-      if(choiceId==='internal'){adjustPlayerMorale(p,0);adjustPlayerMorale(other,0);shiftBoardConfidence(1,'Handled dressing-room issue');}
-    }
+    if(event.kind==='TRAINING_CLASH')resolveTrainingClashChoice(event,choiceId,p,careerPlayerById(event.secondaryPlayerId));
     if(event.kind==='GOOD_RUN'){
       if(choiceId==='praise')getSquad(currentClub).forEach(x=>adjustPlayerMorale(x,1));
       if(choiceId==='grounded')shiftBoardConfidence(1,'Calm winning-run message');
@@ -1015,7 +1295,7 @@
       if(choiceId==='honest'){adjustPlayerManagerTrust(p,2,'Honest role conversation');p.playingTimeSatisfaction=Math.max(25,Number(p.playingTimeSatisfaction||50)-3);}
     }
     if(event.kind==='LOAN_PATHWAY'&&p){
-      if(choiceId==='loan'){p.loanListed=true;p.transferStatus='LOAN_LISTED';adjustPlayerManagerTrust(p,7,'Agreed development loan pathway');adjustPlayerMorale(p,1);}
+      if(choiceId==='loan'&&clubCanMarketPlayer(currentClub,p)){p.loanListed=true;p.transferStatus='LOAN_LISTED';adjustPlayerManagerTrust(p,7,'Agreed development loan pathway');adjustPlayerMorale(p,1);}
       if(choiceId==='minutes'){createPlayingTimePromise(p,{matchesRemaining:4,targetStarts:1,label:'Senior opportunity'});adjustPlayerManagerTrust(p,5,'Promised senior opportunity');}
       if(choiceId==='stay'){adjustPlayerManagerTrust(p,-3,'Asked to remain patient');}
     }
@@ -1036,10 +1316,13 @@
       const opponent=clubById(event.opponentClubId),n=event.rivalManagerId?upsertMediaNarrative({key:`RIVALRY-${event.rivalManagerId}`,type:'MANAGER_RIVALRY',title:`${managerName} v ${rival?.name||'opposition manager'}`,clubIds:[currentClub?.id,opponent?.id].filter(Boolean),managerIds:[PLAYER_MANAGER_ID,event.rivalManagerId].filter(Boolean),heat:Number(r?.heat||45),date:currentCareerISO()}):null;
       const story=mediaAddNews({id:`media-response-${statement.id}`,category:'MANAGER RIVALRY',clubId:currentClub?.id,relatedClubIds:[currentClub?.id,opponent?.id].filter(Boolean),title:choiceId==='provocative'?`${managerName.toUpperCase()} ADDS EDGE BEFORE ${opponent?.name?.toUpperCase()||'BIG FIXTURE'}`:choiceId==='respectful'?`${managerName.toUpperCase()} KEEPS BUILDUP RESPECTFUL`:`${managerName.toUpperCase()} KEEPS CARDS CLOSE BEFORE MATCH`,body:[summary,rival?`${rival.name}'s ${String(rival.mediaStyle||'guarded').toLowerCase()} media style means the subplot is unlikely to disappear completely.`:`The wider media focus remains on the fixture itself.`,`The next meeting will add another chapter to the managerial relationship.`],sourceConfidence:'CONFIRMED',date:currentCareerISO(),reporterId:event.reporterId});
       if(n)mediaNarrativeBeat(n,`Manager media response: ${mediaStatementToneLabel(tone)}`,currentCareerISO(),story.id);
+      if(choiceId==='respectful')event.outcome={eyebrow:'THE ROOM MOVES ON',title:'RESPECT SETS THE HEADLINE',copy:`Your answer gives ${reporter?.name||'the press'} a clear line without escalating the contest. ${rival?.name||'The opposition manager'} will recognise the respect, although the fixture remains a live story.`,tags:[`${rival?.name||'RIVAL'} · RESPECT UP`,'STORY HEAT DOWN',`${reporter?.name||'REPORTER'} · ACCESS UP`,'STATEMENT REMEMBERED']};
+      if(choiceId==='neutral')event.outcome={eyebrow:'LITTLE GIVEN AWAY',title:'THE FOCUS STAYS ON THE FIXTURE',copy:`You leave ${reporter?.name||'the press'} with a controlled answer and no personal headline. The rivalry neither cools nor meaningfully escalates.`,tags:['MEASURED STATEMENT','RIVALRY STEADY','NO TACTICAL CLUES','STATEMENT REMEMBERED']};
+      if(choiceId==='provocative')event.outcome={eyebrow:'THE CAMERAS HAVE THEIR LINE',title:'PRESSURE RISES BEFORE THE MEETING',copy:`Your backing of ${currentClub?.name||'the club'} becomes the headline. ${rival?.name||'The opposition manager'} now has a public challenge to answer and this exchange can be raised again later.`,tags:['STORY HEAT UP',`${rival?.name||'RIVAL'} · RESPECT DOWN`,`${reporter?.name||'REPORTER'} · ACCESS COOLER`,'FUTURE CALLBACK ARMED']};
     }
     if(event.kind==='DISCIPLINE_APPEAL')disciplineResolveAppeal(event,choiceId);
     if(event.kind==='UNEXPECTED_EVENT')resolveUnexpectedEventChoice(event,choiceId);
-    if(event.kind==='TRANSFER_REQUEST'&&p){
+    if(event.kind==='TRANSFER_REQUEST'&&p&&clubCanMarketPlayer(currentClub,p)){
       if(choiceId==='accept-request'){p.transferRequested=true;p.transferStatus='TRANSFER_LISTED';p.transferListed=true;adjustPlayerMorale(p,1);adjustPlayerManagerTrust(p,3,'Transfer request respected');}
       if(choiceId==='role-talk'){p.transferRequested=false;p.playingTimeSatisfaction=Math.max(55,Number(p.playingTimeSatisfaction||50));createPlayingTimePromise(p);adjustPlayerMorale(p,1);adjustPlayerManagerTrust(p,7,'Role pathway agreed');}
       if(choiceId==='convince'){
@@ -1049,14 +1332,14 @@
         else{p.transferRequested=true;p.transferStatus='TRANSFER_LISTED';p.transferListed=true;adjustPlayerManagerTrust(p,-5,'Could not resolve transfer request');addCareerInboxMessage({id:`stay-failed-${event.id}`,type:'SQUAD',sender:p.name,subject:'My decision stands',preview:'The transfer request remains active.',title:`${p.name} still wants a move`,body:[`The player listened to your case but still believes a transfer is the right next step.`],signoff:p.name,date:currentCareerISO()});}
       }
     }
-    if(event.kind==='TRANSFER_OFFER'&&p){
+    if(event.kind==='TRANSFER_OFFER'&&p&&clubCanMarketPlayer(currentClub,p)){
       const bidder=clubById(event.bidderClubId),fee=Number(event.fee||0);
       if(choiceId==='accept'&&bidder){const ourSquad=getSquad(currentClub),idx=ourSquad.findIndex(x=>x.id===p.id),bidderSquad=getSquad(bidder);if(idx>=0&&bidderSquad.length<AI_SENIOR_SQUAD_CAP){removePlayerFromLineup(currentClub,p.id);ourSquad.splice(idx,1);p.clubId=bidder.id;p.clubName=bidder.name;p.joinedSeason=careerSeason;p.morale='Happy';p.careerClubs=Array.from(new Set([...(p.careerClubs||[]),bidder.id]));bidderSquad.push(p);addPlayerToLineup(bidder,p.id,'bench');currentClub.budget=formatExactMoney(moneyNumber(currentClub.budget)+fee);bidder.budget=formatExactMoney(Math.max(0,moneyNumber(bidder.budget)-fee));normalizeSquadRoles(currentClub);normalizeSquadRoles(bidder);aiTransferHistory.push({id:`USER-SALE-${event.id}`,date:currentCareerISO(),playerId:p.id,playerName:p.name,fromClubId:currentClub.id,toClubId:bidder.id,fee,userSale:true});addCareerNews({id:`news-user-sale-${event.id}`,category:'TRANSFERS',title:`${bidder.name.toUpperCase()} SIGN ${p.name.toUpperCase()}`,body:[`${currentClub.name} have accepted ${formatMoney(fee)} from ${bidder.name}.`,`The deal is complete and the player has joined their new club.`],image:p.avatar,date:currentCareerISO()});}}
       if(choiceId==='not-sale')adjustPlayerMorale(p,1);
     }
-    setEventCooldown(event.cooldownKey||`${event.kind}-${event.playerId||'club'}`);saveCareerState();hideCareerDecisionOverlay();
+    const choice=event.choices?.find(c=>c.id===choiceId);recordDecisionAudienceMemory(event,choice);if(!event.outcome)event.outcome=decisionOutcomeFallback(event,choice);setEventCooldown(event.cooldownKey||`${event.kind}-${event.playerId||'club'}`);saveCareerState();if(options.deferClose)return event.outcome;hideCareerDecisionOverlay();
     if(choiceId==='negotiate'){goCareerScreen('office');return;}
-    refreshActiveCareerScreen();
+    refreshActiveCareerScreen();return event.outcome;
   }
   function ensureCareerDecisionOverlay(){
     let root=document.getElementById('careerDecisionOverlay');if(root)return root;
@@ -1066,12 +1349,16 @@
   }
   function showCareerDecisionOverlay(event=pendingDecisionEvent()){
     if(event?.kind==='PLAYING_TIME'){v37RefreshPlayingTimeDecisions();if(event.resolved)return false;}
-    if(!event)return false;const root=ensureCareerDecisionOverlay(),body=root.querySelector('#careerDecisionBody');const p=event.playerId?unexpectedFindPlayer(event.playerId):null,clubEvent=!p,contextMark=clubEvent&&currentClub?`<div class="career-decision-clubmark">${badgeHTML(currentClub)}</div>`:'';
+    if(!event)return false;const root=ensureCareerDecisionOverlay(),card=root.querySelector('.career-decision-card'),body=root.querySelector('#careerDecisionBody');const p=event.playerId?unexpectedFindPlayer(event.playerId):null,q=event.secondaryPlayerId?unexpectedFindPlayer(event.secondaryPlayerId):null,clubEvent=!p,contextMark=clubEvent&&currentClub?`<div class="career-decision-clubmark">${badgeHTML(currentClub)}</div>`:'';
+    if(immersiveDecisionEvent(event)){
+      const scene=decisionSceneBlueprint(event,p,q);card.classList.add('is-immersive');body.innerHTML=careerDecisionImmersiveMarkup(event,p,q,scene);let beat=0;renderCareerDecisionBeat(body,event,beat);body.querySelector('[data-event-next]')?.addEventListener('click',()=>{if(beat<(scene.beats?.length||1)-1){beat++;renderCareerDecisionBeat(body,event,beat);}else openCareerDecisionChoices(body,event);});body.querySelectorAll('[data-career-decision-choice]').forEach(btn=>btn.addEventListener('click',()=>{body.querySelectorAll('[data-career-decision-choice]').forEach(node=>node.disabled=true);const choice=event.choices?.find(row=>row.id===btn.dataset.careerDecisionChoice),outcome=resolveDecisionEvent(event.id,btn.dataset.careerDecisionChoice,{deferClose:true});if(outcome)renderCareerDecisionOutcome(body,event,choice);}));root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);queueManagerHydration(root);return true;
+    }
+    card.classList.remove('is-immersive');
     body.innerHTML=`<div class="career-decision-kicker">${escapeHtml(event.category||'CAREER EVENT')}${event.severity?`<b class="career-decision-severity is-${String(event.severity).toLowerCase()}">${escapeHtml(event.severity)}</b>`:''}</div><div class="career-decision-hero ${clubEvent?'is-club-event':''}">${p?`<div class="career-decision-avatar">${avatarHTML(p.avatar,p.name)}</div>`:contextMark}<div><span>${p?`${escapeHtml(p.squadRole||'PLAYER')} · ${escapeHtml(p.role||'')}`:escapeHtml(currentClub?.name||'VELMORA MANAGER')}</span><h2 id="careerDecisionTitle">${escapeHtml(event.title||'Decision required')}</h2><p>${escapeHtml(event.body||'')}</p></div></div><div class="career-decision-choices">${(event.choices||[]).map(c=>`<button type="button" data-career-decision-choice="${escapeHtml(c.id)}"><strong>${escapeHtml(c.label)}</strong><span>${escapeHtml(c.copy||'')}</span></button>`).join('')}</div>`;
     body.querySelectorAll('[data-career-decision-choice]').forEach(btn=>btn.addEventListener('click',()=>resolveDecisionEvent(event.id,btn.dataset.careerDecisionChoice)));
     root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);return true;
   }
-  function hideCareerDecisionOverlay(){const root=document.getElementById('careerDecisionOverlay');if(root){root.classList.remove('is-open');root.setAttribute('aria-hidden','true');}}
+  function hideCareerDecisionOverlay(){const root=document.getElementById('careerDecisionOverlay');if(root){root.classList.remove('is-open');root.setAttribute('aria-hidden','true');root.querySelector('.career-decision-card')?.classList.remove('is-immersive');}}
   function generateContextualCareerDecision(date=currentCareerISO()){
     if(!currentClub||employmentStatus!=='employed'||firstWeekState.active||pendingDecisionEvent())return null;
     normalizeSquadRoles(currentClub);const squad=getSquad(currentClub);const played=recentClubFixtures(currentClub,6);if(played.length<2)return null;
@@ -1079,7 +1366,7 @@
     if(needy&&eventCooldownReady(`PLAYING-${needy.id}`,date,35)){
       return queueDecisionEvent({id:`DEC-PLAY-${needy.id}-${date}`,kind:'PLAYING_TIME',category:'PLAYER CONVERSATION',playerId:needy.id,cooldownKey:`PLAYING-${needy.id}`,title:'I need more minutes',body:`Boss, I've started ${v37PlayingTimeWindow(needy,currentClub,6).starts} of the last ${v37PlayingTimeWindow(needy,currentClub,6).total} competitive games I was available for. I expected a bigger part as a ${needy.squadRole.toLowerCase()} player. Can we talk about the next few team sheets?`,choices:[{id:'promise',label:"YOU'LL GET YOUR CHANCE",copy:'Promise a start in the next three competitive matches they are available for.'},{id:'work',label:'KEEP WORKING',copy:'No promise. Ask the player to earn the place.'},{id:'plans',label:"YOU'RE NOT IN MY PLANS",copy:'Be clear — morale will take a significant hit.'}]});
     }
-    const expiring=squad.filter(p=>Number(p.contractYears||0)<=1&&moraleIndex(p.morale)<=3).sort((a,b)=>Number(b.ovr)-Number(a.ovr))[0];
+    const expiring=squad.filter(p=>clubCanRenewPlayer(currentClub,p)&&Number(p.contractYears||0)<=1&&moraleIndex(p.morale)<=3).sort((a,b)=>Number(b.ovr)-Number(a.ovr))[0];
     if(expiring&&eventCooldownReady(`CONTRACT-${expiring.id}`,date,60)&&hashString(`${worldSeed}-${date}-${expiring.id}-CONTRACT`)%11===0){
       return queueDecisionEvent({id:`DEC-CONTRACT-${expiring.id}-${date}`,kind:'CONTRACT',category:'CONTRACT SITUATION',playerId:expiring.id,cooldownKey:`CONTRACT-${expiring.id}`,title:'Where do I stand?',body:`My deal is running down and I would like some clarity on my future at ${currentClub.name}.`,choices:[{id:'negotiate',label:'OPEN NEGOTIATIONS',copy:'Go to the Office and discuss a new deal.'},{id:'wait',label:'WAIT',copy:'Delay the decision. The player may become less settled.'},{id:'list',label:'TRANSFER LIST',copy:'Signal that the club is willing to move the player on.'}]});
     }
@@ -1097,7 +1384,7 @@
     }
     if(squad.length>=4&&eventCooldownReady('TRAINING-CLASH',date,60)&&hashString(`${worldSeed}-${date}-${currentClub.id}-CLASH`)%19===0){
       const ordered=[...squad].sort((a,b)=>hashString(`${date}-${a.id}`)-hashString(`${date}-${b.id}`));const a=captain||ordered[0],other=ordered.find(x=>x.id!==a.id)||ordered[1];
-      if(a&&other)return queueDecisionEvent({id:`DEC-CLASH-${date}`,kind:'TRAINING_CLASH',category:'TRAINING GROUND',playerId:a.id,secondaryPlayerId:other.id,cooldownKey:'TRAINING-CLASH',title:'Training got heated',body:`${a.name} and ${other.name} clashed during a competitive training session. Staff want the issue settled before it follows the group into matchday.`,choices:[{id:'captain',label:`BACK ${a.name.toUpperCase()}`,copy:`Support ${a.name}. ${other.name} may not appreciate it.`},{id:'other',label:`BACK ${other.name.toUpperCase()}`,copy:`Side with ${other.name}. The dressing-room hierarchy may notice.`},{id:'internal',label:'HANDLE IT INTERNALLY',copy:'Bring both players together and close the issue without taking sides.'}]});
+      if(a&&other)return queueDecisionEvent(buildTrainingClashDecision(a,other,date));
     }
     return null;
   }
@@ -1149,7 +1436,9 @@
     '.rtg-review-overlay',
     '.v2073-season-moment-overlay',
     '.v44-manager-scene-overlay',
-    '.press-conference-overlay'
+    '.press-conference-overlay',
+    '.club-pulse-dossier',
+    '#v48PlayerProfile'
   ].join(',');
   const V201_BLOCKING_OVERLAY_SELECTOR=V201_OVERLAY_ROOT_SELECTOR.split(',').map(selector=>`${selector}.is-open`).join(',');
 
@@ -1228,6 +1517,10 @@
     target.setAttribute('aria-hidden','false');
     target.dataset.screenState='active';
     try{target.inert=!!currentBlockingOverlay();}catch(_e){}
+    if(name==='menu'){
+      refreshMainMenuCareerSummary();
+      syncMainMenuAudioToggle();
+    }
     if(name==='results'){
       const reportScroll=target.querySelector('.results-scroll');
       if(reportScroll)reportScroll.scrollTop=0;
@@ -1277,10 +1570,14 @@
   }
 
   function v201OverlayMutationObserver(){
+    if(!document.body){
+      document.addEventListener('DOMContentLoaded',v201OverlayMutationObserver,{once:true});
+      return;
+    }
     const mutationTouchesOverlay=m=>{
       const target=m.target instanceof Element?m.target:null;
       if(target?.matches?.(V201_OVERLAY_ROOT_SELECTOR))return true;
-      if(m.type==='childList')return [...m.addedNodes].some(node=>node instanceof Element&&(node.matches?.(V201_OVERLAY_ROOT_SELECTOR)||node.querySelector?.(V201_OVERLAY_ROOT_SELECTOR)));
+      if(m.type==='childList')return [...m.addedNodes,...m.removedNodes].some(node=>node instanceof Element&&(node.matches?.(V201_OVERLAY_ROOT_SELECTOR)||node.querySelector?.(V201_OVERLAY_ROOT_SELECTOR)));
       return false;
     };
     const observer=new MutationObserver(mutations=>{if(mutations.some(mutationTouchesOverlay))scheduleOverlaySync();});
@@ -1436,6 +1733,189 @@
     try{a.currentTime=0;}catch(_){}
     const p=a.play();
     if(p&&typeof p.catch==='function')p.catch(()=>{});
+  }
+
+  // V99 — title-screen interaction layer. The clean art plate stays visual-only;
+  // every control, focus state and audio cue below is live and accessible.
+  let mainMenuAudioContext=null;
+  let mainMenuSelectedIndex=0;
+  function syncMainMenuAudioToggle(){
+    const button=document.getElementById('menuAudioToggle');
+    if(!button)return;
+    button.setAttribute('aria-pressed',audioMuted?'true':'false');
+    button.setAttribute('aria-label',audioMuted?'Restore audio':'Mute audio');
+    button.title=audioMuted?'Restore audio':'Mute audio';
+  }
+  function playMainMenuFocusSfx(){
+    if(audioMuted)return;
+    const amount=Math.max(0,Math.min(1,Number(sfxVolume?.value??60)/100));
+    if(amount<=0)return;
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)return;
+    try{
+      mainMenuAudioContext=mainMenuAudioContext||new AudioContextClass();
+      const context=mainMenuAudioContext;
+      if(context.state==='suspended')context.resume().catch(()=>{});
+      const now=context.currentTime,osc=context.createOscillator(),gain=context.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(310,now);
+      osc.frequency.exponentialRampToValueAtTime(465,now+.055);
+      gain.gain.setValueAtTime(.0001,now);
+      gain.gain.exponentialRampToValueAtTime(Math.max(.0001,.026*amount),now+.012);
+      gain.gain.exponentialRampToValueAtTime(.0001,now+.075);
+      osc.connect(gain);gain.connect(context.destination);osc.start(now);osc.stop(now+.08);
+    }catch(_e){}
+  }
+  function mainMenuMotionReduced(){
+    return accessibilityPreferences?.reducedMotion||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  }
+  function emitMainMenuSelectionParticles(button){
+    const root=document.getElementById('screenMenu');
+    if(!root||!button||mainMenuMotionReduced())return;
+    const rootRect=root.getBoundingClientRect(),rect=button.getBoundingClientRect();
+    for(let i=0;i<5;i++){
+      const spark=document.createElement('i');
+      spark.className='menu-selection-spark';
+      spark.style.left=`${rect.left-rootRect.left+Math.max(3,rootRect.width*.002)}px`;
+      spark.style.top=`${rect.top-rootRect.top+rect.height*(.24+i*.12)}px`;
+      spark.style.setProperty('--spark-x',`${7+(i%2)*6}px`);
+      spark.style.setProperty('--spark-y',`${(i-2)*7-8}px`);
+      root.appendChild(spark);
+      spark.addEventListener('animationend',()=>spark.remove(),{once:true});
+      window.setTimeout(()=>spark.remove(),700);
+    }
+  }
+  function refreshMainMenuCareerSummary(){
+    const status=document.getElementById('menuContinueStatus'),detail=document.getElementById('menuContinueDetail');
+    if(!status||!detail)return;
+    try{
+      ensureCareerSaveMigration();
+      const saves=careerSaveSlots().filter(info=>!info.empty&&!info.corrupt);
+      const current=saves.find(info=>Number(info.slot)===Number(activeCareerSlot))||saves.sort((a,b)=>String(b.savedAt||b.date||'').localeCompare(String(a.savedAt||a.date||'')))[0];
+      document.getElementById('screenMenu')?.toggleAttribute('data-menu-has-save',!!current);
+      if(!current){status.textContent='CAREER ARCHIVE';detail.textContent='NO CAREER SAVED · CHOOSE A SLOT';return;}
+      status.textContent=Number(current.slot)===Number(activeCareerSlot)?'CURRENT SAVE':'MOST RECENT SAVE';
+      detail.textContent=`SLOT ${String(current.slot).padStart(2,'0')} · ${current.clubName||'UNEMPLOYED'} · ${current.seasonId||'2026/27'}`;
+    }catch(_e){status.textContent='CAREER ARCHIVE';detail.textContent='CHOOSE A SAVE SLOT';}
+  }
+  function installMainMenuExperience(){
+    const root=document.getElementById('screenMenu'),nav=root?.querySelector('.menu-actions');
+    if(!root||!nav||root.dataset.menuExperienceReady==='true')return;
+    root.dataset.menuExperienceReady='true';
+    const options=[...nav.querySelectorAll('.menu-option')];
+    const particleField=document.getElementById('menuParticleField');
+    if(particleField&&!particleField.children.length&&!mainMenuMotionReduced()){
+      for(let i=0;i<22;i++){
+        const particle=document.createElement('i'),lane=i%11,row=Math.floor(i/11);
+        particle.style.setProperty('--x',`${46+lane*4.65+(row?1.6:0)}%`);
+        particle.style.setProperty('--y',`${38+(i*17%50)}%`);
+        particle.style.setProperty('--size',`${.07+(i%4)*.035}cqw`);
+        particle.style.setProperty('--alpha',`${.17+(i%5)*.045}`);
+        particle.style.setProperty('--duration',`${4.8+(i%7)*.55}s`);
+        particle.style.setProperty('--delay',`${-(i%9)*.63}s`);
+        particle.style.setProperty('--drift',`${-1.6+(i%6)*.62}cqw`);
+        particleField.appendChild(particle);
+      }
+    }
+    const selectOption=(index,{focus=false,sound=true,particles=true}={})=>{
+      const next=(Number(index)+options.length)%options.length;
+      if(!options[next])return;
+      const changed=next!==mainMenuSelectedIndex||!options[next].classList.contains('is-selected');
+      mainMenuSelectedIndex=next;
+      options.forEach((option,i)=>{
+        const selected=i===next;
+        option.classList.toggle('is-selected',selected);
+        option.setAttribute('aria-current',selected?'true':'false');
+      });
+      if(focus)options[next].focus({preventScroll:true});
+      if(changed&&sound)playMainMenuFocusSfx();
+      if(changed&&particles)emitMainMenuSelectionParticles(options[next]);
+    };
+    options.forEach((option,index)=>{
+      option.addEventListener('pointerenter',()=>selectOption(index));
+      option.addEventListener('focus',()=>selectOption(index,{sound:document.documentElement.dataset.vmMenuKeyboard==='true'}));
+      option.addEventListener('click',()=>selectOption(index,{sound:false,particles:true}));
+    });
+    root.querySelectorAll('.menu-art-utilities button').forEach(button=>button.addEventListener('pointerenter',playMainMenuFocusSfx));
+    window.addEventListener('keydown',event=>{
+      if(!root.classList.contains('is-active')||currentBlockingOverlay()||event.altKey||event.ctrlKey||event.metaKey)return;
+      if(!['ArrowDown','ArrowUp','Home','End','Enter',' '].includes(event.key))return;
+      document.documentElement.dataset.vmMenuKeyboard='true';
+      if(event.key==='ArrowDown'){event.preventDefault();selectOption(mainMenuSelectedIndex+1,{focus:true});}
+      else if(event.key==='ArrowUp'){event.preventDefault();selectOption(mainMenuSelectedIndex-1,{focus:true});}
+      else if(event.key==='Home'){event.preventDefault();selectOption(0,{focus:true});}
+      else if(event.key==='End'){event.preventDefault();selectOption(options.length-1,{focus:true});}
+      else if(!options.includes(document.activeElement)){
+        // Enter belongs to whatever the player has actually focused. Only
+        // fall back to the highlighted menu row when nothing else is.
+        const active=document.activeElement;
+        const focusedControl=active&&active!==document.body&&typeof active.closest==='function'
+          &&active.closest('button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+        if(focusedControl)return;
+        event.preventDefault();options[mainMenuSelectedIndex]?.click();
+      }
+    });
+    root.addEventListener('pointermove',event=>{
+      if(mainMenuMotionReduced())return;
+      const rect=root.getBoundingClientRect(),x=(event.clientX-rect.left)/Math.max(1,rect.width)-.5,y=(event.clientY-rect.top)/Math.max(1,rect.height)-.5,layer=root.querySelector('.menu-atmosphere');
+      layer?.style.setProperty('--menu-parallax-x',`${x*8}px`);
+      layer?.style.setProperty('--menu-parallax-y',`${y*5}px`);
+    });
+    root.addEventListener('pointerleave',()=>{const layer=root.querySelector('.menu-atmosphere');layer?.style.setProperty('--menu-parallax-x','0px');layer?.style.setProperty('--menu-parallax-y','0px');});
+    syncMainMenuAudioToggle();
+    refreshMainMenuCareerSummary();
+    selectOption(0,{sound:false,particles:false});
+  }
+
+  let tutorialResumeMenuMusic=false;
+  function setTutorialComplete(visible){
+    const panel=document.getElementById('tutorialComplete');
+    if(!panel)return;
+    panel.classList.toggle('is-visible',!!visible);
+    panel.setAttribute('aria-hidden',visible?'false':'true');
+  }
+  function playTutorialFromStart(){
+    const video=document.getElementById('menuTutorialVideo'),loading=document.getElementById('tutorialLoading');
+    if(!video)return;
+    setTutorialComplete(false);
+    if(loading){loading.textContent='PREPARING TUTORIAL…';loading.classList.remove('is-error');loading.classList.toggle('is-ready',video.readyState>=2);}
+    try{video.currentTime=0;}catch(_e){}
+    video.muted=audioMuted;
+    const playback=video.play();
+    if(playback&&typeof playback.catch==='function')playback.catch(()=>{if(loading){loading.textContent='PRESS PLAY TO BEGIN';loading.classList.add('is-ready');}});
+  }
+  function openTutorial(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo');
+    if(!overlay||!video)return;
+    tutorialResumeMenuMusic=!!menuMusic&&(musicStarted||!menuMusic.paused);
+    if(menuMusic&&!menuMusic.paused){try{menuMusic.pause();}catch(_e){}}
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden','false');
+    syncPrimaryScreenInteractivity();
+    playTutorialFromStart();
+  }
+  function closeTutorial(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo');
+    if(video){try{video.pause();video.currentTime=0;}catch(_e){}}
+    setTutorialComplete(false);
+    overlay?.classList.remove('is-open');
+    overlay?.setAttribute('aria-hidden','true');
+    syncPrimaryScreenInteractivity();
+    if(tutorialResumeMenuMusic)ensureMenuMusic();
+    tutorialResumeMenuMusic=false;
+  }
+  function installTutorialExperience(){
+    const overlay=document.getElementById('tutorialModal'),video=document.getElementById('menuTutorialVideo'),loading=document.getElementById('tutorialLoading');
+    if(!overlay||!video||overlay.dataset.tutorialReady==='true')return;
+    overlay.dataset.tutorialReady='true';
+    const ready=()=>loading?.classList.add('is-ready');
+    video.addEventListener('loadeddata',ready);
+    video.addEventListener('canplay',ready);
+    video.addEventListener('playing',ready);
+    video.addEventListener('waiting',()=>{if(loading&&!video.ended){loading.textContent='BUFFERING TUTORIAL…';loading.classList.remove('is-ready','is-error');}});
+    video.addEventListener('ended',()=>setTutorialComplete(true));
+    video.addEventListener('error',()=>{if(loading){loading.textContent='TUTORIAL COULD NOT LOAD · TRY AGAIN';loading.classList.remove('is-ready');loading.classList.add('is-error');}});
+    overlay.addEventListener('click',event=>{if(event.target===overlay)closeTutorial();});
   }
 
 
@@ -1928,7 +2408,10 @@
     managerCreatorStage=0;managerAppearanceCategory='skin';managerWardrobeCategory='outfit';managerRandomLocks.clear();(managerProfile.randomizationLocks||[]).forEach(x=>managerRandomLocks.add(x));renderManagerCreator();showScreen('managerCreator');
   }
   function openManagerCreatorStage(stage){const next=clamp(Number(stage)||0,0,3);if(next===3&&!managerPersonalValid(true))return;managerCreatorStage=next;renderManagerCreator();}
-  function handleManagerContinue(){if(managerCreatorStage===0&&!managerPersonalValid(true))return;if(managerCreatorStage<3){managerCreatorStage++;renderManagerCreator();return;}if(!managerPersonalValid(true))return;managerConfirmed=true;managerName=String(managerProfile.identity.name||'CAREER MANAGER').trim();employmentStatus='setup';saveManagerDraft();try{localStorage.removeItem(MANAGER_DRAFT_KEY);}catch(_){}renderCareerStart();showScreen('careerStart');showToast(`${managerName} is registered · choose how to begin`);}
+  function handleManagerContinue(){if(managerCreatorStage===0&&!managerPersonalValid(true))return;if(managerCreatorStage<3){managerCreatorStage++;renderManagerCreator();return;}if(!managerPersonalValid(true))return;managerConfirmed=true;managerName=String(managerProfile.identity.name||'CAREER MANAGER').trim();employmentStatus='setup';saveManagerDraft();try{localStorage.removeItem(MANAGER_DRAFT_KEY);}catch(_){}
+    // V104: an online career borrows the same creator and returns to its lobby.
+    if(v104CreatorReturn){const done=v104CreatorReturn;v104CreatorReturn=null;done(ensureManagerProfile(),managerName);return;}
+    renderCareerStart();showScreen('careerStart');showToast(`${managerName} is registered · choose how to begin`);}
 
   function assignManagerClubBranding(club){
     const p=ensureManagerProfile();if(!club){p.clubBranding={clubId:null,primary:null,secondary:null,accent:null,badgePath:null,initials:null,overlayId:'team_overlay_00'};return;}
@@ -2011,10 +2494,12 @@
   }
 
   function badgeHTML(club){
-    if(club?.customClub){const primary=/^#[0-9a-f]{6}$/i.test(club.primaryColor)?club.primaryColor:'#14b8a6',secondary=/^#[0-9a-f]{6}$/i.test(club.secondaryColor)?club.secondaryColor:'#10243b';return `<span class="v34-club-crest v34-crest-${['round','shield','diamond'].includes(club.customBadgeStyle)?club.customBadgeStyle:'shield'}" style="--crest-primary:${primary};--crest-secondary:${secondary}" aria-label="${escapeHtml(club.name)} crest">${escapeHtml(club.abbr)}</span>`;}
-    return club?.badge
-      ? `<img src="${encodeURI(club.badge)}" alt="${escapeHtml(club.name)} identity" decoding="async" onerror="this.style.display='none'">`
-      : '';
+    if(!club?.badge)return '';
+    // Custom-club crests are self-contained SVG data URIs (shape + pattern + emblem + colours already
+    // baked in by the badge maker), so they render as a normal <img> just like every other club's badge —
+    // that also means they automatically pick up all the same sizing/layout CSS everywhere in the UI.
+    const src=/^data:/i.test(club.badge)?club.badge:encodeURI(club.badge);
+    return `<img src="${src}" alt="${escapeHtml(club.name)} identity" decoding="async" onerror="this.style.display='none'">`;
   }
 
   function escapeHtml(str){
@@ -2032,6 +2517,7 @@
     const match=String(src||'').match(/(?:^|\/)assets\/player-avatars\/player-(\d+)\.png(?:[?#].*)?$/i);
     return !!match&&playerSpriteIds.has(Number(match[1]));
   }
+  function preparedPersonnelAvatar(src){return /(?:^|\/)assets\/career\/personnel-v2\/[a-z0-9-]+\.png(?:[?#].*)?$/i.test(String(src||''));}
   const avatarRenderCache = new Map();
   const avatarRenderPending = new Map();
   const v202AvatarNodesBySource=new Map();
@@ -2057,7 +2543,7 @@
   function v202StartAvatarHydration(img){
     // Prepared player assets already contain one complete, consistently framed
     // silhouette. Runtime component filtering would destroy detached details.
-    if(preparedPlayerAvatar(img?.getAttribute?.('data-avatar-src'))){img.dataset.avatarHydrationState='done';return;}
+    if(preparedPlayerAvatar(img?.getAttribute?.('data-avatar-src'))||preparedPersonnelAvatar(img?.getAttribute?.('data-avatar-src'))){img.dataset.avatarHydrationState='done';return;}
     const src=img?.getAttribute?.('data-avatar-src');if(!src)return;const cached=avatarRenderCache.get(src);
     if(cached){if(img.src!==cached)img.src=cached;img.dataset.avatarHydrationState='done';return;}
     img.dataset.avatarHydrationState='loading';v202RegisterAvatarNode(img,src);if(avatarRenderPending.has(src))return;
@@ -2248,6 +2734,76 @@
       startingMode:src.startingMode||null
     };
   }
+  const V70_CAREER_CHALLENGES={
+    survival:{
+      key:'survival',mark:'S',number:'01',kicker:'PRESSURE CONTRACT',title:'THE GREAT ESCAPE',
+      copy:'Take charge of a club with everything to lose. One campaign decides whether you leave as the manager who kept them standing.',
+      clubRule:'Tier 2 or Tier 3 clubs · relegation is active',tone:'survival',
+      rules:[['A','SURVIVE','Finish above the relegation places'],['B','40-POINT STANDARD','Build a genuinely competitive league record'],['C','ONE SEASON','The verdict arrives at season end']]
+    },
+    academy:{
+      key:'academy',mark:'A',number:'02',kicker:'PATHWAY CONTRACT',title:'ACADEMY ASCENDANCY',
+      copy:'Build the campaign around players raised by the club. Promotion, selection and results all matter — potential alone is not enough.',
+      clubRule:'Tier 1 to Tier 3 clubs · academy pathway required',tone:'academy',
+      rules:[['A','PROMOTE TWO','Move two prospects into the senior squad'],['B','TRUST THE PATHWAY','Record 12 league starts by academy graduates'],['C','STAY COMPETITIVE','Finish in the top half']]
+    }
+  };
+  function normalizeCareerChallenge(value={}){
+    const src=value&&typeof value==='object'?value:{};
+    const key=V70_CAREER_CHALLENGES[src.key]?src.key:null;
+    const status=['ACTIVE','COMPLETED','FAILED','INACTIVE'].includes(src.status)?src.status:(key?'ACTIVE':'INACTIVE');
+    return {version:1,key,status,seasonId:src.seasonId||null,clubId:src.clubId||null,startedDate:src.startedDate||null,completedDate:src.completedDate||null,result:src.result&&typeof src.result==='object'?src.result:null,history:Array.isArray(src.history)?src.history:[]};
+  }
+  function careerChallengeDefinition(key=careerChallenge?.key||pendingCareerChallengeKey){return V70_CAREER_CHALLENGES[key]||null;}
+  function challengeEligibleClub(club,key=pendingCareerChallengeKey){
+    if(!key||!club)return true;const tier=Number(club.tier||4);
+    if(key==='survival')return tier===2||tier===3;
+    if(key==='academy')return tier>=1&&tier<=3;
+    return true;
+  }
+  function createCareerChallenge(key,club){
+    const def=careerChallengeDefinition(key);if(!def||!club)return normalizeCareerChallenge({});
+    return normalizeCareerChallenge({key,status:'ACTIVE',seasonId:careerTime.seasonId,clubId:club.id,startedDate:currentCareerISO(),history:[]});
+  }
+  function careerChallengeProgress(club=currentClub){
+    const challenge=normalizeCareerChallenge(careerChallenge),def=careerChallengeDefinition(challenge.key);if(!def||!club)return null;
+    const rows=standingsForDivision(club.divisionKey),own=rows.find(r=>r.club.id===club.id),position=Number(own?.pos||rows.length||18),played=Number(own?.played||0),points=Number(own?.pts||0),relegationLine=Math.max(1,rows.length-2),topHalf=Math.ceil(Math.max(1,rows.length)/2);
+    const graduates=getSquad(club).filter(p=>p.storyFlags?.academyGraduate||p.academyOriginClubId===club.id),challengePromotions=graduates.filter(p=>p.academyOriginSeasonId===challenge.seasonId),academyStarts=graduates.reduce((n,p)=>n+Number(p.seasonStats?.starts||0),0);
+    if(challenge.key==='survival'){
+      const safe=position<relegationLine,finishProgress=played?clamp(Math.round((safe?72:38)+(played/34)*28),12,100):18;
+      return {def,position,played,points,success:safe&&points>=40,goals:[
+        {id:'challenge-survive',tag:'CHALLENGE · CRITICAL',icon:'◆',title:'Finish Above The Drop',copy:`Currently ${ordinal(position)} · relegation begins ${ordinal(relegationLine)}.`,progress:finishProgress,status:safe?'ABOVE THE LINE':'IN THE DROP ZONE',complete:safe},
+        {id:'challenge-points',tag:'CHALLENGE · HIGH',icon:'＋',title:'Reach 40 League Points',copy:`${points}/40 points secured.`,progress:clamp(Math.round(points/40*100),0,100),status:points>=40?'COMPLETE':played?'IN PROGRESS':'NOT STARTED',complete:points>=40},
+        {id:'challenge-season',tag:'CONTRACT · FIXED',icon:'◷',title:'Complete The Campaign',copy:`${played}/34 league matches played.`,progress:clamp(Math.round(played/34*100),0,100),status:played>=34?'COMPLETE':'ONE-SEASON CONTRACT',complete:played>=34}
+      ]};
+    }
+    const competitive=position<=topHalf;
+    return {def,position,played,academyStarts,promotions:challengePromotions.length,success:challengePromotions.length>=2&&academyStarts>=12&&competitive,goals:[
+      {id:'challenge-promote',tag:'CHALLENGE · HIGH',icon:'↑',title:'Promote Two Prospects',copy:`${challengePromotions.length}/2 academy players promoted this season.`,progress:clamp(challengePromotions.length*50,0,100),status:challengePromotions.length>=2?'COMPLETE':challengePromotions.length?'IN PROGRESS':'NOT STARTED',complete:challengePromotions.length>=2},
+      {id:'challenge-starts',tag:'CHALLENGE · CRITICAL',icon:'●',title:'Give Graduates 12 Starts',copy:`${academyStarts}/12 senior starts by academy graduates.`,progress:clamp(Math.round(academyStarts/12*100),0,100),status:academyStarts>=12?'COMPLETE':academyStarts?'IN PROGRESS':'NOT STARTED',complete:academyStarts>=12},
+      {id:'challenge-finish',tag:'CHALLENGE · HIGH',icon:'◇',title:'Finish In The Top Half',copy:`Currently ${ordinal(position)} · target ${ordinal(topHalf)} or better.`,progress:clamp(Math.round((topHalf/Math.max(position,1))*75+(played/34)*25),10,100),status:competitive?'ON TRACK':'WORK TO DO',complete:competitive}
+    ]};
+  }
+  function finalizeCareerChallengeSeason(){
+    careerChallenge=normalizeCareerChallenge(careerChallenge);if(careerChallenge.status!=='ACTIVE'||careerChallenge.seasonId!==careerTime.seasonId||careerChallenge.clubId!==currentClub?.id)return null;
+    const progress=careerChallengeProgress(currentClub);if(!progress)return null;const success=!!progress.success,def=progress.def,result={success,seasonId:careerTime.seasonId,clubId:currentClub.id,clubName:currentClub.name,position:progress.position,points:Number(progress.points||0),academyStarts:Number(progress.academyStarts||0),promotions:Number(progress.promotions||0),goals:progress.goals.map(g=>({id:g.id,title:g.title,complete:!!g.complete,status:g.status}))};
+    careerChallenge.status=success?'COMPLETED':'FAILED';careerChallenge.completedDate=currentCareerISO();careerChallenge.result=result;careerChallenge.history.push(result);careerChallenge.history=careerChallenge.history.slice(-12);
+    const reward=success?8:2;roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+reward,0,100);
+    addCareerInboxMessage({id:`challenge-verdict-${careerChallenge.seasonId}-${currentClub.id}`,type:'CAREER',sender:'VELMORA CAREER COMMISSION',subject:`Challenge verdict: ${success?'Mission accomplished':'Contract complete'}`,preview:`${def.title} · ${success?'all critical objectives delivered':'the required objective set was not completed'}.`,title:success?'A challenge career completed':'The one-season challenge concludes',body:[`${def.title} has reached its final verdict at ${currentClub.name}.`,success?'You completed the full challenge brief. The result is now a permanent part of this save.':'The contract is complete, but at least one critical objective was missed. The result remains part of this career history.',`Manager reputation ${success?'rises by 8':'rises by 2'} points. This save now continues as a standard career.`],signoff:'Velmora Career Commission',action:{label:'VIEW CAREER ARCHIVE',route:'squad'},date:currentCareerISO()});
+    addCareerNews({id:`challenge-news-${careerChallenge.seasonId}-${currentClub.id}`,category:'CHALLENGE CAREER',title:`${managerName.toUpperCase()} · ${success?'MISSION ACCOMPLISHED':'ONE-SEASON VERDICT'}`,body:[`${def.title} at ${currentClub.name} has concluded with a ${success?'successful':'unsuccessful'} final verdict.`,`The focused contract is complete; the managerial career remains active.`],image:currentClub.badge,date:currentCareerISO()});
+    return result;
+  }
+  function closeCareerChallengeSelector(){const root=$('#careerChallengeOverlay');if(!root)return;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');root.hidden=true;}
+  function openCareerChallengeSelector(){
+    let root=$('#careerChallengeOverlay');if(!root){root=document.createElement('div');root.id='careerChallengeOverlay';root.className='v70-challenge-overlay';root.setAttribute('aria-hidden','true');root.innerHTML=`<section class="v70-challenge-shell" role="dialog" aria-modal="true" aria-labelledby="careerChallengeTitle"><header><div><span>SHORT CHALLENGE CAREERS</span><h2 id="careerChallengeTitle">CHOOSE YOUR MISSION</h2><p>A complete one-season brief layered over the full living career world. No separate currencies, no duplicate systems and no locked exit.</p></div><button type="button" class="v70-challenge-close" data-v70-challenge-close aria-label="Close challenge careers">×</button></header><main class="v70-challenge-grid">${Object.values(V70_CAREER_CHALLENGES).map(def=>`<article class="v70-challenge-card is-${def.tone}" data-mark="${def.mark}"><small>${def.kicker}</small><h3>${def.title}</h3><p>${def.copy}</p><div class="v70-challenge-rules">${def.rules.map(([mark,title,copy])=>`<span><b>${mark}</b><i><strong>${title}</strong><small>${copy}</small></i></span>`).join('')}</div><button type="button" class="v70-challenge-select" data-v70-challenge="${def.key}">SELECT MISSION</button></article>`).join('')}<footer class="v70-challenge-footnote"><span><strong>FULL CAREER SYSTEMS</strong> · Transfers, academy, staff, media and the living world remain active.</span><span><strong>AFTER THE VERDICT</strong> · Continue the same save as a standard career.</span></footer></main></section>`;document.body.appendChild(root);root.querySelector('[data-v70-challenge-close]').addEventListener('click',closeCareerChallengeSelector);root.addEventListener('click',e=>{if(e.target===root)closeCareerChallengeSelector();});root.querySelectorAll('[data-v70-challenge]').forEach(btn=>btn.addEventListener('click',()=>chooseCareerChallenge(btn.dataset.v70Challenge)));}
+    root.hidden=false;root.classList.add('is-open');root.setAttribute('aria-hidden','false');
+  }
+  function chooseCareerChallenge(key){
+    const def=careerChallengeDefinition(key);if(!def)return;pendingCareerChallengeKey=key;closeCareerChallengeSelector();activeDivision='all';activeCountry='all';if($('#countrySelect'))$('#countrySelect').value='all';$$('#divisionFilters .filter-btn').forEach(b=>b.classList.toggle('is-active',b.dataset.division==='all'));selectedClub=clubs.find(c=>challengeEligibleClub(c,key))||clubs[0];renderGrid();renderPreview();showScreen('select');showToast(`${def.title} · choose an eligible club`);
+  }
+  function renderChallengeClubBanner(){
+    $('#v70ClubChallengeBanner')?.remove();
+  }
   function renderCareerStart(){
     const p=ensureManagerProfile(),i=p.identity;
     const nation=managerNationName(i.nationId),city=managerCityName(i.nationId,i.cityId);
@@ -2261,6 +2817,7 @@
     queueManagerHydration(document);
   }
   function openAnyClubCareerPath(){
+    pendingCareerChallengeKey=null;
     activeDivision='all';activeCountry='all';
     if($('#countrySelect'))$('#countrySelect').value='all';
     $$('#divisionFilters .filter-btn').forEach(b=>b.classList.toggle('is-active',b.dataset.division==='all'));
@@ -2271,6 +2828,7 @@
     return {startedDate:currentCareerISO(),reputation:18,offers:[],offerHistory:[],declinedClubIds:[],lastOfferDate:null,totalOffers:0,appointedDate:null,startingMode:'unemployed'};
   }
   function startUnemployedCareer(){
+    pendingCareerChallengeKey=null;
     commitPendingCareerSlot();
     resetCareerWorld();
     currentClub=null;
@@ -2406,13 +2964,14 @@
     const club=clubById(appointmentClubId);if(!club)return;
     const p=ensureManagerProfile(),offer=appointmentOffer();
     const salary=offer?.weeklySalary||jobSalaryForClub(club,'direct');const years=offer?.contractYears||2;
-    const sourceLabel=appointmentSource==='offer'?'UNSOLICITED CLUB APPROACH':'CHOSEN CLUB CAREER';
+    const challengeDef=appointmentSource==='challenge'?careerChallengeDefinition(pendingCareerChallengeKey):null;
+    const sourceLabel=appointmentSource==='offer'?'UNSOLICITED CLUB APPROACH':challengeDef?'SHORT CHALLENGE CONTRACT':'CHOSEN CLUB CAREER';
     $('#appointmentContent').innerHTML=`
       <section class="appointment-stage" style="--appointment-accent:${escapeHtml(club.accent||'#1b7891')}">
         <div class="appointment-club-side"><span>${escapeHtml(sourceLabel)}</span><div class="appointment-badge">${badgeHTML(club)}</div><h3>${escapeHtml(club.name)}</h3><p>${escapeHtml(club.country)} · ${escapeHtml(club.division)}</p></div>
         <div class="appointment-manager-side"><span>INCOMING MANAGER</span><div class="appointment-manager-portrait">${managerPaperdollHTML(p,'manager-paperdoll-appointment','formal')}</div><h3>${escapeHtml(managerName)}</h3><p>${escapeHtml(managerCityName(p.identity.nationId,p.identity.cityId))}, ${escapeHtml(managerNationName(p.identity.nationId))}</p></div>
-        <div class="appointment-main"><span class="appointment-kicker">CONTRACT AGREED IN PRINCIPLE</span><h1>${escapeHtml(club.name.toUpperCase())} SET TO APPOINT<br>${escapeHtml(managerName.toUpperCase())}</h1><p>${appointmentSource==='offer'?`After entering the career unemployed, you have received your first opportunity in a season that is already underway. Results, tables and club form have continued while you waited.`:`You selected ${escapeHtml(club.name)} as the club where your Velmora career will begin.`}</p>
-          <div class="appointment-contract-grid"><div><span>TERM</span><strong>${years} YEAR${years===1?'':'S'}</strong></div><div><span>MANAGER SALARY</span><strong>£${Number(salary).toLocaleString('en-GB')}/WK</strong></div><div><span>TRANSFER BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}</strong></div><div><span>BOARD OBJECTIVE</span><strong>${escapeHtml(club.expectation||'Build steadily')}</strong></div></div>
+        <div class="appointment-main"><span class="appointment-kicker">${challengeDef?'ONE-SEASON MISSION AGREED':'CONTRACT AGREED IN PRINCIPLE'}</span><h1>${escapeHtml(club.name.toUpperCase())} SET TO APPOINT<br>${escapeHtml(managerName.toUpperCase())}</h1><p>${appointmentSource==='offer'?`After entering the career unemployed, you have received your first opportunity in a season that is already underway. Results, tables and club form have continued while you waited.`:challengeDef?`${escapeHtml(challengeDef.title)} is a focused one-season brief inside the full Velmora career world. The save continues after the final verdict.`:`You selected ${escapeHtml(club.name)} as the club where your Velmora career will begin.`}</p>
+          <div class="appointment-contract-grid"><div><span>TERM</span><strong>${challengeDef?'1 YEAR':`${years} YEAR${years===1?'':'S'}`}</strong></div><div><span>MANAGER SALARY</span><strong>£${Number(salary).toLocaleString('en-GB')}/WK</strong></div><div><span>TRANSFER BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}</strong></div><div><span>${challengeDef?'MISSION':'BOARD OBJECTIVE'}</span><strong>${escapeHtml(challengeDef?.title||club.expectation||'Build steadily')}</strong></div></div>
           <div class="appointment-first-days"><span>YOUR FIRST DAYS</span><div><b>01</b><p>Meet the senior squad and review your starting three.</p></div><div><b>02</b><p>Read the board expectations waiting in your Office inbox.</p></div><div><b>03</b><p>Set recruitment priorities before your first competitive fixture.</p></div></div>
           <button id="appointmentSign" type="button" class="appointment-sign">SIGN CONTRACT &amp; BEGIN <i>›</i></button>
         </div>
@@ -2517,6 +3076,14 @@
     const started=careerHasStarted();document.querySelectorAll('.career-topbar .career-utilities').forEach(utils=>{let btn=utils.querySelector('[data-v45-quick-access]');if(!btn){btn=document.createElement('button');btn.type='button';btn.className='career-util-btn v20-text-util v45-quick-access-launch';btn.dataset.v45QuickAccess='1';btn.setAttribute('aria-label','Quick Access');btn.textContent='QA';utils.prepend(btn);btn.addEventListener('click',e=>{e.stopPropagation();let root=document.getElementById('v45QuickAccessPopover');if(!root){root=document.createElement('aside');root.id='v45QuickAccessPopover';root.className='v45-quick-access-popover';root.setAttribute('aria-hidden','true');document.body.appendChild(root);}const opening=!root.classList.contains('is-open');if(opening){v45RenderQuickAccessPopover(false);root.classList.add('is-open');root.setAttribute('aria-hidden','false');}else v45CloseQuickAccess();});}btn.hidden=!started;});
   }
 
+  const V96_TACTIC_VALUES={defensive:['Balanced','Press','Drop Back'],attacking:['Balanced','Fast Break','Possession','Direct'],mentality:['Defensive','Balanced','Attacking'],width:['Compact','Balanced','Wide'],tempo:['Patient','Balanced','Urgent'],freedom:['Structured','Balanced','Fluid']};
+  const V96_DEFAULT_TACTICAL_PLANS={
+    primary:{id:'primary',name:'PRIMARY',tactics:{defensive:'Balanced',attacking:'Balanced',mentality:'Balanced',width:'Balanced',tempo:'Balanced',freedom:'Balanced'}},
+    chase:{id:'chase',name:'CHASE GAME',tactics:{defensive:'Press',attacking:'Direct',mentality:'Attacking',width:'Wide',tempo:'Urgent',freedom:'Fluid'}},
+    protect:{id:'protect',name:'PROTECT LEAD',tactics:{defensive:'Drop Back',attacking:'Possession',mentality:'Defensive',width:'Compact',tempo:'Patient',freedom:'Structured'}}
+  };
+  function v96NormalizeTactics(raw={}){const src=raw&&typeof raw==='object'?raw:{};return Object.fromEntries(Object.entries(V96_TACTIC_VALUES).map(([key,values])=>[key,values.includes(src[key])?src[key]:'Balanced']));}
+  function v96NormalizeTacticalPlans(raw={}){const src=raw&&typeof raw==='object'?raw:{};return Object.fromEntries(Object.entries(V96_DEFAULT_TACTICAL_PLANS).map(([key,plan])=>[key,{id:key,name:plan.name,tactics:v96NormalizeTactics(src[key]?.tactics||plan.tactics)}]));}
   function normalizeCareerPreferences(value={}){
     const src=value&&typeof value==='object'?value:{};const t=src.tactics||{},cs=src.careerSettings&&typeof src.careerSettings==='object'?src.careerSettings:{};
     const managerApproaches=String(cs.managerApproaches||'ON').toUpperCase()==='OFF'?'OFF':'ON';
@@ -2524,7 +3091,7 @@
     const taskDensity=['ESSENTIAL','STANDARD','DETAILED'].includes(String(cs.taskDensity||'STANDARD').toUpperCase())?String(cs.taskDensity||'STANDARD').toUpperCase():'STANDARD';
     const releaseGrade=v45NormalizeReleaseGrade(src.releaseGrade||src.v45ReleaseGrade||{});
     return {
-      tactics:{defensive:t.defensive||'Balanced',attacking:t.attacking||'Balanced',mentality:t.mentality||'Balanced'},
+      tactics:v96NormalizeTactics(t),tacticalPlans:v96NormalizeTacticalPlans(src.tacticalPlans),activeTacticalPlan:Object.keys(V96_DEFAULT_TACTICAL_PLANS).includes(src.activeTacticalPlan)?src.activeTacticalPlan:'primary',
       training:trainingRules.preferences(src.training),
       trainingFocus:src.trainingFocus||'Balanced',focusPlayerIds:Array.isArray(src.focusPlayerIds)?src.focusPlayerIds.slice(0,3):[],
       managerPersonality:src.managerPersonality||'Pragmatic',captainId:src.captainId||null,firstWeekCompletedAt:src.firstWeekCompletedAt||null,
@@ -2542,7 +3109,7 @@
     return {assistant:1+h('A')%10,recruitment:11+h('R')%10,coach:21+h('C')%5,medical:26+h('M')%5,executive:31+h('E')%5,press:36+h('P')%5};
   }
   function careerStaffRecord(id,role){
-    const n=clamp(Number(id||1),1,40);return{id:n,name:CAREER_STAFF_NAMES[n-1]||`Staff ${n}`,role,title:CAREER_STAFF_TITLES[role]||'CLUB STAFF',image:`assets/career/staff/staff_${String(n).padStart(2,'0')}.png`};
+    const n=clamp(Number(id||1),1,40),personnelImage=window.VelmoraPersonnelIdentity?.asset?.(role);return{id:n,name:CAREER_STAFF_NAMES[n-1]||`Staff ${n}`,role,title:CAREER_STAFF_TITLES[role]||'CLUB STAFF',image:personnelImage||`assets/career/staff/staff_${String(n).padStart(2,'0')}.png`};
   }
   function firstWeekStaff(role){
     const club=currentClub||selectedClub;const assignments=firstWeekState.staff&&Object.keys(firstWeekState.staff).length?firstWeekState.staff:firstWeekStaffAssignments(club);
@@ -2588,7 +3155,7 @@
   }
   function firstWeekRecommendationArchetype(p,index=0){
     if(index===1&&Number(p.age||99)<=24)return'DEVELOPMENT';
-    if(index===2&&(p.freeAgent||Number(p.value||0)<=Math.max(250000,moneyNumber(currentClub?.budget)*.3)))return'VALUE OPTION';
+    if(index===2&&(p.freeAgent||livingPlayerMarketValue(p)<=Math.max(250000,moneyNumber(currentClub?.budget)*.3)))return'VALUE OPTION';
     return index===0?'READY NOW':index===1?'UPSIDE':'SQUAD FIT';
   }
   function firstWeekRecommendedTargets(){
@@ -2604,7 +3171,7 @@
     const raw=[...paid,...free].filter(p=>p&&p.role===weak&&!p.retiringAtEnd&&Number(p.age||99)<=33);
     const candidates=[];
     for(const p of raw){
-      const ovr=Number(p.ovr||0),age=Number(p.age||25),cost=p.freeAgent?0:Number(p.value||0),sourceLevel=p.freeAgent?level:recruitmentDivisionLevel(p.club?.divisionKey);
+      const ovr=Number(p.ovr||0),age=Number(p.age||25),cost=p.freeAgent?0:livingPlayerMarketValue(p),sourceLevel=p.freeAgent?level:recruitmentDivisionLevel(p.club?.divisionKey);
       if(ovr<abilityFloor-2)continue;
       if(ovr>abilityCeiling+(p.freeAgent?2:0))continue; // reputation/ability reality check: no world stars to tiny clubs
       if(!p.freeAgent&&sourceLevel>level+1)continue;
@@ -2640,7 +3207,7 @@
     for(const row of candidates){if(chosen.length>=3)break;if(!chosen.some(x=>x.p.id===row.p.id))chosen.push(row);}
     // Last-resort fallback: still stay role-appropriate and around the club's level rather than returning global stars.
     if(chosen.length<3){
-      const fallback=raw.filter(p=>!chosen.some(x=>x.p.id===p.id)&&Number(p.ovr||0)<=abilityCeiling+1&&Number(p.ovr||0)>=abilityFloor-4&&(p.freeAgent||(budget>0&&Number(p.value||0)<=Math.max(500000,budget*.85)))).sort((a,b)=>Math.abs(Number(a.ovr||0)-(weakAvg+2))-Math.abs(Number(b.ovr||0)-(weakAvg+2))||Number(a.value||0)-Number(b.value||0));
+      const fallback=raw.filter(p=>!chosen.some(x=>x.p.id===p.id)&&Number(p.ovr||0)<=abilityCeiling+1&&Number(p.ovr||0)>=abilityFloor-4&&(p.freeAgent||(budget>0&&livingPlayerMarketValue(p)<=Math.max(500000,budget*.85)))).sort((a,b)=>Math.abs(Number(a.ovr||0)-(weakAvg+2))-Math.abs(Number(b.ovr||0)-(weakAvg+2))||livingPlayerMarketValue(a)-livingPlayerMarketValue(b));
       for(const p of fallback){if(chosen.length>=3)break;chosen.push({p});}
     }
     const result=chosen.slice(0,3).map(x=>x.p);
@@ -2651,7 +3218,7 @@
     const squad=getSquad(currentClub);const current=squad.find(p=>p.captain);const rows=[...squad].sort((a,b)=>b.ovr-a.ovr||b.age-a.age).slice(0,4);if(current&&!rows.some(p=>p.id===current.id))rows.unshift(current);return rows.slice(0,4);
   }
   function setFirstWeekCaptain(id){
-    const squad=getSquad(currentClub),picked=squad.find(p=>p.id===id);if(!picked)return;const previous=squad.find(p=>p.captain);squad.forEach(p=>p.captain=p.id===id);careerPreferences.captainId=id;if(previous?.id!==picked.id){recordCareerMemory({type:'CAPTAIN_NAMED',clubId:currentClub.id,playerId:picked.id,date:currentCareerISO(),importance:picked.storyFlags?.academyGraduate?'MAJOR':'NOTABLE',metadata:{previousCaptainId:previous?.id||null,academyGraduate:!!picked.storyFlags?.academyGraduate}});v44ShowManagerScene({key:`CAPTAIN-${currentClub.id}-${picked.id}-${currentCareerISO()}`,type:'CAPTAINCY',eyebrow:'DRESSING ROOM',title:`${picked.name} will lead the club`,copy:picked.storyFlags?.academyGraduate?'An academy graduate is now carrying the captaincy into the next stage of the club’s story.':'The manager and captain have set the leadership tone for the season.',club:currentClub,player:picked,playerLabel:'CLUB CAPTAIN'});}saveCareerState();renderFirstWeek();showToast(`${picked.name} named club captain`);
+    const squad=getSquad(currentClub),picked=squad.find(p=>p.id===id);if(!picked)return;const previous=squad.find(p=>p.captain);squadSocialSnapshot(currentClub);squad.forEach(p=>p.captain=p.id===id);careerPreferences.captainId=id;if(previous?.id!==picked.id){applyCaptaincyHierarchyImpact(previous,picked,currentClub);recordCareerMemory({type:'CAPTAIN_NAMED',clubId:currentClub.id,playerId:picked.id,date:currentCareerISO(),importance:picked.storyFlags?.academyGraduate?'MAJOR':'NOTABLE',metadata:{previousCaptainId:previous?.id||null,academyGraduate:!!picked.storyFlags?.academyGraduate}});v44ShowManagerScene({key:`CAPTAIN-${currentClub.id}-${picked.id}-${currentCareerISO()}`,type:'CAPTAINCY',eyebrow:'DRESSING ROOM',title:`${picked.name} will lead the club`,copy:picked.storyFlags?.academyGraduate?'An academy graduate is now carrying the captaincy into the next stage of the club’s story.':'The manager and captain have set the leadership tone for the season.',club:currentClub,player:picked,playerLabel:'CLUB CAPTAIN'});}saveCareerState();renderFirstWeek();showToast(`${picked.name} named club captain`);
   }
   function applyRecommendedFirstWeekLineup(){
     const club=currentClub,squad=[...getSquad(club)].sort((a,b)=>Number(!!a.injured)-Number(!!b.injured)||b.fitness-a.fitness||b.ovr-a.ovr);const lineup=blankLineup();
@@ -2661,7 +3228,7 @@
   function firstWeekFocusCandidates(){return [...getSquad(currentClub)].filter(p=>Number(p.age||99)<=25&&Number(p.potential||p.ovr)>Number(p.ovr||0)).sort((a,b)=>(b.potential-b.ovr)-(a.potential-a.ovr)||b.potential-a.potential).slice(0,6);}
   function firstWeekNextFixture(){return nextUserFixture(currentCareerISO(),true);}
   function firstWeekOpponentName(f){if(!f)return'Fixture awaiting confirmation';const other=f.homeClubId===currentClub?.id?clubById(f.awayClubId):clubById(f.homeClubId);return other?.name||'Opponent TBC';}
-  function firstWeekObjectiveCards(){return buildBoardObjectives(currentClub).map((o,i)=>`<article class="fw-objective ${i===0?'is-primary':''}"><div><span>${escapeHtml(o.tag)}</span><b>${escapeHtml(o.impact.toUpperCase())} IMPACT</b></div><h4>${escapeHtml(o.title)}</h4><p>${escapeHtml(o.copy)}</p><small>${escapeHtml(o.status)}</small></article>`).join('');}
+  function firstWeekObjectiveCards(){return buildBoardObjectives(currentClub).map((o,i)=>{const impact=String(o.impact||o.priority||'high').toUpperCase();return `<article class="fw-objective ${i===0?'is-primary':''}"><div><span>${escapeHtml(o.tag||'BOARD OBJECTIVE')}</span><b>${escapeHtml(impact)} IMPACT</b></div><h4>${escapeHtml(o.title)}</h4><p>${escapeHtml(o.copy)}</p><small>${escapeHtml(o.status||'ACTIVE')}</small></article>`;}).join('');}
   function firstWeekStaffMini(role){const s=firstWeekStaff(role);return `<div class="fw-staff-mini"><img src="${s.image}" alt=""><span><b>${escapeHtml(s.name)}</b><small>${escapeHtml(s.title)}</small></span></div>`;}
   function firstWeekPlayerCard(p,extra=''){if(!p)return'';return `<article class="fw-player ${extra}"><div class="fw-player-avatar">${avatarHTML(p.avatar,p.name)}</div><div><span>${escapeHtml(p.role||'PLAYER')}</span><h4>${escapeHtml(p.name)}</h4><p>${p.ovr} OVR · AGE ${p.age} · ${escapeHtml(p.form||'Average')}</p></div></article>`;}
   function firstWeekBoardHtml(){
@@ -2727,10 +3294,12 @@
 
   function completeAppointment(){
     const club=clubById(appointmentClubId);if(!club)return;
-    if(appointmentSource==='direct'){
+    const challengeKey=appointmentSource==='challenge'?pendingCareerChallengeKey:null;
+    if(appointmentSource==='direct'||appointmentSource==='challenge'){
       commitPendingCareerSlot();resetCareerWorld();currentClub=club;selectedClub=club;employmentStatus='employed';
-      jobSearchState=normalizeJobSearchState({startingMode:'direct',appointedDate:currentCareerISO(),reputation:18});
+      jobSearchState=normalizeJobSearchState({startingMode:challengeKey?'challenge':'direct',appointedDate:currentCareerISO(),reputation:18});
       assignManagerClubBranding(club);initializeCareerLifecycle();
+      careerChallenge=challengeKey?createCareerChallenge(challengeKey,club):normalizeCareerChallenge({});
     }else{
       const offer=appointmentOffer();if(!offer||offer.status!=='open'){renderUnemployedHub();showScreen('unemployed');showToast('That job offer is no longer available');return;}
       offer.status='accepted';currentClub=club;selectedClub=club;employmentStatus='employed';jobSearchState.appointedDate=currentCareerISO();
@@ -2738,18 +3307,20 @@
       assignManagerClubBranding(club);ensureStaticCareerEvents();
     }
     initializeManagerMarketState();managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;ensurePlayerManagerContract(club,appointmentOffer()?.contractYears||2,appointmentOffer()?.weeklySalary||null);openPlayerManagerSpell(club,jobSearchState.appointedDate||currentCareerISO());recordCareerMemory({type:'MANAGER_APPOINTMENT',clubId:club.id,date:jobSearchState.appointedDate||currentCareerISO(),seasonId:careerTime.seasonId,importance:'NOTABLE',key:`V42-MANAGER-APPOINTMENT-${club.id}-${jobSearchState.appointedDate||currentCareerISO()}`,metadata:{managerName,source:appointmentSource}});
-    seedAppointmentInbox(club,appointmentSource);startFirstWeek(club,appointmentSource);saveCareerState();renderFirstWeek();showScreen('firstWeek');
+    seedAppointmentInbox(club,appointmentSource);if(challengeKey){const def=careerChallengeDefinition(challengeKey);addCareerInboxMessage({id:`challenge-brief-${careerTime.seasonId}-${club.id}`,type:'CAREER',sender:'VELMORA CAREER COMMISSION',subject:`Challenge contract: ${def.title}`,preview:'Your one-season mission and live objectives are now active.',title:def.title,body:[def.copy,`Eligible club: ${club.name} · ${club.division}.`,'Progress is measured from real league position, player starts and academy promotions. The final verdict arrives at season end.'],signoff:'Velmora Career Commission',action:{label:'VIEW CHALLENGE',route:'central'},date:currentCareerISO()});}startFirstWeek(club,appointmentSource);saveCareerState();renderFirstWeek();showScreen('firstWeek');
     showToast(`${managerName} appointed manager of ${club.name}`);
-    appointmentClubId=null;appointmentOfferId=null;appointmentSource='direct';
+    appointmentClubId=null;appointmentOfferId=null;appointmentSource='direct';pendingCareerChallengeKey=null;
   }
 
   function renderGrid(){
     const query=($('#clubSearchInput')?.value||'').trim().toLowerCase();
     const filtered = clubs.filter(c =>
+      challengeEligibleClub(c) &&
       divisionFilterMatch(c,activeDivision) &&
       countryFilterMatch(c,activeCountry) &&
       (!query || `${c.name} ${c.country} ${c.abbr} ${c.division} ${clubWorldName(c)}`.toLowerCase().includes(query))
     );
+    renderChallengeClubBanner();
     $('#clubCount').textContent = filtered.length;
     const grid = $('#clubGrid');
     grid.innerHTML = '';
@@ -2778,6 +3349,7 @@
       : badgeHTML(c).replace('<img','<img class="preview-kit"');
     const desc = c.identity || 'Established Velmoran professional club.';
     $('#clubPreview').style.setProperty('--club-accent',c.accent||'#1bb5b6');
+    const challengeDef=careerChallengeDefinition(pendingCareerChallengeKey);
     $('#clubPreview').innerHTML=`
       <div class="preview-inner">
         <div class="preview-top">
@@ -2801,8 +3373,9 @@
         <div class="preview-manager-strip"><div class="preview-manager-portrait">${managerPortraitHTML(ensureManagerProfile(),'preview-manager-paperdoll','formal')}</div><div><span>YOUR MANAGER</span><strong>${escapeHtml(ensureManagerProfile().name||'CAREER MANAGER')}</strong><small>${escapeHtml(managerCityName(ensureManagerProfile().nationId,ensureManagerProfile().cityId))} · ${escapeHtml(managerNationName(ensureManagerProfile().nationId))}</small></div></div>
         <div class="preview-bottom">
           <p class="preview-description">${escapeHtml(desc)}</p>
+          ${challengeDef?`<div class="v70-preview-contract"><span>SHORT CHALLENGE CONTRACT</span><strong>${escapeHtml(challengeDef.title)}</strong><small>${escapeHtml(challengeDef.rules.map(r=>r[1]).join(' · '))}</small></div>`:''}
           <div class="preview-career-actions">
-            <button id="btnStartCareer" class="primary-btn start-career" type="button">REVIEW APPOINTMENT</button>
+            <button id="btnStartCareer" class="primary-btn start-career" type="button">${challengeDef?'REVIEW CHALLENGE CONTRACT':'REVIEW APPOINTMENT'}</button>
             <button id="btnPreviewBack" class="preview-back-btn" type="button">BACK</button>
           </div>
         </div>
@@ -2811,11 +3384,11 @@
     const startBtn=$('#btnStartCareer');
     startBtn?.addEventListener('click',e=>{
       e.preventDefault();e.stopPropagation();
-      openAppointmentForClub(selectedClub||c,'direct',null);
+      openAppointmentForClub(selectedClub||c,challengeDef?'challenge':'direct',null);
     });
 
     $('#btnPreviewBack')?.addEventListener('click',e=>{
-      e.preventDefault();e.stopPropagation();ensureMenuMusic();renderCareerStart();showScreen('careerStart');
+      e.preventDefault();e.stopPropagation();ensureMenuMusic();pendingCareerChallengeKey=null;renderChallengeClubBanner();renderCareerStart();showScreen('careerStart');
     });
   }
 
@@ -2854,7 +3427,7 @@
   function v2080FriendlyParticipation(club,fixture){if(!club||fixture?.type!=='FRIENDLY')return;const starters=matchdayParticipants(club,fixture);starters.forEach(p=>{ensurePlayerCareerMeta(p);p.preSeasonApps=Number(p.preSeasonApps||0)+1;if(club.id===currentClub?.id&&Number(p.age||99)<=23)p.developmentProgress=clamp(Number(p.developmentProgress||0)+.018*(fixture.matchday?Number(fixture.matchday.participation[p.id]?.minutes||0)/90:1),0,.99);});}
   function v2080PreSeasonProgress(){const list=v2080PreSeasonFriendlyFixtures(currentClub),played=list.filter(f=>f.played);let w=0,d=0,l=0;played.forEach(f=>{const home=f.homeClubId===currentClub?.id,gf=Number(home?f.homeScore:f.awayScore),ga=Number(home?f.awayScore:f.homeScore);if(gf>ga)w++;else if(gf===ga)d++;else l++;});return{list,played:played.length,total:list.length,w,d,l};}
   function v2080FinalizePreSeasonProgramme(){if(!currentClub)return null;const def=v2080Programme(),progress=v2080PreSeasonProgress();if(def.key==='SKIP'||!progress.total||progress.played<progress.total||preSeasonExperience.rewardPaid)return null;const reward=Math.round((Number(def.baseReward||0)+progress.w*Number(def.winReward||0)+progress.d*Number(def.drawReward||0))/10000)*10000;preSeasonExperience.rewardPaid=true;preSeasonExperience.rewardAmount=reward;if(reward>0)currentClub.budget=formatExactMoney(moneyNumber(currentClub.budget)+reward);addCareerInboxMessage({id:`v2080-preseason-complete-${careerTime.seasonId}-${currentClub.id}`,type:'FINANCE',sender:'CLUB OPERATIONS',subject:`${def.label.toLowerCase()} complete`,preview:`${progress.w}W ${progress.d}D ${progress.l}L · ${reward?`${formatMoney(reward)} added to the transfer budget.`:'Pre-season programme completed.'}`,title:'Pre-season programme complete',body:[`${currentClub.name} have completed the ${def.label.toLowerCase()} with a ${progress.w}W ${progress.d}D ${progress.l}L record.`,reward?`${formatMoney(reward)} in participation and performance revenue has been added to the club transfer budget.`:'The programme was focused on preparation rather than commercial reward.','Friendly results do not affect league standings, competitive manager records or board confidence.'],signoff:'Club Operations',action:{label:'VIEW CENTRAL',route:'central'},date:currentCareerISO()});saveCareerState();return{reward,...progress};}
-  function v2080SquadAssessment(club=currentClub){if(!club)return null;const squad=getSquad(club),roles=['ATTACKER','PLAYMAKER','DEFENDER','ALL-ROUNDER'],clubLevel=backgroundClubStrength(club),rows=roles.map(role=>{const ps=squad.filter(p=>p.role===role),best=[...ps].sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0],avg=ps.length?ps.reduce((n,p)=>n+Number(p.ovr||0),0)/ps.length:0;let label='STRONG',tone='good';if(ps.length===0){label='CRITICAL';tone='bad';}else if(ps.length===1||Number(best?.ovr||0)<clubLevel-7){label='THIN';tone='warn';}else if(avg<clubLevel-5){label='DEVELOP';tone='steady';}return{role,count:ps.length,best,avg:Math.round(avg),label,tone,needScore:(ps.length===0?100:ps.length===1?75:0)+Math.max(0,clubLevel-Number(best?.ovr||0))*4};}).sort((a,b)=>b.needScore-a.needScore);const contracts=squad.filter(p=>{syncLivingContractYears(p);return p.contractEndDate&&diffDaysISO(currentCareerISO(),p.contractEndDate)<=365;}).sort((a,b)=>String(a.contractEndDate).localeCompare(String(b.contractEndDate)));const pathways=squad.filter(p=>Number(p.age||99)<=23).map(p=>({p,advice:v2075PathwayAdvice(p,club)})).filter(x=>['MINUTES','LOAN','CONTRACT'].includes(x.advice.key)).slice(0,3);const possibleSales=squad.filter(p=>p.transferRequested||p.transferStatus==='TRANSFER_LISTED'||(Number(p.age||0)>=30&&['Rotation','Reserve'].includes(String(p.squadRole||'')))).slice(0,3);return{rows,priorityRoles:rows.filter(x=>x.needScore>0).slice(0,2),contracts,pathways,possibleSales};}
+  function v2080SquadAssessment(club=currentClub){if(!club)return null;const squad=getSquad(club),roles=['ATTACKER','PLAYMAKER','DEFENDER','ALL-ROUNDER'],clubLevel=backgroundClubStrength(club),rows=roles.map(role=>{const ps=squad.filter(p=>p.role===role),best=[...ps].sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0],avg=ps.length?ps.reduce((n,p)=>n+Number(p.ovr||0),0)/ps.length:0;let label='STRONG',tone='good';if(ps.length===0){label='CRITICAL';tone='bad';}else if(ps.length===1||Number(best?.ovr||0)<clubLevel-7){label='THIN';tone='warn';}else if(avg<clubLevel-5){label='DEVELOP';tone='steady';}return{role,count:ps.length,best,avg:Math.round(avg),label,tone,needScore:(ps.length===0?100:ps.length===1?75:0)+Math.max(0,clubLevel-Number(best?.ovr||0))*4};}).sort((a,b)=>b.needScore-a.needScore);const contracts=squad.filter(p=>{syncLivingContractYears(p);return clubCanRenewPlayer(club,p)&&p.contractEndDate&&diffDaysISO(currentCareerISO(),p.contractEndDate)<=365;}).sort((a,b)=>String(a.contractEndDate).localeCompare(String(b.contractEndDate)));const pathways=squad.filter(p=>Number(p.age||99)<=23).map(p=>({p,advice:v2075PathwayAdvice(p,club)})).filter(x=>['MINUTES','LOAN','CONTRACT'].includes(x.advice.key)).slice(0,3);const possibleSales=squad.filter(p=>clubCanMarketPlayer(club,p)&&(p.transferRequested||p.transferStatus==='TRANSFER_LISTED'||(Number(p.age||0)>=30&&['Rotation','Reserve'].includes(String(p.squadRole||''))))).slice(0,3);return{rows,priorityRoles:rows.filter(x=>x.needScore>0).slice(0,2),contracts,pathways,possibleSales};}
   function v2080WorldRoundup(){const latest=roadToGlory?.worldHistory?.at(-1)||null;if(!latest)return{seasonId:null,champions:[],crown:null,appointments:[],promoted:[],relegated:[],transfers:[],retirements:[]};const champions=(latest.leagues||[]).filter(l=>Number(divisionMetaFor(l.divisionKey)?.tier||0)===1).map(l=>({world:l.world||divisionMetaFor(l.divisionKey)?.world||'',division:l.division,club:clubById(l.championClubId)})).filter(x=>x.club);const crown=latest.championsCrown?.championClubId?clubById(latest.championsCrown.championClubId):null;const cutoff=addDaysISO(currentCareerISO(),-180),appointments=(managerMarket?.marketHistory||[]).filter(h=>h.type==='AI_APPOINTMENT'&&(!h.date||h.date>=cutoff)).slice(0,4).map(h=>({club:clubById(h.clubId),manager:managerMarket.managers?.[h.managerId],date:h.date||null})).filter(x=>x.club&&x.manager);const movement=[];Object.entries(roadToGlory?.clubHistory||{}).forEach(([clubId,history])=>{const entry=[...(Array.isArray(history)?history:[])].reverse().find(x=>x.seasonId===latest.seasonId);const club=clubById(clubId);if(entry&&club&&(String(entry.status||'').includes('PROMOTION')||entry.status==='RELEGATED'))movement.push({club,status:entry.status,fromDivision:entry.division||'',world:clubWorldName(club)});});const promoted=movement.filter(x=>String(x.status).includes('PROMOTION')).slice(0,6),relegated=movement.filter(x=>x.status==='RELEGATED').slice(0,6);const transfers=[...(livingSquad?.transferHistory||[])].filter(x=>x.seasonId===careerTime.seasonId&&Number(x.fee||0)>0).sort((a,b)=>Number(b.fee||0)-Number(a.fee||0)).slice(0,3).map(x=>({...x,fromClub:clubById(x.fromClubId),toClub:clubById(x.toClubId)}));const retirements=[...retiredPlayers].filter(x=>Number(x.retiredSeason||0)===Number(careerSeason)-1&&x.status==='RETIRED').sort((a,b)=>Number(b.peakOvr||0)-Number(a.peakOvr||0)).slice(0,3);return{seasonId:latest.seasonId,champions,crown,appointments,promoted,relegated,transfers,retirements};}
   function v2080SeasonLandingData(){const club=currentClub,prev=preSeasonExperience.previousSeason||v2080LatestClubSeason(club),fin=officeFinanceSnapshot(),assessment=v2080SquadAssessment(club),intake=v2080AcademyIntake(club),academyPick=intake.find(p=>p.id===preSeasonExperience.academyPickId)||intake[0]||null,world=v2080WorldRoundup(),objectives=buildBoardObjectives(club);return{club,prev,fin,assessment,intake,academyPick,world,objectives,programme:v2080Programme(),progress:v2080PreSeasonProgress()};}
   function ensureV2080NewSeasonOverlay(){let root=document.getElementById('v2080NewSeasonOverlay');if(root)return root;root=document.createElement('div');root.id='v2080NewSeasonOverlay';root.className='v2080-new-season-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="v2080-new-season-shell"><header><div><span>VELMORA MANAGER · NEW CAMPAIGN</span><strong data-v2080-title>NEW SEASON</strong></div><button type="button" data-v2080-close aria-label="Close">×</button></header><nav data-v2080-steps></nav><main data-v2080-body></main><footer><button type="button" data-v2080-back>BACK</button><span data-v2080-progress></span><button type="button" class="is-primary" data-v2080-next>NEXT</button></footer></section>';document.body.appendChild(root);root.querySelector('[data-v2080-close]').onclick=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');preSeasonExperience.autoOpened=true;saveCareerState();scheduleOverlaySync();};root.querySelector('[data-v2080-back]').onclick=()=>{root._step=Math.max(0,Number(root._step||0)-1);renderV2080NewSeasonOverlay();};root.querySelector('[data-v2080-next]').onclick=()=>{if(Number(root._step||0)>=5){preSeasonExperience.briefingCompleted=true;preSeasonExperience.autoOpened=true;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');saveCareerState();renderCentral();scheduleOverlaySync();return;}root._step=Number(root._step||0)+1;renderV2080NewSeasonOverlay();};return root;}
@@ -2912,6 +3485,46 @@
     return out;
   }
 
+  function leagueCupCrownExemptClubIds(world){
+    const edition=championsCrown?.editions?.[careerTime.seasonId],fromEdition=(edition?.qualifiedClubIds||[]).filter(id=>clubWorldName(clubById(id))===world);
+    if(fromEdition.length>=4)return fromEdition.slice(0,4);
+    return clubs.filter(c=>clubWorldName(c)===world&&Number(c.tier||4)===1).sort((a,b)=>Number(a.positionSeed||99)-Number(b.positionSeed||99)||Number(b.reputation||0)-Number(a.reputation||0)||a.name.localeCompare(b.name)).slice(0,4).map(c=>c.id);
+  }
+
+  function domesticCupFixtureId(def,round,home,away,suffix=''){
+    const stem=String(def.competitionId).toUpperCase().replace(/[^A-Z0-9]+/g,'');
+    return`${stem}_${careerTime.seasonId.replace('-','')}_R${round}_${home.abbr||home.id}_${away.abbr||away.id}${suffix}`;
+  }
+
+  function domesticCupMakeFixture(def,round,home,away,options={}){
+    const stage=options.stage||domesticCupStageForPool(def,Number(options.poolSize||0),round),leg=Number(options.leg||1),twoLegged=!!options.twoLegged,final=stage==='FINAL';
+    return{fixtureId:domesticCupFixtureId(def,round,home,away,options.suffix||''),competitionId:def.competitionId,competitionName:def.name,round,date:options.date||domesticCupRoundDate(def,round,leg,options.lastDate||null),homeClubId:home.id,awayClubId:away.id,played:false,homeScore:null,awayScore:null,type:'CUP',cupWorld:def.world,cupKind:def.kind,cupFormatVersion:def.formatVersion,cupStage:stage,cupStageLabel:domesticCupStageLabel(stage),cupRegisteredClubs:def.registeredClubs,cupTwoLegged:twoLegged,cupTieId:options.tieId||null,cupLeg:twoLegged?leg:null,neutralVenue:final,venueName:final?def.finalVenue:null};
+  }
+
+  function buildDomesticCupOpeningFixtures(def,options={}){
+    cupRuntime={formatVersion:2,roundByes:{},...(cupRuntime||{})};cupRuntime.roundByes=cupRuntime.roundByes||{};
+    const worldClubs=clubs.filter(c=>clubWorldName(c)===def.world),openingDate=options.openingDate||def.roundDates[0],generated=[];
+    if(def.kind==='national'){
+      const lowest=seededShuffle(worldClubs.filter(c=>Number(c.tier||4)===4),`NATIONAL-CUP-OPEN-${careerTime.seasonId}-${def.world}`),playing=lowest.slice(0,16),playingIds=new Set(playing.map(c=>c.id));
+      cupRuntime.roundByes[`${def.competitionId}:1`]=worldClubs.filter(c=>!playingIds.has(c.id)).map(c=>c.id);
+      for(let i=0;i<playing.length;i+=2)generated.push(domesticCupMakeFixture(def,1,playing[i],playing[i+1],{date:openingDate,stage:'OPENING_ROUND',poolSize:16}));
+    }else{
+      const opening=seededShuffle(worldClubs.filter(c=>Number(c.tier||4)>=2),`LEAGUE-CUP-OPEN-${careerTime.seasonId}-${def.world}`);
+      cupRuntime.roundByes[`${def.competitionId}:1`]=[];
+      for(let i=0;i+1<opening.length;i+=2)generated.push(domesticCupMakeFixture(def,1,opening[i],opening[i+1],{date:openingDate,stage:'ROUND_1',poolSize:opening.length}));
+    }
+    return generated;
+  }
+
+  function ensureDomesticCupStructure(){
+    cupRuntime={formatVersion:2,roundByes:{},...(cupRuntime||{})};cupRuntime.roundByes=cupRuntime.roundByes||{};
+    fixtures.filter(f=>f.type==='CUP').forEach(f=>{const world=f.cupWorld||clubWorldName(clubById(f.homeClubId)||clubById(f.awayClubId)),kind=f.cupKind||(String(f.competitionId||'').includes('league_cup')?'league':'national'),def=domesticCupDefinition(world,kind);f.cupWorld=world;f.cupKind=kind;f.cupFormatVersion=Number(f.cupFormatVersion||1);f.cupRegisteredClubs=Number(f.cupRegisteredClubs||def.registeredClubs);f.cupStage=f.cupStage||(isDomesticCupFinal(f)?'FINAL':`ROUND_${Number(f.round||1)}`);f.cupStageLabel=f.cupStageLabel||domesticCupStageLabel(f.cupStage,f);});
+    let added=0;
+    for(const world of worldNames){for(const kind of ['national','league']){const def=domesticCupDefinition(world,kind);if(fixtures.some(f=>f.type==='CUP'&&f.competitionId===def.competitionId))continue;const scheduled=def.roundDates[0]>=currentCareerISO()?def.roundDates[0]:addDaysISO(currentCareerISO(),7),created=buildDomesticCupOpeningFixtures(def,{openingDate:scheduled});created.forEach(f=>f.migratedIntoCareer=true);fixtures.push(...created);added+=created.length;}}
+    if(added){fixtures.sort((a,b)=>a.date.localeCompare(b.date)||a.fixtureId.localeCompare(b.fixtureId));v202MarkCompetitionDataDirty();}
+    return added;
+  }
+
   function buildWorldFixtures(){
     const seasonId=careerTime.seasonId||seasonIdForYear(Number(currentCareerISO().slice(0,4)));
     const startYear=Number(seasonId.slice(0,4))||2026;
@@ -2936,18 +3549,8 @@
       });
     });
 
-    const cupDate=`${startYear}-09-23`;
-    [...new Set(clubs.map(c=>clubWorldName(c)))].forEach(world=>{
-      const cupClubs=seededShuffle(clubs.filter(c=>clubWorldName(c)===world),`CUP-FIRST-ROUND-${seasonId}-${world}`);
-      for(let i=0;i+1<cupClubs.length;i+=2){
-        const home=cupClubs[i],away=cupClubs[i+1];
-        generated.push({
-          fixtureId:`${String(world).toUpperCase().replace(/[^A-Z0-9]+/g,'')}_${seasonId.replace('-','')}_R1_${home.abbr||home.id}_${away.abbr||away.id}`,
-          competitionId:`${String(world).toLowerCase()}_cup`,competitionName:cupNameForWorld(world),round:1,date:cupDate,homeClubId:home.id,awayClubId:away.id,
-          played:false,homeScore:null,awayScore:null,type:'CUP'
-        });
-      }
-    });
+    cupRuntime={formatVersion:2,roundByes:{}};
+    worldNames.forEach(world=>{generated.push(...buildDomesticCupOpeningFixtures(domesticCupDefinition(world,'national')));generated.push(...buildDomesticCupOpeningFixtures(domesticCupDefinition(world,'league')));});
     return generated.sort((a,b)=>a.date.localeCompare(b.date)||a.fixtureId.localeCompare(b.fixtureId));
   }
 
@@ -3021,6 +3624,7 @@
     }
     syncLegacyCareerClock();
     if(force||!fixtures.length){fixtures=buildWorldFixtures();v202MarkCompetitionDataDirty();}
+    ensureDomesticCupStructure();
     if(force||!transferWindows.length)transferWindows=buildTransferWindows();
     if(force)calendarEvents=[];
     if(currentClub&&employmentStatus==='employed')v2080EnsurePreSeasonExperience(force);
@@ -3049,6 +3653,21 @@
   }
   function fixtureClubs(f){return {home:clubById(f?.homeClubId),away:clubById(f?.awayClubId)};}
 
+  function domesticCupTieFixtures(fixture){return fixture?.cupTieId?fixtures.filter(f=>f.type==='CUP'&&f.competitionId===fixture.competitionId&&f.cupTieId===fixture.cupTieId).sort((a,b)=>Number(a.cupLeg||1)-Number(b.cupLeg||1)):[];}
+  function domesticCupTieTotals(fixture){const tied=domesticCupTieFixtures(fixture).filter(f=>f.played||f===fixture),totals={};tied.forEach(f=>{totals[f.homeClubId]=Number(totals[f.homeClubId]||0)+Number(f.homeScore||0);totals[f.awayClubId]=Number(totals[f.awayClubId]||0)+Number(f.awayScore||0);});return totals;}
+  function domesticCupTieWinnerId(fixture){const tied=domesticCupTieFixtures(fixture);if(!tied.length||tied.some(f=>!f.played))return null;const totals=domesticCupTieTotals(fixture),ids=[...new Set(tied.flatMap(f=>[f.homeClubId,f.awayClubId]))];if(ids.length!==2)return null;if(Number(totals[ids[0]]||0)>Number(totals[ids[1]]||0))return ids[0];if(Number(totals[ids[1]]||0)>Number(totals[ids[0]]||0))return ids[1];const decider=tied.find(f=>Number(f.cupLeg||0)===2)||tied.at(-1);return decider?.shootoutWinnerId||null;}
+  function resolveDomesticCupDecider(fixture,rng=Math.random){
+    if(fixture?.type!=='CUP')return null;
+    if(fixture.cupTwoLegged&&Number(fixture.cupLeg||1)===1){fixture.decidedOnPenalties=false;fixture.decidedAfterExtraTime=false;fixture.penaltiesHome=null;fixture.penaltiesAway=null;fixture.shootoutWinnerId=null;return null;}
+    let tied=Number(fixture.homeScore)===Number(fixture.awayScore);
+    if(fixture.cupTwoLegged&&Number(fixture.cupLeg||0)===2){const totals=domesticCupTieTotals(fixture);tied=Number(totals[fixture.homeClubId]||0)===Number(totals[fixture.awayClubId]||0);}
+    if(!tied||fixture.shootoutWinnerId)return fixture.shootoutWinnerId||null;
+    const homeWins=rng()<.5,winner=homeWins?fixture.homeClubId:fixture.awayClubId;
+    if(rng()<.56){if(homeWins)fixture.homeScore=Number(fixture.homeScore||0)+1;else fixture.awayScore=Number(fixture.awayScore||0)+1;fixture.decidedAfterExtraTime=true;}
+    else{fixture.decidedOnPenalties=true;fixture.shootoutWinnerId=winner;const base=4+Math.floor(rng()*2);fixture.penaltiesHome=homeWins?base+1:base;fixture.penaltiesAway=homeWins?base:base+1;}
+    return winner;
+  }
+
   // ---------- Live world simulation ----------
   // The season exists independently of the player. While unemployed, every scheduled
   // fixture is resolved as its date passes. Once appointed, AI fixtures continue to
@@ -3063,7 +3682,7 @@
   }
   function v44FixtureClubStrength(club,fixture=null){
     if(!club)return 60;const starters=activeStarters(club);if(!starters.length)return backgroundClubStrength(club);
-    const base=starters.reduce((sum,p)=>{const role=v44DeployedRoleFor(p,club,fixture)||p.role,modifier=v44RoleSuitabilityModifier(p,role);return sum+Number(p.ovr||60)*modifier;},0)/starters.length;
+    const base=starters.reduce((sum,p)=>{const role=v44DeployedRoleFor(p,club,fixture)||p.role,modifier=v44RoleSuitabilityModifier(p,role);return sum+(performanceRules?performanceRules.performanceOverall(p,role,modifier):50+(Number(p.ovr||60)-50)*modifier);},0)/starters.length;
     return base+aiTacticalCohesionModifier(club);
   }
   function backgroundGoals(rng,xg){
@@ -3100,7 +3719,8 @@
     const rng=mulberry32(hashString(`${worldSeed}-WORLD-MATCH-${fixture.fixtureId}`));
     const homeXg=clamp(expected.home*(1-.27*homeRed)*(1+.16*awayRed),.22,3.8),awayXg=clamp(expected.away*(1-.27*awayRed)*(1+.16*homeRed),.22,3.8);
     fixture.homeScore=backgroundGoals(rng,homeXg);fixture.awayScore=backgroundGoals(rng,awayXg);
-    if(['CUP','PLAYOFF'].includes(fixture.type)&&fixture.homeScore===fixture.awayScore){if(rng()<.5)fixture.homeScore++;else fixture.awayScore++;fixture.decidedAfterExtraTime=true;}
+    if(fixture.type==='PLAYOFF'&&fixture.homeScore===fixture.awayScore){if(rng()<.5)fixture.homeScore++;else fixture.awayScore++;fixture.decidedAfterExtraTime=true;}
+    resolveDomesticCupDecider(fixture,rng);
     resolveChampionsCrownDecider(fixture,rng);
     fixture.played=true;fixture.resultMode='WORLD_SIM';fixture.playedDate=fixture.date;v202MarkCompetitionDataDirty();
     disciplineServeFixtureForClub(home,fixture,disciplineServing.home);disciplineServeFixtureForClub(away,fixture,disciplineServing.away);disciplineApplyEvents(fixture,disciplineEvents,home,away);
@@ -3116,12 +3736,15 @@
       const ratings=participants.map(player=>{const club=homeIds.has(String(player.id))?home:away,opponent=club.id===home.id?away:home,won=club.id===home.id?fixture.homeScore>fixture.awayScore:fixture.awayScore>fixture.homeScore,draw=fixture.homeScore===fixture.awayScore,goalCount=Number(goals.get(player.id)||0),assistCount=Number(assists.get(player.id)||0),advanced=v43SimulatedAdvancedLine(player,fixture,club,opponent,goalCount,assistCount),rr=mulberry32(hashString(`${worldSeed}-V43-RATING-${fixture.fixtureId}-${player.id}`)),impact=goalCount*.78+assistCount*.34+advanced.chancesCreated*.035+advanced.interceptions*.035+advanced.tacklesWon*.03+advanced.saves*.025,roleModifier=v44RoleSuitabilityModifier(player,v44DeployedRoleFor(player,club,fixture)||player.role),roleRating=(roleModifier-1)*3.1,rating=Number(clamp(6.02+(Number(player.ovr||60)-60)*.022+(won?.34:draw?.08:-.08)+impact+roleRating+(rr()-.5)*.42,5.4,9.8).toFixed(1));ensurePlayerCareerMeta(player);player.seasonStats.lastRating=rating;player.seasonStats.ratingSum=Number(player.seasonStats.ratingSum||0)+rating;player.seasonStats.ratingCount=Number(player.seasonStats.ratingCount||0)+1;v43RecordRatingLine(player,club,fixture,rating,{...advanced,known:true});return{player,club,rating};}).sort((a,b)=>b.rating-a.rating);
       const potm=ratings[0]?.player||null,potmClub=ratings[0]?.club||null;if(potm&&potmClub){ensurePlayerCareerMeta(potm);potm.seasonStats.potm=Number(potm.seasonStats.potm||0)+1;v43RecordStatLine(potm,potmClub,fixture,{potm:1});if(fixture.type==='CHAMPIONS_CROWN'){const rec=championsCrownPlayerRecord(potm,fixture.ccSeasonId);if(rec)rec.potm=Number(rec.potm||0)+1;}}
     }
-    championsCrownAfterFixture(fixture);return fixture;
+    championsCrownAfterFixture(fixture);v96CaptureLiveRecords(fixture);return fixture;
   }
   function simulateWorldFixturesForDate(date=currentCareerISO(),excludeClubId=null){
     const resolved=[];
     fixtures.filter(f=>!f.played&&f.date===date).forEach(f=>{
       if(excludeClubId&&(f.homeClubId===excludeClubId||f.awayClubId===excludeClubId))return;
+      // V104: in an online career every human club is reserved for its own
+      // manager, not just this device's club.
+      if(v104ReservedClubIds.size&&(v104ReservedClubIds.has(f.homeClubId)||v104ReservedClubIds.has(f.awayClubId)))return;
       simulateBackgroundFixture(f);if(f.played)resolved.push(f);
     });
     ensureCupProgression(date);
@@ -3178,12 +3801,12 @@
     if(m.correspondenceVersion===37)return m;
     const type=({CONTRACT:'CONTRACTS',FINANCES:'FINANCE'}[m.type]||m.type||'GENERAL').toUpperCase(),c=currentClub||selectedClub;
     const event=v37InboxDecision(m),originalSender=String(m.sender||'Club Office'),player=getSquad(c).find(p=>p.name===originalSender);
-    const department=type==='SCOUTING'?'scout':type==='MEDICAL'?'medical':type==='YOUTH'?'academy':type==='TRAINING'?'coach':null;
-    const employee=department?careerExpansion?.state().clubs[c?.id]?.staff.find(p=>p.role===department):null;
+    const department=window.VelmoraPersonnelIdentity?.roleForMessage?.({...m,type,originalSender})||(type==='SCOUTING'?'scout':type==='MEDICAL'?'medical':type==='YOUTH'?'academy':type==='TRAINING'?'coach':null);
+    const employee=department?(careerExpansion?.personnelForRole?.(department,c)||careerExpansion?.state().clubs[c?.id]?.staff.find(p=>p.role===department)):null;
     const staffRole=({BOARD:'executive',FINANCE:'executive',CONTRACTS:'executive',SCOUTING:'recruitment',TRANSFERS:'recruitment',MEDICAL:'medical',YOUTH:'coach',TRAINING:'coach',STAFF:'assistant',SQUAD:'assistant',MEDIA:'press',CAREER:'executive'}[type]||'assistant');
     const official=/COMPETITION|DISCIPLINARY|LEAGUE OFFICE/i.test(originalSender),generic=originalSender===originalSender.toUpperCase()||/^(Medical Team|Performance Team|Head of Recruitment|Club Secretary|Finance Director)$/i.test(originalSender);
     const person=player||(!official&&generic?(employee||firstWeekStaff(staffRole)):null);
-    let sender=person?.name||originalSender,role=player?'First-team player':official?'Competition administration':({BOARD:'Club executive',FINANCE:'Finance office',CONTRACTS:'Club secretary',SCOUTING:'Recruitment',TRANSFERS:'Transfer office',MEDICAL:'Medical team',YOUTH:'Academy',TRAINING:'Coaching team',STAFF:'Club operations',SQUAD:'Assistant manager',MEDIA:'Press office',CAREER:'Career office'}[type]||'Club office');
+    let sender=person?.name||originalSender,role=player?'First-team player':official?'Competition administration':employee?(window.VelmoraPersonnelIdentity?.profile?.(department)?.title||({scout:'Chief scout',coach:'Assistant coach',medical:'Head of medical',academy:'Academy director',commercial:'Commercial director'}[department])):({BOARD:'Club executive',FINANCE:'Finance office',CONTRACTS:'Club secretary',SCOUTING:'Recruitment',TRANSFERS:'Transfer office',MEDICAL:'Medical team',YOUTH:'Academy',TRAINING:'Coaching team',STAFF:'Club operations',SQUAD:'Assistant manager',MEDIA:'Press office',CAREER:'Career office'}[type]||'Club office');
     if(event?.kind==='DISCIPLINE_APPEAL'){const secretary=firstWeekStaff('executive');sender=secretary.name;role='Club secretary';}
     const seed=hashString(String(m.id||m.subject||''))>>>0,pick=items=>items[seed%items.length];
     let subject=m.subject||m.title||'Club update',body=(Array.isArray(m.body)?m.body:[m.body]).filter(Boolean).map(String);
@@ -3219,7 +3842,7 @@
     const hasGreeting=/^(Boss,|Hi boss,|Gaffer,|Morning,|Manager,)/.test(body[0]||'');
     const signoff=player?player.name:sender;
     const threadKey=m.threadKey||(event?.kind==='PLAYING_TIME'?`playing-time-${event.playerId}`:event?.suspensionId?`discipline-${event.suspensionId}`:m.playerId?`${type}-${m.playerId}`:String(m.id||''));
-    return {...m,type,subject,title:subject,body,sender,senderRole:role,originalSender,signoff,greeting:hasGreeting?'':greeting,closing:player?'':official?'Competition administration':type==='BOARD'?'Regards,':pick(['Thanks,','Speak soon,','Thanks, boss.']),senderVoice:player?.personality||player?.storyTraits?.name||null,senderPortrait:player?.avatar||person?.image||(event?.kind==='DISCIPLINE_APPEAL'?firstWeekStaff('executive').image:officeSenderPortrait(m)),decisionId:event?.id||m.decisionId,threadKey,correspondenceVersion:37};
+    return {...m,type,subject,title:subject,body,sender,senderRole:role,originalSender,signoff,greeting:hasGreeting?'':greeting,closing:player?'':official?'Competition administration':type==='BOARD'?'Regards,':pick(['Thanks,','Speak soon,','Thanks, boss.']),senderVoice:player?.personality||player?.storyTraits?.name||null,senderPortrait:player?.avatar||person?.portrait||person?.image||(event?.kind==='DISCIPLINE_APPEAL'?firstWeekStaff('executive').image:officeSenderPortrait(m)),decisionId:event?.id||m.decisionId,threadKey,correspondenceVersion:37};
   }
   // V38: a visual and editorial layer over saved correspondence. Event facts stay intact.
   function v38MailStyle(m){
@@ -3495,17 +4118,16 @@
   function realisticAiTransferCandidate(buyer,date){
     const buyerSquad=normalizeSquadRoles(buyer);if(buyerSquad.length+(careerExpansion?.reservedPlaces(buyer)||0)>=AI_SENIOR_SQUAD_CAP)return null;const plan=aiClubSquadPlanReview(buyer,date,true),buyerAvg=aiClubRawStrength(buyer),priority=(plan?.priorityRoles||[]).filter(x=>x.score>=22).slice(0,3),priorityRoles=priority.length?priority.map(x=>x.role):['ATTACKER','PLAYMAKER','DEFENDER','ALL-ROUNDER'];
     const budget=moneyNumber(buyer.budget),bLevel=divisionLevel(buyer),rng=mulberry32(hashString(`${worldSeed}-AI-TARGET-${date}-${buyer.id}`));
-    const candidates=clubs.filter(s=>s.id!==buyer.id&&s.id!==currentClub?.id&&Math.abs(divisionLevel(s)-bLevel)<=1).flatMap(seller=>getSquad(seller).filter(p=>!p.v34Precontract&&!p.captain&&!p.onLoan&&(priorityRoles.includes(p.role)||Number(p.ovr||0)>=buyerAvg+5)&&Number(p.joinedSeason||0)!==careerSeason&&getSquad(seller).length>6).map(p=>({p,seller,assessment:aiRecruitmentAssessment(buyer,p,seller,date)}))).filter(({p,assessment})=>{const value=Number(p.value||0),need=aiClubRoleNeedScore(buyer,p.role,p,date);return need>=16&&assessment.estOvr>=buyerAvg-7&&assessment.estOvr<=buyerAvg+10&&value<=Math.max(250000,budget*.58)&&p.age<=33;}).map(({p,seller,assessment})=>{const need=aiClubRoleNeedScore(buyer,p.role,p,date),upgrade=assessment.estOvr-buyerAvg,upside=Math.max(0,assessment.estPot-assessment.estOvr),ageBonus=p.age<=23?4:p.age>=31?-2:0,levelFit=-Math.abs(divisionLevel(seller)-bLevel)*1.7,marketBonus=['TRANSFER LISTED','CONTRACT EXPIRING','UNHAPPY'].includes(assessment.market)?5:0,sellerStatus=aiClubPlayerStatus(seller,p.id,date),sellerReluctance=sellerStatus==='CORE'?-9:sellerStatus==='STARTER'?-3:sellerStatus==='SURPLUS'?5:0,noise=rng()*6;return{p,seller,assessment,score:need*.32+upgrade*1.65+upside*.3+ageBonus+levelFit+marketBonus+assessment.reputation*.035+assessment.style+sellerReluctance+noise};}).sort((a,b)=>b.score-a.score);
+    const candidates=clubs.filter(s=>s.id!==buyer.id&&s.id!==currentClub?.id&&Math.abs(divisionLevel(s)-bLevel)<=1).flatMap(seller=>getSquad(seller).filter(p=>!p.v34Precontract&&!p.captain&&!p.onLoan&&(priorityRoles.includes(p.role)||Number(p.ovr||0)>=buyerAvg+5)&&Number(p.joinedSeason||0)!==careerSeason&&getSquad(seller).length>6).map(p=>({p,seller,assessment:aiRecruitmentAssessment(buyer,p,seller,date)}))).filter(({p,seller,assessment})=>{const value=livingPlayerMarketValue(p,{club:seller,date}),need=aiClubRoleNeedScore(buyer,p.role,p,date);return need>=16&&assessment.estOvr>=buyerAvg-7&&assessment.estOvr<=buyerAvg+10&&value<=Math.max(250000,budget*.58)&&p.age<=33;}).map(({p,seller,assessment})=>{const need=aiClubRoleNeedScore(buyer,p.role,p,date),upgrade=assessment.estOvr-buyerAvg,upside=Math.max(0,assessment.estPot-assessment.estOvr),ageBonus=p.age<=23?4:p.age>=31?-2:0,levelFit=-Math.abs(divisionLevel(seller)-bLevel)*1.7,marketBonus=['TRANSFER LISTED','CONTRACT EXPIRING','UNHAPPY'].includes(assessment.market)?5:0,sellerStatus=aiClubPlayerStatus(seller,p.id,date),sellerReluctance=sellerStatus==='CORE'?-9:sellerStatus==='STARTER'?-3:sellerStatus==='SURPLUS'?5:0,noise=rng()*6;return{p,seller,assessment,score:need*.32+upgrade*1.65+upside*.3+ageBonus+levelFit+marketBonus+assessment.reputation*.035+assessment.style+sellerReluctance+noise};}).sort((a,b)=>b.score-a.score);
     if(!candidates.length)return null;return candidates[Math.min(candidates.length-1,Math.floor(rng()*Math.min(5,candidates.length)))];
   }
   function aiNegotiatedTransferFee(p,buyer,seller,date=currentCareerISO()){
     if(!p||!buyer||!seller)return null;
-    const market=Math.max(75_000,Number(p.value||75_000)),buyerBudget=Math.max(0,moneyNumber(buyer.budget));
+    const market=Math.max(60_000,livingPlayerMarketValue(p,{club:seller,date})),buyerBudget=Math.max(0,moneyNumber(buyer.budget));
     if(buyerBudget<75_000)return null;
-    const importance=sellerPlayerImportance(p,seller),replacement=sellerReplacementDifficulty(p,seller),pressure=sellerFinancialPressure(p,seller),status=publicMarketStatus(p),years=Math.max(0,Number(p.contractYears||0)),phase=transferMarketWindowPhase(date),need=buyerRoleNeedScore(p,buyer);
+    const importance=sellerPlayerImportance(p,seller),replacement=sellerReplacementDifficulty(p,seller),pressure=sellerFinancialPressure(p,seller),status=publicMarketStatus(p),phase=transferMarketWindowPhase(date),need=buyerRoleNeedScore(p,buyer);
     let sellerFactor=.88+(importance-50)*.0033+(replacement-50)*.0024-(pressure-45)*.0016;
-    if(years<=1)sellerFactor-=.10;else if(years>=4)sellerFactor+=.06;
-    if(status==='TRANSFER LISTED')sellerFactor-=.055;if(status==='UNHAPPY')sellerFactor-=.045;if(status==='CONTRACT EXPIRING')sellerFactor-=.07;if(p.transferRequested)sellerFactor-=.075;
+    if(status==='TRANSFER LISTED')sellerFactor-=.035;if(status==='UNHAPPY')sellerFactor-=.03;if(p.transferRequested)sellerFactor-=.04;
     if(phase==='DEADLINE')sellerFactor+=replacement>=72?.045:-.045;else if(phase==='LATE')sellerFactor+=replacement>=78?.025:-.02;
     sellerFactor+=sellerRivalPremium(seller,buyer)*.55+negotiationSigned(`AI-SELLER-${date}-${seller.id}-${buyer.id}-${p.id}`,.045);
     const sellerMinimum=negotiationMoney(market*clamp(sellerFactor,.66,1.42));
@@ -3525,10 +4147,10 @@
     if(!eligible.length)return null;const rng=mulberry32(hashString(`${worldSeed}-AI-BUYER-${date}`));
     const ordered=seededShuffle(eligible,`AI-BUYER-${date}`);let deal=null,buyer=null;
     for(const club of ordered.slice(0,12)){const target=realisticAiTransferCandidate(club,date);if(target){deal=target;buyer=club;break;}}
-    if(!deal||!buyer)return null;const {p,seller}=deal;const buyerBudget=moneyNumber(buyer.budget),sellerBudget=moneyNumber(seller.budget),fee=aiNegotiatedTransferFee(p,buyer,seller,date);if(!fee||fee<=0||fee>buyerBudget||!v25CanAffordWage(buyer,p,Math.max(Number(p.wage||0),expectedWage(p))))return null;
+    if(!deal||!buyer)return null;const {p,seller}=deal;const buyerBudget=moneyNumber(buyer.budget),sellerBudget=moneyNumber(seller.budget),fee=aiNegotiatedTransferFee(p,buyer,seller,date);if(!fee||fee<=0||fee>buyerBudget||!v25CanAffordWage(buyer,p,Math.max(Number(p.wage||0),expectedWage(p,buyer))))return null;
     const sellerSquad=getSquad(seller),buyerSquad=getSquad(buyer),idx=sellerSquad.findIndex(x=>x.id===p.id);if(idx<0)return null;
     removePlayerFromLineup(seller,p.id);sellerSquad.splice(idx,1);p.clubId=buyer.id;p.clubName=buyer.name;p.freeAgent=false;p.joinedSeason=careerSeason;p.contractYears=Math.max(2,Math.min(5,Number(p.contractYears||3)));p.morale='Happy';p.form='New Signing';p.careerClubs=Array.from(new Set([...(p.careerClubs||[]),buyer.id]));buyerSquad.push(p);addPlayerToLineup(buyer,p.id,'bench');normalizeSquadRoles(seller);normalizeSquadRoles(buyer);buyer.budget=formatExactMoney(Math.max(0,buyerBudget-fee));seller.budget=formatExactMoney(sellerBudget+fee);
-    setLivingPlayerContract(p,buyer,Math.max(2,Math.min(5,Number(p.contractYears||3))),Math.max(Number(p.wage||0),expectedWage(p)),'Rotation',date,'AI_TRANSFER');
+    setLivingPlayerContract(p,buyer,Math.max(2,Math.min(5,Number(p.contractYears||3))),Math.max(Number(p.wage||0),expectedWage(p,buyer)),'Rotation',date,'AI_TRANSFER');
     const record={id:`AIT-${date}-${p.id}`,date,playerId:p.id,playerName:p.name,fromClubId:seller.id,toClubId:buyer.id,fee,shortlisted:transferShortlist.has(p.id)};aiTransferHistory.push(record);aiTransferHistory=aiTransferHistory.slice(-100);recordLivingTransfer(p,seller,buyer,fee,{type:'PERMANENT',source:'AI'});careerRuntime.lastAiTransferDate=date;
     addCareerNews({id:`news-ai-transfer-${record.id}`,category:'TRANSFERS',title:`${buyer.name.toUpperCase()} SIGN ${p.name.toUpperCase()}`,body:[`${buyer.name} have completed a ${formatMoney(fee)} deal with ${seller.name} for ${p.name}.`,`The ${p.role.toLowerCase()} joins a squad rated around ${Math.round(backgroundClubStrength(buyer))} OVR.`],image:p.avatar,date});
     if(transferShortlist.has(p.id))addCareerInboxMessage({id:`shortlist-moved-${record.id}`,type:'TRANSFERS',sender:'RECRUITMENT TEAM',subject:`Shortlisted target moves: ${p.name}`,preview:`${buyer.name} have completed the signing.`,title:`Another club has signed ${p.name}`,body:[`${buyer.name} have completed a ${formatMoney(fee)} transfer for ${p.name}.`,`The player remains visible in the career world, but your previous recruitment file is now out of date.`],signoff:'Head of Recruitment',action:{label:'OPEN TRANSFERS',route:'transfers'},date});
@@ -3614,9 +4236,9 @@
     if(careerExpansion){if(currentClub)careerExpansion.department(currentClub);careerExpansion.daily(date);}
     if(resolvedFixtures.length)generateWorldNewsForResults(resolvedFixtures,date);
     const aiDeal=maybeGenerateAITransfer(date),shortlistInterest=maybeGenerateShortlistInterest(date);if(date.endsWith('-01')){processAiSquadMaintenance(date);processLivingSquadMonthly(date);generateLeagueTableNews(date);}const improved=date.endsWith('-01')?applyMonthlyDevelopment(date):[];
-    unexpectedProcessActiveObjectives(date);let decision=null;if(currentClub){normalizeSquadRoles(currentClub);const baseline=objectiveConfidenceBaseline(currentClub);if(careerRuntime.lastBoardConfidenceDate!==date&&date.endsWith('-01')){careerRuntime.boardConfidence=clamp(Math.round(ensureBoardConfidence()*.78+baseline*.22),0,100);careerRuntime.lastBoardConfidenceDate=date;}decision=generateIncomingTransferOffer(date)||maybeGenerateUnexpectedCareerEvent(date)||generateContextualCareerDecision(date);}
-    const important=decision?.type==='INCOMING_OFFER'?{title:`Transfer offer received: ${decision.playerName}`,type:'TRANSFER_OFFER'}:decision?.kind==='UNEXPECTED_EVENT'?{title:decision.title||'Unexpected club situation',type:'UNEXPECTED_EVENT'}:improved.length?{title:'Monthly player development report',type:'DEVELOPMENT_REPORT'}:aiDeal?.shortlisted?{title:`Shortlisted target moved: ${aiDeal.playerName}`,type:'SHORTLIST_INTEREST'}:null;
-    return{aiDeal,shortlistInterest,improved,decision,important};
+    unexpectedProcessActiveObjectives(date);const delayedOutcomes=processDelayedAudienceOutcomes(date);let decision=null;if(currentClub){normalizeSquadRoles(currentClub);const baseline=objectiveConfidenceBaseline(currentClub);if(careerRuntime.lastBoardConfidenceDate!==date&&date.endsWith('-01')){careerRuntime.boardConfidence=clamp(Math.round(ensureBoardConfidence()*.78+baseline*.22),0,100);careerRuntime.lastBoardConfidenceDate=date;}decision=generateIncomingTransferOffer(date)||maybeGenerateUnexpectedCareerEvent(date)||generateContextualCareerDecision(date);}
+    const important=decision?.type==='INCOMING_OFFER'?{title:`Transfer offer received: ${decision.playerName}`,type:'TRANSFER_OFFER'}:decision?.kind==='UNEXPECTED_EVENT'?{title:decision.title||'Unexpected club situation',type:'UNEXPECTED_EVENT'}:delayedOutcomes.find(row=>row.verdict==='ADVERSE')?{title:'A previous decision has developed',type:'DELAYED_OUTCOME'}:improved.length?{title:'Monthly player development report',type:'DEVELOPMENT_REPORT'}:aiDeal?.shortlisted?{title:`Shortlisted target moved: ${aiDeal.playerName}`,type:'SHORTLIST_INTEREST'}:null;
+    return{aiDeal,shortlistInterest,improved,decision,delayedOutcomes,important};
   }
 
   function transferResponsePendingForPlayer(playerId){return pendingNegotiations.find(n=>n.playerId===playerId&&n.status==='pending')||null;}
@@ -3636,7 +4258,7 @@
     const fallback=outcome==='accepted'?`${p.club?.name||'The selling club'} accepted ${formatMoney(pending.offer)}.`:outcome==='counter'?`${p.club?.name||'The selling club'} countered at ${formatMoney(pending.counter)}.`:outcome==='walked'?`${p.club?.name||'The selling club'} ended the negotiations.`:`${p.club?.name||'The selling club'} rejected the offer.`;
     const statusCopy=pending.responseCopy||fallback;
     addCareerInboxMessage({id:`transfer-response-${pending.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Transfer response: ${p.name}`,preview:statusCopy,title:pending.responseTitle||`A response has arrived for ${p.name}`,body:[statusCopy,outcome==='walked'?'The club will need time before they are prepared to reopen discussions.':'Open the Transfer Hub to review the recruitment file and decide the next step.'],signoff:'Transfer Office',action:{label:'OPEN TRANSFER HUB',route:'transfers'},date});
-    const notableNegotiation=publicReputationScore(p)>=58||Number(p.value||0)>=Math.max(2_500_000,moneyNumber((currentClub||selectedClub)?.budget)*.16)||['Crucial','Important'].includes(p.squadRole);
+    const notableNegotiation=publicReputationScore(p)>=58||livingPlayerMarketValue(p)>=Math.max(2_500_000,moneyNumber((currentClub||selectedClub)?.budget)*.16)||['Crucial','Important'].includes(p.squadRole);
     if(notableNegotiation&&(outcome==='accepted'||outcome==='walked'||pending.finalOffer))addCareerNews({id:`news-transfer-response-${pending.id}`,category:'TRANSFERS',title:`${p.name.toUpperCase()} TRANSFER TALKS UPDATE`,body:[statusCopy],image:p.avatar,date});
   }
 
@@ -3704,6 +4326,9 @@
 
   function advanceCareerDay(options={}){
     initializeCareerCalendar(false);
+    // V104: the shared barrier outranks every local reason to advance.
+    const onlineBarrier=v104ProgressionBlock();
+    if(onlineBarrier)return {advanced:false,blocked:true,reason:'ONLINE_BARRIER',online:onlineBarrier,events:[]};
     if(roadToGlory.seasonReview?.pending){if(!options.silent)renderSeasonReviewOverlay();return {advanced:false,blocked:true,reason:'SEASON_REVIEW',events:[]};}
     const decision=pendingDecisionEvent();
     if(decision)return {advanced:false,blocked:true,reason:'DECISION',decision,events:[]};
@@ -4018,14 +4643,20 @@
   }
 
   function buildBoardObjectives(club=currentClub||selectedClub||clubs[0]){
+    const chairman=chairmanForClub(club),priorityKeys=chairman?.priorities||[],engine=window.VelmoraChairmen;
     const rows=standingsForDivision(club.divisionKey),own=rows.find(r=>r.club.id===club.id)||rows[0],total=Math.max(1,rows.length),target=primaryTargetPosition(club.expectation,total),pos=own?.pos||total,distance=Math.max(0,pos-target),leagueProgress=clamp(Math.round((distance===0?84:78-distance*9)+(own?.pts||0)*.35),12,96);
-    const cupFixtures=fixtures.filter(f=>f.type==='CUP'&&(f.homeClubId===club.id||f.awayClubId===club.id)&&f.played);let cupWins=0,cupEliminated=false;cupFixtures.forEach(f=>{const rc=worldResultCode(club,f);if(rc==='W')cupWins++;if(rc==='L')cupEliminated=true;});const cupTargetWins=3,cupProgress=clamp(Math.round((cupWins/cupTargetWins)*100),0,100);
+    const primaryCupName=cupNameForWorld(clubWorldName(club)),primaryCupId=domesticCupCompetitionId(clubWorldName(club),'national'),cupFixtures=fixtures.filter(f=>f.type==='CUP'&&f.competitionId===primaryCupId&&(f.homeClubId===club.id||f.awayClubId===club.id)&&f.played);let cupWins=0,cupEliminated=false;cupFixtures.forEach(f=>{const rc=worldResultCode(club,f);if(rc==='W')cupWins++;if(rc==='L')cupEliminated=true;});const cupTargetWins=3,cupProgress=clamp(Math.round((cupWins/cupTargetWins)*100),0,100);
     const developed=getSquad(club).filter(p=>Number(p.age||99)<=21&&Number(p.careerGrowthThisSeason||0)>=1).length,youthProgress=clamp(developed*50,0,100);
+    const finance=v25ClubFinance(club),weeklyWages=v25ClubWeeklyWages(club),wageRatio=finance.wageBudget?weeklyWages/finance.wageBudget:0,financeProgress=clamp(Math.round(100-Math.max(0,wageRatio-.75)*180),0,100);
+    const weight=(kind)=>{const groups={league:['WIN_NOW','CHAMPIONS_CROWN','PROMOTION','SURVIVAL'],cup:['DOMESTIC_CUP'],youth:['ACADEMY','DEVELOP_TALENT','RECRUIT_YOUNG','RECRUIT_LOCAL'],finance:['SUSTAINABILITY','WAGE_DISCIPLINE','TRADING_PROFIT']};const index=priorityKeys.findIndex(p=>groups[kind]?.includes(p));return index<0?0:4-index;};
     const base=[
-      {id:'league',tag:'PRIMARY · HIGH',icon:'♛',impact:'High',title:club.expectation||'Finish strongly',copy:`Currently ${ordinal(pos)} in ${club.division}. Target position: ${ordinal(target)} or better.`,progress:leagueProgress,status:distance===0?'ON TRACK':distance<=2?'IN REACH':'WORK TO DO'},
-      {id:'cup',tag:'CUP · MEDIUM',icon:'◇',impact:'Medium',title:'Reach Velmora Cup Quarter Final',copy:cupEliminated?`Cup run ended after ${cupWins} win${cupWins===1?'':'s'}.`:`${cupWins}/${cupTargetWins} knockout wins toward the board's quarter-final benchmark.`,progress:cupProgress,status:cupEliminated?'ELIMINATED':cupProgress>=100?'COMPLETE':cupWins?'IN PROGRESS':'PENDING'},
-      {id:'youth',tag:'DEVELOPMENT · MEDIUM',icon:'●',impact:'Medium',title:'Develop 2 U21 Players',copy:`${developed}/2 under-21 senior player${developed===1?' has':'s have'} improved by at least 1 OVR this season.`,progress:youthProgress,status:youthProgress>=100?'COMPLETE':developed?'IN PROGRESS':'NOT STARTED'}
-    ];return[...base,...unexpectedBoardObjectiveRows(club)];
+      {id:'league',tag:'LEAGUE',icon:'♛',impact:weight('league')?'High':'Medium',title:club.expectation||'Finish strongly',copy:`Currently ${ordinal(pos)} in ${club.division}. Target position: ${ordinal(target)} or better.`,progress:leagueProgress,status:distance===0?'ON TRACK':distance<=2?'IN REACH':'WORK TO DO',reason:engine?.objectiveReason(chairman,'league')||''},
+      {id:'cup',tag:'DOMESTIC CUP',icon:'◇',impact:weight('cup')?'High':'Medium',title:`Reach ${primaryCupName} Quarter Final`,copy:cupEliminated?`${primaryCupName} run ended after ${cupWins} win${cupWins===1?'':'s'}.`:`${cupWins}/${cupTargetWins} knockout wins toward the quarter-final benchmark.`,progress:cupProgress,status:cupEliminated?'ELIMINATED':cupProgress>=100?'COMPLETE':cupWins?'IN PROGRESS':'PENDING',reason:engine?.objectiveReason(chairman,'cup')||''},
+      {id:'youth',tag:'PLAYER PATHWAY',icon:'●',impact:weight('youth')?'High':'Medium',title:'Develop 2 U21 Players',copy:`${developed}/2 under-21 senior player${developed===1?' has':'s have'} improved by at least 1 OVR this season.`,progress:youthProgress,status:youthProgress>=100?'COMPLETE':developed?'IN PROGRESS':'NOT STARTED',reason:engine?.objectiveReason(chairman,'youth')||''},
+      {id:'finance',tag:'CLUB HEALTH',icon:'£',impact:weight('finance')?'High':'Low',title:'Protect the wage structure',copy:`Current weekly commitment is ${formatMoney(weeklyWages)} against a ${formatMoney(finance.wageBudget)} internal ceiling.`,progress:financeProgress,status:wageRatio<=.88?'ON TRACK':wageRatio<=1?'WATCH':'OVER LIMIT',reason:engine?.objectiveReason(chairman,'finance')||''}
+    ].sort((a,b)=>weight(b.id)-weight(a.id)||(['league','cup','youth','finance'].indexOf(a.id)-['league','cup','youth','finance'].indexOf(b.id))).map((objective,index)=>({...objective,tag:`${index===0?'DEFINING':'SUPPORT'} · ${objective.tag}`}));
+    if(careerChallenge?.status==='ACTIVE'&&careerChallenge.clubId===club.id&&careerChallenge.seasonId===careerTime.seasonId){const progress=careerChallengeProgress(club);if(progress)return progress.goals;}
+    return[...base,...unexpectedBoardObjectiveRows(club)];
   }
 
 
@@ -4178,7 +4809,7 @@
     const snap=roleNeedSnapshot(seller),role=snap.roles[p.role]||{},same=getSquad(seller).filter(x=>x.id!==p.id&&x.role===p.role),best=same.length?Math.max(...same.map(x=>Number(x.ovr||0))):Number(snap.overall||60)-8;let score=Number(role.need||55)+(Number(p.ovr||0)-best)*2.6;if(!same.length)score+=18;if(p.captain)score+=5;return clamp(Math.round(score),15,98);
   }
   function sellerFinancialPressure(p,seller){
-    const value=Math.max(100_000,Number(p.value||0)),budget=Math.max(0,moneyNumber(seller?.budget)),ratio=budget/value;let pressure=ratio<.55?88:ratio<1?74:ratio<1.8?56:ratio<3?38:24;
+    const value=Math.max(60_000,livingPlayerMarketValue(p,{club:seller})),budget=Math.max(0,moneyNumber(seller?.budget)),ratio=budget/value;let pressure=ratio<.55?88:ratio<1?74:ratio<1.8?56:ratio<3?38:24;
     if(String(seller?.expectation||'').toLowerCase().includes('surviv'))pressure+=5;if(Number(seller?.tier||4)>=4)pressure+=4;return clamp(Math.round(pressure),10,94);
   }
   function sellerRivalPremium(seller,buyer){if(!seller||!buyer)return 0;const direct=seller.rival===buyer.name||buyer.rival===seller.name;return direct?clamp(.08+(negotiationSeedUnit(`RIVAL-${seller.id}-${buyer.id}`)*.10),.08,.18):0;}
@@ -4193,10 +4824,12 @@
   function negotiationPatienceForStyle(style){return({HARDLINE:3,PRAGMATIC:4,PATIENT:5,AGGRESSIVE:3,FINANCIALLY_PRESSURED:4,RELUCTANT_SELLER:2,DEALMAKER:5,DEADLINE_DESPERATE:2}[style]||4);}
   function clubNegotiationKey(p){return`${currentClub?.id||'BUYER'}::${p?.club?.id||p?.clubId||'SELLER'}::${p?.id||'PLAYER'}`;}
   function buildClubNegotiationSession(p){
-    const buyer=currentClub||selectedClub,seller=p?.club||clubById(p?.clubId);if(!p||!buyer||!seller)return null;const base=Math.max(100_000,Number(p.value||100_000)),importance=sellerPlayerImportance(p,seller),replacement=sellerReplacementDifficulty(p,seller),pressure=sellerFinancialPressure(p,seller),status=publicMarketStatus(p),years=Math.max(0,Number(p.contractYears||0)),phase=transferMarketWindowPhase(currentCareerISO()),rivalPremium=sellerRivalPremium(seller,buyer);
-    const contractAdj=years<=1?-.13:years===2?-.04:years>=4?.10:.03,statusAdj=status==='TRANSFER LISTED'?-.07:status==='CONTRACT EXPIRING'?-.11:status==='UNHAPPY'?-.06:0,requestAdj=p.transferRequested?-.11:0,importanceAdj=(importance-50)*.0042,replacementAdj=(replacement-50)*.0028,pressureAdj=-(pressure-45)*.0022,phaseAdj=phase==='EARLY'?.025:phase==='DEADLINE'?(replacement>=72?.08:-.055):phase==='LATE'?(replacement>=78?.04:-.025):0,noise=negotiationSigned(`SELLER-VALUE-${seller.id}-${p.id}`,.065);
-    const valueFactor=clamp(1.02+contractAdj+statusAdj+requestAdj+importanceAdj+replacementAdj+pressureAdj+phaseAdj+rivalPremium+noise,.68,1.72),preferred=negotiationMoney(base*valueFactor),style=clubNegotiatorStyle(seller,p,importance,pressure,replacement),softRatio=clamp(({HARDLINE:.90,PRAGMATIC:.85,PATIENT:.84,AGGRESSIVE:.87,FINANCIALLY_PRESSURED:.78,RELUCTANT_SELLER:.93,DEALMAKER:.82,DEADLINE_DESPERATE:.76}[style]||.85)+(importance-55)*.0007-pressure*.00045,.72,.95),soft=negotiationMoney(preferred*softRatio),walk=negotiationMoney(soft*clamp(({HARDLINE:.84,PRAGMATIC:.78,PATIENT:.77,AGGRESSIVE:.81,FINANCIALLY_PRESSURED:.70,RELUCTANT_SELLER:.87,DEALMAKER:.74,DEADLINE_DESPERATE:.68}[style]||.78),.64,.90)),opening=negotiationMoney(preferred*(1.025+negotiationSeedUnit(`SELLER-OPEN-${seller.id}-${p.id}`)*.055)),basePatience=negotiationPatienceForStyle(style),hardBlock=importance>=91&&replacement>=86&&pressure<42&&phase==='DEADLINE';
-    return{id:negotiationNextId('CLUB'),key:clubNegotiationKey(p),playerId:p.id,buyerClubId:buyer.id,sellerClubId:seller.id,createdDate:currentCareerISO(),lastDate:currentCareerISO(),style,marketValue:base,preferredPrice:preferred,softMinimum:soft,walkAwayMinimum:walk,sellerPosition:opening,importance,replacementDifficulty:replacement,financialPressure:pressure,rivalPremium,basePatience,patienceLeft:basePatience,maxRounds:basePatience+1,round:0,state:'ACTIVE',finalOffer:false,finalOfferAmount:null,cooldownUntil:null,hardBlock,history:[],concessions:[],lastBuyerOffer:null,lastSellerCounter:null};
+    const buyer=currentClub||selectedClub,seller=p?.club||clubById(p?.clubId);if(!p||!buyer||!seller)return null;const base=Math.max(60_000,livingPlayerMarketValue(p,{club:seller})),importance=sellerPlayerImportance(p,seller),replacement=sellerReplacementDifficulty(p,seller),pressure=sellerFinancialPressure(p,seller),status=publicMarketStatus(p),phase=transferMarketWindowPhase(currentCareerISO()),rivalPremium=sellerRivalPremium(seller,buyer),sellerManager=currentClubManager(seller),publicHistory=managerTransferMemoryContext(sellerManager?.id,currentCareerISO());
+    // Contract length, potential and performance already live inside the canonical
+    // market value. The adjustments below are private seller leverage only.
+    const statusAdj=status==='TRANSFER LISTED'?-.04:status==='UNHAPPY'?-.035:0,requestAdj=p.transferRequested?-.045:0,importanceAdj=(importance-50)*.0042,replacementAdj=(replacement-50)*.0028,pressureAdj=-(pressure-45)*.0022,phaseAdj=phase==='EARLY'?.025:phase==='DEADLINE'?(replacement>=72?.08:-.055):phase==='LATE'?(replacement>=78?.04:-.025):0,noise=negotiationSigned(`SELLER-VALUE-${seller.id}-${p.id}`,.065);
+    const valueFactor=clamp(1.02+statusAdj+requestAdj+importanceAdj+replacementAdj+pressureAdj+phaseAdj+rivalPremium+publicHistory.pricePremium+noise,.68,1.84),preferred=negotiationMoney(base*valueFactor),style=clubNegotiatorStyle(seller,p,importance,pressure,replacement),softRatio=clamp(({HARDLINE:.90,PRAGMATIC:.85,PATIENT:.84,AGGRESSIVE:.87,FINANCIALLY_PRESSURED:.78,RELUCTANT_SELLER:.93,DEALMAKER:.82,DEADLINE_DESPERATE:.76}[style]||.85)+(importance-55)*.0007-pressure*.00045,.72,.95),soft=negotiationMoney(preferred*softRatio),walk=negotiationMoney(soft*clamp(({HARDLINE:.84,PRAGMATIC:.78,PATIENT:.77,AGGRESSIVE:.81,FINANCIALLY_PRESSURED:.70,RELUCTANT_SELLER:.87,DEALMAKER:.74,DEADLINE_DESPERATE:.68}[style]||.78),.64,.90)),opening=negotiationMoney(preferred*(1.025+negotiationSeedUnit(`SELLER-OPEN-${seller.id}-${p.id}`)*.055)),basePatience=Math.max(1,negotiationPatienceForStyle(style)-publicHistory.patiencePenalty),hardBlock=importance>=91&&replacement>=86&&pressure<42&&phase==='DEADLINE';
+    return{id:negotiationNextId('CLUB'),key:clubNegotiationKey(p),playerId:p.id,buyerClubId:buyer.id,sellerClubId:seller.id,sellerManagerId:sellerManager?.id||null,createdDate:currentCareerISO(),lastDate:currentCareerISO(),style,marketValue:base,preferredPrice:preferred,softMinimum:soft,walkAwayMinimum:walk,sellerPosition:opening,importance,replacementDifficulty:replacement,financialPressure:pressure,rivalPremium,publicHistory,basePatience,patienceLeft:basePatience,maxRounds:basePatience+1,round:0,state:'ACTIVE',finalOffer:false,finalOfferAmount:null,cooldownUntil:null,hardBlock,history:[],concessions:[],lastBuyerOffer:null,lastSellerCounter:null};
   }
   function clubNegotiationSession(p,create=true){negotiationEngine=normalizeNegotiationEngineState(negotiationEngine);const key=clubNegotiationKey(p);let session=negotiationEngine.clubSessions[key];if(!session&&create){session=buildClubNegotiationSession(p);if(session)negotiationEngine.clubSessions[key]=session;}return session||null;}
   function clubConcessionRate(style){return({HARDLINE:.13,PRAGMATIC:.28,PATIENT:.22,AGGRESSIVE:.18,FINANCIALLY_PRESSURED:.38,RELUCTANT_SELLER:.09,DEALMAKER:.34,DEADLINE_DESPERATE:.44}[style]||.25);}
@@ -4208,6 +4841,7 @@
   }
   function evaluateClubTransferOffer(p,amount,session=clubNegotiationSession(p,true)){
     if(!session)return{outcome:'rejected',title:'Negotiation unavailable.',copy:'The selling club could not be resolved.'};amount=negotiationMoney(amount);const date=currentCareerISO();if(!negotiationSessionCanReopen(session,date))return{outcome:'walked',title:'Talks are currently closed.',copy:`The selling club will not reopen negotiations for another ${negotiationCooldownRemaining(session,date)} day${negotiationCooldownRemaining(session,date)===1?'':'s'}.`};
+    if(session.publicHistory?.blockUntil&&session.publicHistory.blockUntil>=date){const manager=managerMarket.managers?.[session.sellerManagerId];return{outcome:'rejected',title:`${manager?.name||'The selling manager'} will not open talks.`,copy:`Your public history is still shaping this relationship. The club will reconsider after ${shortDateLabel(session.publicHistory.blockUntil)}, unless the player's release clause removes their discretion.`};}
     if(session.finalOffer&&Number(session.finalOfferAmount||0)>0){if(amount>=Number(session.finalOfferAmount)){session.state='AGREED';session.agreedFee=Number(session.finalOfferAmount);session.history.push({date,round:session.round+1,side:'BUYER',amount,outcome:'ACCEPT_FINAL'});return{outcome:'accepted',offer:session.agreedFee,title:`${p.club?.name||'The selling club'} accept ${formatMoney(session.agreedFee)}.`,copy:'Their final position has been accepted. You can now speak to the player.'};}session.state='WALKED_AWAY';session.cooldownUntil=addDaysISO(date,3+(hashString(`${session.id}-FINAL-WALK`)%4));session.history.push({date,round:session.round+1,side:'BUYER',amount,outcome:'REJECT_FINAL'});return{outcome:'walked',title:'Negotiations have ended.',copy:'The selling club had already made its final offer and will not continue the discussion.'};}
     session.round=Number(session.round||0)+1;session.lastDate=date;const previous=Number(session.lastBuyerOffer||0),tiny=previous>0&&amount<=previous+Math.max(50_000,previous*.0125),backwards=previous>0&&amount<previous;if(tiny)session.patienceLeft=Math.max(0,Number(session.patienceLeft||1)-1);if(backwards)session.patienceLeft=Math.max(0,Number(session.patienceLeft||1)-1);session.lastBuyerOffer=amount;
     const preferred=Number(session.preferredPrice),soft=Number(session.softMinimum),walk=Number(session.walkAwayMinimum),position=Math.max(soft,Number(session.sellerPosition||preferred)),style=session.style,offerStrength=amount/Math.max(1,preferred),roll=negotiationSeedUnit(`${session.id}-R${session.round}-${amount}`);
@@ -4226,8 +4860,8 @@
   function preferredContractYears(p,type='SIGNING'){if(Number(p.age||0)<=21)return type==='RENEWAL'?4:5;if(Number(p.age||0)<=27)return 4;if(Number(p.age||0)<=31)return 3;if(Number(p.age||0)<=34)return 2;return 1;}
   function contractSessionKey(p,type='SIGNING'){return`${type}::${currentClub?.id||selectedClub?.id||'CLUB'}::${p?.id||'PLAYER'}`;}
   function buildContractNegotiationSession(p,type='SIGNING'){
-    const club=currentClub||selectedClub,traits=playerStoryTraits(p),base=Math.max(600,expectedWage(p)),oldClub=p.club||clubById(p.clubId),levelDelta=club&&oldClub?divisionLevel(club)-divisionLevel(oldClub):0,repDelta=club&&oldClub?(Number(club.reputation||1)-Number(oldClub.reputation||1)):0,ambition=Number(traits.ambition||60),loyalty=Number(traits.loyalty||60),sameWorld=!oldClub||clubWorldName(club)===clubWorldName(oldClub),appeal=levelDelta*.035+repDelta*.035+(sameWorld?0:String(traits.name)==='Homebody'?-.13:-.025)+(p.transferRequested?.07:0)+(Number(p.managerTrust||60)<35?.05:0),expected=Math.max(600,Math.round(base*(1-appeal+(ambition-60)*.0012+(loyalty-60)*(type==='RENEWAL'?.0014:.0006))/100)*100),desiredRole=suggestedRole(p),agentStyle=signingAgentStyle(p,type),preferredYears=preferredContractYears(p,type),expectedBonus=type==='RENEWAL'?0:Math.max(5_000,Math.round(Math.max(Number(p.value||0)*.012,expected*5)/1000)*1000),patience=agentStyle==='HARD_NEGOTIATOR'?3:agentStyle==='BALANCED'?4:5;
-    return{id:negotiationNextId(type==='RENEWAL'?'RENEW':'CONTRACT'),key:contractSessionKey(p,type),type,playerId:p.id,clubId:club?.id||null,createdDate:currentCareerISO(),lastDate:currentCareerISO(),agentStyle,expectedWage:expected,expectedBonus,desiredRole,preferredYears,basePatience:patience,patienceLeft:patience,maxRounds:patience+1,round:0,state:'ACTIVE',cooldownUntil:null,history:[],lastOffer:null,lastCounterPackage:null,acceptedPackage:null};
+    const club=currentClub||selectedClub,traits=playerStoryTraits(p),base=Math.max(600,expectedWage(p,club)),oldClub=p.club||clubById(p.clubId),levelDelta=club&&oldClub?divisionLevel(club)-divisionLevel(oldClub):0,repDelta=club&&oldClub?(Number(club.reputation||1)-Number(oldClub.reputation||1)):0,ambition=Number(traits.ambition||60),loyalty=Number(traits.loyalty||60),sameWorld=!oldClub||clubWorldName(club)===clubWorldName(oldClub),publicHistory=type==='SIGNING'?playerRecruitmentMemoryContext(p.id,currentCareerISO()):{score:0,rows:[],label:'CLUB RELATIONSHIP',latest:null},appeal=levelDelta*.035+repDelta*.035+(sameWorld?0:String(traits.name)==='Homebody'?-.13:-.025)+(p.transferRequested?.07:0)+(Number(p.managerTrust||60)<35?.05:0)+publicHistory.score*.35,expected=Math.max(600,Math.round(base*(1-appeal+(ambition-60)*.0012+(loyalty-60)*(type==='RENEWAL'?.0014:.0006))/100)*100),desiredRole=suggestedRole(p),agentStyle=signingAgentStyle(p,type),preferredYears=preferredContractYears(p,type),expectedBonus=type==='RENEWAL'?0:Math.max(5_000,Math.round(Math.max(livingPlayerMarketValue(p)*.012,expected*5)/1000)*1000),patience=Math.max(2,(agentStyle==='HARD_NEGOTIATOR'?3:agentStyle==='BALANCED'?4:5)+(publicHistory.score<-.055?-1:0));
+    return{id:negotiationNextId(type==='RENEWAL'?'RENEW':'CONTRACT'),key:contractSessionKey(p,type),type,playerId:p.id,clubId:club?.id||null,createdDate:currentCareerISO(),lastDate:currentCareerISO(),agentStyle,expectedWage:expected,expectedBonus,desiredRole,preferredYears,publicHistory,basePatience:patience,patienceLeft:patience,maxRounds:patience+1,round:0,state:'ACTIVE',cooldownUntil:null,history:[],lastOffer:null,lastCounterPackage:null,acceptedPackage:null};
   }
   function contractNegotiationSession(p,type='SIGNING',create=true){negotiationEngine=normalizeNegotiationEngineState(negotiationEngine);const bucket=type==='RENEWAL'?negotiationEngine.renewalSessions:negotiationEngine.contractSessions,key=contractSessionKey(p,type);let session=bucket[key];if(!session&&create){session=buildContractNegotiationSession(p,type);if(session)bucket[key]=session;}return session||null;}
   function contractRoleGap(offered,desired){return contractRoleRank(offered)-contractRoleRank(desired);}
@@ -4236,13 +4870,13 @@
     if(Number(p.age||0)>=33&&Number(pack.years||0)>2)yearsScore-=.07*(Number(pack.years)-2);if(Number(p.age||0)<=22&&Number(pack.years||0)<3)yearsScore-=.07;
     let personality=0;if(Number(traits.ambition||60)>=78){personality+=Math.max(-.08,Math.min(.08,gap*.045));if(club&&p.club)personality+=(divisionLevel(club)-divisionLevel(p.club))*.025;}if(String(traits.name)==='Loyal'&&session.type==='SIGNING'&&p.club)personality-=.035;if(String(traits.name)==='Driven'&&gap>=0)personality+=.025;if(String(traits.name)==='Homebody'&&p.club&&clubWorldName(club)!==clubWorldName(p.club))personality-=.08;
     const style=session.agentStyle;let styleAdj=0;if(style==='WAGE_FOCUSED')styleAdj+=(wageRatio-1)*.15;if(style==='BONUS_FOCUSED')styleAdj+=Math.min(.06,bonusRatio*.025);if(style==='ROLE_FOCUSED')styleAdj+=gap*.04;if(style==='SECURITY_FOCUSED')styleAdj-=yearGap*.025;if(style==='HARD_NEGOTIATOR')styleAdj-=.035;
-    const score=wageRatio+bonusComp+roleScore+yearsScore+personality+styleAdj,hardRoleFail=gap<=-2&&Number(traits.ambition||60)>=66,hardWageFail=wageRatio<.63&&bonusComp<.11;return{score,wageRatio,bonusRatio,bonusComp,gap,yearGap,hardRoleFail,hardWageFail};
+    const publicHistoryAdj=Number(session.publicHistory?.score||0),score=wageRatio+bonusComp+roleScore+yearsScore+personality+styleAdj+publicHistoryAdj,hardRoleFail=gap<=-2&&Number(traits.ambition||60)>=66,hardWageFail=wageRatio<.63&&bonusComp<.11;return{score,wageRatio,bonusRatio,bonusComp,gap,yearGap,publicHistoryAdj,hardRoleFail,hardWageFail};
   }
   function contractCounterPackage(p,pack,session,assessment){
     const round=Number(session.round||1),concession=Math.min(.10,(round-1)*.025)+(session.agentStyle==='BALANCED'?.025:session.agentStyle==='HARD_NEGOTIATOR'?-.015:.01),targetWage=Math.max(Number(pack.wage||0),Math.round(Number(session.expectedWage||0)*(1-concession)/100)*100),role=assessment.gap<0?session.desiredRole:pack.role,years=(Number(p.age||0)>=33&&Number(pack.years||0)>2)?2:(assessment.yearGap>=2?session.preferredYears:pack.years),bonus=session.expectedBonus>0?Math.max(Number(pack.bonus||0),Math.round(Number(session.expectedBonus||0)*(1-Math.min(.18,round*.035))/1000)*1000):0;return{wage:targetWage,bonus,role,years};
   }
   function contractObjectionCopy(p,assessment,session,counter){
-    const issues=[];if(assessment.hardRoleFail||assessment.gap<0)issues.push(`a ${counter.role} squad role`);if(assessment.wageRatio<.96)issues.push(`${formatMoney(counter.wage)}/w`);if(session.expectedBonus>0&&assessment.bonusRatio<.65)issues.push(`a stronger signing bonus`);if(assessment.yearGap>=2)issues.push(`${counter.years} years`);const phrase=issues.slice(0,2).join(' and ');return phrase?`Their camp want ${phrase} before they are ready to commit.`:'The overall package is close, but their representatives want one final improvement.';
+    const issues=[];if(assessment.hardRoleFail||assessment.gap<0)issues.push(`a ${counter.role} squad role`);if(assessment.wageRatio<.96)issues.push(`${formatMoney(counter.wage)}/w`);if(session.expectedBonus>0&&assessment.bonusRatio<.65)issues.push(`a stronger signing bonus`);if(assessment.yearGap>=2)issues.push(`${counter.years} years`);const phrase=issues.slice(0,2).join(' and '),history=Number(session.publicHistory?.score||0)<-.03?' Their camp also remember how the player was discussed publicly.':Number(session.publicHistory?.score||0)>.03?' Your previous public backing is helping the conversation.':'';return`${phrase?`Their camp want ${phrase} before they are ready to commit.`:'The overall package is close, but their representatives want one final improvement.'}${history}`;
   }
   function evaluateContractPackage(p,pack,session=contractNegotiationSession(p,'SIGNING',true)){
     if(!v25CanAffordWage(currentClub||selectedClub,p,pack.wage))return{status:'rejected',title:'Wage allocation exceeded.',copy:'Reduce the proposed salary or release wage commitments before agreeing this contract.'};
@@ -4267,11 +4901,12 @@
   };
   const MEDIA_SOURCE_ORDER=['SPECULATION','RUMOUR','REPORTED INTEREST','STRONG SOURCES','CONFIRMED'];
   function normalizeMediaWorldState(src={}){
-    const base={version:2,sequence:0,narratives:[],journalistRelations:{},statements:[],lastProcessDate:null,lastWeeklyProcess:null,lastMajorStoryDate:null,storyCooldowns:{},seasonTags:{},pressConferences:{sequence:0,fixtureSessions:{},recentQuestionKeys:[],history:[]}};
+    const base={version:3,sequence:0,narratives:[],journalistRelations:{},statements:[],peopleMemories:[],lastProcessDate:null,lastWeeklyProcess:null,lastMajorStoryDate:null,storyCooldowns:{},seasonTags:{},pressConferences:{sequence:0,fixtureSessions:{},recentQuestionKeys:[],history:[]}};
     const out={...base,...(src&&typeof src==='object'?src:{})};
-    out.version=2;out.sequence=Math.max(0,Number(out.sequence||0));
+    out.version=3;out.sequence=Math.max(0,Number(out.sequence||0));
     out.narratives=Array.isArray(out.narratives)?out.narratives.slice(-120):[];
     out.statements=Array.isArray(out.statements)?out.statements.slice(-120):[];
+    out.peopleMemories=Array.isArray(out.peopleMemories)?out.peopleMemories.filter(memory=>memory&&memory.personType&&memory.personId).slice(-420):[];
     out.journalistRelations=out.journalistRelations&&typeof out.journalistRelations==='object'?out.journalistRelations:{};
     out.storyCooldowns=out.storyCooldowns&&typeof out.storyCooldowns==='object'?out.storyCooldowns:{};
     out.seasonTags=out.seasonTags&&typeof out.seasonTags==='object'?out.seasonTags:{};
@@ -4313,6 +4948,42 @@
   function markMediaCooldown(key,date=currentCareerISO()){mediaWorld.storyCooldowns[key]=date;}
   function mediaStatementToneLabel(tone){return({respectful:'RESPECTFUL',neutral:'MEASURED',provocative:'BOLD'}[tone]||String(tone||'MEASURED').toUpperCase());}
   function recordMediaStatement(data={}){const statement={id:mediaWorldNextId('STATEMENT'),date:data.date||currentCareerISO(),seasonId:careerTime.seasonId,clubId:data.clubId||currentClub?.id||null,managerId:PLAYER_MANAGER_ID,tone:data.tone||'neutral',topic:data.topic||'GENERAL',rivalManagerId:data.rivalManagerId||null,reporterId:data.reporterId||null,summary:data.summary||'',referenced:false};mediaWorld.statements.push(statement);mediaWorld.statements=mediaWorld.statements.slice(-120);return statement;}
+  function normalizePeopleMemory(memory={}){
+    const date=isoDate(memory.date||currentCareerISO()),strength=clamp(Math.round(Number(memory.strength||2)),1,5),valence=clamp(Math.round(Number(memory.valence||0)),-2,2),lifespan=Math.max(60,Number(memory.lifespanDays||90+strength*55));
+    return{id:memory.id||mediaWorldNextId('WORD'),date,expiresDate:memory.expiresDate||addDaysISO(date,lifespan),seasonId:memory.seasonId||careerTime.seasonId,clubId:memory.clubId||currentClub?.id||null,personType:String(memory.personType||'PLAYER').toUpperCase(),personId:String(memory.personId||''),personName:memory.personName||'Unknown',kind:memory.kind||'PUBLIC_COMMENT',label:memory.label||'PUBLIC HISTORY',summary:String(memory.summary||''),valence,strength,source:memory.source||'PRESS CONFERENCE',fixtureId:memory.fixtureId||null,statementId:memory.statementId||null,reporterId:memory.reporterId||null,transferModifier:Number(memory.transferModifier??(valence*strength*.008)),blockUntil:memory.blockUntil||null,status:memory.status||'ACTIVE',callbackEligible:memory.callbackEligible!==false,lastCallbackDate:memory.lastCallbackDate||null,callbackCount:Math.max(0,Number(memory.callbackCount||0))};
+  }
+  function recordPeopleMemory(memory={}){
+    if(!memory.personId)return null;mediaWorld=normalizeMediaWorldState(mediaWorld);const row=normalizePeopleMemory(memory),existing=mediaWorld.peopleMemories.find(item=>item.statementId&&item.statementId===row.statementId&&item.personType===row.personType&&String(item.personId)===String(row.personId));
+    if(existing){Object.assign(existing,row,{id:existing.id});return existing;}mediaWorld.peopleMemories.push(row);mediaWorld.peopleMemories=mediaWorld.peopleMemories.slice(-420);return row;
+  }
+  function personMemories(personType,personId,{includeExpired=false,date=currentCareerISO()}={}){
+    mediaWorld=normalizeMediaWorldState(mediaWorld);const type=String(personType||'').toUpperCase(),id=String(personId||'');return mediaWorld.peopleMemories.map(normalizePeopleMemory).filter(memory=>memory.personType===type&&String(memory.personId)===id&&memory.status!=='ARCHIVED'&&(includeExpired||memory.expiresDate>=date)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  }
+  function peopleMemoryScore(personType,personId,date=currentCareerISO()){
+    const rows=personMemories(personType,personId,{date});return clamp(rows.reduce((total,memory)=>{const age=Math.max(0,diffDaysISO(memory.date,date)),life=Math.max(1,diffDaysISO(memory.date,memory.expiresDate)),recency=clamp(1-age/life,.18,1);return total+Number(memory.valence||0)*Number(memory.strength||1)*recency;},0),-16,12);
+  }
+  function peopleMemoryLabel(personType,personId,date=currentCareerISO()){
+    const rows=personMemories(personType,personId,{date}),score=peopleMemoryScore(personType,personId,date);if(!rows.length)return'NO PUBLIC HISTORY';if(score>=7)return'STRONG PUBLIC BACKING';if(score>=2)return'RESPECTFUL PUBLIC HISTORY';if(score<=-8)return'LASTING PUBLIC RIFT';if(score<=-3)return'PUBLIC TENSION';return'WORDS ON RECORD';
+  }
+  function playerRecruitmentMemoryContext(playerId,date=currentCareerISO()){
+    const rows=personMemories('PLAYER',playerId,{date}),raw=peopleMemoryScore('PLAYER',playerId,date),score=clamp(raw*.009,-.10,.075);return{score,rows,label:peopleMemoryLabel('PLAYER',playerId,date),latest:rows[0]||null};
+  }
+  function managerTransferMemoryContext(managerId,date=currentCareerISO()){
+    if(!managerId)return{score:0,pricePremium:0,patiencePenalty:0,blockUntil:null,rows:[],label:'NO PUBLIC HISTORY'};const rows=personMemories('MANAGER',managerId,{date}),raw=peopleMemoryScore('MANAGER',managerId,date),negative=Math.max(0,-raw),block=rows.map(row=>row.blockUntil).filter(value=>value&&value>=date).sort().at(-1)||null;return{score:raw,pricePremium:clamp(negative*.009,0,.12),patiencePenalty:negative>=8?2:negative>=3?1:0,blockUntil:block,rows,label:peopleMemoryLabel('MANAGER',managerId,date),latest:rows[0]||null};
+  }
+  function peopleMemoryProfileHTML(personType,personId,limit=4){
+    const rows=personMemories(personType,personId,{includeExpired:true}).slice(0,limit),active=rows.filter(row=>row.expiresDate>=currentCareerISO());if(!rows.length)return`<section class="people-memory-profile"><header><span>PUBLIC RECORD</span><strong>NO DEFINING COMMENTS YET</strong></header><p>Named press comments and promises will remain attached to this person as the career develops.</p></section>`;
+    return`<section class="people-memory-profile"><header><span>PUBLIC RECORD</span><strong>${escapeHtml(peopleMemoryLabel(personType,personId))}</strong><small>${active.length} ACTIVE MEMORY${active.length===1?'':'IES'}</small></header><div>${rows.map(memory=>`<article class="is-${Number(memory.valence)>0?'positive':Number(memory.valence)<0?'negative':'neutral'}"><time>${shortDateLabel(memory.date)}</time><span><b>${escapeHtml(memory.label)}</b><small>${escapeHtml(memory.summary||'A public comment remains on the record.')}</small></span><em>${memory.expiresDate>=currentCareerISO()?'REMEMBERED':'ARCHIVED'}</em></article>`).join('')}</div></section>`;
+  }
+  function pressMemoryAssessment(choice,effects,question,text){
+    const words=`${choice?.id||''} ${choice?.label||''} ${choice?.stance||''} ${text||''}`.toUpperCase();let value=Number(effects.targetMorale||0)+Number(effects.targetTrust||0)+Number(effects.rivalRespect||0)-Number(effects.rivalHeat||0);if(/PRAISE|RESPECT|CREDIT|DEFEND|BACK THE|SPECIAL|BELIEVE/.test(words))value+=2;if(/BLAME|DISMISS|BETTER THAN|NOT GOOD|EXPOSE|WARNING|QUESTION HIS|QUESTION HER|PRESSURE ON/.test(words))value-=2;if(effects.targetTest)value-=1;const valence=value>=2?1:value<=-2?-1:0,strength=clamp(Math.round(1+Math.abs(value)/2+(effects.headline?1:0)+(effects.callback?1:0)),1,5);return{valence,strength,label:valence>0?'PUBLIC BACKING':valence<0?'PUBLIC CHALLENGE':'ON THE RECORD',callbackEligible:!!effects.callback||!!effects.headline||strength>=3};
+  }
+  function processPeopleMemoryCallbacks(date=currentCareerISO()){
+    if(dateFromISO(date).getUTCDay()!==1)return null;mediaWorld=normalizeMediaWorldState(mediaWorld);const due=mediaWorld.peopleMemories.map(normalizePeopleMemory).filter(memory=>memory.status==='ACTIVE'&&memory.callbackEligible&&memory.expiresDate>=date&&diffDaysISO(memory.date,date)>=28&&(!memory.lastCallbackDate||diffDaysISO(memory.lastCallbackDate,date)>=70)&&memory.callbackCount<2&&hashString(`${worldSeed}-${memory.id}-${date.slice(0,7)}-CALLBACK`)%100<28).sort((a,b)=>Number(b.strength)-Number(a.strength))[0];if(!due)return null;
+    const original=mediaWorld.peopleMemories.find(memory=>memory.id===due.id);if(original){original.lastCallbackDate=date;original.callbackCount=Number(original.callbackCount||0)+1;}const positive=Number(due.valence)>0,person=due.personName||'A named figure',quote=due.summary||'A previous press-conference answer';
+    if(due.personType==='PLAYER'&&getSquad(currentClub).some(player=>String(player.id)===String(due.personId))){addCareerInboxMessage({id:`public-memory-${due.id}-${date}`,type:'SQUAD',sender:'COMMUNICATIONS DIRECTOR',subject:`Your words about ${person} have resurfaced`,preview:positive?'The player still values your public backing.':'The player has not forgotten how the issue was handled in public.',title:`${person} remembers what you said`,body:[`“${quote}”`,positive?'The comment is still helping the relationship inside the club. Selection and private conversations will decide whether that trust deepens.':'The line has returned in the dressing room. A credible role and private handling can repair it, but it has not simply disappeared.'],signoff:'Communications Director',date});}
+    else addCareerNews({id:`public-memory-${due.id}-${date}`,category:'PRESS MEMORY',clubId:due.clubId,playerId:due.personType==='PLAYER'?due.personId:null,title:`OLD WORDS RETURN AROUND ${String(person).toUpperCase()}`,body:[`A previous public comment has returned to the conversation: “${quote}”`,positive?`${person} is understood to have appreciated the manager's public position.`:`The relationship remains coloured by what was said, despite the time that has passed.`],date,reporterId:due.reporterId||null,sourceConfidence:'STRONG SOURCES'});return due;
+  }
   function mediaRivalryLabel(r){if(!r)return'NO HISTORY';const heat=Number(r.heat||0),respect=Number(r.respect??55);if(heat>=72&&respect<45)return'HEATED RIVALRY';if(heat>=55)return'EDGE DEVELOPING';if(Number(r.meetings||0)>=3&&respect>=65)return'MUTUAL RESPECT';if(Number(r.meetings||0)>=2)return'FAMILIAR OPPONENTS';return'EARLY HISTORY';}
   function mediaPublicationForStory(story,fallbackClub=currentClub||selectedClub||clubs[0]){
     const world=storyWorld(story,fallbackClub),brands=WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora;
@@ -4474,7 +5145,7 @@
   }
   function mediaRivalryPreMatch(date=currentCareerISO()){
     if(!currentClub||employmentStatus!=='employed')return null;const f=nextUserFixture(date,true);if(!f||f.played)return null;const days=diffDaysISO(date,f.date);if(days<1||days>3)return null;const fc=fixtureClubs(f),opp=fc.home?.id===currentClub.id?fc.away:fc.home,manager=currentClubManager(opp);if(!manager||manager.id===PLAYER_MANAGER_ID)return null;const r=managerMarket.rivalries[manager.id]||null,stakes=matchdayStakeLabel(f,currentClub);if(!r&& !stakes)return null;const meetings=Number(r?.meetings||0),heat=Number(r?.heat||0);if(meetings<2&&!stakes)return null;const key=`RIVALRY-PRE-${f.fixtureId}`;if(!mediaCooldownReady(key,date,100))return null;const n=upsertMediaNarrative({key:`RIVALRY-${manager.id}`,type:'MANAGER_RIVALRY',title:`${managerName} v ${manager.name}`,clubIds:[currentClub.id,opp.id],managerIds:[PLAYER_MANAGER_ID,manager.id],heat:clamp(Math.max(42,heat)+(stakes?12:0),0,100),date});const style=String(manager.mediaStyle||'GUARDED'),aiLine=style==='BOLD'?`${manager.name}'s camp has projected confidence before the meeting.`:style==='DIPLOMATIC'?`${manager.name} has kept the buildup respectful and focused on the teams.`:style==='ANALYTICAL'?`${manager.name} has emphasised tactical details rather than personal history.`:`${manager.name} has kept public discussion controlled.`;const story=mediaAddNews({id:`media-rivalry-pre-${f.fixtureId}-${date}`,category:stakes||'MANAGER RIVALRY',clubId:currentClub.id,relatedClubIds:[currentClub.id,opp.id],title:meetings>=3?`${managerName.toUpperCase()} AND ${manager.name.toUpperCase()} MEET AGAIN`:`${currentClub.name.toUpperCase()} FACE ${opp.name.toUpperCase()} WITH STORYLINES BUILDING`,body:[stakes?`${stakes} adds another layer to an already significant fixture.`:`The repeated meetings are beginning to create a familiar managerial subplot.`,`${meetings} previous meeting${meetings===1?'':'s'} between the managers · ${Number(r?.wins||0)}W ${Number(r?.draws||0)}D ${Number(r?.losses||0)}L from ${managerName}'s perspective.`,aiLine],sourceConfidence:'CONFIRMED',date});mediaNarrativeBeat(n,'Pre-match coverage',date,story.id);markMediaCooldown(key,date);
-    let decision=null;if(!pendingDecisionEvent()&&eventCooldownReady(`MEDIA-${manager.id}`,date,28)&&(heat>=42||meetings>=3||!!stakes)){const reporter=mediaReporterForStory(story,currentClub);decision=queueDecisionEvent({id:`DEC-MEDIA-${f.fixtureId}-${date}`,kind:'MEDIA_RESPONSE',category:'MEDIA',cooldownKey:`MEDIA-${manager.id}`,title:`The press want your view on ${manager.name}`,body:`${reporter?.name||'A reporter'} has asked about the growing storyline before ${currentClub.name} face ${opp.name}.`,rivalManagerId:manager.id,opponentClubId:opp.id,reporterId:reporter?.id||null,fixtureId:f.fixtureId,topic:stakes||'MANAGER_RIVALRY',choices:[{id:'respectful',label:'SHOW RESPECT',copy:'Keep the focus on the fixture and acknowledge the opposition.'},{id:'neutral',label:'KEEP IT MEASURED',copy:'Give the press very little to turn into a headline.'},{id:'provocative',label:'TURN UP THE PRESSURE',copy:'Back your side strongly and add some edge to the buildup.'}]});}
+    let decision=null;if(!pendingDecisionEvent()&&eventCooldownReady(`MEDIA-${manager.id}`,date,28)&&(heat>=42||meetings>=3||!!stakes)){const reporter=mediaReporterForStory(story,currentClub),record=meetings?`${Number(r?.wins||0)} wins, ${Number(r?.draws||0)} draws and ${Number(r?.losses||0)} defeats`:'no previous meetings',question=`${manager.name} has become part of the buildup to this fixture. With ${record} from your perspective, do you respect the threat ${opp.name} pose or believe ${currentClub.name} should be setting the terms?`;decision=queueDecisionEvent({id:`DEC-MEDIA-${f.fixtureId}-${date}`,kind:'MEDIA_RESPONSE',category:'LIVE MEDIA',cooldownKey:`MEDIA-${manager.id}`,title:`Before ${currentClub.name} v ${opp.name}`,body:`${reporter?.name||'A reporter'} wants your response to the growing storyline around ${manager.name}.`,question,rivalManagerId:manager.id,opponentClubId:opp.id,reporterId:reporter?.id||null,fixtureId:f.fixtureId,topic:stakes||'MANAGER_RIVALRY',choices:[{id:'respectful',tone:'RESPECTFUL',intent:'CALM THE STORY',risk:`${manager.name.toUpperCase()} · RESPECT`,label:`“${manager.name.toUpperCase()} DESERVES RESPECT”`,copy:`Acknowledge ${manager.name} and ${opp.name}, then bring the answer back to the contest.`},{id:'neutral',tone:'MEASURED',intent:'CONTROL THE LINE',risk:'LIMIT THE HEADLINE',label:'“THIS IS ABOUT THE MATCH”',copy:'Refuse the personal angle and give away nothing about your approach.'},{id:'provocative',tone:'BOLD',intent:'SEIZE THE STORY',risk:'RIVALRY HEAT',label:'“THEY SHOULD WORRY ABOUT US”',copy:`Put the pressure onto ${opp.name} and give the room a headline.`}]});}
     return{story,decision};
   }
   function processMediaNarrativesDay(date=currentCareerISO(),resolvedFixtures=[],marketEvents=[]){
@@ -4612,7 +5283,7 @@
     return data;
   }
   function processV2073TransferMarketPulse(event,date){
-    const w=transferWindows.find(x=>x.id===event.payload?.windowId);if(!w||!currentClub)return null;const state=v2073PacingState();if(state.lastWindowPulseDate===date)return null;state.lastWindowPulseDate=date;initializeLivingSquadState(false);const listed=getSquad(currentClub).filter(p=>p.transferStatus==='TRANSFER_LISTED'||p.transferRequested).length,incoming=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status)).length,clubTalks=Object.values(negotiationEngine?.clubSessions||{}).filter(x=>x.state==='ACTIVE').length;
+    const w=transferWindows.find(x=>x.id===event.payload?.windowId);if(!w||!currentClub)return null;const state=v2073PacingState();if(state.lastWindowPulseDate===date)return null;state.lastWindowPulseDate=date;initializeLivingSquadState(false);const listed=getSquad(currentClub).filter(p=>clubCanMarketPlayer(currentClub,p)&&(p.transferStatus==='TRANSFER_LISTED'||p.transferRequested)).length,incoming=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status)&&clubCanMarketPlayer(currentClub,careerPlayerById(o.playerId))).length,clubTalks=Object.values(negotiationEngine?.clubSessions||{}).filter(x=>x.state==='ACTIVE').length;
     addCareerInboxMessage({id:`v2073-window-pulse-${w.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Final week of the ${w.name.toLowerCase()}`,preview:`${listed} listed · ${incoming} incoming offer${incoming===1?'':'s'} · ${clubTalks} active purchase talk${clubTalks===1?'':'s'}.`,title:'The transfer market enters its final week',body:[`Seven days remain before ${w.name.toLowerCase()} closes.`,`Current club activity: ${listed} outgoing player${listed===1?'':'s'} actively marketed, ${incoming} live incoming offer${incoming===1?'':'s'} and ${clubTalks} active club negotiation${clubTalks===1?'':'s'}.`,`Club responses to transfer-fee offers remain immediate. Deadline pressure changes leverage, not response waiting time.`],signoff:'Transfer Office',action:{label:'OPEN TRANSFERS',route:'transfers'},date});
     return{windowId:w.id,listed,incoming,clubTalks};
   }
@@ -4622,27 +5293,21 @@
   function v65SupporterStatus(score){score=Number(score||0);return score>=82?'BUOYANT':score>=68?'OPTIMISTIC':score>=52?'STEADY':score>=38?'RESTLESS':'DISCONTENT';}
   function v65SquadStatus(score){score=Number(score||0);return score>=80?'HARMONIOUS':score>=68?'POSITIVE':score>=56?'SETTLED':score>=43?'UNEASY':'FRACTURED';}
   function v65PulseMetrics(club=currentClub){
-    const form=recentClubForm(club,6),latest=form.slice(0,3),previous=form.slice(3,6),rows=standingsForDivision(club.divisionKey),row=leagueRowForClub(club),target=primaryTargetPosition(club.expectation,Math.max(1,rows.length)),tableLift=row?clamp((target-Number(row.pos||target))*2,-12,12):0,supporterScore=clamp(v65PulseFormScore(form)+tableLift,0,100),supporterReference=previous.length?clamp(v65PulseFormScore(previous)+tableLift,0,100):supporterScore,supporterTrend=latest.length&&previous.length?v65PulseTrend(v65PulseFormScore(latest),v65PulseFormScore(previous),5):v65PulseTrend(supporterScore,supporterReference);
-    const atmosphere=squadAtmosphereSnapshot(club),squad=getSquad(club),relationshipTrend=squad.length?squad.reduce((sum,p)=>sum+Number(p.relationshipTrend||0),0)/squad.length:0,squadReference=clamp(Number(atmosphere.score||60)-(relationshipTrend>0.45?5:relationshipTrend<-.45?-5:0),0,100),squadTrend=v65PulseTrend(atmosphere.score,squadReference);
-    const boardScore=ensureBoardConfidence(),boardReference=objectiveConfidenceBaseline(club),boardTrend=v65PulseTrend(boardScore,boardReference,6);
-    return[
-      {key:'supporters',label:'SUPPORTERS',status:v65SupporterStatus(supporterScore),score:supporterScore,tone:v65PulseTone(supporterScore),trend:supporterTrend},
-      {key:'squad',label:'DRESSING ROOM',status:v65SquadStatus(atmosphere.score),score:atmosphere.score,tone:v65PulseTone(atmosphere.score),trend:squadTrend},
-      {key:'board',label:'BOARD',status:boardConfidenceTier(boardScore),score:boardScore,tone:v65PulseTone(boardScore),trend:boardTrend}
-    ];
+    const live=clubPulseSnapshot(club);if(live.length)return live.map(item=>({...item,tone:v65PulseTone(item.score)}));
+    const form=recentClubForm(club,6),supporterScore=v65PulseFormScore(form),atmosphere=squadAtmosphereSnapshot(club),boardScore=ensureBoardConfidence();return[{key:'supporters',label:'SUPPORTERS',status:v65SupporterStatus(supporterScore),score:supporterScore,tone:v65PulseTone(supporterScore),trend:v65PulseTrend(supporterScore,supporterScore),memories:[],pending:0},{key:'dressing',label:'DRESSING ROOM',status:v65SquadStatus(atmosphere.score),score:atmosphere.score,tone:v65PulseTone(atmosphere.score),trend:v65PulseTrend(atmosphere.score,atmosphere.score),memories:[],pending:0},{key:'board',label:'BOARD',status:boardConfidenceTier(boardScore),score:boardScore,tone:v65PulseTone(boardScore),trend:v65PulseTrend(boardScore,boardScore),memories:[],pending:0},{key:'press',label:'PRESS',status:v103PressStatus(52),score:52,tone:'neutral',trend:v65PulseTrend(52,52),memories:[],pending:0}];
   }
-  function v65PulseMetricGlyph(key){const paths={supporters:'<path d="M5 19v-1.2c0-2.1 2.1-3.8 4.7-3.8h.6c2.6 0 4.7 1.7 4.7 3.8V19"/><circle cx="10" cy="8.2" r="3.1"/><path d="M15.5 11.8c2.1.2 3.5 1.5 3.5 3.3V16"/><path d="M15.8 5.6a2.7 2.7 0 0 1 0 5.2"/>',squad:'<path d="M4 18.5h16"/><path d="M6.2 18.5v-5.2h3.3v5.2M14.5 18.5v-5.2h3.3v5.2"/><circle cx="7.8" cy="8.5" r="2.5"/><circle cx="16.2" cy="8.5" r="2.5"/>',board:'<path d="M4 18h16M6 18V9l6-4 6 4v9M9.2 18v-5.2h5.6V18"/><path d="M8 9.6h8"/>'};return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[key]||paths.board}</svg>`;}
+  function v65PulseMetricGlyph(key){const paths={supporters:'<path d="M5 19v-1.2c0-2.1 2.1-3.8 4.7-3.8h.6c2.6 0 4.7 1.7 4.7 3.8V19"/><circle cx="10" cy="8.2" r="3.1"/><path d="M15.5 11.8c2.1.2 3.5 1.5 3.5 3.3V16"/><path d="M15.8 5.6a2.7 2.7 0 0 1 0 5.2"/>',squad:'<path d="M4 18.5h16"/><path d="M6.2 18.5v-5.2h3.3v5.2M14.5 18.5v-5.2h3.3v5.2"/><circle cx="7.8" cy="8.5" r="2.5"/><circle cx="16.2" cy="8.5" r="2.5"/>',dressing:'<path d="M4 18.5h16"/><path d="M6.2 18.5v-5.2h3.3v5.2M14.5 18.5v-5.2h3.3v5.2"/><circle cx="7.8" cy="8.5" r="2.5"/><circle cx="16.2" cy="8.5" r="2.5"/>',board:'<path d="M4 18h16M6 18V9l6-4 6 4v9M9.2 18v-5.2h5.6V18"/><path d="M8 9.6h8"/>',press:'<path d="M7 4h8.5a2 2 0 0 1 2 2v12H7z"/><path d="M4.5 7H7v11a2 2 0 0 1-2 2h10.5a2 2 0 0 0 2-2M10 8h4.5M10 11h4.5M10 14h3"/>'};return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[key]||paths.board}</svg>`;}
   function renderCentralSeasonPulse(){
     const target=document.getElementById('centralClubPulse');if(!target||!currentClub)return;const preSeason=v2080IsPreSeasonWindow();if(preSeason)v2080EnsurePreSeasonExperience(false);const phase=v2073SeasonPhaseProfile(),metrics=v65PulseMetrics(currentClub);v2073PacingState().lastPhaseKey=phase.key;
-    target.innerHTML=`<div class="v65-club-pulse is-${escapeHtml(phase.tone)}"><header class="v65-pulse-lead"><div><span>${escapeHtml(phase.label)}</span><strong>${escapeHtml(phase.title)}</strong></div><em>${escapeHtml(phase.race)}</em></header><div class="v65-pulse-metrics">${metrics.map(metric=>`<article class="is-${metric.tone}"><i class="v65-pulse-icon" aria-hidden="true">${v65PulseMetricGlyph(metric.key)}</i><div><span>${escapeHtml(metric.label)}</span><strong>${escapeHtml(metric.status)}</strong></div><small class="v65-pulse-trend is-${metric.trend.key}" title="${escapeHtml(metric.trend.label)}"><b aria-hidden="true">${metric.trend.glyph}</b>${escapeHtml(metric.trend.label)} <em>${metric.score}</em></small></article>`).join('')}</div><footer><p title="${escapeHtml(phase.copy)}">${escapeHtml(phase.copy)}</p><button type="button" data-v65-pulse-details>${preSeason?'SEASON BRIEFING':'VIEW DETAILS'} <span aria-hidden="true">→</span></button></footer></div>`;
-    target.querySelector('[data-v65-pulse-details]')?.addEventListener('click',()=>{if(preSeason)openV2080NewSeasonExperience();else centralOpenOffice('board');});
+    target.innerHTML=`<div class="v65-club-pulse v103-club-pulse is-${escapeHtml(phase.tone)}"><header class="v65-pulse-lead"><div><span>${escapeHtml(phase.label)} · CLUB PULSE</span><strong>${escapeHtml(phase.title)}</strong></div><em>${escapeHtml(phase.race)}</em></header><div class="v65-pulse-metrics">${metrics.map(metric=>{const memory=metric.memories?.[0];return`<article class="is-${metric.tone}" tabindex="0" role="button" data-club-pulse-audience="${metric.key}" aria-label="Open ${escapeHtml(metric.label)} memories"><i class="v65-pulse-icon" aria-hidden="true">${v65PulseMetricGlyph(metric.key)}</i><div><span>${escapeHtml(metric.label)}</span><strong>${escapeHtml(metric.status)}</strong></div><small class="v65-pulse-trend is-${metric.trend.key}" title="${escapeHtml(metric.trend.label)}"><b aria-hidden="true">${metric.trend.glyph}</b>${escapeHtml(metric.trend.label)} <em>${metric.score}</em></small><p class="v103-pulse-memory">${memory?`<b>${escapeHtml(memory.title)}</b><span>${escapeHtml(memory.summary)}</span>`:'<b>NO ACTIVE MEMORY</b><span>This audience is forming its view.</span>'}</p>${metric.pending?`<mark>${metric.pending} LIVE</mark>`:''}</article>`;}).join('')}</div><footer><p title="${escapeHtml(phase.copy)}">${escapeHtml(phase.copy)}</p><button type="button" data-v65-pulse-details>OPEN CLUB PULSE <span aria-hidden="true">→</span></button></footer></div>`;
+    const open=node=>openClubPulseDossier(node?.dataset.clubPulseAudience||'');target.querySelector('[data-v65-pulse-details]')?.addEventListener('click',()=>openClubPulseDossier());target.querySelectorAll('[data-club-pulse-audience]').forEach(node=>{node.addEventListener('click',()=>open(node));node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open(node);}});});
   }
   function v2073TransferWindowContext(window=transferWindowForDate()){if(!window)return{label:'TRANSFER WINDOW CLOSED',phase:'CLOSED',daysLeft:null};const phase=transferMarketWindowPhase(currentCareerISO()),daysLeft=Math.max(0,diffDaysISO(currentCareerISO(),window.end)),label=phase==='DEADLINE'?`${window.name} · DEADLINE DAY`:phase==='LATE'?`${window.name} · FINAL ${daysLeft} DAYS`:`${window.name} OPEN`;return{label,phase,daysLeft,window};}
   function v2073DeadlineFeedEntries(){
     if(!currentClub)return[];initializeLivingSquadState(false);const since=addDaysISO(currentCareerISO(),-7),rows=[];
     (livingSquad.transferHistory||[]).filter(x=>x.date>=since).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.fee||0)-Number(a.fee||0)).slice(0,4).forEach(x=>rows.push({tag:'COMPLETED',title:x.playerName||careerPlayerById(x.playerId)?.name||'Transfer completed',copy:`${clubById(x.fromClubId)?.name||'Club'} → ${clubById(x.toClubId)?.name||'Club'} · ${formatMoney(Number(x.fee||0))}`}));
     livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status)).slice(0,2).forEach(o=>{const p=careerPlayerById(o.playerId),b=clubById(o.buyerClubId);rows.push({tag:o.status==='FINAL_OFFER'?'FINAL OFFER':'LIVE OFFER',title:p?.name||'Incoming offer',copy:`${b?.name||'Buyer'} · ${formatMoney(Number(o.currentFee||0))}`});});
-    getSquad(currentClub).filter(p=>p.transferStatus==='TRANSFER_LISTED'||p.transferRequested).map(p=>({p,s:livingMarketInterestSummary(p)})).filter(x=>x.s.count||x.s.offers).sort((a,b)=>b.s.serious-a.s.serious||b.s.count-a.s.count).slice(0,2).forEach(x=>rows.push({tag:'OUTGOING',title:x.p.name,copy:x.s.label}));
+    getSquad(currentClub).filter(p=>clubCanMarketPlayer(currentClub,p)&&(p.transferStatus==='TRANSFER_LISTED'||p.transferRequested)).map(p=>({p,s:livingMarketInterestSummary(p)})).filter(x=>x.s.count||x.s.offers).sort((a,b)=>b.s.serious-a.s.serious||b.s.count-a.s.count).slice(0,2).forEach(x=>rows.push({tag:'OUTGOING',title:x.p.name,copy:x.s.label}));
     Object.values(negotiationEngine?.clubSessions||{}).filter(x=>x.state==='ACTIVE').slice(0,2).forEach(x=>{const p=careerPlayerById(x.playerId);rows.push({tag:'NEGOTIATING',title:p?.name||'Active talks',copy:x.finalOffer?'Final club position received':'Club-to-club talks remain active'});});
     return rows.slice(0,6);
   }
@@ -4795,8 +5460,10 @@
   function renderCentralNewsFeature(club,opponent,nextFixture){
     const newsroom=window.VELMORA_CENTRAL_NEWS;
     if(!newsroom)return;
-    const fixtureMode=newsroom.fixtureIsDue(currentCareerISO(),nextFixture);
-    const items=fixtureMode?[]:centralNewsFeatureItems(club,opponent,nextFixture);
+    // V75 Central is a permanent match-planning dashboard. News remains in
+    // the dedicated Latest News rail instead of replacing the main fixture.
+    const fixtureMode=true;
+    const items=[];
     newsroom.render({fixtureMode,items,dateLabel:shortDateLabel(currentCareerISO()).toUpperCase(),
       onOpen:id=>openCareerNewsOverlay(items,id,club),
       hydrate:node=>queueManagerHydration(node),isBlocked:()=>!!currentBlockingOverlay()});
@@ -4845,7 +5512,14 @@
     const daysToMatch=nextFixture?Math.max(0,diffDaysISO(currentCareerISO(),nextFixture.date)):'—';
     const homeFormMini=recentClubForm(home,3);
     const awayFormMini=recentClubForm(away,3);
-    $('#centralHeroMeta').textContent=nextFixture?`${shortDateLabel(nextFixture.date).toUpperCase()} · ${String(nextFixture.competitionName||'LEAGUE').toUpperCase()}`:'NO FIXTURE SCHEDULED';
+    const centralHeroMeta=$('#centralHeroMeta');
+    if(centralHeroMeta){
+      const fixtureDateLine=nextFixture?`${shortDateLabel(nextFixture.date).toUpperCase()} · ${String(nextFixture.competitionName||'LEAGUE').toUpperCase()}`:'NO FIXTURE SCHEDULED';
+      const fixtureCountdown=nextFixture
+        ?(daysToMatch===0?'MATCHDAY IS TODAY':daysToMatch===1?'1 DAY UNTIL MATCHDAY':`${daysToMatch} DAYS UNTIL MATCHDAY`)
+        :'';
+      centralHeroMeta.innerHTML=`<span class="central-fixture-date">${escapeHtml(fixtureDateLine)}</span>${fixtureCountdown?`<small class="central-fixture-countdown${daysToMatch===0?' is-matchday':''}">${escapeHtml(fixtureCountdown)}</small>`:''}`;
+    }
     $('#centralHomeRecord').textContent=homeRow?`${ordinal(homeRow.pos)} · ${homeRow.pts} PTS · ${homeRow.gf}-${homeRow.ga}`:'TABLE POSITION TBD';
     $('#centralAwayRecord').textContent=awayRow?`${ordinal(awayRow.pos)} · ${awayRow.pts} PTS · ${awayRow.gf}-${awayRow.ga}`:'TABLE POSITION TBD';
     const centralMatchBtn=$('#centralContinue');
@@ -4871,8 +5545,12 @@
     $('#centralNewsAll')?.addEventListener('click',openAllCareerNews,{once:true});
 
     const objectives=buildBoardObjectives(club);
-    $('#centralObjectives').innerHTML=objectives.map(o=>`
-      <button type="button" class="objective-row central-objective-row" data-central-office-tab="board" title="Open Board Expectations">
+    const centralObjectives=$('#centralObjectives');
+    const objectivePanel=$('.central-objectives-panel'),challengeDef=careerChallengeDefinition(careerChallenge?.key),challengeActive=careerChallenge?.status==='ACTIVE'&&careerChallenge.clubId===club.id&&careerChallenge.seasonId===careerTime.seasonId;
+    if(objectivePanel){objectivePanel.classList.toggle('is-v70-challenge',!!challengeActive);objectivePanel.classList.toggle('is-v70-complete',careerChallenge?.status==='COMPLETED'&&careerChallenge.clubId===club.id);objectivePanel.classList.toggle('is-v70-failed',careerChallenge?.status==='FAILED'&&careerChallenge.clubId===club.id);const headerLabel=objectivePanel.querySelector('.central-panel-header span:nth-of-type(2)');if(headerLabel)headerLabel.textContent=challengeActive?`${challengeDef?.title||'CHALLENGE'} · LIVE`:'Board expectations';}
+    centralObjectives.style.setProperty('--central-objective-count',String(Math.max(1,objectives.length)));
+    centralObjectives.innerHTML=objectives.map(o=>`
+      <button type="button" class="objective-row central-objective-row ${String(o.id||'').startsWith('challenge-')?'is-challenge':''}" data-central-office-tab="board" title="Open Board Expectations">
         <div class="objective-icon">${o.icon}</div>
         <div class="objective-copy"><strong>${escapeHtml(o.title)}</strong><div class="objective-meta"><span>${escapeHtml(o.status)}</span><b>${o.progress}%</b></div><div class="progress"><i style="width:${o.progress}%"></i></div></div>
       </button>`).join('');
@@ -4956,11 +5634,14 @@
     careerTime={currentDate:'2026-08-01',seasonId:'2026-27',seasonNumber:1,dayNumber:1};
     fixtures=[];v202MarkCompetitionDataDirty();calendarEvents=[];transferWindows=[];careerInboxMessages=[];careerNewsStories=[];pendingNegotiations=[];processedCalendarEvents.clear();
     careerDecisionEvents=[];playerPromises=[];careerEventCooldowns={};aiTransferHistory=[];developmentSnapshots={};negotiationEngine=normalizeNegotiationEngineState({});careerRuntime={boardConfidence:null,lastBoardConfidenceDate:null,lastDevelopmentMonth:null,lastAiTransferDate:null,lastLivingNewsDate:null};unexpectedEvents=normalizeUnexpectedEventsState({});cupRuntime={roundByes:{}};
+    careerChallenge=normalizeCareerChallenge({});
     roadToGlory=normalizeRoadToGloryState({});
     managerMarket=normalizeManagerMarketState({});
+    ownershipState={version:1,profiles:{},relationships:{},takeovers:[],sequence:0,createdDate:null};
+    audienceWorldState={version:1,sequence:0,clubs:{},pendingOutcomes:[],resolvedOutcomes:[],lastProcessDate:null};
     mediaWorld=normalizeMediaWorldState({});
     selectedCalendarDate=null;seasonCalendarCursor=null;
-    seasonBrowseWorld=null;seasonBrowseDivisionKey=null;seasonSelectedClubId=null;seasonClubProfileTab='overview';seasonTableScrollTop=0;
+    seasonBrowseWorld=null;seasonBrowseDivisionKey=null;seasonSelectedClubId=null;seasonClubProfileTab='overview';seasonTableScrollTop=0;seasonCupWorld=null;seasonCupKind='national';
     squadView='senior';
     selectedYouthId=null;
     selectedLegendId=null;
@@ -5137,7 +5818,7 @@
       const jitter=Math.round((rng()-.5)*12);
       stats[key]=clamp(Math.round(ovr + biases[key] + jitter),35,94);
     }
-    return stats;
+    return performanceRules?performanceRules.calibrateStats(stats,ovr,role):stats;
   }
 
   function generateSquad(club){
@@ -5168,8 +5849,7 @@
       const form=choose(formStates,rng,'Average');
       const contractYears=1+Math.floor(rng()*5);
       const wage=Math.max(900,Math.round((ovr-45)*(ovr-45)*12 + club.tier*250));
-      const ageFactor=age<24?1.15:age>30?.72:1;
-      const value=Math.max(90_000,Math.round(Math.pow(Math.max(1,ovr-45),2.32)*2700*ageFactor));
+      const value=Math.max(90_000,playerAbilityValue(ovr,age));
       let potentialStatus='Established';
       if(age<=22 && potential>=90) potentialStatus='Potential to Be Special';
       else if(age<=23 && potential>=85) potentialStatus='Exciting Prospect';
@@ -5405,7 +6085,7 @@
       version:2,managerReputation:18,
       managerCareerTotals:{matches:0,wins:0,draws:0,losses:0,promotions:0,relegations:0,leagueTitles:0,domesticCups:0,continentalCups:0},
       careerHistory:[],clubHistory:{},competitionHistory:[],championsCrownQualifications:[],milestones:[],clubState:{},seasonStartPlayers:{},completedWorldSeasons:[],
-      worldHistory:[],monthlyAwards:[],managerAwards:[],awardSnapshots:{date:null,players:{}},recordBook:{biggestWin:null,highestScoringMatch:null,longestUnbeaten:null,recordTransfer:null},
+      worldHistory:[],monthlyAwards:[],managerAwards:[],awardSnapshots:{date:null,players:{}},recordBook:{biggestWin:null,highestScoringMatch:null,longestUnbeaten:null,recordTransfer:null,trackingSeasonId:null,activeUnbeatenRuns:{}},
       presentation:{seenAchievementKeys:[],lastSeasonFinaleId:null},
       pacing:{seasonId:null,seenMomentKeys:[],pendingMoment:null,lastPhaseKey:null,lastCheckpointDate:null,lastWindowPulseDate:null},
       playoffState:{seasonId:null,generated:false,finalsGenerated:false,completed:false},
@@ -5972,7 +6652,7 @@
     return `<section class="v44-job-watchlist"><header><div><span>JOB WATCHLIST</span><h3>Clubs you are following</h3><p>Only meaningful pressure or vacancy changes will be surfaced.</p></div><b>${rows.length}/6</b></header><div>${rows.length?rows.map(club=>{const m=currentClubManager(club),fit=managerClubInterestScore(club);return `<article><div class="v44-watch-crest">${badgeHTML(club)}</div><div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><strong>${escapeHtml(club.name)}</strong><small>${m?`${escapeHtml(v44ManagerStatusLabel(m))}: ${escapeHtml(m.name)} · ${escapeHtml(managerSecurityLabel(m.jobSecurity))}`:'Managerial seat open'}</small></div><div class="v44-watch-state"><b>${fit}</b><span>${escapeHtml(managerSuitabilityLabel(club))} FIT</span><em>${escapeHtml(v44VacancyOutlook(club))}</em></div><button type="button" data-manager-watch="${club.id}">UNWATCH</button></article>`;}).join(''):`<div class="manager-market-empty"><span>NO WATCHED CLUBS</span><h3>Follow jobs that matter to your career.</h3><p>Use the star on a vacancy card. You will only hear about material changes.</p></div>`}</div></section>`;
   }
   function v44RecommendedForYouHTML(){
-    const rows=v44RecommendedVacancies();return `<section class="v44-manager-recommended"><header><span>RECOMMENDED FOR YOU</span><h3>Openings that match your career</h3><p>Built from the Manager Market's existing suitability model — not a separate hidden score.</p></header><div>${rows.length?rows.map(({club,score})=>`<article><div>${badgeHTML(club)}</div><section><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><strong>${escapeHtml(club.name)}</strong><small>${v44ManagerFitReasons(club).map(escapeHtml).join(' · ')}</small></section><aside><b>${Math.round(score)}</b><span>${escapeHtml(managerSuitabilityLabel(club))} FIT</span></aside><button type="button" data-manager-club-view="${club.id}">VIEW</button></article>`).join(''):`<div class="manager-market-empty"><span>NO STRONG MATCH TODAY</span><h3>The market is live, not scripted.</h3><p>New openings will appear as results and managerial pressure change.</p></div>`}</div></section>`;
+    const rows=v44RecommendedVacancies();if(!rows.length)return'<section class="v44-manager-recommended is-empty" hidden><span>RECOMMENDED FOR YOU</span></section>';return `<section class="v44-manager-recommended"><header><span>RECOMMENDED FOR YOU</span><h3>Openings that match your career</h3><p>Built from the Manager Market's existing suitability model — not a separate hidden score.</p></header><div>${rows.map(({club,score})=>`<article><div>${badgeHTML(club)}</div><section><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><strong>${escapeHtml(club.name)}</strong><small>${v44ManagerFitReasons(club).map(escapeHtml).join(' · ')}</small></section><aside><b>${Math.round(score)}</b><span>${escapeHtml(managerSuitabilityLabel(club))} FIT</span></aside><button type="button" data-manager-club-view="${club.id}">VIEW</button></article>`).join('')}</div></section>`;
   }
   function v44NotifyWatchedClub(club,kind,date=currentCareerISO(),copy=''){
     if(!club||!v44JobWatchlisted(club))return false;const key=`WATCH-${club.id}-${kind}-${String(date).slice(0,7)}`;if(managerMarket.mediaMilestones[key])return false;managerMarket.mediaMilestones[key]=true;
@@ -6017,6 +6697,7 @@
     const currentId=managerMarket.clubManagers[club.id],departingId=previousManagerId||currentId||null,departing=departingId&&departingId!==PLAYER_MANAGER_ID?managerMarket.managers[departingId]:null;
     if(currentId&&currentId!==PLAYER_MANAGER_ID&&!options.keepPreviousEmployed){const old=managerMarket.managers[currentId];if(old){recordAiManagerDeparture(old,club,date,reason);old.status='UNEMPLOYED';old.currentClubId=null;old.lastClubId=club.id;old.lastDepartureDate=date;old.lastDepartureReason=reason;old.pressurePhase='NONE';}}
     managerMarket.clubManagers[club.id]=null;
+    chairmanRecord(club,departingId||'UNASSIGNED',{type:'MANAGER_DEPARTURE',importance:'MAJOR',reason,metadata:{previousManagerId:departingId}});
     if(managerMarket.aiClubPlans?.[club.id]){managerMarket.aiClubPlans[club.id].managerId=null;managerMarket.aiClubPlans[club.id].dirty=true;managerMarket.aiClubPlans[club.id].vacantSince=date;}
     const rng=mulberry32(hashString(`${worldSeed}-VACANCY-${club.id}-${date}-${reason}`));
     const vacancy={id:managerMarketNextId('VAC'),clubId:club.id,dateOpened:date,reason,previousManagerId:departingId,status:'OPEN',fillAfterDate:addDaysISO(date,5+Math.floor(rng()*5)),expiresDate:addDaysISO(date,28),contractYears:1+Math.floor(rng()*3),weeklySalary:jobSalaryForClub(club,`vac-${date}`),boardExpectation:club.expectation||'Build steadily',shortlistManagerIds:[],shortlistPublishedDate:null};
@@ -6035,20 +6716,22 @@
     ensureAiManagerAppearanceProfile(m,club);
     managerMarket.aiPressure[m.id]={phase:'NONE',since:null,lastPhaseDate:date,lastNewsDate:null,lastSecurity:68,clubId:club.id};
     managerMarket.clubManagers[club.id]=managerId;const clubPlan=resetAiClubPlanForManager(club,m,date);aiClubSquadPlanReview(club,date,true);const vacancy=managerVacancyForClub(club.id);if(vacancy){vacancy.status='FILLED';vacancy.filledDate=date;vacancy.appointedManagerId=managerId;}
+    const owner=chairmanForClub(club),compatibility=window.VelmoraChairmen?.appointmentCompatibility(owner,m,club)??50;m.ownerCompatibility=compatibility;chairmanRelationship(club,managerId);chairmanRecord(club,managerId,{type:'APPOINTMENT',importance:'MAJOR',reason:`${m.name} appointed as permanent manager`,metadata:{compatibility,fromClubId:oldClubId||null}});
     addCareerNews({id:`manager-appointment-${club.id}-${managerId}-${date}`,category:'MANAGER MARKET',world:clubWorldName(club),clubId:club.id,relatedClubIds:[club.id,...(oldClub?[oldClub.id]:[])],title:promotedCaretaker?`${club.name.toUpperCase()} KEEP ${m.name.toUpperCase()} AFTER CARETAKER RUN`:`${club.name.toUpperCase()} APPOINT ${m.name.toUpperCase()}`,body:[promotedCaretaker?`${m.name} has earned the permanent ${club.name} job after an interim spell.`:oldClub?`${m.name} leaves ${oldClub.name} to take charge of ${club.name}.`:`${m.name} has been appointed manager of ${club.name}.`,`${managerProfileDescriptor(m)} · reputation ${Math.round(Number(m.reputation||0))}/100.`,`The new staff are expected to move toward ${aiTacticalProfileShort(clubPlan?.tacticalProfile||m.tacticalProfile).toLowerCase()} while the squad is reassessed for the manager's preferred approach.`,`The board have handed ${m.name} a contract through ${shortDateLabel(m.contractEnd)}.`],image:club.badge,date});
     managerMarket.marketHistory.unshift({date,type:'AI_APPOINTMENT',clubId:club.id,managerId,fromClubId:oldClubId||null});return true;
   }
   function aiManagerSecurityScore(club,manager){
     const rows=standingsForDivision(club.divisionKey),row=rows.find(r=>r.club.id===club.id);if(!row)return 60;enrichAiManagerIdentity(manager,club);
     const target=expectationTargetPosition(club),gap=Number(row.pos||18)-Number(target||10),played=Number(row.played||0),form=recentClubForm(club,6),formPts=form.reduce((sum,r)=>sum+(r==='W'?3:r==='D'?1:0),0),record=aiManagerSpellRecord(manager,club),tenure=managerTenureDays(manager);
-    const expectedForm=Math.min(11,Math.max(6,8+(Number(club.reputation||1)-2)*.5));let score=66-gap*4.25+(formPts-expectedForm)*2.1+(Number(manager?.reputation||40)-managerDesiredReputation(club))*.12;
+    const owner=chairmanForClub(club),ownerDims=owner?.dimensions||{},patience=Number(ownerDims.patience||50),ambition=Number(ownerDims.ambition||50),compatibility=Number(manager?.ownerCompatibility??window.VelmoraChairmen?.appointmentCompatibility(owner,manager,club)??50);
+    const expectedForm=Math.min(11,Math.max(6,8+(Number(club.reputation||1)-2)*.5));let score=66-gap*(3.7+(ambition/100)*1.1)+(formPts-expectedForm)*(1.65+(100-patience)/100)+(Number(manager?.reputation||40)-managerDesiredReputation(club))*.12+(patience-50)*.12+(compatibility-50)*.08;
     if(record.matches>=8)score+=(record.ppg-1.35)*7;if(played<7)score+=12;if(tenure<55)score+=16;if(tenure>540&&gap<=0)score+=4;if(Number(club.tier||4)>1&&row.pos>=16&&played>=14)score-=8;
     const cupWins=fixtures.filter(f=>f.played&&['CUP','CHAMPIONS_CROWN'].includes(f.type)&&(f.homeClubId===club.id||f.awayClubId===club.id)).slice(-6).reduce((sum,f)=>{const home=f.homeClubId===club.id,gf=home?f.homeScore:f.awayScore,ga=home?f.awayScore:f.homeScore;return sum+(gf>ga?1:0);},0);score+=Math.min(5,cupWins*1.5);
     return clamp(Math.round(score),0,100);
   }
   function aiManagerPressureTargetPhase(security,manager,club,date=currentCareerISO()){
-    const row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id),played=Number(row?.played||0),tenure=managerTenureDays(manager,date);if(played<8||tenure<55)return'NONE';
-    if(security<23)return'FINAL';if(security<37)return'PRESSURE';if(security<49)return'WATCH';return'NONE';
+    const row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id),played=Number(row?.played||0),tenure=managerTenureDays(manager,date),patience=Number(chairmanForClub(club)?.dimensions?.patience||50),shift=Math.round((patience-50)*.1);if(played<8||tenure<Math.round(55+(patience-50)*.35))return'NONE';
+    if(security<23-shift)return'FINAL';if(security<37-shift)return'PRESSURE';if(security<49-shift)return'WATCH';return'NONE';
   }
   function publishAiManagerPressureStory(manager,club,state,date=currentCareerISO()){
     const phase=state.phase;if(phase==='NONE'||phase==='WATCH')return;const key=`PRESS-${manager.id}-${phase}-${String(date).slice(0,7)}`;if(managerMarket.mediaMilestones[key])return;managerMarket.mediaMilestones[key]=true;state.lastNewsDate=date;
@@ -6072,7 +6755,7 @@
     return dismissals;
   }
   function unemployedAiCandidatesForClub(club){
-    const desired=managerDesiredReputation(club),preferred=managerPreferredStyleForClub(club);return Object.values(managerMarket.managers).filter(m=>m.status==='UNEMPLOYED').map(m=>{enrichAiManagerIdentity(m,club);const last=m.history?.at(-1),lastRecord=last?.record||{},achievement=(Number(lastRecord.wins||0)*2-Math.max(0,Number(lastRecord.losses||0)-Number(lastRecord.wins||0)))*.3;return{m,score:100-Math.abs(Number(m.reputation||30)-desired)+(m.nationality===club.country?7:0)+(m.preferredStyle===preferred?6:0)+Number(m.adaptability||50)*.06+achievement};}).sort((a,b)=>b.score-a.score);
+    const desired=managerDesiredReputation(club),preferred=managerPreferredStyleForClub(club),owner=chairmanForClub(club);return Object.values(managerMarket.managers).filter(m=>m.status==='UNEMPLOYED').map(m=>{enrichAiManagerIdentity(m,club);const last=m.history?.at(-1),lastRecord=last?.record||{},achievement=(Number(lastRecord.wins||0)*2-Math.max(0,Number(lastRecord.losses||0)-Number(lastRecord.wins||0)))*.3,ownerFit=window.VelmoraChairmen?.appointmentCompatibility(owner,m,club)??50;return{m,score:100-Math.abs(Number(m.reputation||30)-desired)+(m.nationality===club.country?7:0)+(m.preferredStyle===preferred?6:0)+Number(m.adaptability||50)*.06+achievement+(ownerFit-50)*.24};}).sort((a,b)=>b.score-a.score);
   }
   function poachableAiCandidatesForClub(club){
     const targetLevel=divisionLevel(club),targetRep=Number(club.reputation||1);return Object.values(managerMarket.managers).filter(m=>m.status==='EMPLOYED'&&m.currentClubId&&m.currentClubId!==club.id&&m.currentClubId!==currentClub?.id).map(m=>{const old=clubById(m.currentClubId);if(!old)return null;enrichAiManagerIdentity(m,old);const step=(targetLevel-divisionLevel(old))*9+(targetRep-Number(old.reputation||1))*5,career=aiManagerSpellRecord(m,old),ambition=(Number(m.ambition||50)-50)*.16,loyalty=(Number(m.loyalty||50)-50)*-.13,performance=(career.ppg-1.3)*8;if(step<2&&Number(m.ambition||50)<72)return null;return{m,score:Number(m.reputation||30)+step+ambition+loyalty+performance+(m.nationality===club.country?4:0)};}).filter(Boolean).sort((a,b)=>b.score-a.score);
@@ -6110,12 +6793,9 @@
     addCareerInboxMessage({id:`manager-app-${app.id}`,type:'CAREER',sender:'MANAGER REPRESENTATIVE',subject:`Application submitted: ${club.name}`,preview:'The club will review your managerial profile.',title:`Your application to ${club.name} has been submitted`,body:[`The board will compare your career record with the other candidates.`,`A response is expected within several career days.`],signoff:'Manager Representative',date:currentCareerISO()});saveCareerState();showToast(`Application submitted to ${club.name}`);return true;
   }
   function interviewQuestionsForClub(club){
-    const world=clubWorldName(club),style=managerPreferredStyleForClub(club),youth=world==='Ezuraya',physical=world==='Kharova',veteran=world==='Caldria';
-    return [
-      {id:'ambition',question:`${club.name} expect you to ${String(club.expectation||'build steadily').toLowerCase()}. What comes first?`,choices:[{id:'stabilise',label:'STABILISE THE SQUAD',copy:'Build structure before chasing targets.',fit:club.tier<=2?1:2},{id:'push',label:'PUSH IMMEDIATELY',copy:'Set an ambitious standard from day one.',fit:club.tier<=2?2:1},{id:'youth',label:'DEVELOP THE YOUNG CORE',copy:'Create a pathway that improves the club long-term.',fit:youth?3:1}]},
-      {id:'identity',question:'What should supporters recognise in your team?',choices:[{id:'press',label:'HIGH PRESS',copy:'Energy, pressure and aggressive territory.',fit:physical?3:style==='HIGH PRESS'?2:1},{id:'possession',label:'CONTROL POSSESSION',copy:'Technical, patient and deliberate play.',fit:(veteran||youth)?3:style==='POSSESSION'?2:1},{id:'balanced',label:'ADAPT TO THE SQUAD',copy:'Use the strengths already inside the club.',fit:2}]},
-      {id:'market',question:'How would you approach the first transfer window?',choices:[{id:'value',label:'SMART VALUE',copy:'Target attainable players who fit the system.',fit:world==='Caldria'?3:2},{id:'prospects',label:'HIGH-UPSIDE PROSPECTS',copy:'Invest in players who can grow with the club.',fit:youth?3:2},{id:'ready',label:'READY-NOW QUALITY',copy:'Prioritise immediate first-team improvement.',fit:club.tier<=2?3:1}]}
-    ];
+    const owner=chairmanForClub(club),squad=getSquad(club),captain=squad.find(p=>p.isCaptain)||[...squad].sort((a,b)=>Number(b.age||0)-Number(a.age||0)||Number(b.ovr||0)-Number(a.ovr||0))[0],star=[...squad].sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0],prospect=[...getAcademy(club),...squad.filter(p=>Number(p.age||99)<=21)].sort((a,b)=>Number(b.potential||b.ovr||0)-Number(a.potential||a.ovr||0))[0];
+    const authored=window.VelmoraChairmen?.interviewQuestions(owner,club,{captain:captain?.name,starPlayer:star?.name,protectedProspect:prospect?.name});if(authored?.length)return authored;
+    return[{id:'mandate',question:`What are you prepared to be judged on at ${club.name}?`,choices:[{id:'measured',label:'Set a realistic benchmark',copy:'I will commit to measurable progress.',fit:2},{id:'ambitious',label:'Put the major target in writing',copy:'I am willing to carry the club target publicly.',fit:2},{id:'process',label:'Judge the playing identity and pathway',copy:'Results and development belong in the review.',fit:2}]}];
   }
   function processPlayerApplications(date=currentCareerISO()){
     const events=[];
@@ -6126,7 +6806,7 @@
   }
   function readyManagerInterviewForApplication(applicationId){return managerMarket.interviews.find(i=>i.applicationId===applicationId&&i.status==='READY')||null;}
   function createManagerJobOffer(vacancy,application=null,source='APPLICATION'){
-    const club=clubById(vacancy.clubId);if(!club)return null;const existing=managerMarket.offers.find(o=>o.clubId===club.id&&o.status==='OPEN');if(existing)return existing;const rng=mulberry32(hashString(`${worldSeed}-MANAGER-OFFER-${club.id}-${currentCareerISO()}-${source}`)),years=vacancy.contractYears||1+Math.floor(rng()*3);const offer={id:managerMarketNextId('OFFER'),type:'JOB',source,vacancyId:vacancy.id,applicationId:application?.id||null,clubId:club.id,receivedDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),3+Math.floor(rng()*3)),contractYears:years,weeklySalary:vacancy.weeklySalary||jobSalaryForClub(club,currentCareerISO()),boardExpectation:vacancy.boardExpectation||club.expectation,status:'OPEN'};managerMarket.offers.push(offer);addCareerInboxMessage({id:`manager-job-offer-${offer.id}`,type:'CAREER',sender:`${club.name.toUpperCase()} BOARD`,subject:`Formal job offer: ${club.name}`,preview:'The club want you as their next manager.',title:`${club.name} formally offer you the job`,body:[`Contract: ${years} year${years===1?'':'s'}.`,`Board expectation: ${offer.boardExpectation}.`,`The offer will remain open for a limited time.`],signoff:`${club.name} Board`,date:currentCareerISO()});return offer;
+    const club=clubById(vacancy.clubId);if(!club)return null;const existing=managerMarket.offers.find(o=>o.clubId===club.id&&o.status==='OPEN');if(existing)return existing;const owner=chairmanForClub(club),policy=chairmanPolicy(club),rng=mulberry32(hashString(`${worldSeed}-MANAGER-OFFER-${club.id}-${currentCareerISO()}-${source}`)),years=vacancy.contractYears||1+Math.floor(rng()*3);const offer={id:managerMarketNextId('OFFER'),type:'JOB',source,vacancyId:vacancy.id,applicationId:application?.id||null,clubId:club.id,chairmanId:owner?.id||null,receivedDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),3+Math.floor(rng()*3)),contractYears:years,weeklySalary:vacancy.weeklySalary||jobSalaryForClub(club,currentCareerISO()),boardExpectation:vacancy.boardExpectation||club.expectation,recruitmentBudgetAtOffer:moneyNumber(club.budget),budgetProtection:false,protectedBudgetFloor:0,ownerPolicy:{sellToBuy:policy.sellToBuy,reserveRatio:policy.reserveRatio,academyProtection:policy.academyProtection},negotiations:[],status:'OPEN'};managerMarket.offers.push(offer);addCareerInboxMessage({id:`manager-job-offer-${offer.id}`,type:'CAREER',sender:(owner?.name||`${club.name} BOARD`).toUpperCase(),subject:`Formal job offer: ${club.name}`,preview:'The club want you as their next manager.',title:`${club.name} formally offer you the job`,body:[`Contract: ${years} year${years===1?'':'s'} at £${Number(offer.weeklySalary||0).toLocaleString('en-GB')} per week.`,`Mandate: ${offer.boardExpectation}.`,`Ownership priority: ${(window.VelmoraChairmen?.priorityNames(owner)||['club progress'])[0]}.`,`The offer will remain open for a limited time.`],signoff:`${owner?.name||club.name} · ${owner?.title||'Board of Directors'}`,date:currentCareerISO()});chairmanRecord(club,PLAYER_MANAGER_ID,{type:'JOB_OFFER',importance:'NOTABLE',reason:`Formal offer made to ${managerName}`,metadata:{offerId:offer.id,years,salary:offer.weeklySalary}});return offer;
   }
   function processUnsolicitedPlayerApproaches(date=currentCareerISO()){
     if(employmentStatus!=='employed'||!currentClub||v2077CareerSettings().managerApproaches==='OFF')return null;if(managerMarket.offers.some(o=>o.status==='OPEN'&&o.type==='JOB'))return null;
@@ -6174,23 +6854,38 @@
   }
   function switchPlayerManagerClub(newClub,offer=null){
     if(!newClub)return false;const date=currentCareerISO(),oldClub=employmentStatus==='employed'?currentClub:null,oldSpell=managerMarket.playerSpell;
-    if(oldClub&&oldClub.id!==newClub.id){unexpectedCloseClubEvents(oldClub.id,date,'LEFT FOR NEW CLUB');closePlayerManagerSpell('LEFT FOR NEW CLUB',date);managerMarket.clubManagers[oldClub.id]=null;openManagerVacancy(oldClub,`${managerName} left to join ${newClub.name}`,PLAYER_MANAGER_ID,date,{keepPreviousEmployed:true});roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+managerReputationDepartureDelta('LEFT FOR NEW CLUB',oldClub,oldSpell),0,100);}
+    if(oldClub&&oldClub.id!==newClub.id){chairmanRecord(oldClub,PLAYER_MANAGER_ID,{type:'MANAGER_DEPARTURE',importance:'MAJOR',reason:`${managerName} left for ${newClub.name}`});unexpectedCloseClubEvents(oldClub.id,date,'LEFT FOR NEW CLUB');closePlayerManagerSpell('LEFT FOR NEW CLUB',date);managerMarket.clubManagers[oldClub.id]=null;openManagerVacancy(oldClub,`${managerName} left to join ${newClub.name}`,PLAYER_MANAGER_ID,date,{keepPreviousEmployed:true});roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+managerReputationDepartureDelta('LEFT FOR NEW CLUB',oldClub,oldSpell),0,100);}
     const vacancy=managerVacancyForClub(newClub.id);const incumbent=managerMarket.clubManagers[newClub.id];if(incumbent&&incumbent!==PLAYER_MANAGER_ID){const m=managerMarket.managers[incumbent];if(m){m.status='UNEMPLOYED';m.currentClubId=null;}}
     currentClub=newClub;selectedClub=newClub;employmentStatus='employed';managerMarket.clubManagers[newClub.id]=PLAYER_MANAGER_ID;if(vacancy){vacancy.status='FILLED';vacancy.filledDate=date;vacancy.appointedManagerId=PLAYER_MANAGER_ID;}
     managerMarket.applications.filter(a=>a.clubId===newClub.id).forEach(a=>{if(a.status!=='REJECTED')a.status='OFFER_ACCEPTED';});managerMarket.offers.forEach(o=>{if(o.id===offer?.id)o.status='ACCEPTED';else if(o.status==='OPEN'&&o.type==='JOB')o.status='WITHDRAWN';});
-    const years=Number(offer?.contractYears||2),salary=Number(offer?.weeklySalary||jobSalaryForClub(newClub,date));managerMarket.playerContract={clubId:newClub.id,startDate:date,endDate:addDaysISO(date,365*years),years,weeklySalary:salary,initialExpectation:offer?.boardExpectation||newClub.expectation||'Build steadily',status:'ACTIVE',renewalOffered:false};openPlayerManagerSpell(newClub,date);
-    careerRuntime.boardConfidence=clamp(65+Math.round(managerClubInterestScore(newClub)/10),60,78);careerRuntime.lastBoardConfidenceDate=date;jobSearchState.appointedDate=date;jobSearchState.reputation=Math.max(Number(jobSearchState.reputation||0),Number(roadToGlory.managerReputation||0));assignManagerClubBranding(newClub);normalizeSquadRoles(newClub);selectedPlayerId=null;selectedYouthId=null;selectedContractPlayerId=null;swapSourceId=null;scoutingAssignments.clear();pendingNegotiations=[];negotiationEngine=normalizeNegotiationEngineState({sequence:Number(negotiationEngine?.sequence||0)});initializeChampionsCrownSeason(false);championsCrownFixtures().filter(f=>!f.played).forEach(scheduleUserChampionsCrownFixture);
-    addCareerInboxMessage({id:`new-manager-board-${newClub.id}-${date}`,type:'BOARD',sender:'BOARD OF DIRECTORS',subject:`Welcome to ${newClub.name}`,preview:'Your new club is ready for the handover.',title:`Your first 24 hours at ${newClub.name}`,body:[`The season continues from ${shortDateLabel(date)}. Nothing in the competition has been reset.`,`Current board expectation: ${offer?.boardExpectation||newClub.expectation||'Build steadily'}.`,`The existing squad, budget, fixtures and league position are now yours to manage.`],signoff:'Board of Directors',date});addCareerNews({id:`player-manager-appointed-${newClub.id}-${date}`,category:'APPOINTMENT',title:`${newClub.name.toUpperCase()} APPOINT ${managerName.toUpperCase()}`,body:[oldClub?`${managerName} leaves ${oldClub.name} to take charge of ${newClub.name}.`:`${managerName} has been appointed manager of ${newClub.name}.`,`${managerRepStars()} · ${managerRepLabel()}.`],image:newClub.badge,date});
+    const years=Number(offer?.contractYears||2),salary=Number(offer?.weeklySalary||jobSalaryForClub(newClub,date));managerMarket.playerContract={clubId:newClub.id,startDate:date,endDate:addDaysISO(date,365*years),years,weeklySalary:salary,initialExpectation:offer?.boardExpectation||newClub.expectation||'Build steadily',budgetProtection:!!offer?.budgetProtection,protectedBudgetFloor:Number(offer?.protectedBudgetFloor||0),assurances:Array.isArray(offer?.negotiations)?offer.negotiations.filter(n=>n.accepted).map(n=>n.request):[],status:'ACTIVE',renewalOffered:false};
+    openPlayerManagerSpell(newClub,date);
+    careerRuntime.boardConfidence=clamp(65+Math.round(managerClubInterestScore(newClub)/10),60,78);careerRuntime.lastBoardConfidenceDate=date;initializeChairmanSystem();const owner=chairmanForClub(newClub),relation=chairmanRelationship(newClub,PLAYER_MANAGER_ID);relation.confidence=careerRuntime.boardConfidence;chairmanRecord(newClub,PLAYER_MANAGER_ID,{type:'APPOINTMENT',importance:'MAJOR',reason:`${managerName} appointed manager`,metadata:{offerId:offer?.id||null,assurances:managerMarket.playerContract.assurances}});jobSearchState.appointedDate=date;jobSearchState.reputation=Math.max(Number(jobSearchState.reputation||0),Number(roadToGlory.managerReputation||0));assignManagerClubBranding(newClub);normalizeSquadRoles(newClub);selectedPlayerId=null;selectedYouthId=null;selectedContractPlayerId=null;swapSourceId=null;scoutingAssignments.clear();pendingNegotiations=[];negotiationEngine=normalizeNegotiationEngineState({sequence:Number(negotiationEngine?.sequence||0)});initializeChampionsCrownSeason(false);championsCrownFixtures().filter(f=>!f.played).forEach(scheduleUserChampionsCrownFixture);
+    addCareerInboxMessage({id:`new-manager-board-${newClub.id}-${date}`,type:'BOARD',sender:(owner?.name||'BOARD OF DIRECTORS').toUpperCase(),subject:`Welcome to ${newClub.name}`,preview:'Your new club is ready for the handover.',title:`Your first 24 hours at ${newClub.name}`,body:[`The season continues from ${shortDateLabel(date)}. Nothing in the competition has been reset.`,`Current mandate: ${offer?.boardExpectation||newClub.expectation||'Build steadily'}.`,offer?.budgetProtection?`Written assurance: the ${formatMoney(offer.protectedBudgetFloor)} recruitment fund in this offer will be protected at appointment.`:'The existing squad, budget, fixtures and league position are now yours to manage.'],signoff:`${owner?.name||'Board of Directors'} · ${owner?.title||newClub.name}`,date});addCareerNews({id:`player-manager-appointed-${newClub.id}-${date}`,category:'APPOINTMENT',title:`${newClub.name.toUpperCase()} APPOINT ${managerName.toUpperCase()}`,body:[oldClub?`${managerName} leaves ${oldClub.name} to take charge of ${newClub.name}.`:`${managerName} has been appointed manager of ${newClub.name}.`,`${managerRepStars()} · ${managerRepLabel()}.`],image:newClub.badge,date});
     saveCareerState();const farewellMatches=Number(oldSpell?.matches||0),farewellHonours=Number(oldSpell?.trophies||oldSpell?.honours||0),showFarewell=!!oldClub&&(farewellMatches>=60||farewellHonours>0);if(showFarewell){const shown=v44ShowManagerScene({key:`MANAGER-CLUB-CHANGE-${oldClub.id}-${date}`,type:'MANAGER FAREWELL',eyebrow:'A CHAPTER CLOSES',title:`Farewell to ${oldClub.name}`,copy:farewellMatches>=150?'A substantial era ends here. The club archive keeps the matches, honours and players shaped during your spell.':'The old club remains part of your managerial history as a new job begins.',club:oldClub,force:true,onContinue:()=>showManagerFirst24Hours(newClub,oldClub)});if(!shown)showManagerFirst24Hours(newClub,oldClub);}else showManagerFirst24Hours(newClub,oldClub);return true;
+  }
+  function negotiateManagerOffer(offerId,request){
+    const offer=managerMarket.offers.find(o=>o.id===offerId&&o.type==='JOB'&&o.status==='OPEN'),club=clubById(offer?.clubId);if(!offer||!club)return null;offer.negotiations=Array.isArray(offer.negotiations)?offer.negotiations:offer.negotiation?.used?[offer.negotiation]:[];const previous=offer.negotiations.find(n=>n.request===request);if(previous)return previous;
+    const owner=chairmanForClub(club),decision=window.VelmoraChairmen?.negotiationDecision(owner,request,{interest:managerClubInterestScore(club),leverage:employmentStatus==='employed'?playerJobSecurityScore():Number(roadToGlory.managerReputation||40),finances:clamp(Math.round(Math.log10(Math.max(10,moneyNumber(club.budget)))*12),20,90),seed:`${worldSeed}|${offer.id}`})||{accepted:false,title:'THE ORIGINAL TERMS STAND',copy:'The club will not alter the offer.'};
+    if(decision.accepted&&request==='salary')offer.weeklySalary=Math.round(Number(offer.weeklySalary||0)*1.1/100)*100;
+    if(decision.accepted&&request==='resources'){offer.budgetProtection=true;offer.protectedBudgetFloor=Number(offer.recruitmentBudgetAtOffer||moneyNumber(club.budget));}
+    if(decision.accepted&&request==='term')offer.contractYears=Math.min(5,Number(offer.contractYears||2)+1);
+    const detail=request==='salary'?`The weekly salary is now £${Number(offer.weeklySalary||0).toLocaleString('en-GB')}.`:request==='resources'?`The existing ${formatMoney(offer.protectedBudgetFloor||offer.recruitmentBudgetAtOffer)} recruitment allocation will be protected at appointment. No extra money is created.`:`The offer now runs for ${offer.contractYears} years.`;
+    offer.negotiation={...decision,used:true,request,date:currentCareerISO(),title:decision.accepted?'THE BOARD AGREE':'THE BOARD HOLD THEIR POSITION',copy:decision.accepted?`${decision.copy} ${detail}`:decision.copy};offer.negotiations.push(offer.negotiation);chairmanRecord(club,PLAYER_MANAGER_ID,{type:decision.memoryType||'NEGOTIATION',importance:'NOTABLE',reason:`${request} request ${decision.accepted?'accepted':'refused'}`,metadata:{offerId:offer.id,request,accepted:decision.accepted}});saveCareerState();return offer.negotiation;
   }
   function acceptManagerOffer(offerId){const offer=managerMarket.offers.find(o=>o.id===offerId&&o.status==='OPEN');const club=clubById(offer?.clubId);if(!offer||!club)return false;return switchPlayerManagerClub(club,offer);}
   function declineManagerOffer(offerId){const o=managerMarket.offers.find(x=>x.id===offerId&&x.status==='OPEN');if(!o)return;o.status='DECLINED';const a=managerMarket.applications.find(x=>x.id===o.applicationId);if(a)a.status='DECLINED';saveCareerState();showToast(`${clubById(o.clubId)?.name||'Club'} offer declined`);}
   function processPlayerManagerContract(date=currentCareerISO()){
     if(employmentStatus!=='employed'||!currentClub)return null;const c=ensurePlayerManagerContract(currentClub,2),days=Math.max(0,diffDaysISO(date,c.endDate));
-    if(days<=60&&!c.renewalOffered&&playerJobSecurityScore()>=45){c.renewalOffered=true;const term=2+(hashString(`${worldSeed}-MANAGER-RENEW-${currentClub.id}-${careerTime.seasonId}`)%2),offer={id:managerMarketNextId('CONTRACT'),type:'CONTRACT',clubId:currentClub.id,receivedDate:date,expiresDate:addDaysISO(date,14),contractYears:term,weeklySalary:Math.round(Number(c.weeklySalary||2000)*1.12/100)*100,status:'OPEN'};managerMarket.offers.push(offer);addCareerInboxMessage({id:`manager-contract-${offer.id}`,type:'CONTRACT',sender:'BOARD OF DIRECTORS',subject:'Manager contract extension',preview:`${currentClub.name} want to extend your contract.`,title:'The board have offered you a new contract',body:[`${term}-year extension.`,`Weekly salary: £${offer.weeklySalary.toLocaleString('en-GB')}.`],signoff:'Board of Directors',date});return offer;}
+    if(days<=60&&!c.renewalOffered&&playerJobSecurityScore()>=45){c.renewalOffered=true;const owner=chairmanForClub(currentClub),term=2+(hashString(`${worldSeed}-MANAGER-RENEW-${currentClub.id}-${careerTime.seasonId}`)%2),offer={id:managerMarketNextId('CONTRACT'),type:'CONTRACT',clubId:currentClub.id,chairmanId:owner?.id||null,receivedDate:date,expiresDate:addDaysISO(date,14),contractYears:term,weeklySalary:Math.round(Number(c.weeklySalary||2000)*1.12/100)*100,negotiations:[],status:'OPEN'};managerMarket.offers.push(offer);addCareerInboxMessage({id:`manager-contract-${offer.id}`,type:'CONTRACT',sender:(owner?.name||'BOARD OF DIRECTORS').toUpperCase(),subject:'Manager contract extension',preview:`${currentClub.name} want to extend your contract.`,title:`${owner?.name||'The board'} offers a new contract`,body:[`${term}-year extension.`,`Weekly salary: £${offer.weeklySalary.toLocaleString('en-GB')}.`,`${window.VelmoraChairmen?.voice(owner,'open','The club wants a clear commitment.')||''}`],signoff:`${owner?.name||'Board of Directors'} · ${owner?.title||currentClub.name}`,date});chairmanRecord(currentClub,PLAYER_MANAGER_ID,{type:'CONTRACT_OFFER',importance:'NOTABLE',reason:'Manager contract extension offered',metadata:{offerId:offer.id,term,salary:offer.weeklySalary}});return offer;}
     if(date>c.endDate){dismissPlayerManager('CONTRACT EXPIRED',date);return{type:'CONTRACT_EXPIRED'};}return null;
   }
-  function acceptManagerContractOffer(offerId){const o=managerMarket.offers.find(x=>x.id===offerId&&x.type==='CONTRACT'&&x.status==='OPEN');if(!o||!currentClub)return false;o.status='ACCEPTED';managerMarket.playerContract={clubId:currentClub.id,startDate:currentCareerISO(),endDate:addDaysISO(currentCareerISO(),365*Number(o.contractYears||2)),years:Number(o.contractYears||2),weeklySalary:Number(o.weeklySalary||0),initialExpectation:currentClub.expectation||'Build steadily',status:'ACTIVE',renewalOffered:false};saveCareerState();showToast('Manager contract renewed');return true;}
+  function acceptManagerContractOffer(offerId){const o=managerMarket.offers.find(x=>x.id===offerId&&x.type==='CONTRACT'&&x.status==='OPEN');if(!o||!currentClub)return false;o.status='ACCEPTED';managerMarket.playerContract={clubId:currentClub.id,startDate:currentCareerISO(),endDate:addDaysISO(currentCareerISO(),365*Number(o.contractYears||2)),years:Number(o.contractYears||2),weeklySalary:Number(o.weeklySalary||0),initialExpectation:currentClub.expectation||'Build steadily',budgetProtection:!!o.budgetProtection,protectedBudgetFloor:Number(o.protectedBudgetFloor||0),assurances:Array.isArray(o.negotiations)?o.negotiations.filter(n=>n.accepted).map(n=>n.request):[],status:'ACTIVE',renewalOffered:false};chairmanRecord(currentClub,PLAYER_MANAGER_ID,{type:'CONTRACT_ACCEPTED',importance:'MAJOR',reason:`${o.contractYears}-year manager contract agreed`,metadata:{offerId:o.id,salary:o.weeklySalary,assurances:managerMarket.playerContract.assurances}});saveCareerState();showToast('Manager contract renewed');return true;}
+  function negotiateManagerContractOffer(offerId,request='term'){
+    const offer=managerMarket.offers.find(o=>o.id===offerId&&o.type==='CONTRACT'&&o.status==='OPEN');if(!offer||!currentClub)return null;offer.negotiations=Array.isArray(offer.negotiations)?offer.negotiations:offer.negotiation?.used?[offer.negotiation]:[];const previous=offer.negotiations.find(n=>n.request===request);if(previous)return previous;const owner=chairmanForClub(currentClub),decision=window.VelmoraChairmen?.negotiationDecision(owner,request,{interest:playerJobSecurityScore(),leverage:playerJobSecurityScore(),finances:officeFinanceSnapshot().health,seed:`${worldSeed}|${offer.id}`})||{accepted:false,title:'THE ORIGINAL TERMS STAND',copy:'The club will not alter the renewal.'};
+    if(decision.accepted&&request==='term')offer.contractYears=Math.min(5,Number(offer.contractYears||2)+1);if(decision.accepted&&request==='salary')offer.weeklySalary=Math.round(Number(offer.weeklySalary||0)*1.08/100)*100;if(decision.accepted&&request==='resources'){offer.budgetProtection=true;offer.protectedBudgetFloor=moneyNumber(currentClub.budget);}
+    const detail=request==='term'?`${offer.contractYears} years.`:request==='salary'?`£${Number(offer.weeklySalary||0).toLocaleString('en-GB')} per week.`:`The current ${formatMoney(offer.protectedBudgetFloor||moneyNumber(currentClub.budget))} recruitment allocation is protected; no extra money is added.`;offer.negotiation={...decision,used:true,request,date:currentCareerISO(),copy:decision.accepted?`${decision.copy} ${detail}`:decision.copy};offer.negotiations.push(offer.negotiation);chairmanRecord(currentClub,PLAYER_MANAGER_ID,{type:decision.memoryType||'CONTRACT_TALK',importance:'NOTABLE',reason:`Contract ${request} request ${decision.accepted?'accepted':'refused'}`,metadata:{offerId:offer.id,request}});saveCareerState();return offer.negotiation;
+  }
   function processAiManagerSummerReview(date=currentCareerISO()){
     if(!String(date).endsWith('-08-01')||managerMarket.lastSummerReviewSeason===careerTime.seasonId)return[];
     managerMarket.lastSummerReviewSeason=careerTime.seasonId;const changes=[];let departures=0;
@@ -6207,25 +6902,47 @@
   }
   function managerMarketJobSecurity(){return employmentStatus==='employed'?managerSecurityLabel(playerJobSecurityScore()):'UNEMPLOYED';}
   function managerVacancyCardHTML(v,compact=false){
-    const club=clubById(v.clubId);if(!club)return'';const app=managerApplicationForVacancy(v.id),interest=managerClubInterestScore(club),pos=managerVacancyTablePosition(club),status=app?.status||'AVAILABLE',marketStage=app?.status||((v.shortlistPublishedDate&&v.shortlistManagerIds?.length)?`SHORTLIST · ${v.shortlistManagerIds.length}`:'SEARCH OPEN'),caretaker=v44CaretakerForClub(club),watched=v44JobWatchlisted(club),record=caretaker?aiManagerSpellRecord(caretaker,club):null;
-    return `<article class="manager-vacancy-card ${compact?'is-compact':''}" style="--manager-club-accent:${escapeHtml(club.accent||'#0b3b98')}"><div class="manager-vacancy-head"><div class="manager-vacancy-crest">${badgeHTML(club)}</div><div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h4>${escapeHtml(club.name)}</h4><p>${escapeHtml(club.country)} · ${pos?ordinal(pos):'PRE-SEASON'}</p></div><b class="manager-interest is-${managerInterestLabel(interest).toLowerCase().replace(/ /g,'-')}">${Math.round(interest)} · ${escapeHtml(managerSuitabilityLabel(club))}</b></div>${caretaker?`<div class="v44-caretaker-line"><span>CARETAKER</span><strong>${escapeHtml(caretaker.name)}</strong><small>${record.matches}M · ${record.wins}W ${record.draws}D ${record.losses}L · permanent search remains open</small></div>`:''}<div class="manager-vacancy-facts"><div><span>BOARD TARGET</span><strong>${escapeHtml(v.boardExpectation||club.expectation||'Build steadily')}</strong></div><div><span>BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}</strong></div><div><span>YOUR FIT</span><strong>${escapeHtml(managerSuitabilityLabel(club))}</strong></div><div><span>MARKET STAGE</span><strong>${escapeHtml(marketStage.replace(/_/g,' '))}</strong></div></div><div class="manager-vacancy-reason">${escapeHtml(v.reason||'Managerial vacancy')}</div><div class="manager-vacancy-actions">${app?.status==='INTERVIEW'?`<button type="button" class="is-primary" data-manager-interview-app="${app.id}">ENTER INTERVIEW</button>`:app?`<button type="button" disabled>${escapeHtml(status.replace(/_/g,' '))}</button>`:`<button type="button" class="is-primary" data-manager-apply="${v.id}">APPLY FOR JOB</button>`}<button type="button" data-manager-watch="${club.id}" class="${watched?'is-watching':''}">${watched?'★ WATCHING':'☆ WATCH CLUB'}</button><button type="button" data-manager-club-view="${club.id}">VIEW CLUB</button></div></article>`;
+    const club=clubById(v.clubId);if(!club)return'';const owner=chairmanForClub(club),ownerPriorities=window.VelmoraChairmen?.priorityNames(owner)||[],app=managerApplicationForVacancy(v.id),interest=managerClubInterestScore(club),pos=managerVacancyTablePosition(club),status=app?.status||'AVAILABLE',marketStage=app?.status||((v.shortlistPublishedDate&&v.shortlistManagerIds?.length)?`SHORTLIST · ${v.shortlistManagerIds.length}`:'SEARCH OPEN'),caretaker=v44CaretakerForClub(club),watched=v44JobWatchlisted(club),record=caretaker?aiManagerSpellRecord(caretaker,club):null;
+    return `<article class="manager-vacancy-card ${compact?'is-compact':''}" style="--manager-club-accent:${escapeHtml(club.accent||'#0b3b98')}"><div class="manager-vacancy-head"><div class="manager-vacancy-crest">${badgeHTML(club)}</div><div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h4>${escapeHtml(club.name)}</h4><p>${escapeHtml(club.country)} · ${pos?ordinal(pos):'PRE-SEASON'}</p></div><b class="manager-interest is-${managerInterestLabel(interest).toLowerCase().replace(/ /g,'-')}">${Math.round(interest)} · ${escapeHtml(managerSuitabilityLabel(club))}</b></div><div class="chairman-vacancy-owner"><span class="chairman-vacancy-portrait">${chairmanPortraitHTML(owner,'')}</span><div><small>CLUB OWNERSHIP</small><strong>${chairmanNameHTML(owner)}</strong><em>${escapeHtml(ownerPriorities[0]||'Club progress')} · ${escapeHtml(owner?.communicationStyleLabel||'Formal')}</em></div></div>${caretaker?`<div class="v44-caretaker-line"><span>CARETAKER</span><strong>${escapeHtml(caretaker.name)}</strong><small>${record.matches}M · ${record.wins}W ${record.draws}D ${record.losses}L · permanent search remains open</small></div>`:''}<div class="manager-vacancy-facts"><div><span>BOARD TARGET</span><strong>${escapeHtml(v.boardExpectation||club.expectation||'Build steadily')}</strong></div><div><span>BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}</strong></div><div><span>YOUR FIT</span><strong>${escapeHtml(managerSuitabilityLabel(club))}</strong></div><div><span>MARKET STAGE</span><strong>${escapeHtml(marketStage.replace(/_/g,' '))}</strong></div></div><div class="manager-vacancy-reason">${escapeHtml(v.reason||'Managerial vacancy')}</div><div class="manager-vacancy-actions">${app?.status==='INTERVIEW'?`<button type="button" class="is-primary" data-manager-interview-app="${app.id}">ENTER INTERVIEW</button>`:app?`<button type="button" disabled>${escapeHtml(status.replace(/_/g,' '))}</button>`:`<button type="button" class="is-primary" data-manager-apply="${v.id}">APPLY FOR JOB</button>`}<button type="button" data-manager-watch="${club.id}" class="${watched?'is-watching':''}">${watched?'★ WATCHING':'☆ WATCH CLUB'}</button><button type="button" data-manager-club-view="${club.id}">VIEW CLUB</button></div></article>`;
   }
   function activeManagerVacancies(){return managerMarket.vacancies.filter(v=>v.status==='OPEN').sort((a,b)=>managerClubInterestScore(clubById(b.clubId))-managerClubInterestScore(clubById(a.clubId))||a.dateOpened.localeCompare(b.dateOpened));}
   function managerVacancyMatchesFilter(v){const club=clubById(v.clubId),score=managerClubInterestScore(club),app=managerApplicationForVacancy(v.id);if(managerMarketFilter==='realistic')return score>=38;if(managerMarketFilter==='interested')return score>=58;if(managerMarketFilter==='applied')return !!app;return true;}
-  function managerMarketVacanciesHTML(){const list=activeManagerVacancies().filter(managerVacancyMatchesFilter);return `${v44RecommendedForYouHTML()}<div class="manager-market-toolbar"><div><span>LIVE MANAGER MARKET</span><strong>${activeManagerVacancies().length} OPEN VACANC${activeManagerVacancies().length===1?'Y':'IES'}</strong></div><div>${['all','realistic','interested','applied'].map(f=>`<button type="button" class="${managerMarketFilter===f?'is-active':''}" data-manager-filter="${f}">${f.toUpperCase()}</button>`).join('')}</div></div><div class="manager-vacancy-grid">${list.length?list.map(v=>managerVacancyCardHTML(v)).join(''):`<div class="manager-market-empty"><span>NO VACANCIES IN THIS VIEW</span><h3>The market will keep moving.</h3><p>Advance the career and new managerial opportunities will appear as clubs change direction.</p></div>`}</div>`;}
+  function managerCareerFormProfile(){const form=employmentStatus==='employed'&&currentClub?recentClubForm(currentClub,5):[],points=form.reduce((sum,r)=>sum+(r==='W'?3:r==='D'?1:0),0);return{form,points,label:form.length?`${points}/${form.length*3} points`:'No recent matches'};}
+  function managerCareerStandingProfile(){if(employmentStatus!=='employed'||!currentClub)return{row:null,target:null,gap:0,label:'Awaiting your next appointment'};const row=standingsForDivision(currentClub.divisionKey).find(r=>r.club.id===currentClub.id),target=expectationTargetPosition(currentClub),gap=Number(row?.pos||target)-Number(target||10);return{row,target,gap,label:row?`${ordinal(row.pos)} · target ${ordinal(target)}`:'Pre-season · board target set'};}
+  function managerCareerSignals(){
+    const security=employmentStatus==='employed'?playerJobSecurityScore():50,form=managerCareerFormProfile(),standing=managerCareerStandingProfile(),tenure=managerMarket.playerSpell?.startDate?Math.max(0,diffDaysISO(managerMarket.playerSpell.startDate,currentCareerISO())):0,totals=roadToGlory.managerCareerTotals||{},honours=Number(totals.leagueTitles||0)+Number(totals.domesticCups||0)+Number(totals.continentalCups||0),promotions=Number(totals.promotions||0);
+    if(employmentStatus!=='employed')return[
+      {tone:'neutral',label:'AVAILABILITY',title:'Open to opportunities',copy:'You can apply immediately and clubs assess your complete career record.',value:'FREE AGENT'},
+      {tone:Number(roadToGlory.managerReputation||0)>=45?'good':'neutral',label:'MARKET PROFILE',title:managerRepLabel(),copy:'Reputation determines which boards consider you a credible appointment.',value:`${Math.round(Number(roadToGlory.managerReputation||0))}/100`},
+      {tone:activeManagerVacancies().length?'good':'neutral',label:'LIVE MARKET',title:`${activeManagerVacancies().length} open role${activeManagerVacancies().length===1?'':'s'}`,copy:'Vacancies emerge from live results, contracts and board decisions.',value:'ACTIVE'},
+      {tone:'neutral',label:'CAREER PROOF',title:`${honours} honours · ${promotions} promotions`,copy:'Past achievements continue to influence every club conversation.',value:`${managerMarket.spellHistory.length} SPELLS`}
+    ];
+    return[
+      {tone:security>=65?'good':security<35?'risk':'warn',label:'BOARD CONFIDENCE',title:managerSecurityLabel(security),copy:security>=65?'Results and the club trajectory are strengthening your position.':security<35?'The board require an immediate improvement in results.':'Your position is stable, but expectations still matter.',value:`${security}/100`},
+      {tone:standing.gap<=0?'good':standing.gap>=4?'risk':'warn',label:'LEAGUE EXPECTATION',title:standing.label,copy:standing.gap<=0?'The team is meeting or exceeding its league benchmark.':`The side is ${standing.gap} place${standing.gap===1?'':'s'} below the board benchmark.`,value:standing.row?`${standing.row.pts} PTS`:'PRE-SEASON'},
+      {tone:form.points>=9?'good':form.points<=4?'risk':'warn',label:'RECENT FORM',title:form.label,copy:form.form.length?form.form.join(' · '):'Competitive form will appear after your first fixtures.',value:form.form.length?form.form.join(''):'—'},
+      {tone:(honours+promotions)>0?'good':'neutral',label:'CAREER CREDIT',title:`${honours} honours · ${promotions} promotions`,copy:tenure<60?'The board allow extra time early in a new appointment.':`${tenure} days in this spell; sustained delivery builds long-term credit.`,value:`${tenure} DAYS`}
+    ];
+  }
+  function managerCareerNextRepMilestone(){const score=clamp(Math.round(Number(roadToGlory.managerReputation||0)),0,100),bands=[{score:25,label:'ESTABLISHED'},{score:40,label:'RESPECTED'},{score:60,label:'PROVEN'},{score:78,label:'ELITE'},{score:90,label:'WORLD CLASS'},{score:100,label:'LEGEND'}],next=bands.find(b=>b.score>score)||bands[bands.length-1],previous=[0,...bands.map(b=>b.score)].filter(v=>v<=score).pop()||0,span=Math.max(1,next.score-previous);return{score,next:next.score,label:next.label,remaining:Math.max(0,next.score-score),progress:score>=100?100:clamp(Math.round(((score-previous)/span)*100),0,100)};}
+  function managerCareerTargetClubs(limit=4){return clubs.filter(c=>c.id!==currentClub?.id&&!managerVacancyForClub(c.id)).map(club=>({club,score:Math.round(managerClubInterestScore(club))})).sort((a,b)=>b.score-a.score||a.club.name.localeCompare(b.club.name)).slice(0,limit);}
+  function managerCareerTargetClubsHTML(){const targets=managerCareerTargetClubs();return `<section class="mc-trajectory"><div class="manager-pane-heading"><span>CAREER TRAJECTORY</span><h3>Clubs closest to your profile</h3><p>These are suitability projections, not invented interest or job offers.</p></div><div class="mc-target-grid">${targets.map(({club,score})=>`<article><div class="mc-target-crest">${badgeHTML(club)}</div><div><small>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</small><strong>${escapeHtml(club.name)}</strong><span>${score>=38?'Credible candidate':`${38-score} reputation points from realistic range`} · ${escapeHtml(managerSuitabilityLabel(club))}</span></div><b>${score}</b><button type="button" data-manager-watch="${club.id}">${v44JobWatchlisted(club)?'★ WATCHING':'☆ WATCH'}</button></article>`).join('')}</div></section>`;}
+  function managerCareerSignalsHTML(){return `<section class="mc-signals"><div class="manager-pane-heading"><span>WHY YOUR POSITION IS CHANGING</span><h3>Career signals</h3><p>Every assessment below is calculated from this save—not decorative flavour text.</p></div><div class="mc-signal-grid">${managerCareerSignals().map(s=>`<article class="is-${s.tone}"><header><span>${escapeHtml(s.label)}</span><b>${escapeHtml(s.value)}</b></header><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.copy)}</p></article>`).join('')}</div></section>`;}
+  function managerCareerNoVacancyHTML(filtered=false){const pressure=Object.values(managerMarket.aiPressure||{}).filter(x=>['PRESSURE','FINAL'].includes(x.phase)).length,tracked=managerMonitoringClubs().length,activeManagers=Object.values(managerMarket.managers||{}).filter(m=>m.status==='EMPLOYED').length;return `<section class="mc-market-intelligence"><header><div><span>${filtered?'NO ROLES MATCH THIS FILTER':'MARKET INTELLIGENCE'}</span><h3>${filtered?'Broaden your search':'No vacancies. Plenty to read.'}</h3><p>${filtered?'Other live roles remain available in the market.':'Every post is currently occupied, but pressure and contract movement can create the next opening.'}</p></div><b>LIVE</b></header><div class="mc-intel-grid"><div><span>ACTIVE MANAGERS</span><strong>${activeManagers}</strong><small>permanent and interim appointments</small></div><div><span>UNDER PRESSURE</span><strong>${pressure}</strong><small>clubs closest to a decision</small></div><div><span>TRACKING YOU</span><strong>${tracked}</strong><small>interest above the live threshold</small></div><div><span>WATCHLIST</span><strong>${managerMarket.jobWatchlist?.length||0}</strong><small>clubs you are monitoring</small></div></div>${managerCareerTargetClubsHTML()}</section>`;}
+  function managerMarketVacanciesHTML(){const all=activeManagerVacancies(),list=all.filter(managerVacancyMatchesFilter);return `${v44RecommendedForYouHTML()}<div class="manager-market-toolbar"><div><span>LIVE MANAGER MARKET</span><strong>${all.length} OPEN VACANC${all.length===1?'Y':'IES'}</strong></div><div>${['all','realistic','interested','applied'].map(f=>`<button type="button" class="${managerMarketFilter===f?'is-active':''}" data-manager-filter="${f}">${f.toUpperCase()}</button>`).join('')}</div></div>${list.length?`<div class="manager-vacancy-grid">${list.map(v=>managerVacancyCardHTML(v)).join('')}</div>`:managerCareerNoVacancyHTML(all.length>0)}`;}
 
   function managerMonitoringClubs(){return clubs.filter(c=>c.id!==currentClub?.id&&!managerVacancyForClub(c.id)).map(c=>({club:c,score:managerClubInterestScore(c)})).filter(x=>x.score>=34).sort((a,b)=>b.score-a.score).slice(0,8);}
   function managerMonitoringHTML(){
     const list=managerMonitoringClubs();
     const highest=list[0]?.score||0;
-    return `${v44JobWatchlistHTML()}<section class="manager-monitoring-intro"><div><span>CLUB INTEREST</span><h3>Your work is being noticed.</h3><p>Monitoring is not a job offer. Interest rises and falls with your results, reputation, tactical fit and each club's situation.</p></div><aside><small>CLUBS MONITORING</small><strong>${list.length}</strong><em>${list.length?`${escapeHtml(managerInterestLabel(highest))} peak interest`:'No active interest'}</em></aside></section><div class="manager-monitoring-grid">${list.length?list.map(({club,score})=>`<article class="manager-interest-card"><div class="manager-interest-card-top"><div class="manager-interest-crest">${badgeHTML(club)}</div><div class="manager-interest-copy"><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h4>${escapeHtml(club.name)}</h4><small>${escapeHtml(club.country||'')} · ${escapeHtml(managerSuitabilityLabel(club))}</small></div><b class="manager-interest-score">${Math.round(score)}</b></div><div class="manager-interest-meter"><i style="width:${clamp(Math.round(score),0,100)}%"></i></div><footer><strong>${escapeHtml(managerInterestLabel(score))} INTEREST</strong><span>${score>=65?'Strongly monitoring':score>=48?'Watching closely':'Early monitoring'}</span></footer></article>`).join(''):'<div class="manager-market-empty"><span>NO CURRENT CLUB INTEREST</span><h3>Keep building your reputation.</h3><p>Strong results, promotions, cup runs and overachievement will attract attention.</p></div>'}</div>`;
+    return `${v44JobWatchlistHTML()}<section class="manager-monitoring-intro"><div><span>CLUB INTEREST</span><h3>Your work is being noticed.</h3><p>Monitoring is not a job offer. Interest rises and falls with your results, reputation, tactical fit and each club's situation.</p></div><aside><small>CLUBS MONITORING</small><strong>${list.length}</strong><em>${list.length?`${escapeHtml(managerInterestLabel(highest))} peak interest`:'No active interest'}</em></aside></section>${list.length?`<div class="manager-monitoring-grid">${list.map(({club,score})=>`<article class="manager-interest-card"><div class="manager-interest-card-top"><div class="manager-interest-crest">${badgeHTML(club)}</div><div class="manager-interest-copy"><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h4>${escapeHtml(club.name)}</h4><small>${escapeHtml(club.country||'')} · ${escapeHtml(managerSuitabilityLabel(club))}</small></div><b class="manager-interest-score">${Math.round(score)}</b></div><div class="manager-interest-meter"><i style="width:${clamp(Math.round(score),0,100)}%"></i></div><footer><strong>${escapeHtml(managerInterestLabel(score))} INTEREST</strong><span>${score>=65?'Strongly monitoring':score>=48?'Watching closely':'Early monitoring'}</span></footer></article>`).join('')}</div>`:`<div class="mc-interest-empty"><span>NO DECLARED INTEREST</span><h3>Build leverage before the next opening.</h3><p>Overachievement, cup runs and a strong run of form will move clubs from awareness to active monitoring.</p></div>${managerCareerTargetClubsHTML()}`}`;
   }
   function managerContractHTML(){
     if(employmentStatus!=='employed'||!currentClub)return `<section class="manager-contract-empty"><span>MANAGER STATUS</span><h3>UNEMPLOYED</h3><p>You are free to apply for vacancies across all four worlds.</p></section>`;
     const c=ensurePlayerManagerContract(currentClub,2),days=Math.max(0,diffDaysISO(currentCareerISO(),c.endDate)),warning=managerMarket.warning,review=warningReviewRecord(warning),renewal=managerMarket.offers.find(o=>o.type==='CONTRACT'&&o.status==='OPEN');
     const totalDays=Math.max(1,diffDaysISO(c.startDate||currentCareerISO(),c.endDate));
     const elapsed=clamp(totalDays-days,0,totalDays),progress=clamp(Math.round((elapsed/totalDays)*100),0,100);
-    return `<section class="manager-contract-panel"><header class="manager-contract-hero"><div class="manager-contract-crest">${badgeHTML(currentClub)}</div><div class="manager-contract-copy"><small>CURRENT MANAGER CONTRACT</small><h3>${escapeHtml(currentClub.name)}</h3><p>${escapeHtml(currentClub.division)} · ${escapeHtml(clubWorldName(currentClub))}</p></div><b class="manager-contract-status">${escapeHtml(managerMarketJobSecurity())}</b></header><div class="manager-contract-facts"><div><span>CONTRACT TERM</span><strong>${c.years} YEAR${Number(c.years)===1?'':'S'}</strong></div><div><span>EXPIRY DATE</span><strong>${escapeHtml(shortDateLabel(c.endDate))}</strong></div><div><span>WEEKLY SALARY</span><strong>£${Number(c.weeklySalary||0).toLocaleString('en-GB')}/WK</strong></div><div><span>TIME REMAINING</span><strong>${days} DAYS</strong></div></div><section class="manager-contract-progress"><div><span>CONTRACT PROGRESS</span><strong>${progress}% COMPLETE</strong></div><div class="manager-contract-progress-track"><i style="width:${progress}%"></i></div><footer><span>STARTED ${escapeHtml(shortDateLabel(c.startDate||currentCareerISO()))}</span><span>ENDS ${escapeHtml(shortDateLabel(c.endDate))}</span></footer></section><section class="manager-contract-expectation"><span>BOARD EXPECTATION</span><strong>${escapeHtml(c.initialExpectation||currentClub.expectation||'Build steadily')}</strong><small>Your job security is assessed against results, objectives and the trajectory of the club — not a single result.</small></section>${warning.phase!=='NONE'?`<div class="manager-board-review"><span>BOARD REVIEW · ${escapeHtml(warning.phase)}</span><strong>${warning.phase==='CONCERN'?'Improvement expected':`${review.points}/${warning.targetPoints} POINTS · ${review.matches}/${warning.targetMatches} MATCHES`}</strong><p>${warning.phase==='FINAL'?'Your position is under final review.':'The board are monitoring results against the current performance target.'}</p></div>`:''}${renewal?`<div class="manager-renewal-offer"><span>CONTRACT EXTENSION</span><strong>${renewal.contractYears} YEARS · £${Number(renewal.weeklySalary||0).toLocaleString('en-GB')}/WK</strong><button type="button" data-manager-renew="${renewal.id}">ACCEPT EXTENSION</button></div>`:''}<div class="manager-contract-footer"><small>Leaving voluntarily closes this managerial spell immediately. The club will continue under AI management.</small><button type="button" class="manager-resign-btn" data-manager-resign>RESIGN FROM CLUB</button></div></section>`;
+    return `<section class="manager-contract-panel"><header class="manager-contract-hero"><div class="manager-contract-crest">${badgeHTML(currentClub)}</div><div class="manager-contract-copy"><small>CURRENT MANAGER CONTRACT</small><h3>${escapeHtml(currentClub.name)}</h3><p>${escapeHtml(currentClub.division)} · ${escapeHtml(clubWorldName(currentClub))}</p></div><b class="manager-contract-status">${escapeHtml(managerMarketJobSecurity())}</b></header><div class="manager-contract-facts"><div><span>CONTRACT TERM</span><strong>${c.years} YEAR${Number(c.years)===1?'':'S'}</strong></div><div><span>EXPIRY DATE</span><strong>${escapeHtml(shortDateLabel(c.endDate))}</strong></div><div><span>WEEKLY SALARY</span><strong>£${Number(c.weeklySalary||0).toLocaleString('en-GB')}/WK</strong></div><div><span>TIME REMAINING</span><strong>${days} DAYS</strong></div></div><section class="manager-contract-progress"><div><span>CONTRACT PROGRESS</span><strong>${progress}% COMPLETE</strong></div><div class="manager-contract-progress-track"><i style="width:${progress}%"></i></div><footer><span>STARTED ${escapeHtml(shortDateLabel(c.startDate||currentCareerISO()))}</span><span>ENDS ${escapeHtml(shortDateLabel(c.endDate))}</span></footer></section><section class="manager-contract-expectation"><span>BOARD EXPECTATION</span><strong>${escapeHtml(c.initialExpectation||currentClub.expectation||'Build steadily')}</strong><small>Your job security is assessed against results, objectives and the trajectory of the club — not a single result.</small></section>${warning.phase!=='NONE'?`<div class="manager-board-review"><span>BOARD REVIEW · ${escapeHtml(warning.phase)}</span><strong>${warning.phase==='CONCERN'?'Improvement expected':`${review.points}/${warning.targetPoints} POINTS · ${review.matches}/${warning.targetMatches} MATCHES`}</strong><p>${warning.phase==='FINAL'?'Your position is under final review.':'The board are monitoring results against the current performance target.'}</p></div>`:''}${renewal?`<div class="manager-renewal-offer"><span>CONTRACT EXTENSION</span><strong>${renewal.contractYears} YEARS · £${Number(renewal.weeklySalary||0).toLocaleString('en-GB')}/WK</strong><button type="button" data-manager-contract-discuss="${renewal.id}">REVIEW EXTENSION</button></div>`:''}<div class="manager-contract-footer"><small>Leaving voluntarily closes this managerial spell immediately. The club will continue under AI management.</small><button type="button" class="manager-resign-btn" data-manager-resign>RESIGN FROM CLUB</button></div></section>`;
   }
   function managerCareerSpellsHTML(){
     const history=[...managerMarket.spellHistory,...(managerMarket.playerSpell?[{...managerMarket.playerSpell,...playerSpellRecord(managerMarket.playerSpell)}]:[])].reverse();
@@ -6236,7 +6953,9 @@
     const vacancies=activeManagerVacancies().slice(0,3).map(v=>{const club=clubById(v.clubId),caretaker=club?v44CaretakerForClub(club):null,record=caretaker?aiManagerSpellRecord(caretaker,club):null;return club?{type:'VACANCY',priority:74,club,manager:caretaker||null,label:caretaker?'CARETAKER IN CHARGE':'VACANCY OPEN',copy:caretaker?`${record.wins}W ${record.draws}D ${record.losses}L · permanent search remains open`:v.shortlistPublishedDate?`${(v.shortlistManagerIds||[]).length} names on the current shortlist`:`Search opened ${shortDateLabel(v.dateOpened)}`}:null;}).filter(Boolean);
     const appointments=managerMarket.marketHistory.filter(h=>h.type==='AI_APPOINTMENT').slice(0,4).map(h=>{const club=clubById(h.clubId),m=managerMarket.managers[h.managerId];return club&&m?{type:'APPOINTMENT',priority:58,club,manager:m,label:'NEW APPOINTMENT',copy:`${m.name} · ${managerProfileDescriptor(m)}`}:null;}).filter(Boolean);
     const caretakerMoves=managerMarket.marketHistory.filter(h=>h.type==='CARETAKER_APPOINTMENT').slice(0,3).map(h=>{const club=clubById(h.clubId),m=managerMarket.managers[h.managerId];return club&&m&&v44IsCaretaker(m)?{type:'CARETAKER',priority:62,club,manager:m,label:'INTERIM ERA',copy:`${m.name} is leading the side while the permanent search continues`}:null;}).filter(Boolean);
-    return [...pressure,...vacancies,...appointments,...caretakerMoves].sort((a,b)=>b.priority-a.priority).filter((x,i,arr)=>arr.findIndex(y=>y.club.id===x.club.id&&y.type===x.type)===i).slice(0,4);
+    const departures=managerMarket.marketHistory.filter(h=>['AI_DEPARTURE','PLAYER_DEPARTURE'].includes(h.type)).slice(0,4).map(h=>{const club=clubById(h.clubId),m=managerMarket.managers[h.managerId];return club?{type:'DEPARTURE',priority:68,club,manager:null,label:'MANAGERIAL CHANGE',copy:m?`${m.name} has left the role`:h.reason||'The club have confirmed a change of manager'}:null;}).filter(Boolean);
+    const approaches=managerMarket.marketHistory.filter(h=>h.type==='PLAYER_APPROACH').slice(0,2).map(h=>{const club=clubById(h.clubId);return club?{type:'APPROACH',priority:92,club,manager:null,label:'CONFIDENTIAL APPROACH',copy:`${club.name} want to discuss their managerial project with you`}:null;}).filter(Boolean);
+    return [...pressure,...approaches,...vacancies,...departures,...appointments,...caretakerMoves].sort((a,b)=>b.priority-a.priority).filter((x,i,arr)=>arr.findIndex(y=>y.club.id===x.club.id&&y.type===x.type)===i).slice(0,6);
   }
   function managerWorldPulseHTML(){
     const items=managerWorldPulseItems();return `<section class="manager-world-pulse"><div class="manager-pane-heading"><span>LIVE MANAGER NETWORK</span><h3>The world is moving around you</h3><p>Pressure, vacancies and appointments are driven by live results across all four worlds.</p></div><div class="manager-world-pulse-grid">${items.length?items.map(item=>`<article class="manager-world-pulse-card is-${item.type.toLowerCase()}"><div class="manager-world-pulse-crest">${badgeHTML(item.club)}</div><div><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.manager?.name||item.club.name)}</strong><p>${escapeHtml(item.manager?item.club.name:item.copy)}</p>${item.manager?`<small>${escapeHtml(item.copy)}</small>`:`<small>${escapeHtml(item.club.division)} · ${escapeHtml(item.copy)}</small>`}</div></article>`).join(''):`<div class="manager-world-pulse-empty"><strong>MANAGER MARKET STABLE</strong><span>No major managerial stories are developing today.</span></div>`}</div></section>`;}
@@ -6246,6 +6965,7 @@
     root.querySelectorAll('[data-manager-apply]').forEach(b=>b.addEventListener('click',()=>runLockedAction(`MANAGER_APPLY:${b.dataset.managerApply}`,b,()=>{applyToManagerVacancy(b.dataset.managerApply);renderOfficeManager();renderManagerMarketOverlayIfOpen();},{releaseDelay:350,busyText:'APPLYING…'})));
     root.querySelectorAll('[data-manager-interview-app]').forEach(b=>b.addEventListener('click',()=>openManagerInterview(b.dataset.managerInterviewApp)));
     root.querySelectorAll('[data-manager-offer]').forEach(b=>b.addEventListener('click',()=>openManagerJobOffer(b.dataset.managerOffer)));
+    root.querySelectorAll('[data-manager-contract-discuss]').forEach(b=>b.addEventListener('click',()=>openManagerContractDiscussion(b.dataset.managerContractDiscuss)));
     root.querySelectorAll('[data-manager-renew]').forEach(b=>b.addEventListener('click',()=>runLockedAction(`MANAGER_RENEW:${b.dataset.managerRenew}`,b,()=>{acceptManagerContractOffer(b.dataset.managerRenew);renderOfficeManager();},{releaseDelay:350,busyText:'RENEWING…'})));
     root.querySelectorAll('[data-manager-resign]').forEach(b=>b.addEventListener('click',requestManagerResignation));
     root.querySelectorAll('[data-manager-watch]').forEach(b=>b.addEventListener('click',()=>{if(v44ToggleJobWatchlist(b.dataset.managerWatch)){renderOfficeManager();renderManagerMarketOverlayIfOpen();}}));
@@ -6257,10 +6977,10 @@
   function renderManagerMarketOverlayIfOpen(){const root=document.getElementById('managerMarketOverlay');if(!root?.classList.contains('is-open'))return;root.querySelector('[data-manager-market-body]').innerHTML=managerMarketVacanciesHTML();wireManagerMarketControls(root);}
   function openManagerMarketOverlay(){ensureCareerMarketVacancies(currentCareerISO());const root=ensureManagerMarketOverlay();root.querySelector('[data-manager-market-body]').innerHTML=managerMarketVacanciesHTML();wireManagerMarketControls(root);root.classList.add('is-open');root.setAttribute('aria-hidden','false');}
   function openManagerInterview(applicationId){
-    const app=managerMarket.applications.find(a=>a.id===applicationId),interview=app?readyManagerInterviewForApplication(app.id):null,club=clubById(app?.clubId);if(!app||!interview||!club)return;const questions=interviewQuestionsForClub(club);let index=0,score=0,answers=[];let root=document.getElementById('managerInterviewOverlay');if(!root){root=document.createElement('div');root.id='managerInterviewOverlay';root.className='manager-interview-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-interview-shell"><header><span>CLUB INTERVIEW</span><button type="button" data-int-close>×</button></header><main data-int-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-int-body]');const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-int-close]').onclick=close;
+    const app=managerMarket.applications.find(a=>a.id===applicationId),interview=app?readyManagerInterviewForApplication(app.id):null,club=clubById(app?.clubId);if(!app||!interview||!club)return;const owner=chairmanForClub(club),questions=interviewQuestionsForClub(club);let index=0,score=0,answers=[];let root=document.getElementById('managerInterviewOverlay');if(!root){root=document.createElement('div');root.id='managerInterviewOverlay';root.className='manager-interview-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-interview-shell"><header><div><span>PRIVATE BOARDROOM</span><strong>CLUB INTERVIEW</strong></div><button type="button" data-int-close aria-label="Decide later">×</button></header><main data-int-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-int-body]');const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-int-close]').onclick=close;
     const render=()=>{
       const q=questions[index];
-      body.innerHTML=`<div class="manager-interview-club"><div>${badgeHTML(club)}</div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h2>${escapeHtml(club.name)}</h2><p>Question ${index+1} of ${questions.length}</p></div><section class="manager-interview-question"><span>${escapeHtml(q.id.toUpperCase())}</span><h3>${escapeHtml(q.question)}</h3><div>${q.choices.map(c=>`<button type="button" data-int-answer="${c.id}"><strong>${escapeHtml(c.label)}</strong><small>${escapeHtml(c.copy)}</small></button>`).join('')}</div></section>`;
+      body.innerHTML=`<section class="mc-boardroom-scene chairman-scene-cast"><div class="mc-boardroom-chairman">${chairmanPortraitHTML(owner,'mc-interview-chairman')}</div><div class="manager-interview-club"><div>${badgeHTML(club)}</div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h2>${escapeHtml(club.name)}</h2><p>${chairmanNameHTML(owner)} · ${escapeHtml(owner?.communicationStyleLabel||'Board representative')}</p></div><div class="mc-interview-progress">${questions.map((_,i)=>`<i class="${i<=index?'is-active':''}"></i>`).join('')}</div></section><section class="manager-interview-question"><span>${escapeHtml(q.id.toUpperCase())} · QUESTION ${index+1} OF ${questions.length}</span><h3>${escapeHtml(q.question)}</h3><p>Your answer becomes part of the board's record. There is no labelled safe response.</p><div>${q.choices.map((c,i)=>`<button type="button" data-int-answer="${c.id}"><b>0${i+1}</b><strong>${escapeHtml(c.label)}</strong><small>“${escapeHtml(c.copy)}”</small></button>`).join('')}</div></section>`;
       body.querySelectorAll('[data-int-answer]').forEach(btn=>btn.addEventListener('click',()=>{
         runLockedAction(`MANAGER_INTERVIEW:${interview.id}:Q${index}`,btn,()=>{
           const c=q.choices.find(x=>x.id===btn.dataset.intAnswer);
@@ -6273,15 +6993,28 @@
             interview.status='COMPLETED';interview.answers=answers;interview.score=score;
             app.status='INTERVIEW_COMPLETE';app.interviewScore=score;
             app.decisionDate=addDaysISO(currentCareerISO(),1+(hashString(`${worldSeed}-INTERVIEW-WAIT-${app.id}`)%2));
+            chairmanRecord(club,PLAYER_MANAGER_ID,{type:'INTERVIEW',importance:'NOTABLE',reason:`Interview completed with ${owner?.name||'club ownership'}`,metadata:{applicationId:app.id,score,answers}});
             saveCareerState();close();showToast(`${club.name} interview completed · decision pending`);renderOfficeManager();renderUnemployedHub();
           }
           return true;
         },{releaseDelay:240});
       }));
+      queueManagerHydration(body);
     };render();root.classList.add('is-open');root.setAttribute('aria-hidden','false');
   }
   function openManagerJobOffer(offerId){
-    const o=managerMarket.offers.find(x=>x.id===offerId&&x.status==='OPEN'),club=clubById(o?.clubId);if(!o||!club)return;let root=document.getElementById('managerOfferOverlay');if(!root){root=document.createElement('div');root.id='managerOfferOverlay';root.className='manager-offer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-offer-shell"><header><span>FORMAL JOB OFFER</span><button type="button" data-offer-close>×</button></header><main data-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-offer-body]'),pos=managerVacancyTablePosition(club);body.innerHTML=`<div class="manager-offer-club"><div>${badgeHTML(club)}</div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h2>${escapeHtml(club.name)}</h2><p>The board want you as their next manager.</p></div><div class="manager-offer-facts"><div><span>CONTRACT</span><strong>${o.contractYears} YEARS</strong></div><div><span>SALARY</span><strong>£${Number(o.weeklySalary||0).toLocaleString('en-GB')}/WK</strong></div><div><span>POSITION</span><strong>${pos?ordinal(pos):'PRE-SEASON'}</strong></div><div><span>TRANSFER BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}</strong></div><div><span>BOARD TARGET</span><strong>${escapeHtml(o.boardExpectation||club.expectation||'Build steadily')}</strong></div><div><span>INTEREST</span><strong>${escapeHtml(managerInterestLabel(managerClubInterestScore(club)))}</strong></div></div><div class="manager-offer-actions"><button type="button" data-offer-decline>DECLINE</button><button type="button" class="is-primary" data-offer-accept>ACCEPT JOB</button></div>`;const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-offer-close]').onclick=close;body.querySelector('[data-offer-decline]').onclick=()=>{const btn=body.querySelector('[data-offer-decline]');runLockedAction(`MANAGER_OFFER_DECLINE:${o.id}`,btn,()=>{declineManagerOffer(o.id);close();renderOfficeManager();renderUnemployedHub();},{releaseDelay:320,busyText:'DECLINING…'});};body.querySelector('[data-offer-accept]').onclick=()=>{const btn=body.querySelector('[data-offer-accept]');runLockedAction(`MANAGER_OFFER_ACCEPT:${o.id}`,btn,()=>{if(o.status!=='OPEN')return false;close();return acceptManagerOffer(o.id);},{releaseDelay:650,busyText:'ACCEPTING…'});};root.classList.add('is-open');root.setAttribute('aria-hidden','false');
+    const o=managerMarket.offers.find(x=>x.id===offerId&&x.status==='OPEN'),club=clubById(o?.clubId);if(!o||!club)return;const owner=chairmanForClub(club),policy=chairmanPolicy(club);let root=document.getElementById('managerOfferOverlay');if(!root){root=document.createElement('div');root.id='managerOfferOverlay';root.className='manager-offer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-offer-shell"><header><div><span>CONFIDENTIAL · BOARDROOM</span><strong>FORMAL JOB OFFER</strong></div><button type="button" data-offer-close aria-label="Decide later">×</button></header><main data-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-offer-body]'),pos=managerVacancyTablePosition(club),close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-offer-close]').onclick=close;
+    const render=()=>{const response=o.negotiation,tried=new Set((o.negotiations||[]).map(n=>n.request)),priorities=window.VelmoraChairmen?.priorityNames(owner)||[];body.innerHTML=`<section class="mc-boardroom-scene mc-offer-scene chairman-scene-cast"><div class="mc-boardroom-chairman">${chairmanPortraitHTML(owner,'mc-offer-chairman')}</div><div class="manager-offer-club"><div>${badgeHTML(club)}</div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h2>${escapeHtml(club.name)}</h2><p>${chairmanNameHTML(owner)} · “${escapeHtml(window.VelmoraChairmen?.voice(owner,'open','Let us discuss the appointment.')||'')}”</p></div></section><div class="chairman-policy-strip"><span><b>FIRST PRIORITY</b>${escapeHtml(priorities[0]||'Club progress')}</span><span><b>FINANCE</b>${policy.sellToBuy?'Sell to buy':'Budget available within limits'}</span><span><b>ACADEMY</b>${Math.round(policy.academyProtection)}/100 commitment</span></div>${response?`<div class="mc-board-response is-${response.accepted?'accepted':'held'}"><span>${escapeHtml(response.title)}</span><strong>${escapeHtml(response.copy)}</strong></div>`:''}<div class="manager-offer-facts"><div><span>CONTRACT</span><strong>${o.contractYears} YEARS</strong></div><div><span>SALARY</span><strong>£${Number(o.weeklySalary||0).toLocaleString('en-GB')}/WK</strong></div><div><span>LEAGUE POSITION</span><strong>${pos?ordinal(pos):'PRE-SEASON'}</strong></div><div><span>TRANSFER BUDGET</span><strong>${escapeHtml(club.budget||'TBC')}${o.budgetProtection?' · PROTECTED':''}</strong></div><div><span>BOARD TARGET</span><strong>${escapeHtml(o.boardExpectation||club.expectation||'Build steadily')}</strong></div><div><span>BOARD INTEREST</span><strong>${escapeHtml(managerInterestLabel(managerClubInterestScore(club)))}</strong></div></div><div class="mc-offer-brief"><span>THE DECISION</span><p>Accepting moves your career immediately. The current season, squad, finances and league table continue without a reset. Each concession can be discussed once.</p></div><div class="manager-offer-actions"><button type="button" data-offer-decline>DECLINE OFFER</button>${!tried.has('salary')?`<button type="button" data-offer-counter="salary">REQUEST HIGHER SALARY</button>`:''}${!tried.has('term')?`<button type="button" data-offer-counter="term">REQUEST LONGER TERM</button>`:''}${!tried.has('resources')?`<button type="button" data-offer-counter="resources">PROTECT RECRUITMENT BUDGET</button>`:''}<button type="button" class="is-primary" data-offer-accept>ACCEPT JOB</button></div>`;
+      body.querySelector('[data-offer-decline]').onclick=()=>{const btn=body.querySelector('[data-offer-decline]');runLockedAction(`MANAGER_OFFER_DECLINE:${o.id}`,btn,()=>{declineManagerOffer(o.id);close();renderOfficeManager();renderUnemployedHub();},{releaseDelay:320,busyText:'DECLINING…'});};
+      body.querySelectorAll('[data-offer-counter]').forEach(btn=>btn.onclick=()=>runLockedAction(`MANAGER_OFFER_COUNTER:${o.id}`,btn,()=>{negotiateManagerOffer(o.id,btn.dataset.offerCounter);render();return true;},{releaseDelay:420,busyText:'DISCUSSING…'}));
+      body.querySelector('[data-offer-accept]').onclick=()=>{const btn=body.querySelector('[data-offer-accept]');runLockedAction(`MANAGER_OFFER_ACCEPT:${o.id}`,btn,()=>{if(o.status!=='OPEN')return false;close();return acceptManagerOffer(o.id);},{releaseDelay:650,busyText:'ACCEPTING…'});};queueManagerHydration(body);
+    };render();root.classList.add('is-open');root.setAttribute('aria-hidden','false');
+  }
+  function openManagerContractDiscussion(offerId){
+    const o=managerMarket.offers.find(x=>x.id===offerId&&x.type==='CONTRACT'&&x.status==='OPEN'),club=currentClub;if(!o||!club)return;const owner=chairmanForClub(club);let root=document.getElementById('managerContractTalkOverlay');if(!root){root=document.createElement('div');root.id='managerContractTalkOverlay';root.className='manager-offer-overlay manager-contract-talk-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-offer-shell"><header><div><span>BOARDROOM · CURRENT CLUB</span><strong>CONTRACT DISCUSSION</strong></div><button type="button" data-contract-close aria-label="Decide later">×</button></header><main data-contract-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-contract-body]'),close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-contract-close]').onclick=close;
+    const render=()=>{const response=o.negotiation,tried=new Set((o.negotiations||[]).map(n=>n.request));body.innerHTML=`<section class="mc-boardroom-scene mc-offer-scene chairman-scene-cast"><div class="mc-boardroom-chairman">${chairmanPortraitHTML(owner,'mc-contract-chairman')}</div><div class="manager-offer-club"><div>${badgeHTML(club)}</div><span>${escapeHtml(clubWorldName(club))} · ${escapeHtml(club.division)}</span><h2>${escapeHtml(club.name)}</h2><p>${chairmanNameHTML(owner)} · ${escapeHtml(chairmanRelationship(club,PLAYER_MANAGER_ID)?.state||'Working relationship')}</p></div></section>${response?`<div class="mc-board-response is-${response.accepted?'accepted':'held'}"><span>${escapeHtml(response.title)}</span><strong>${escapeHtml(response.copy)}</strong></div>`:''}<div class="manager-offer-facts mc-contract-offer-facts"><div><span>NEW TERM</span><strong>${o.contractYears} YEARS</strong></div><div><span>WEEKLY SALARY</span><strong>£${Number(o.weeklySalary||0).toLocaleString('en-GB')}/WK</strong></div><div><span>JOB SECURITY</span><strong>${playerJobSecurityScore()}/100</strong></div><div><span>BOARD TARGET</span><strong>${escapeHtml(club.expectation||'Build steadily')}</strong></div></div><div class="manager-offer-actions"><button type="button" data-contract-decline>DECLINE EXTENSION</button>${!tried.has('term')?'<button type="button" data-contract-counter="term">REQUEST LONGER TERM</button>':''}${!tried.has('salary')?'<button type="button" data-contract-counter="salary">REQUEST SALARY REVIEW</button>':''}${!tried.has('resources')?'<button type="button" data-contract-counter="resources">REQUEST RECRUITMENT ASSURANCE</button>':''}<button type="button" class="is-primary" data-contract-accept>ACCEPT EXTENSION</button></div>`;
+      body.querySelector('[data-contract-decline]').onclick=()=>{o.status='DECLINED';chairmanRecord(club,PLAYER_MANAGER_ID,{type:'CONTRACT_DECLINED',importance:'NOTABLE',reason:'Manager declined contract extension'});saveCareerState();close();renderOfficeManager();showToast('Extension declined · current contract remains active');};body.querySelectorAll('[data-contract-counter]').forEach(btn=>btn.addEventListener('click',()=>{negotiateManagerContractOffer(o.id,btn.dataset.contractCounter);render();}));body.querySelector('[data-contract-accept]').onclick=()=>{if(acceptManagerContractOffer(o.id)){close();renderOfficeManager();}};queueManagerHydration(body);
+    };render();root.classList.add('is-open');root.setAttribute('aria-hidden','false');
   }
   function showManagerFirst24Hours(club,oldClub=null){
     let root=document.getElementById('managerFirst24Overlay');if(!root){root=document.createElement('div');root.id='managerFirst24Overlay';root.className='manager-first24-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="manager-first24-shell"><main data-first24-body></main></section>';document.body.appendChild(root);}const row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id),body=root.querySelector('[data-first24-body]');body.innerHTML=`<div class="v46-first24-hero"><div class="v46-first24-manager">${managerPortraitHTML(ensureManagerProfile(),'v46-first24-manager-paperdoll','office')}</div><div class="first24-top"><span>YOUR FIRST 24 HOURS</span><h1>WELCOME TO ${escapeHtml(club.name.toUpperCase())}</h1><p>${oldClub?`Your career moves on from ${escapeHtml(oldClub.name)}.`:'A new chapter begins.'} The existing season continues exactly where it is.</p></div></div><div class="first24-club"><div>${badgeHTML(club)}</div><section><span>${escapeHtml(clubWorldName(club))}</span><h2>${escapeHtml(club.division)}</h2><p>${row?`${ordinal(row.pos)} · ${row.pts} points · ${row.played} played`:'Pre-season'} · ${escapeHtml(club.budget||'TBC')} budget</p></section></div><div class="first24-grid"><article><b>01</b><strong>BOARD BRIEFING</strong><span>${escapeHtml(club.expectation||'Build steadily')}</span></article><article><b>02</b><strong>SQUAD HANDOVER</strong><span>${getSquad(club).length} senior players ready for review</span></article><article><b>03</b><strong>CAREER CONTINUES</strong><span>${escapeHtml(shortDateLabel(currentCareerISO()))} · no season reset</span></article></div><button type="button" data-first24-go>BEGIN WORK</button>`;body.querySelector('[data-first24-go]').onclick=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');renderCentral();showScreen('central');showToast(`${club.name} · your new chapter begins`);};root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueManagerHydration(body);
@@ -6447,6 +7180,24 @@
   function seasonRecordSnapshot(seasonId=careerTime.seasonId){const played=fixtures.filter(f=>f.played&&f.type!=='FRIENDLY');let biggestWin=null,highestScoringMatch=null;played.forEach(f=>{const home=clubById(f.homeClubId),away=clubById(f.awayClubId),hs=Number(f.homeScore||0),as=Number(f.awayScore||0),margin=Math.abs(hs-as),total=hs+as;if(margin>0&&(!biggestWin||margin>biggestWin.margin)){const winner=hs>as?home:away,loser=hs>as?away:home;biggestWin={seasonId,fixtureId:f.fixtureId,date:f.date,competition:f.competitionName||f.competitionId||f.type,winnerClubId:winner?.id||null,winnerClubName:winner?.name||'',loserClubId:loser?.id||null,loserClubName:loser?.name||'',score:`${Math.max(hs,as)}–${Math.min(hs,as)}`,margin};}if(!highestScoringMatch||total>highestScoringMatch.total)highestScoringMatch={seasonId,fixtureId:f.fixtureId,date:f.date,competition:f.competitionName||f.competitionId||f.type,homeClubId:home?.id||null,homeClubName:home?.name||'',awayClubId:away?.id||null,awayClubName:away?.name||'',score:`${hs}–${as}`,total};});const transfer=[...(livingSquad.transferHistory||[])].filter(r=>r.seasonId===seasonId&&Number(r.fee||0)>0).sort((a,b)=>Number(b.fee||0)-Number(a.fee||0))[0]||null;return{biggestWin,highestScoringMatch,longestUnbeaten:seasonLongestUnbeatenRecord(),recordTransfer:transfer?{seasonId,playerId:transfer.playerId,playerName:transfer.playerName,fee:Number(transfer.fee||0),fromClubId:transfer.fromClubId,toClubId:transfer.toClubId,date:transfer.date}:null};}
   function playerHonour(p,award,seasonId,scope='SEASON'){if(!p||!award)return;const h=livingPlayerHistoryRecord(p);if(!h)return;const id=`${scope}-${seasonId}-${award}`;if(!h.honours.some(x=>x.id===id)){h.honours.push({id,seasonId,award,scope});if(scope!=='MONTH'){const club=clubById(p.parentClubId||p.ownerClubId||p.clubId);recordCareerMemory({type:'PLAYER_AWARD',clubId:club?.id||null,playerId:p.id,date:currentCareerISO(),seasonId:careerTime.seasonId,importance:/WORLD PLAYER|PLAYER OF THE SEASON|TOP SCORER/.test(String(award).toUpperCase())?'MAJOR':'NOTABLE',metadata:{award,scope,awardSeason:seasonId}});}}}
   function updateCareerRecordBook(records={}){roadToGlory.recordBook=roadToGlory.recordBook||{};const rb=roadToGlory.recordBook;if(records.biggestWin&&(!rb.biggestWin||Number(records.biggestWin.margin||0)>Number(rb.biggestWin.margin||0)))rb.biggestWin=deepClone(records.biggestWin);if(records.highestScoringMatch&&(!rb.highestScoringMatch||Number(records.highestScoringMatch.total||0)>Number(rb.highestScoringMatch.total||0)))rb.highestScoringMatch=deepClone(records.highestScoringMatch);if(records.longestUnbeaten&&(!rb.longestUnbeaten||Number(records.longestUnbeaten.matches||0)>Number(rb.longestUnbeaten.matches||0)))rb.longestUnbeaten=deepClone(records.longestUnbeaten);const liveFee=Number(livingSquad.globalRecords?.recordFee||0),recordPlayer=careerPlayerById(livingSquad.globalRecords?.recordFeePlayerId)||livingSquad.playerHistory?.[livingSquad.globalRecords?.recordFeePlayerId];if(liveFee>Number(rb.recordTransfer?.fee||0))rb.recordTransfer={fee:liveFee,playerId:livingSquad.globalRecords?.recordFeePlayerId||null,playerName:recordPlayer?.name||records.recordTransfer?.playerName||'Unknown player',seasonId:records.recordTransfer?.seasonId||careerTime.seasonId};else if(records.recordTransfer&&Number(records.recordTransfer.fee||0)>Number(rb.recordTransfer?.fee||0))rb.recordTransfer=deepClone(records.recordTransfer);}
+  function v96EnsureLiveRecordTracking(excludeFixtureId=null){
+    if(!roadToGlory||typeof roadToGlory!=='object')roadToGlory={};const rb=roadToGlory.recordBook&&typeof roadToGlory.recordBook==='object'?roadToGlory.recordBook:(roadToGlory.recordBook={biggestWin:null,highestScoringMatch:null,longestUnbeaten:null,recordTransfer:null,trackingSeasonId:null,activeUnbeatenRuns:{}});
+    if(rb.trackingSeasonId===careerTime.seasonId&&rb.activeUnbeatenRuns&&typeof rb.activeUnbeatenRuns==='object')return rb;
+    const runs={};fixtures.filter(f=>f.played&&f.type==='LEAGUE'&&f.fixtureId!==excludeFixtureId).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.fixtureId||'').localeCompare(String(b.fixtureId||''))).forEach(f=>{
+      [[f.homeClubId,Number(f.homeScore||0),Number(f.awayScore||0)],[f.awayClubId,Number(f.awayScore||0),Number(f.homeScore||0)]].forEach(([clubId,gf,ga])=>{if(!clubId)return;runs[clubId]=gf>=ga?Number(runs[clubId]||0)+1:0;});
+    });
+    rb.trackingSeasonId=careerTime.seasonId;rb.activeUnbeatenRuns=runs;return rb;
+  }
+  function v96CaptureLiveRecords(fixture){
+    if(!fixture?.played||fixture.type==='FRIENDLY'||fixture.v96RecordsCaptured)return[];const rb=v96EnsureLiveRecordTracking(fixture.fixtureId),before={biggestWin:rb.biggestWin,highestScoringMatch:rb.highestScoringMatch,longestUnbeaten:rb.longestUnbeaten},home=clubById(fixture.homeClubId),away=clubById(fixture.awayClubId),hs=Number(fixture.homeScore||0),as=Number(fixture.awayScore||0),margin=Math.abs(hs-as),total=hs+as,live={},breaks=[];
+    if(margin>Number(before.biggestWin?.margin||0)){const winner=hs>as?home:away,loser=hs>as?away:home;live.biggestWin={seasonId:careerTime.seasonId,fixtureId:fixture.fixtureId,date:fixture.date,competition:fixture.competitionName||fixture.competitionId||fixture.type,winnerClubId:winner?.id||null,winnerClubName:winner?.name||'',loserClubId:loser?.id||null,loserClubName:loser?.name||'',score:`${Math.max(hs,as)}–${Math.min(hs,as)}`,margin};breaks.push({key:'BIGGEST-WIN',title:'BIGGEST VICTORY',copy:`${live.biggestWin.winnerClubName} set a new career-era winning margin with a ${live.biggestWin.score} result.`});}
+    if(total>Number(before.highestScoringMatch?.total||0)){live.highestScoringMatch={seasonId:careerTime.seasonId,fixtureId:fixture.fixtureId,date:fixture.date,competition:fixture.competitionName||fixture.competitionId||fixture.type,homeClubId:home?.id||null,homeClubName:home?.name||'',awayClubId:away?.id||null,awayClubName:away?.name||'',score:`${hs}–${as}`,total};breaks.push({key:'HIGHEST-SCORING',title:'HIGHEST-SCORING MATCH',copy:`${live.highestScoringMatch.homeClubName} ${live.highestScoringMatch.score} ${live.highestScoringMatch.awayClubName} is the new career-era scoring mark.`});}
+    if(fixture.type==='LEAGUE')[[home,hs,as],[away,as,hs]].forEach(([club,gf,ga])=>{if(!club)return;const matches=gf>=ga?Number(rb.activeUnbeatenRuns[club.id]||0)+1:0;rb.activeUnbeatenRuns[club.id]=matches;if(matches>Number((live.longestUnbeaten||before.longestUnbeaten)?.matches||0))live.longestUnbeaten={clubId:club.id,clubName:club.name,matches,division:club.division,world:clubWorldName(club)};});
+    if(live.longestUnbeaten&&Number(live.longestUnbeaten.matches||0)>Number(before.longestUnbeaten?.matches||0))breaks.push({key:`UNBEATEN-${live.longestUnbeaten.clubId}-${live.longestUnbeaten.matches}`,title:'UNBEATEN RUN EXTENDED',copy:`${live.longestUnbeaten.clubName} now own the career-era unbeaten record at ${live.longestUnbeaten.matches} matches.`});
+    fixture.v96RecordsCaptured=true;updateCareerRecordBook(live);const involvesUser=!!currentClub&&(fixture.homeClubId===currentClub.id||fixture.awayClubId===currentClub.id),seen=roadToGlory.presentation.recordMilestoneKeys=Array.isArray(roadToGlory.presentation.recordMilestoneKeys)?roadToGlory.presentation.recordMilestoneKeys:[],fresh=breaks.filter(item=>{const id=`${careerTime.seasonId}:${fixture.fixtureId}:${item.key}`;if(seen.includes(id))return false;seen.push(id);return true;});roadToGlory.presentation.recordMilestoneKeys=seen.slice(-120);
+    if(involvesUser&&fresh.length){const subject=fresh.length>1?'A MATCH FOR THE RECORD BOOK':fresh[0].title;addCareerNews({id:`record-news-${fixture.fixtureId}`,category:'WORLD RECORDS',title:`${currentClub.name.toUpperCase()} · ${subject}`,body:[...fresh.map(x=>x.copy),'The new mark is now permanent in Season → World History & Records.'],image:currentClub.badge,date:fixture.date});addCareerInboxMessage({id:`record-inbox-${fixture.fixtureId}`,type:'CAREER',sender:'REPO SPORTS RECORDS DESK',subject,preview:'A new career-era record has been confirmed.',title:subject,body:[...fresh.map(x=>x.copy),'The official record book has been updated.'],signoff:'Repo Sports Records Desk',date:fixture.date});}
+    return fresh;
+  }
   function registerSeasonAwardHonours(league,seasonId){if(!league)return;[['PLAYER OF THE SEASON',league.playerOfSeason],['YOUNG PLAYER OF THE SEASON',league.youngPlayerOfSeason],['TOP SCORER',league.topScorer]].forEach(([label,pack])=>{const p=pack?careerPlayerById(pack.id):null;if(p)playerHonour(p,label,seasonId,'LEAGUE');});(league.teamOfSeason||[]).forEach(pack=>{const p=careerPlayerById(pack.id);if(p)playerHonour(p,'TEAM OF THE SEASON',seasonId,'LEAGUE');});const manager=league.managerOfSeason;if(manager?.managerId===PLAYER_MANAGER_ID&&!roadToGlory.managerAwards.some(x=>x.seasonId===seasonId&&x.type==='MANAGER_OF_SEASON'&&x.divisionKey===league.divisionKey)){roadToGlory.managerAwards.push({id:`MOS-${seasonId}-${league.divisionKey}`,seasonId,type:'MANAGER_OF_SEASON',competition:league.division,divisionKey:league.divisionKey,clubId:manager.clubId,clubName:manager.clubName,date:currentCareerISO()});addCareerNews({id:`manager-award-${seasonId}-${league.divisionKey}`,category:'SEASON AWARDS',title:`${managerName.toUpperCase()} NAMED ${league.division.toUpperCase()} MANAGER OF THE SEASON`,body:[`${managerName} has received the division's Manager of the Season award after ${manager.clubName}'s campaign.`,`The award is based on results, league finish and performance relative to club expectations.`],image:clubById(manager.clubId)?.badge,date:currentCareerISO()});addCareerInboxMessage({id:`manager-award-inbox-${seasonId}-${league.divisionKey}`,type:'CAREER',sender:'LEAGUE OFFICE',subject:'Manager of the Season',preview:`You have been named ${league.division} Manager of the Season.`,title:'Manager of the Season',body:[`Your ${seasonId} campaign has been recognised by the league office.`,`The award is now permanently recorded in your Career Archive.`],signoff:'League Office',date:currentCareerISO()});}else if(manager?.managerId&&manager.managerId!==PLAYER_MANAGER_ID){const m=managerMarket.managers?.[manager.managerId];if(m){m.honours=m.honours||{};m.honours.awards=Number(m.honours.awards||0)+1;}}}
   function recordWorldHistorySeason(data={}){roadToGlory=normalizeRoadToGloryState(roadToGlory);const seasonId=data.seasonId||careerTime.seasonId;if(roadToGlory.worldHistory.some(x=>x.seasonId===seasonId))return roadToGlory.worldHistory.find(x=>x.seasonId===seasonId);const snapshot=data.snapshot||standingsSnapshot(),plan=data.plan||seasonMovementPlan(snapshot),keys=Object.keys(snapshot),leagues=keys.map(key=>divisionAwardSnapshot(key,snapshot,plan)).filter(Boolean);leagues.forEach(l=>registerSeasonAwardHonours(l,seasonId));const allPlayers=clubs.flatMap(club=>getSquad(club).map(p=>({p,club,score:awardSeasonScore(p)}))).filter(x=>Number(x.p.seasonStats?.apps||0)>0).sort((a,b)=>b.score-a.score),worldPlayer=allPlayers[0]?awardPlayerPack(allPlayers[0].p,allPlayers[0].club):null,worldYoung=allPlayers.find(x=>Number(x.p.age||99)<=21),globalAwards={worldPlayerOfSeason:worldPlayer,worldYoungPlayerOfSeason:worldYoung?awardPlayerPack(worldYoung.p,worldYoung.club):null};if(worldPlayer){const p=careerPlayerById(worldPlayer.id);if(p)playerHonour(p,'WORLD PLAYER OF THE SEASON',seasonId,'WORLD');}if(globalAwards.worldYoungPlayerOfSeason){const p=careerPlayerById(globalAwards.worldYoungPlayerOfSeason.id);if(p)playerHonour(p,'WORLD YOUNG PLAYER OF THE SEASON',seasonId,'WORLD');}const cc=[...(championsCrown.history||[])].reverse().find(h=>h.seasonId===seasonId)||null,records=seasonRecordSnapshot(seasonId),archive={seasonId,seasonNumber:data.seasonNumber||careerSeason,completedDate:currentCareerISO(),leagues,cups:cupSeasonSnapshots(),championsCrown:cc?deepClone(cc):null,globalAwards,records};roadToGlory.worldHistory.push(archive);roadToGlory.worldHistory=roadToGlory.worldHistory.slice(-60);updateCareerRecordBook(records);if(currentClub){const ownLeague=leagues.find(l=>l.divisionKey===currentClub.divisionKey);const ownAward=[ownLeague?.playerOfSeason,ownLeague?.youngPlayerOfSeason,ownLeague?.topScorer].filter(Boolean).find(x=>x.clubId===currentClub.id);if(ownAward)addCareerNews({id:`club-season-award-${seasonId}-${ownAward.id}`,category:'SEASON AWARDS',title:`${ownAward.name.toUpperCase()} RECOGNISED IN ${ownLeague.division.toUpperCase()} AWARDS`,body:[`${ownAward.name} has been recognised after a standout ${seasonId} campaign for ${currentClub.name}.`,`Season honours are calculated from actual appearances, goals and match ratings.`],image:ownAward.avatar,date:currentCareerISO()});}return archive;}
   function awardStatsSnapshot(){const out={};clubs.forEach(club=>getSquad(club).forEach(p=>{out[p.id]={clubId:club.id,apps:Number(p.seasonStats?.apps||0),starts:Number(p.seasonStats?.starts||0),goals:Number(p.seasonStats?.goals||0),ratingSum:Number(p.seasonStats?.ratingSum||0),ratingCount:Number(p.seasonStats?.ratingCount||0),potm:Number(p.seasonStats?.potm||0)};}));return out;}
@@ -6690,7 +7441,7 @@
     const p={
       id,name:makeUniquePlayerName(nationality,rng),country:nationality,age,role,ovr,potential,basePotential:potential,dynamicPotentialDelta:0,
       stats,fitness:88+Math.floor(rng()*13),morale:'Happy',form:'Academy',contractYears:0,wage:0,
-      value:Math.max(40_000,Math.round(Math.pow(Math.max(1,ovr-42),2.05)*1550)),
+      value:playerAbilityValue(ovr,age),
       potentialStatus:'Academy Prospect',avatar:allocateAvatar(`${club.id}-${id}`,clubWorldName(club)),spriteRevision:playerSpriteCatalog.revision,captain:false,freeAgent:false,
       clubId:club.id,clubName:club.name,academy:true,academyYears:0,intakeSeason:careerSeason,joinedSeason:careerSeason,
       peakOvr:ovr,retiringAtEnd:false,careerClubs:[club.id],decisionRequired:false
@@ -6760,15 +7511,64 @@
     return record;
   }
 
+  function retiredPlayerStaffRole(record){
+    if(!record)return'coach';const roll=hashString(`${worldSeed}-LEGACY-STAFF-ROLE-${record.id}`)%100;
+    if(record.role==='PLAYMAKER')return roll<72?'coach':'scout';
+    if(record.role==='ATTACKER')return roll<66?'coach':'scout';
+    if(record.role==='DEFENDER')return roll<48?'coach':'scout';
+    return roll<55?'coach':'scout';
+  }
+  function retiredPlayerStaffCandidate(record,club){
+    const role=retiredPlayerStaffRole(record),apps=Number(record.careerApps||0),legend=(record.careerLabels||[]).includes('CLUB LEGEND'),captain=(record.careerLabels||[]).includes('CLUB CAPTAIN'),quality=clamp(Math.round(38+Number(record.peakOvr||record.lastOvr||55)*.38+Math.min(10,apps/28)+(legend?7:0)+(captain?3:0)),48,88),wage=Math.round((180+quality*quality*.15)/25)*25;
+    return {id:`legacy-candidate-${record.id}`,key:`legacy-candidate-${record.id}`,name:record.name,role,quality,wage,fee:0,judgement:clamp(Math.round(quality/19),1,5),network:clamp(Math.round((quality+8)/20),1,5),specialism:role==='scout'?(record.role==='DEFENDER'?'DEFENSIVE':record.role==='ATTACKER'?'ATTACKING':record.role==='PLAYMAKER'?'TECHNICAL':'YOUTH'):'TECHNICAL',xp:0,course:null,formerPlayerId:record.id,formerPlayerRole:record.role,formerPlayerAvatar:record.avatar,legacyLabel:legend?'CLUB LEGEND':record.farewellLevel==='MAJOR CLUB FAREWELL'?'FORMER FAN FAVOURITE':'FORMER PLAYER',appliedDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),90),originClubId:club.id};
+  }
+  function queueRetiredPlayerStaffApplications(records=[]){
+    if(!currentClub||!careerExpansion?.addLegacyCandidate)return null;
+    const eligible=records.filter(r=>r?.status==='RETIRED'&&!r.staffPathway&&(r.lastClubId===currentClub.id||(r.careerClubs||[]).includes(currentClub.id))).sort((a,b)=>((b.careerLabels||[]).includes('CLUB LEGEND')?1:0)-((a.careerLabels||[]).includes('CLUB LEGEND')?1:0)||Number(b.careerApps||0)-Number(a.careerApps||0));
+    for(const record of eligible){
+      const legend=(record.careerLabels||[]).includes('CLUB LEGEND'),major=record.farewellLevel==='MAJOR CLUB FAREWELL',chance=legend?100:major?74:42,roll=hashString(`${worldSeed}-LEGACY-STAFF-APPLICATION-${careerTime.seasonId}-${record.id}`)%100;if(roll>=chance)continue;
+      const candidate=retiredPlayerStaffCandidate(record,currentClub),added=careerExpansion.addLegacyCandidate(currentClub,candidate);if(!added?.ok)continue;
+      record.staffPathway={status:'APPLIED',role:candidate.role,clubId:currentClub.id,clubName:currentClub.name,candidateId:candidate.id,appliedDate:currentCareerISO(),expiresDate:candidate.expiresDate,quality:candidate.quality};
+      const roleLabel=candidate.role==='scout'?'scout':'first-team coach';
+      addCareerInboxMessage({id:`legacy-staff-application-${record.id}-${careerTime.seasonId}`,type:'STAFF',sender:'CLUB SECRETARY',subject:`Former player applies: ${record.name}`,preview:`${candidate.legacyLabel.toLowerCase()} wants to return as ${roleLabel}.`,title:`${record.name} wants to return to ${currentClub.name}`,body:[`${record.name} has completed an entry-level staff pathway and formally applied to join the club as a ${roleLabel}.`,`The interview panel rates the application at ${candidate.quality}/95 quality. No signing fee is required; the proposed wage is ${formatMoney(candidate.wage)} per week.`,`The application remains available in Office → Staff for 90 days and uses a normal department place if accepted.`],signoff:'Club Secretary',action:{label:'REVIEW STAFF APPLICATION',route:'staff'},date:currentCareerISO()});
+      if(legend)addCareerNews({id:`legacy-staff-news-${record.id}-${careerTime.seasonId}`,category:'CLUB LEGACY',title:`${record.name.toUpperCase()} CONSIDERS ${currentClub.name.toUpperCase()} RETURN`,body:[`${record.name} has applied for a first role on the club's backroom staff after retiring from professional play.`,`Any appointment will be made through the same staff structure and department limits as every other candidate.`],image:record.avatar,date:currentCareerISO()});
+      return candidate;
+    }
+    return null;
+  }
+  function onRetiredPlayerStaffHired(candidate,club){
+    const record=retiredPlayers.find(r=>String(r.id)===String(candidate?.formerPlayerId));if(!record||!club)return;
+    record.staffPathway={...(record.staffPathway||{}),status:'HIRED',role:candidate.role,clubId:club.id,clubName:club.name,joinedDate:currentCareerISO(),quality:candidate.quality};
+    recordCareerMemory({type:'PLAYER_JOINS_STAFF',clubId:club.id,playerId:record.id,date:currentCareerISO(),seasonId:careerTime.seasonId,importance:(record.careerLabels||[]).includes('CLUB LEGEND')?'MAJOR':'NOTABLE',key:`V70-LEGACY-STAFF-${record.id}-${club.id}`,metadata:{staffRole:candidate.role,quality:candidate.quality}});
+  }
+
+  function onRetiredPlayerStaffExpired(candidate){
+    const record=retiredPlayers.find(r=>String(r.id)===String(candidate?.formerPlayerId));if(!record?.staffPathway||record.staffPathway.status==='HIRED')return;
+    record.staffPathway={...record.staffPathway,status:'EXPIRED',expiredDate:currentCareerISO()};
+  }
+
   function potentialLabel(p){
     const pot=Number(p?.potential||p?.ovr||0),ovr=Number(p?.ovr||0),gap=pot-ovr;
     if(pot>=90)return'Special Talent';if(pot>=85)return'Exciting Prospect';if(pot>=80)return'High Potential';if(gap>=5)return'Promising';return'Established';
   }
 
+  function playerAgeValueFactor(age){
+    age=Number(age||27);
+    const points=[[16,1.20],[20,1.18],[23,1.12],[25,1.06],[27,1],[29,.95],[31,.84],[33,.68],[35,.52],[40,.38]];
+    if(age<=points[0][0])return points[0][1];if(age>=points.at(-1)[0])return points.at(-1)[1];
+    for(let i=1;i<points.length;i++){const [rightAge,right]=points[i],[leftAge,left]=points[i-1];if(age<=rightAge){const progress=(age-leftAge)/Math.max(1,rightAge-leftAge);return left+(right-left)*progress;}}
+    return 1;
+  }
+
+  function playerAbilityValue(ovr,age){
+    const curve=Math.pow(Math.max(1,Number(ovr||45)-45),2.32)*2700;
+    return Math.max(60_000,Math.round(curve*playerAgeValueFactor(age)/5000)*5000);
+  }
+
   function revaluePlayer(p){
-    const ageFactor=p.age<24?1.15:p.age>32?.66:p.age>29?.82:1;
-    p.value=Math.max(60_000,Math.round(Math.pow(Math.max(1,p.ovr-45),2.32)*2700*ageFactor));
-    if(!p.freeAgent)p.wage=Math.max(800,Math.round((p.ovr-45)*(p.ovr-45)*12));
+    p.value=playerAbilityValue(p.ovr,p.age);
+    // A development gain changes market standing, not the salary on a signed contract.
+    // Wage movement only happens through a transfer, renewal or explicit amendment.
     p.peakOvr=Math.max(Number(p.peakOvr||0),p.ovr);
     p.potentialStatus=potentialLabel(p);
   }
@@ -6777,14 +7577,11 @@
     applyLivingDynamicPotentialSeason(p);
     const rng=mulberry32(hashString(`${worldSeed}-DEV-${careerSeason}-${p.id}`));
     let delta=0;
-    if(p.age<=20)delta=Math.min(p.potential-p.ovr,1+Math.floor(rng()*3));
-    else if(p.age<=24)delta=Math.min(p.potential-p.ovr,Math.floor(rng()*3));
-    else if(p.age<=28)delta=Math.min(p.potential-p.ovr,rng()<.38?1:0);
-    else if(p.age>=35)delta=-(1+Math.floor(rng()*3));
+    // Positive development is applied by the monthly pathway model. Season rollover
+    // only handles ageing/decline so a prospect cannot receive the same growth twice.
+    if(p.age>=35)delta=-(1+Math.floor(rng()*3));
     else if(p.age>=32)delta=-(rng()<.68?1+Math.floor(rng()*2):0);
     else if(p.age>=30)delta=-(rng()<.24?1:0);
-    const focused=currentClub&&(careerPreferences.focusPlayerIds||[]).includes(p.id)&&p.age<=25&&p.ovr<p.potential;
-    if(focused&&['Youth','Technical'].includes(careerPreferences.trainingFocus))delta=Math.min(p.potential-p.ovr,delta+1);
     p.age+=1;
     p.ovr=clamp(p.ovr+delta,45,94);
     Object.keys(p.stats||{}).forEach(k=>{
@@ -6802,7 +7599,7 @@
     p.ovr=clamp(p.ovr+delta,45,90);
     Object.keys(p.stats||{}).forEach(k=>p.stats[k]=clamp(Number(p.stats[k]||p.ovr)+Math.max(0,delta+(rng()<.25?1:0)),30,94));
     p.peakOvr=Math.max(Number(p.peakOvr||0),p.ovr);
-    p.value=Math.max(50_000,Math.round(Math.pow(Math.max(1,p.ovr-42),2.08)*1600));
+    p.value=playerAbilityValue(p.ovr,p.age);
     p.decisionRequired=p.age>=20;
   }
 
@@ -6915,6 +7712,7 @@
   function processSeasonEnd(options={}){
     if(!currentClub)return processUnemployedSeasonEnd();
     archiveLivingSquadSeason(careerTime.seasonId);
+    finalizeCareerChallengeSeason();
     roadToGlory=normalizeRoadToGloryState(roadToGlory);
     if(!options.roadToGloryApplied&&roadToGlory.seasonReview?.data)finalizeRoadToGlorySeason(roadToGlory.seasonReview.data);
     // Ensure the full 288-club, four-world career exists before ageing it.
@@ -6971,6 +7769,7 @@
     const ownIntake=intakeByClub.get(currentClub.id)||0;
     const ownRetirements=retiring.filter(r=>r.lastClubId===currentClub.id).length;
     v2080RefreshPreSeasonSnapshot({ownIntake,ownRetirements});
+    queueRetiredPlayerStaffApplications(retiring);
     const academyPick=v2080AcademyIntake(currentClub)[0]||null;
     if(ownIntake>0)addCareerInboxMessage({id:`v2080-academy-intake-${careerTime.seasonId}-${currentClub.id}`,type:'YOUTH',sender:'ACADEMY DIRECTOR',subject:`New academy class: ${ownIntake} prospect${ownIntake===1?'':'s'}`,preview:academyPick?`${academyPick.name} has been highlighted by the development staff.`:'The annual academy intake is ready for review.',title:'The new academy class has arrived',body:[`${ownIntake} new prospect${ownIntake===1?' has':'s have'} joined the ${currentClub.name} academy pathway.`,academyPick?`Staff pick: ${academyPick.name}, ${academyPick.role.toLowerCase()}, age ${academyPick.age}.`:'Review the academy to assess the new class.','Potential remains presented through the existing academy estimate system.'],signoff:'Academy Director',action:{label:'VIEW ACADEMY',route:'youth'},date:currentCareerISO()});
     addCareerNews({id:`v2080-new-season-world-${careerTime.seasonId}`,category:'NEW SEASON',title:`THE ${careerTime.seasonId} CAMPAIGN BEGINS ACROSS THE FOUR WORLDS`,body:[`${currentClub.name} enter ${currentClub.division} with ${String(currentClub.expectation||'a competitive campaign').toLowerCase()} as the board expectation.`,`Pre-season, the summer market and a refreshed academy pathway now lead into Opening Day.`],image:currentClub.badge,date:currentCareerISO()});
@@ -6986,6 +7785,7 @@
     clubs.forEach(c=>getSquad(c));
     initializeRoadToGloryState();
     initializeManagerMarketState();
+    initializeChairmanSystem();
     getFreeAgents();
     createInitialAcademies();
     planRetirementsForSeason();
@@ -7002,7 +7802,7 @@
   function v25ShowSaveFailure(error){
     let banner=document.getElementById('careerSaveFailure');
     if(!banner){banner=document.createElement('div');banner.id='careerSaveFailure';banner.setAttribute('role','alert');banner.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:999999;max-width:90vw;padding:16px 22px;background:#391e29;color:#fff;border:1px solid #f1a3ad;border-radius:10px;font:14px sans-serif';document.body.appendChild(banner);}
-    banner.replaceChildren();const copy=document.createElement('span');copy.textContent='Career could not save. Keep this page open; your previous save is unchanged. ';const retry=document.createElement('button');retry.type='button';retry.textContent='Retry save';retry.addEventListener('click',()=>saveCareerState());banner.append(copy,retry);
+    banner.replaceChildren();const copy=document.createElement('span');copy.textContent='Career could not save. Keep this page open; your previous save is unchanged. ';const retry=document.createElement('button');retry.type='button';retry.textContent='Retry save';retry.addEventListener('click',async()=>{retry.disabled=true;retry.textContent='Retrying…';const saved=await saveCareerStateDurable();if(!saved&&retry.isConnected){retry.disabled=false;retry.textContent='Retry save';}});banner.append(copy,retry);
     console.error('[Velmora] Career save failed',error);
   }
 
@@ -7064,7 +7864,7 @@
   }
   function renderCareerSaveMenu(){
     const root=document.getElementById('careerSaveOverlay');if(!root)return;ensureCareerSaveMigration();const slots=careerSaveSlots(),mode=careerSaveMenuMode,body=root.querySelector('[data-career-save-body]'),title=root.querySelector('[data-career-save-title]'),sub=root.querySelector('[data-career-save-subtitle]');
-    if(title)title.textContent=mode==='new'?'CHOOSE A CAREER SLOT':'CONTINUE CAREER';if(sub)sub.textContent=mode==='new'?'Start in an empty slot or explicitly replace an existing career.':'Choose the career you want to resume. Up to three independent saves are supported.';
+    if(title)title.textContent=mode==='new'?'CHOOSE A CAREER SLOT':'CONTINUE CAREER';if(sub)sub.textContent=mode==='new'?'Start in an empty slot or explicitly replace an existing career.':'Choose the career you want to resume. Up to five independent saves are supported.';
     body.innerHTML=slots.map(info=>{const n=String(info.slot).padStart(2,'0');if(info.empty)return`<article class="career-save-slot is-empty"><div class="career-save-slot-index"><span>SLOT</span><strong>${n}</strong></div><div class="career-save-empty-copy"><span>AVAILABLE CAREER SLOT</span><h3>EMPTY SLOT</h3><p>No career data is stored here.</p></div><div class="career-save-actions">${mode==='new'?`<button type="button" class="is-primary" data-career-new-slot="${info.slot}">START NEW CAREER</button>`:'<span class="career-save-empty-tag">EMPTY</span>'}</div></article>`;if(info.corrupt)return`<article class="career-save-slot is-corrupt"><div class="career-save-slot-index"><span>SLOT</span><strong>${n}</strong></div><div class="career-save-empty-copy"><span>SAVE DATA ERROR</span><h3>UNREADABLE CAREER</h3><p>This slot can be deleted safely; the other slots are unaffected.</p></div><div class="career-save-actions"><button type="button" class="is-danger" data-career-delete-slot="${info.slot}">DELETE</button></div></article>`;const club=info.clubId?clubById(info.clubId):null,standing=info.standing,confirm=careerSaveConfirm?.slot===info.slot?careerSaveConfirm:null;return`<article class="career-save-slot ${Number(activeCareerSlot)===info.slot?'is-active-slot':''}"><div class="career-save-slot-index"><span>SLOT</span><strong>${n}</strong></div><div class="career-save-crest">${club?badgeHTML(club):'<b>FREE</b>'}</div><div class="career-save-copy"><span>${escapeHtml(info.employmentStatus==='unemployed'?'UNEMPLOYED CAREER':info.division||'MANAGER CAREER')}</span><h3>${escapeHtml(info.managerName)}</h3><p>${escapeHtml(info.clubName)} · ${escapeHtml(info.seasonId)} · ${escapeHtml(shortDateLabel(info.date))}</p><div class="career-save-meta"><b>${standing?`${ordinal(standing.pos)} · ${standing.pts} PTS · ${standing.played} PLD`:'CAREER IN PROGRESS'}</b><small>LAST SAVED ${escapeHtml(careerSaveDateLabel(info.savedAt))}</small></div></div><div class="career-save-actions">${mode==='continue'?`<button type="button" class="is-primary" data-career-load-slot="${info.slot}">CONTINUE</button>`:`<button type="button" class="is-primary" data-career-replace-slot="${info.slot}">REPLACE SLOT</button>`}<button type="button" class="is-danger" data-career-delete-slot="${info.slot}">DELETE</button></div>${confirm?`<div class="career-save-confirm"><div><span>${confirm.type==='replace'?'REPLACE CAREER SLOT':'DELETE CAREER SAVE'}</span><strong>${confirm.type==='replace'?'Start a new career in this slot?':'Permanently delete this career?'}</strong><small>${confirm.type==='replace'?'The existing save remains intact until the new career reaches its first save point.':'This cannot be undone. Other career slots will not be touched.'}</small></div><button type="button" data-career-cancel-confirm>CANCEL</button><button type="button" class="is-danger-solid" data-career-confirm-${confirm.type}="${info.slot}">${confirm.type==='replace'?'REPLACE & CREATE':'DELETE SAVE'}</button></div>`:''}</article>`;}).join('');
     body.querySelectorAll('[data-career-load-slot]').forEach(btn=>btn.addEventListener('click',()=>resumeCareerFromSlot(Number(btn.dataset.careerLoadSlot))));
     body.querySelectorAll('[data-career-new-slot]').forEach(btn=>btn.addEventListener('click',()=>beginNewCareerInSlot(Number(btn.dataset.careerNewSlot))));
@@ -7079,21 +7879,17 @@
     }
   }
   function openCareerSaveMenu(mode='continue'){
-    ensureCareerSaveMigration();careerSaveMenuMode=mode==='new'?'new':'continue';careerSaveConfirm=null;let root=document.getElementById('careerSaveOverlay');if(!root){root=document.createElement('div');root.id='careerSaveOverlay';root.className='modal-backdrop career-save-overlay';root.setAttribute('aria-hidden','true');root.innerHTML=`<section class="career-save-dialog" role="dialog" aria-modal="true" aria-labelledby="careerSaveTitle"><header><div><span>VELMORA CAREER ARCHIVE</span><h2 id="careerSaveTitle" data-career-save-title>CONTINUE CAREER</h2><p data-career-save-subtitle></p></div><button type="button" class="career-save-close" data-career-save-close aria-label="Close save menu">×</button></header><main data-career-save-body></main><footer><span>FIVE INDEPENDENT CAREERS · AUTOSAVES STAY WITH THE ACTIVE SLOT</span><button type="button" data-career-save-mode>${careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER'}</button></footer></section>`;document.body.appendChild(root);root.querySelector('[data-career-save-close]').addEventListener('click',closeCareerSaveMenu);root.addEventListener('click',e=>{if(e.target===root)closeCareerSaveMenu();});root.querySelector('[data-career-save-mode]').addEventListener('click',()=>{careerSaveMenuMode=careerSaveMenuMode==='new'?'continue':'new';careerSaveConfirm=null;root.querySelector('[data-career-save-mode]').textContent=careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER';renderCareerSaveMenu();});}
+    ensureCareerSaveMigration();careerSaveMenuMode=mode==='new'?'new':'continue';careerSaveConfirm=null;let root=document.getElementById('careerSaveOverlay');if(!root){root=document.createElement('div');root.id='careerSaveOverlay';root.className='modal-backdrop career-save-overlay';root.setAttribute('aria-hidden','true');root.innerHTML=`<section class="career-save-dialog" role="dialog" aria-modal="true" aria-labelledby="careerSaveTitle"><header><div><span>VELMORA CAREER ARCHIVE</span><h2 id="careerSaveTitle" data-career-save-title>CONTINUE CAREER</h2><p data-career-save-subtitle></p></div><button type="button" class="career-save-close" data-career-save-close aria-label="Close save menu">×</button></header><main data-career-save-body></main><footer><span>FIVE INDEPENDENT CAREERS · LOCAL AUTOSAVE + PRIVATE CLOUD COPY WHEN SIGNED IN</span><button type="button" data-career-save-mode>${careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER'}</button></footer></section>`;document.body.appendChild(root);root.querySelector('[data-career-save-close]').addEventListener('click',closeCareerSaveMenu);root.addEventListener('click',e=>{if(e.target===root)closeCareerSaveMenu();});root.querySelector('[data-career-save-mode]').addEventListener('click',()=>{careerSaveMenuMode=careerSaveMenuMode==='new'?'continue':'new';careerSaveConfirm=null;root.querySelector('[data-career-save-mode]').textContent=careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER';renderCareerSaveMenu();});}
     const switcher=root.querySelector('[data-career-save-mode]');if(switcher)switcher.textContent=careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER';renderCareerSaveMenu();root.classList.add('is-open');root.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();
   }
 
-  function saveCareerState(){
-    if(!careerHasStarted())return false;
-    clearTimeout(squadSaveTimer);squadSaveTimer=0;
-    const started=v202Now(),previousSavedAt=careerRuntime.lastSavedAt;
-    try{
-      evaluateManagerCareerRewards();v25RecordClubFinances();careerRuntime.lastSavedAt=new Date().toISOString();
-      careerNewsStories=careerNewsStories.map(story=>story?.editorialVersion===V33_NEWS_VERSION&&story?.articleSnapshot?story:v33NewsEnrichStory(story));
-      const data={
-        version:82,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,
+  // V104: the save payload is built separately from the act of writing it,
+  // so an online career can publish the same structure without a slot write.
+  function buildCareerSaveData(){
+    return {
+        version:window.VELMORA_RELEASE?.saveSchema||86,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
         careerTime:{...careerTime},fixtures,calendarEvents,transferWindows,careerInboxMessages,careerNewsStories,pendingNegotiations,processedCalendarEvents:[...processedCalendarEvents],selectedCalendarDate,seasonCalendarCursor,
-        careerDecisionEvents,playerPromises,careerEventCooldowns,aiTransferHistory,developmentSnapshots,careerRuntime,unexpectedEvents,preSeasonExperience,cupRuntime,roadToGlory,managerMarket,championsCrown,livingSquad,mediaWorld,negotiationEngine,
+        careerDecisionEvents,playerPromises,careerEventCooldowns,aiTransferHistory,developmentSnapshots,careerRuntime,unexpectedEvents,preSeasonExperience,cupRuntime,roadToGlory,managerMarket,ownershipState,audienceWorldState,championsCrown,livingSquad,mediaWorld,negotiationEngine,
         clubMembership:Object.fromEntries(clubs.map(c=>[c.id,{divisionKey:c.divisionKey,division:c.division,tier:Number(c.tier||4),reputation:Number(c.reputation||1)}])),
         squads:Object.fromEntries([...squadCache.entries()]),
         lineups:Object.fromEntries([...lineupCache.entries()]),
@@ -7106,17 +7902,51 @@
         transferActivity:[...transferActivity.entries()],scoutingAssignments:[...scoutingAssignments.entries()],
         recruitmentIntel:[...recruitmentIntel.entries()],recruitmentWorldKnowledge,
         officeReadMessages:[...officeReadMessages],managerName,manager:ensureManagerProfile()
-      };
-      const json=JSON.stringify(data),encoded=window.VelmoraSaveCodec.encode(json),slot=commitPendingCareerSlot(),slotKey=careerSlotKey(slot);if(!slotKey)throw new Error('No active career save slot');careerStore.setItem(slotKey,encoded);document.getElementById('careerSaveFailure')?.remove();const elapsed=v202Now()-started;v202Performance.saveCount++;v202Performance.saveBytes=encoded.length;v202Performance.saveTotalMs+=elapsed;v202Performance.saveMaxMs=Math.max(v202Performance.saveMaxMs,elapsed);
-      squadSavePending=false;return true;
+    };
+  }
+
+  function saveCareerState(){
+    if(!careerHasStarted())return false;
+    clearTimeout(squadSaveTimer);squadSaveTimer=0;
+    const started=v202Now(),previousSavedAt=careerRuntime.lastSavedAt;
+    try{
+      evaluateManagerCareerRewards();v25RecordClubFinances();careerRuntime.lastSavedAt=new Date().toISOString();
+      careerNewsStories=careerNewsStories.map(story=>story?.editorialVersion===V33_NEWS_VERSION&&story?.articleSnapshot?story:v33NewsEnrichStory(story));
+      const data=buildCareerSaveData();
+      const json=JSON.stringify(data),encoded=window.VelmoraSaveCodec.encode(json),slot=commitPendingCareerSlot(),slotKey=careerSlotKey(slot);if(!slotKey)throw new Error('No active career save slot');careerStore.setItem(slotKey,encoded);const elapsed=v202Now()-started;v202Performance.saveCount++;v202Performance.saveBytes=encoded.length;v202Performance.saveTotalMs+=elapsed;v202Performance.saveMaxMs=Math.max(v202Performance.saveMaxMs,elapsed);
+      squadSavePending=false;v104NoteLocalSave();return true;
     }catch(error){careerRuntime.lastSavedAt=previousSavedAt;v202Performance.saveFailures++;v25ShowSaveFailure(error);return false;}
+  }
+
+  async function confirmCareerSave(){
+    try{
+      await window.VelmoraCareerStore?.flush?.();
+      document.getElementById('careerSaveFailure')?.remove();
+      return true;
+    }catch(error){
+      v202Performance.saveFailures++;
+      v25ShowSaveFailure(error);
+      showToast('Career save failed · retry before leaving this screen');
+      return false;
+    }
+  }
+
+  async function saveCareerStateDurable(){
+    return saveCareerState() ? confirmCareerSave() : false;
   }
 
   function loadCareerState(slot=activeCareerSlot||1){
     if(squadSavePending&&!flushSquadSave())return false;
+    ensureCareerSaveMigration();const slotKey=careerSlotKey(slot);if(!slotKey)return false;
+    const raw=careerStore.getItem(slotKey);if(!raw)return false;
+    const d=decodeCareerRaw(raw);if(!d?.worldSeed)return false;
+    return applyCareerSaveData(d,slot);
+  }
+
+  // V104: applying a decoded career is separate from reading a save slot,
+  // so an online world snapshot can be restored through the same path.
+  function applyCareerSaveData(d,slot=activeCareerSlot||1){
     try{
-      ensureCareerSaveMigration();const slotKey=careerSlotKey(slot);if(!slotKey)return false;const raw=careerStore.getItem(slotKey);if(!raw)return false;
-      const d=decodeCareerRaw(raw);if(!d?.worldSeed)return false;
       const nextEmploymentStatus=d.employmentStatus||(d.currentClubId?'employed':'setup');if(nextEmploymentStatus!=='employed'&&nextEmploymentStatus!=='unemployed')return false;
       resetCareerWorld();
       Object.entries(d.careerRuntime?.expansion?.customClubs||{}).forEach(([id,identity])=>{const club=clubById(id);if(club)Object.assign(club,identity);});
@@ -7124,8 +7954,11 @@
       jobSearchState=normalizeJobSearchState(d.jobSearchState||{startingMode:d.currentClubId?'direct':null});
       firstWeekState=d.firstWeekState?normalizeFirstWeekState(d.firstWeekState,false):normalizeFirstWeekState({active:false,completed:true},true);
       careerPreferences=normalizeCareerPreferences(d.careerPreferences||{});
+      careerChallenge=normalizeCareerChallenge(d.careerChallenge||{});
       roadToGlory=normalizeRoadToGloryState(d.roadToGlory||{});
       managerMarket=normalizeManagerMarketState(d.managerMarket||{});
+      ownershipState=d.ownershipState&&typeof d.ownershipState==='object'?d.ownershipState:{version:1,profiles:{},relationships:{},takeovers:[],sequence:0,createdDate:null};
+      audienceWorldState=normalizeAudienceWorldState(d.audienceWorldState||{});
       championsCrown=normalizeChampionsCrownState(d.championsCrown||{});
       livingSquad=normalizeLivingSquadState(d.livingSquad||{});
       mediaWorld=normalizeMediaWorldState(d.mediaWorld||{});
@@ -7138,7 +7971,7 @@
       currentClub=d.currentClubId?clubs.find(c=>c.id===d.currentClubId)||null:null;
       if(employmentStatus==='employed'&&!currentClub)return false;
       if(currentClub)selectedClub=currentClub;else selectedClub=selectedClub||clubs.find(c=>c.name==='Blackglass')||clubs[0]||null;
-      seasonBrowseWorld=clubWorldName(currentClub||selectedClub);seasonBrowseDivisionKey=(currentClub||selectedClub)?.divisionKey||null;seasonSelectedClubId=null;seasonClubProfileTab='overview';seasonTableScrollTop=0;
+      seasonBrowseWorld=clubWorldName(currentClub||selectedClub);seasonBrowseDivisionKey=(currentClub||selectedClub)?.divisionKey||null;seasonSelectedClubId=null;seasonClubProfileTab='overview';seasonTableScrollTop=0;seasonCupWorld=clubWorldName(currentClub||selectedClub);seasonCupKind='national';
       fixtures=Array.isArray(d.fixtures)?d.fixtures:[];v202MarkCompetitionDataDirty();
       calendarEvents=Array.isArray(d.calendarEvents)?d.calendarEvents:[];
       transferWindows=Array.isArray(d.transferWindows)?d.transferWindows:[];
@@ -7210,7 +8043,7 @@
       // resolving fixtures. Catch the living world up once on load.
       if(employmentStatus==='unemployed')simulateWorldFixturesThroughDate(currentCareerISO(),null);
       else if(employmentStatus==='employed')simulateWorldFixturesThroughDate(currentCareerISO(),currentClub?.id||null);
-      normalizeAllSquadRoles();ensureBoardConfidence();initializeRoadToGloryState();initializeManagerMarketState();initializeChampionsCrownSeason(false);initializeLivingSquadState(true);mediaWorld=normalizeMediaWorldState(mediaWorld);negotiationEngine=normalizeNegotiationEngineState(negotiationEngine);
+      normalizeAllSquadRoles();initializeRoadToGloryState();initializeManagerMarketState();initializeChairmanSystem(ownershipState);ensureBoardConfidence();ensureAudienceClub(currentClub||selectedClub);initializeChampionsCrownSeason(false);initializeLivingSquadState(true);mediaWorld=normalizeMediaWorldState(mediaWorld);negotiationEngine=normalizeNegotiationEngineState(negotiationEngine);
       const resolvedLegacyTransferResponses=resolveLegacyPendingTransferResponsesImmediately(currentCareerISO());
       if(resolvedLegacyTransferResponses>0)saveCareerState();
       return true;
@@ -7276,6 +8109,8 @@
     const className=`${group==='starter'?'is-starter':group==='reserve'?'is-reserve':'is-sub'}${unregistered?' is-unregistered':''}`;
     const slotAttributes=unregistered?'':`data-roster-index="${index}" data-drop-group="${group}" data-drop-slot="${group==='starter'?index:group==='bench'?index-STARTER_SLOTS:index-MATCHDAY_SENIOR_SIZE}"`;
     const moraleTone=statusTone('morale',p.morale),moraleLabel=p.morale==='Very Happy'?'Happy':p.morale==='Very Unhappy'?'Unhappy':p.morale;
+    const unavailable=Number(p.injuryDaysRemaining||0)>0||disciplineActiveSuspensions(p).length>0||p.onLoan;
+    const condition=unavailable?livingPlayerAvailabilityLabel(p):p.fitness>=90?'Match ready':p.fitness>=80?'Available':'Manage load';
     const cardTitle=`${p.name} · ${cardGroupLabel(group,index)}${source?' · selected to swap':target?' · drop or click to swap here':unregistered?' · awaiting registration':''}`;
     return `
       <button type="button" draggable="true" ${slotAttributes} class="player-card v51-card ${className} tier-${tier} ${selected?'is-selected':''} ${source?'is-swap-source':''} ${target?'is-swap-target':''}" data-player-id="${p.id}" title="${escapeHtml(cardTitle)}">
@@ -7284,7 +8119,7 @@
         <div class="v51-info">
           <span class="v51-role">${unregistered?'AWAITING REGISTRATION':escapeHtml(p.role)}${p.captain?'<i class="v51-captain">C</i>':''}</span>
           <div class="v51-ovr" title="${playerTierLabel(p.ovr)} overall"><strong>${p.ovr}</strong><small>OVR</small></div>
-          <h4 class="v51-name">${escapeHtml(p.name)}</h4>
+          <h4 class="v51-name">${escapeHtml(p.name)}</h4><span class="sq-card-condition ${unavailable||p.fitness<80?'is-warning':''}">${p.fitness}% · ${escapeHtml(condition)}</span>
           <div class="v51-origin">
             <span class="v51-club">${badgeHTML(club)}<b>${escapeHtml(club?.name||'')}</b></span>
             <span class="v51-age">AGE ${p.age}</span>
@@ -7400,7 +8235,7 @@
     let intel=seasonPlayerIntel(p,club);
     const own=!!currentClub&&(club?.id===currentClub.id||p.parentClubId===currentClub.id||p.ownerClubId===currentClub.id);
     if(own&&!intel.own)intel=seasonPlayerIntel(p,currentClub);
-    const known=own||intel.full,managed=own&&!retired&&!academy&&club?.id===currentClub.id&&!v210WatchActive;
+    const known=own||intel.full,managed=own&&!retired&&!academy&&club?.id===currentClub.id&&!v210WatchActive,contractControlled=managed&&clubCanRenewPlayer(currentClub,p);
     const summary=v43CurrentPlayerSummary(p,club)||v43FallbackSummary(p,club),candidate=intel.candidate||p;
     return {id:String(p.id),name:p.name,role:p.role||'Player',country:p.country||'Unlisted',age:p.age||p.retiredAge||'—',
       club:club?.name||'Free agent',badge:club?badgeHTML(club):'',sprite:v262StandingSprite(p),own,known,managed,academy:!!academy,retired:!!retired,
@@ -7413,9 +8248,9 @@
       traits:known?v49EnsureTraits(p):null,traitHints:known?[]:v49TraitHints(candidate),traitOrigins:known?p.playingTraitOrigins||{}:{},traitHistory:known?p.playingTraitHistory||[]:[],
       stats:{apps:Number(summary?.apps||0),goals:Number(summary?.goals||0),assists:v43StatDisplay(summary?.assists,summary?.assistsKnown!==false),rating:summary?.ratingCount?v43StatDisplay(summary.avgRating,summary.ratingKnown!==false,1):'—'},
       canScout:!v210WatchActive&&!own&&!retired&&intel.scoutable&&!intel.full&&!scoutAssignment(candidate),scoutLabel:scoutAssignment(candidate)?`Scouting · ${scoutingDaysRemaining(candidate)}d`:intel.full?'Report complete':'Scout player',
-      shortlisted:transferShortlist.has(p.id),canRecruit:!v210WatchActive&&!own&&!retired&&!academy,canRenew:managed&&v2075RenewalReadiness(p,club).canNegotiate,
+      shortlisted:transferShortlist.has(p.id),canRecruit:!v210WatchActive&&!own&&!retired&&!academy&&!p.onLoan,canRenew:contractControlled&&v2075RenewalReadiness(p,club).canNegotiate,
       liveMatch:v210WatchActive,personality:known&&!retired?p.personality||'—':null,
-      details:{development:managed?livingPlayerDevelopmentHTML(p,club):'',contract:managed?livingPlayerContractHTML(p,club):'',career:own&&!retired&&!academy?livingPlayerCareerHTML(p,club):v43PlayerCareerStatisticsHTML(p)}
+      details:{development:managed?livingPlayerDevelopmentHTML(p,club):'',contract:managed?livingPlayerContractHTML(p,club):'',career:(own&&!retired&&!academy?livingPlayerCareerHTML(p,club):v43PlayerCareerStatisticsHTML(p))+peopleMemoryProfileHTML('PLAYER',p.id)}
     };
   }
   function v48ProfileAction(id,action,value){
@@ -7428,13 +8263,14 @@
       if(action==='conversion'){v2075StartRoleConversion(p,value);refresh();}
       if(action==='cancel-conversion'){v2075CancelRoleConversion(p);refresh();}
       if(action==='deployment'){v44SetPreferredMatchRole(p,value);refresh();}
-      if(action==='market'&&['LISTEN','TRANSFER_LISTED','NOT_FOR_SALE','LOAN_LISTED'].includes(value)){setLivingPlayerMarketStatus(p,value);refresh();}
-      if(action==='asking'){setLivingPlayerAskingPrice(p,Math.max(0,moneyNumber(value)));refresh();}
-      if(action==='renew'){window.VelmoraPlayerProfiles.close();openContractRenewal(p);}
-      if(action==='release'){const fee=calculateReleaseCost(p);if(window.confirm(`Terminate ${p.name}'s contract? This will cost ${formatExactMoney(fee)} in compensation.`)&&releaseSeniorPlayer(club,p)){recordLivingCareerEvent(p,'RELEASED',club,null,0,currentCareerISO());window.VelmoraPlayerProfiles.close();refresh();}}
+      if(action==='market'&&['LISTEN','TRANSFER_LISTED','NOT_FOR_SALE','LOAN_LISTED'].includes(value)){if(blockUnownedPlayerAction(currentClub,p,'change the transfer status'))return;setLivingPlayerMarketStatus(p,value);refresh();}
+      if(action==='asking'){if(blockUnownedPlayerAction(currentClub,p,'set an asking price'))return;setLivingPlayerAskingPrice(p,Math.max(0,moneyNumber(value)));refresh();}
+      if(action==='renew'){if(blockUnownedPlayerAction(currentClub,p,'offer a new contract',true))return;window.VelmoraPlayerProfiles.close();openContractRenewal(p);}
+      if(action==='release'){if(blockUnownedPlayerAction(currentClub,p,'terminate the contract'))return;const fee=calculateReleaseCost(p);if(window.confirm(`Terminate ${p.name}'s contract? This will cost ${formatExactMoney(fee)} in compensation.`)&&releaseSeniorPlayer(club,p)){recordLivingCareerEvent(p,'RELEASED',club,null,0,currentCareerISO());window.VelmoraPlayerProfiles.close();refresh();}}
       if(action==='lineup'){window.VelmoraPlayerProfiles.close();selectedPlayerId=p.id;goCareerScreen('squad');beginSwap(p.id);}
     }
     if(!managed&&!academy&&!retired){
+      if(p.onLoan&&action==='recruit'){showToast(`${p.name} is currently on loan. Any permanent move must wait until the loan registration is resolved.`);return;}
       const candidate=transferPlayerById(p.id);if(!candidate)return;
       if(action==='shortlist')toggleTransferShortlist(p.id);
       if(action==='scout')scoutTransferPlayer(candidate);
@@ -7445,7 +8281,7 @@
     window.VelmoraPlayerProfiles?.install({
       players:()=>v48PlayerIndex().map(({p,club})=>({id:String(p.id),name:p.name,club:club?.name||'Free agent'})),
       data:v48ProfileData,action:v48ProfileAction,navigate:goCareerScreen,canOpen:()=>!swapSourceId&&Date.now()-squadDragJustFinishedAt>=240&&!pressConferenceSystem?.isOpen?.(),
-      source:()=>({central:'Central',squad:'Squad',transfers:'Transfers',matchday:'Matchday',season:'Season',office:'Inbox'}[activePrimaryScreen]||'game'),
+      source:()=>document.getElementById('careerNewsOverlay')?.classList.contains('is-open')?'News':({central:'Central',squad:'Squad',transfers:'Transfers',matchday:'Matchday',season:'Season',office:'Inbox'}[activePrimaryScreen]||'game'),
       pause:()=>window.VelmoraQuidditchEngine?.pauseForProfile?.(),resume:token=>window.VelmoraQuidditchEngine?.resumeFromProfile?.(token),
       save:saveCareerState
     });
@@ -7460,13 +8296,18 @@
     const status=livingPlayerAvailabilityLabel(p),stats=p.seasonStats||{},rating=Number(stats.ratingCount||0)?(Number(stats.ratingSum||0)/Number(stats.ratingCount)).toFixed(2):'—';
     const roleCopy={PLAYMAKER:"Creative operator who shapes the team's primary chances.",ATTACKER:'Direct threat who turns territory and openings into goals.',DEFENDER:'Defensive specialist who protects space and breaks up attacks.','ALL-ROUNDER':'Adaptable performer who balances attacking and defensive duties.'}[p.role]||'A valued member of the senior squad.';
     const moraleTone=statusTone('morale',p.morale),formTone=statusTone('form',p.form),attributes=['PAC','SHO','PAS','HAN','DEF','STA'];
-    const overview=`<div class="v66-profile-overview"><section class="v66-profile-block"><span>ROLE</span><strong>${escapeHtml(String(p.role||'PLAYER').replace('-',' '))}</strong><p>${escapeHtml(roleCopy)}</p></section><section class="v66-profile-signal"><span>MORALE</span><strong class="tone-${moraleTone}"><i aria-hidden="true">●</i>${escapeHtml(p.morale)}</strong></section><section class="v66-profile-signal"><span>FITNESS</span><strong><i aria-hidden="true">♥</i>${p.fitness}% <small>${p.fitness>=90?'MATCH READY':p.fitness>=80?'AVAILABLE':'MANAGE LOAD'}</small></strong><b><i style="width:${clamp(Number(p.fitness||0),0,100)}%"></i></b></section><section class="v66-profile-form"><span>CURRENT FORM</span><strong class="tone-${formTone}">${escapeHtml(p.form||'Average')}</strong><div>${Array.from({length:5},(_,i)=>`<i class="${i<clamp(Math.round((Number(p.ovr||60)-55)/7),1,5)?`tone-${formTone}`:''}"></i>`).join('')}</div></section><section class="v66-profile-stats"><span>STATS · ${escapeHtml(seasonLabel())}</span><div><b>${Number(stats.apps||0)}<small>APPS</small></b><b>${Number(stats.goals||0)}<small>GOALS</small></b><b>${Number(stats.assists||0)}<small>ASSISTS</small></b><b>${rating}<small>AV RAT</small></b></div></section></div>`;
+    const overview=`<div class="v66-profile-overview"><section class="v66-profile-block"><span>ROLE</span><strong>${escapeHtml(String(p.role||'PLAYER').replace('-',' '))}</strong><p>${escapeHtml(roleCopy)}</p></section><section class="v66-profile-signal"><span>MORALE</span><strong class="tone-${moraleTone}"><i aria-hidden="true">●</i>${escapeHtml(p.morale)}</strong></section><section class="v66-profile-signal"><span>FITNESS</span><strong><i aria-hidden="true">♥</i>${p.fitness}% <small>${p.fitness>=90?'MATCH READY':p.fitness>=80?'AVAILABLE':'MANAGE LOAD'}</small></strong><b><i style="width:${clamp(Number(p.fitness||0),0,100)}%"></i></b></section><section class="v66-profile-form"><span>CURRENT FORM</span><strong class="tone-${formTone}">${escapeHtml(p.form||'Average')}</strong><div>${Array.from({length:5},(_,i)=>`<i class="${i<({Excellent:5,Good:4,Average:3,Poor:2,Terrible:1}[p.form]||3)?`tone-${formTone}`:''}"></i>`).join('')}</div></section><section class="v66-profile-stats"><span>STATS · ${escapeHtml(seasonLabel())}</span><div><b>${Number(stats.apps||0)}<small>APPS</small></b><b>${Number(stats.goals||0)}<small>GOALS</small></b><b>${Number(stats.assists||0)}<small>ASSISTS</small></b><b>${rating}<small>AV RAT</small></b></div></section></div>`;
     const attributeView=`<div class="v66-profile-attributes"><span>PLAYER ATTRIBUTES</span>${attributes.map(key=>{const value=clamp(Number(p.stats?.[key]??p.ovr??0),0,100);return`<div><b>${key}</b><i><em style="width:${value}%"></em></i><strong>${value}</strong></div>`;}).join('')}<section><span>DEVELOPMENT OUTLOOK</span><strong>${escapeHtml(p.potentialStatus||'Established senior')}</strong><small>${Number(p.potential||p.ovr)-Number(p.ovr||0)>5?'Further growth is expected with the right pathway.':'Current ability is close to the projected level.'}</small></section></div>`;
-    profile.innerHTML=`<div class="profile-accent"></div><div class="profile-topline"><span class="squad-profile-status status-${group}">${group==='starter'?'ON PITCH · STARTING THREE':group==='bench'?'SUBSTITUTE · MATCHDAY BENCH':'RESERVE · OUTSIDE MATCHDAY SQUAD'}</span><span>${p.captain?'CAPTAIN':status}</span></div><div class="profile-hero living-player-hero"><div class="profile-avatar-stage">${avatarHTML(p.avatar,p.name)}</div><div class="profile-hero-copy"><h3>${escapeHtml(p.name)}${p.captain?'<i class="v66-profile-captain">C</i>':''}</h3><p>${escapeHtml(p.role)} · ${escapeHtml(p.country)}</p><small>AGE ${p.age} &nbsp;·&nbsp; ${escapeHtml(club.name)}</small></div><div class="profile-overall tier-${playerTier(p.ovr)}" title="${playerTierLabel(p.ovr)} overall"><strong>${p.ovr}</strong><small>${playerTierLabel(p.ovr)}</small></div></div><nav class="living-player-tabs v66-profile-tabs">${[['overview','OVERVIEW'],['attributes','ATTRIBUTES']].map(([k,l])=>`<button type="button" data-squad-profile-view="${k}" class="${squadQuickProfileView===k?'is-active':''}" aria-selected="${squadQuickProfileView===k?'true':'false'}">${l}</button>`).join('')}</nav><div class="living-player-view v66-profile-view">${squadQuickProfileView==='attributes'?attributeView:overview}</div><div class="v66-profile-actions"><button type="button" data-swap-action="${escapeHtml(p.id)}">CHANGE POSITION</button><button type="button" class="v48-open-profile" data-v48-player="${escapeHtml(p.id)}">FULL PROFILE ↗</button></div><button type="button" class="v66-confirm-selection" data-v66-confirm><span aria-hidden="true">✓</span>CONFIRM SELECTION</button><small class="v66-confirm-note">Selection saves automatically</small>`;
+    const development=`<div class="sq-development"><label>DEVELOPMENT PLAN<select data-squad-development aria-label="Development plan">${['Balanced','Attacking','Playmaking','Defensive','Physical'].map(plan=>`<option value="${plan}" ${(p.developmentPlan||'Balanced')===plan?'selected':''}>${plan}</option>`).join('')}</select></label><strong>${escapeHtml(v2075DevelopmentStatus(p,club).label)}</strong><p>${escapeHtml(v2075PathwayAdvice(p,club).copy)}</p><p>Development depends on coaching, age and competitive minutes. Review the full profile for progress and role training.</p></div>`;
+    profile.innerHTML=`<div class="profile-accent"></div><div class="profile-topline"><span class="squad-profile-status status-${group}">${group==='starter'?'ON PITCH · STARTING THREE':group==='bench'?'SUBSTITUTE · MATCHDAY BENCH':'RESERVE · OUTSIDE MATCHDAY SQUAD'}</span><span>${p.captain?'CAPTAIN':status}</span></div><div class="profile-hero living-player-hero"><div class="profile-avatar-stage">${avatarHTML(p.avatar,p.name)}</div><div class="profile-hero-copy"><h3>${escapeHtml(p.name)}${p.captain?'<i class="v66-profile-captain">C</i>':''}</h3><p>${escapeHtml(p.role)} · ${escapeHtml(p.country)}</p><small>AGE ${p.age} &nbsp;·&nbsp; ${escapeHtml(club.name)}</small></div><div class="profile-overall tier-${playerTier(p.ovr)}" title="${playerTierLabel(p.ovr)} overall"><strong>${p.ovr}</strong><small>${playerTierLabel(p.ovr)}</small></div></div><nav class="living-player-tabs v66-profile-tabs">${[['overview','OVERVIEW'],['attributes','ATTRIBUTES'],['development','DEVELOPMENT']].map(([k,l])=>`<button type="button" data-squad-profile-view="${k}" class="${squadQuickProfileView===k?'is-active':''}" aria-selected="${squadQuickProfileView===k?'true':'false'}">${l}</button>`).join('')}</nav><div class="living-player-view v66-profile-view">${squadQuickProfileView==='attributes'?attributeView:squadQuickProfileView==='development'?development:overview}</div><div class="v66-profile-actions"><button type="button" data-swap-action="${escapeHtml(p.id)}">SWAP WITH…</button><button type="button" class="v48-open-profile" data-v48-player="${escapeHtml(p.id)}">FULL PROFILE ↗</button></div><button type="button" class="sq-profile-primary" data-squad-go-matchday>GO TO MATCHDAY →</button>`;
     profile.classList.remove('profile-refresh');
     profile.querySelectorAll('[data-squad-profile-view]').forEach(b=>b.addEventListener('click',()=>{squadQuickProfileView=b.dataset.squadProfileView;renderPlayerProfile();}));
     profile.querySelector('[data-swap-action]')?.addEventListener('click',()=>beginSwap(p.id));
-    profile.querySelector('[data-v66-confirm]')?.addEventListener('click',v51ConfirmStartingThree);
+    profile.querySelector('[data-squad-go-matchday]')?.addEventListener('click',()=>{if(flushSquadSave())goCareerScreen('matchday');});
+    profile.querySelector('[data-squad-development]')?.addEventListener('change',event=>{
+      const plan=event.target.value;if(!['Balanced','Attacking','Playmaking','Defensive','Physical'].includes(plan))return;
+      p.developmentPlan=plan;scheduleSquadSave();showToast('Development plan updated');
+    });
   }
 
   function renderSwapBanner(){
@@ -7489,12 +8330,23 @@
 
   function beginSwap(playerId){
     swapSourceId=playerId;
+    const reserves=$('#squadReservePlaces');if(reserves)reserves.open=true;
     selectedPlayerId=playerId;
     refreshSeniorSquadUI();
   }
 
+  function updateSquadSaveStatus(label,error=false){
+    $$('.sq-save-status').forEach(el=>{el.textContent=label;el.classList.toggle('has-error',error);});
+  }
+  window.VelmoraCareerStore?.subscribe?.(state=>{
+    if(state.error)updateSquadSaveStatus('Save failed · retry in Settings',true);
+    else if(state.pending)updateSquadSaveStatus('Saving…');
+    else if(!squadSavePending){updateSquadSaveStatus('All changes saved');document.getElementById('careerSaveFailure')?.remove();}
+  });
+
   function scheduleSquadSave(){
     squadSavePending=true;
+    updateSquadSaveStatus('Saving…');
     clearTimeout(squadSaveTimer);
     squadSaveTimer=setTimeout(()=>{
       squadSaveTimer=0;
@@ -7505,7 +8357,10 @@
 
   function flushSquadSave(){
     clearTimeout(squadSaveTimer);squadSaveTimer=0;
-    return !squadSavePending||saveCareerState();
+    const saved=!squadSavePending||saveCareerState();
+    const storage=window.VelmoraCareerStore?.status?.();
+    updateSquadSaveStatus(!saved||storage?.error?'Save failed · retry in Settings':storage?.pending?'Saving…':'All changes saved',!saved||!!storage?.error);
+    return saved;
   }
 
   window.addEventListener('beforeunload',event=>{
@@ -7573,7 +8428,7 @@
   function emptyPlayerSlotHTML(starter,index,groupOverride){
     const group=groupOverride||rosterGroupForIndex(index);
     const className=group==='starter'?'is-starter':group==='reserve'?'is-reserve':'is-sub';
-    return `<div class="player-card v51-card empty-player-slot ${className}" data-drop-group="${group}" data-drop-slot="${group==='starter'?index:group==='bench'?index-STARTER_SLOTS:index-MATCHDAY_SENIOR_SIZE}"><div><span>VACANT SENIOR PLACE</span><strong>${cardGroupLabel(group,index)}</strong><small>Drag a senior player here, promote youth, or complete a signing.</small></div></div>`;
+    return `<button type="button" class="player-card v51-card empty-player-slot ${className}" data-drop-group="${group}" data-drop-slot="${group==='starter'?index:group==='bench'?index-STARTER_SLOTS:index-MATCHDAY_SENIOR_SIZE}"><div><span>VACANT SENIOR PLACE</span><strong>${cardGroupLabel(group,index)}</strong><small>Drop a player or select to move here</small></div></button>`;
   }
 
   function academyProspectTier(p){
@@ -7718,13 +8573,14 @@
 
   function legendCardHTML(r){
     const selected=r.id===selectedLegendId;
-    return `<button type="button" class="retired-card ${selected?'is-selected':''}" data-legend-id="${r.id}"><span class="retired-avatar">${avatarHTML(r.avatar,r.name)}</span><span class="retired-copy"><small>RETIRED S${r.retiredSeason} · AGE ${r.retiredAge}</small><strong>${escapeHtml(r.name)}</strong><span>${r.role} · ${escapeHtml(r.country)}</span><b>PEAK ${r.peakOvr} OVR</b></span></button>`;
+    return `<button type="button" class="retired-card ${selected?'is-selected':''}" data-legend-id="${r.id}"><span class="retired-avatar">${avatarHTML(r.avatar,r.name)}</span><span class="retired-copy"><small>RETIRED S${r.retiredSeason} · AGE ${r.retiredAge}</small><strong>${escapeHtml(r.name)}</strong><span>${r.role} · ${escapeHtml(r.country)}</span><b>PEAK ${r.peakOvr} OVR</b>${r.staffPathway?`<em class="v70-staff-path">${r.staffPathway.status==='HIRED'?'◆ CLUB STAFF':'◇ STAFF APPLICATION'}</em>`:''}</span></button>`;
   }
 
   function renderLegendProfile(){
     const club=currentClub||selectedClub;const records=retiredPlayers.filter(r=>r.lastClubId===club.id||(r.careerClubs||[]).includes(club.id));let r=records.find(x=>x.id===selectedLegendId);
     const el=$('#playerProfile');if(!r){el.innerHTML=`<div class="archive-profile-empty"><div><span>CAREER ARCHIVE</span><h3>THE STORY STARTS HERE</h3><p>When a player retires, their identity, peak rating and club history remain preserved in this save. Future match statistics and honours will attach to the same archive record.</p></div></div>`;return;}
-    el.innerHTML=`<div class="profile-accent"></div><div class="profile-topline"><span>RETIRED PLAYER</span><span>SEASON ${r.retiredSeason}</span></div><div class="profile-hero"><div class="profile-avatar-stage retired">${avatarHTML(r.avatar,r.name)}</div><div class="profile-hero-copy"><div class="profile-overall"><strong>${r.peakOvr}</strong><small>PEAK OVR</small></div><h3>${escapeHtml(r.name)}</h3><p>${r.role} · ${escapeHtml(r.country)}</p><div class="profile-club-line">${badgeHTML(club)}<span>${escapeHtml(club.name)} Career Archive</span></div></div></div><div class="archive-facts"><div><span>RETIRED</span><strong>${r.retiredYear}/${String((r.retiredYear+1)%100).padStart(2,'0')}</strong></div><div><span>AGE</span><strong>${r.retiredAge}</strong></div><div><span>FINAL OVR</span><strong>${r.lastOvr}</strong></div><div><span>CAREER LENGTH</span><strong>${Math.max(1,r.retiredSeason-r.joinedSeason+1)} SEASONS</strong></div></div><div class="archive-note"><b>PERMANENT HISTORY</b><span>This player is retired, not deleted. Their archive record remains available for future appearances, goals, transfers, trophies and awards once those career systems are connected.</span></div>`;
+    const pathway=r.staffPathway,roleLabel=pathway?.role==='scout'?'Scout':'First-team coach';
+    el.innerHTML=`<div class="profile-accent"></div><div class="profile-topline"><span>RETIRED PLAYER</span><span>SEASON ${r.retiredSeason}</span></div><div class="profile-hero"><div class="profile-avatar-stage retired">${avatarHTML(r.avatar,r.name)}</div><div class="profile-hero-copy"><div class="profile-overall"><strong>${r.peakOvr}</strong><small>PEAK OVR</small></div><h3>${escapeHtml(r.name)}</h3><p>${r.role} · ${escapeHtml(r.country)}</p><div class="profile-club-line">${badgeHTML(club)}<span>${escapeHtml(club.name)} Career Archive</span></div></div></div><div class="archive-facts"><div><span>RETIRED</span><strong>${r.retiredYear}/${String((r.retiredYear+1)%100).padStart(2,'0')}</strong></div><div><span>AGE</span><strong>${r.retiredAge}</strong></div><div><span>FINAL OVR</span><strong>${r.lastOvr}</strong></div><div><span>CAREER LENGTH</span><strong>${Math.max(1,r.retiredSeason-r.joinedSeason+1)} SEASONS</strong></div></div>${pathway?`<section class="v70-archive-staff"><span>POST-PLAYING CAREER</span><strong>${pathway.status==='HIRED'?`${escapeHtml(roleLabel)} · ${escapeHtml(pathway.clubName||club.name)}`:`${escapeHtml(roleLabel)} application · ${escapeHtml(pathway.status)}`}</strong><small>${pathway.status==='HIRED'?`Joined the backroom team on ${escapeHtml(shortDateLabel(pathway.joinedDate))} with ${Number(pathway.quality||0)}/95 staff quality.`:`Applied on ${escapeHtml(shortDateLabel(pathway.appliedDate))}. The application is handled through the real staff market.`}</small></section>`:''}<div class="archive-note"><b>PERMANENT HISTORY</b><span>This player is retired, not deleted. Their playing career and any later staff role remain connected in the same save.</span></div>`;
   }
 
   function renderRetiredPlayers(){
@@ -7738,7 +8594,10 @@
     const map={
       defensive:{Balanced:'Hold shape and choose pressing moments naturally.',Press:'Close down aggressively and hunt turnovers higher up the pitch.','Drop Back':'Protect central space, reduce risk and invite the opponent forward.'},
       attacking:{Balanced:'Mix patient possession with direct attacks when space opens.','Fast Break':'Move forward immediately after regaining possession.',Possession:'Recycle the ball, control territory and create higher-quality chances.',Direct:'Attack space early, use faster progression and accept more turnover risk.'},
-      mentality:{Defensive:'Prioritise structure and game control, especially when protecting a result.',Balanced:'Adapt to the match state without overcommitting either way.',Attacking:'Commit more players to attacks and accept extra defensive exposure.'}
+      mentality:{Defensive:'Prioritise structure and game control, especially when protecting a result.',Balanced:'Adapt to the match state without overcommitting either way.',Attacking:'Commit more players to attacks and accept extra defensive exposure.'},
+      width:{Compact:'Keep the three close enough to protect central lanes and combine quickly.',Balanced:'Use natural spacing and adjust width to where the match opens up.',Wide:'Stretch the defence, create outside lanes and leave more space between players.'},
+      tempo:{Patient:'Hold possession longer and wait for the cleaner progression.',Balanced:'Change speed with the match instead of forcing every attack.',Urgent:'Move and release the ball earlier at a higher physical cost.'},
+      freedom:{Structured:'Hold assigned lanes and protect the shape when attacks break down.',Balanced:'Mix position discipline with selective rotations.',Fluid:'Rotate positions freely and create unpredictable support angles.'}
     };return map[group]?.[value]||'';
   }
   function squadTacticGroupHtml(group,label,values,current){
@@ -7747,40 +8606,65 @@
   function squadTacticProfile(t){
     const clamp=n=>Math.max(0,Math.min(100,Math.round(n)));
     const pressing=t.defensive==='Press'?88:t.defensive==='Drop Back'?26:56;
-    const tempo=t.attacking==='Fast Break'?90:t.attacking==='Direct'?82:t.attacking==='Possession'?43:59;
-    const control=t.attacking==='Possession'?88:t.attacking==='Balanced'?62:t.attacking==='Fast Break'?44:36;
+    const tempo=(t.attacking==='Fast Break'?82:t.attacking==='Direct'?74:t.attacking==='Possession'?43:59)+(t.tempo==='Urgent'?13:t.tempo==='Patient'?-13:0);
+    const control=(t.attacking==='Possession'?84:t.attacking==='Balanced'?62:t.attacking==='Fast Break'?44:36)+(t.tempo==='Patient'?8:t.tempo==='Urgent'?-7:0)+(t.freedom==='Structured'?4:t.freedom==='Fluid'?-3:0);
     let risk=t.mentality==='Attacking'?80:t.mentality==='Defensive'?28:53;
-    if(t.attacking==='Direct')risk+=8;if(t.attacking==='Fast Break')risk+=5;if(t.defensive==='Drop Back')risk-=4;
+    if(t.attacking==='Direct')risk+=8;if(t.attacking==='Fast Break')risk+=5;if(t.defensive==='Drop Back')risk-=4;if(t.width==='Wide')risk+=5;if(t.freedom==='Fluid')risk+=7;if(t.freedom==='Structured')risk-=6;
     return {pressing:clamp(pressing),tempo:clamp(tempo),control:clamp(control),risk:clamp(risk)};
   }
   function squadTacticIdentity(t){
     if(t.mentality==='Attacking'&&['Fast Break','Direct'].includes(t.attacking))return['AGGRESSIVE','Attack early, commit numbers and force the match forward.'];
     if(t.mentality==='Defensive'&&t.defensive==='Drop Back')return['COMPACT','Protect space first and make opponents break down your shape.'];
     if(t.attacking==='Possession')return['CONTROLLING','Keep territory, recycle attacks and wait for cleaner openings.'];
+    if(t.freedom==='Fluid'&&t.width==='Wide')return['EXPANSIVE','Stretch the pitch, rotate roles and create attacks from changing angles.'];
+    if(t.freedom==='Structured'&&t.width==='Compact')return['DISCIPLINED','Protect the central lanes, hold assigned positions and control transition risk.'];
     if(t.defensive==='Press')return['PROACTIVE','Win the ball earlier and keep opponents under immediate pressure.'];
     if(t.attacking==='Fast Break')return['TRANSITIONAL','Stay balanced without the ball, then accelerate as soon as possession turns over.'];
     return['ADAPTABLE','A flexible match plan that can respond naturally to the state of the game.'];
   }
   function tacticMeterHtml(label,value){return `<div class="tactic-profile-meter"><span>${escapeHtml(label)}</span><i><b style="width:${value}%"></b></i><strong>${value}</strong></div>`;}
+  function v96TacticalPlanDeckHTML(){const active=careerPreferences.activeTacticalPlan;return`<section class="squad-tactic-plan-deck">${Object.values(careerPreferences.tacticalPlans).map(plan=>`<article class="squad-tactic-plan ${plan.id===active?'is-active':''}"><span><small>MATCH PLAN</small><strong>${escapeHtml(plan.name)}</strong></span><button type="button" data-squad-plan-load="${plan.id}">LOAD</button><em>${escapeHtml(plan.tactics.defensive)} · ${escapeHtml(plan.tactics.attacking)} · ${escapeHtml(plan.tactics.mentality)}</em></article>`).join('')}</section>`;}
   function renderSquadTactics(){
     const club=currentClub||selectedClub||clubs[0];careerPreferences=normalizeCareerPreferences(careerPreferences);const t=careerPreferences.tactics;
     const [label,description]=squadTacticIdentity(t),profile=squadTacticProfile(t);
     const content=$('#squadTacticsContent');if(!content)return;
-    content.innerHTML=`<div class="squad-tactics-layout"><main class="squad-tactics-main"><section class="tactics-profile-card"><div class="tactics-mini-pitch" data-mentality="${escapeHtml(t.mentality.toLowerCase())}" data-defensive="${escapeHtml(t.defensive.toLowerCase().replace(/ /g,'-'))}"><span class="pitch-line pitch-half"></span><span class="pitch-circle"></span><i class="tactic-dot tactic-dot-a">1</i><i class="tactic-dot tactic-dot-b">2</i><i class="tactic-dot tactic-dot-c">3</i></div><div class="tactics-profile-copy"><span>TACTICAL PROFILE</span><h3>${escapeHtml(label)}</h3><p>${escapeHtml(description)}</p><div class="tactic-profile-meters">${tacticMeterHtml('PRESSING',profile.pressing)}${tacticMeterHtml('TEMPO',profile.tempo)}${tacticMeterHtml('CONTROL',profile.control)}${tacticMeterHtml('RISK',profile.risk)}</div></div></section>${squadTacticGroupHtml('defensive','WITHOUT THE BALL',['Balanced','Press','Drop Back'],t.defensive)}${squadTacticGroupHtml('attacking','WITH THE BALL',['Balanced','Fast Break','Possession','Direct'],t.attacking)}${squadTacticGroupHtml('mentality','MENTALITY',['Defensive','Balanced','Attacking'],t.mentality)}</main><aside class="squad-tactics-summary"><span>YOUR MATCH PLAN</span><h3>${escapeHtml(label)}</h3><p class="tactics-summary-desc">${escapeHtml(description)}</p><div><small>WITHOUT THE BALL</small><strong>${escapeHtml(t.defensive)}</strong></div><div><small>WITH THE BALL</small><strong>${escapeHtml(t.attacking)}</strong></div><div><small>MENTALITY</small><strong>${escapeHtml(t.mentality)}</strong></div><div class="tactics-effect-note"><b>MATCH EFFECT</b><span>These instructions alter chance creation, pressure, possession behaviour and risk inside the match simulation.</span></div><button type="button" data-squad-tactic-reset>RESET TO BALANCED</button></aside></div>`;
+    content.innerHTML=`<div class="squad-tactics-layout"><main class="squad-tactics-main">${v96TacticalPlanDeckHTML()}<section class="tactics-profile-card"><div class="tactics-mini-pitch" data-mentality="${escapeHtml(t.mentality.toLowerCase())}" data-defensive="${escapeHtml(t.defensive.toLowerCase().replace(/ /g,'-'))}"><span class="pitch-line pitch-half"></span><span class="pitch-circle"></span><i class="tactic-dot tactic-dot-a">1</i><i class="tactic-dot tactic-dot-b">2</i><i class="tactic-dot tactic-dot-c">3</i></div><div class="tactics-profile-copy"><span>TACTICAL PROFILE</span><h3>${escapeHtml(label)}</h3><p>${escapeHtml(description)}</p><div class="tactic-profile-meters">${tacticMeterHtml('PRESSING',profile.pressing)}${tacticMeterHtml('TEMPO',profile.tempo)}${tacticMeterHtml('CONTROL',profile.control)}${tacticMeterHtml('RISK',profile.risk)}</div></div></section>${squadTacticGroupHtml('defensive','WITHOUT THE BALL',V96_TACTIC_VALUES.defensive,t.defensive)}${squadTacticGroupHtml('attacking','WITH THE BALL',V96_TACTIC_VALUES.attacking,t.attacking)}${squadTacticGroupHtml('mentality','MENTALITY',V96_TACTIC_VALUES.mentality,t.mentality)}<div class="squad-tactics-secondary">${squadTacticGroupHtml('width','TEAM WIDTH',V96_TACTIC_VALUES.width,t.width)}${squadTacticGroupHtml('tempo','TEMPO',V96_TACTIC_VALUES.tempo,t.tempo)}${squadTacticGroupHtml('freedom','CREATIVE FREEDOM',V96_TACTIC_VALUES.freedom,t.freedom)}</div></main><aside class="squad-tactics-summary"><span>YOUR MATCH PLAN</span><h3>${escapeHtml(label)}</h3><p class="tactics-summary-desc">${escapeHtml(description)}</p><div class="tactics-summary-grid">${[['WITHOUT THE BALL',t.defensive],['WITH THE BALL',t.attacking],['MENTALITY',t.mentality],['WIDTH',t.width],['TEMPO',t.tempo],['FREEDOM',t.freedom]].map(([key,value])=>`<div><small>${key}</small><strong>${escapeHtml(value)}</strong></div>`).join('')}</div><div class="tactics-effect-note"><b>LIVE MATCH EFFECT</b><span>Shape, support, directness, pressure, creative movement and energy use all change in the match engine.</span></div><div class="tactics-plan-actions"><button type="button" data-squad-plan-save="${escapeHtml(careerPreferences.activeTacticalPlan)}">SAVE OVER ${escapeHtml(careerPreferences.tacticalPlans[careerPreferences.activeTacticalPlan].name)}</button><button type="button" data-squad-tactic-reset>RESET</button><button type="button" data-squad-plan-load="${escapeHtml(careerPreferences.activeTacticalPlan)}">RELOAD PLAN</button></div></aside></div>`;
     const badge=$('#tacticsIdentityBadge');if(badge)badge.innerHTML=`<span class="tactics-club-crest">${badgeHTML(club)}</span><span><small>${escapeHtml(club.name)}</small><strong>${escapeHtml(label)}</strong></span>`;
+  }
+
+  function renderSquadOverview(){
+    const club=currentClub||selectedClub,squad=getSquad(club),starters=activeStarters(club),next=nextUserFixture(),captain=squad.find(p=>p.captain);
+    const unavailable=p=>Number(p.injuryDaysRemaining||0)>0||disciplineActiveSuspensions(p).length>0||p.onLoan;
+    const ready=starters.length===STARTER_SLOTS&&starters.every(p=>!unavailable(p)),concerns=squad.filter(unavailable),atmosphere=squadAtmosphereSnapshot(club);
+    const opponent=next?clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId):null;
+    const mount=$('#squadOverviewView');if(!mount)return;
+    mount.innerHTML=`<section class="sq-overview-hero"><div><span>CLUB PREPARATION · ${escapeHtml(club.name.toUpperCase())}</span><h3>${ready?'READY TO MAKE YOUR MARK.':'YOUR TEAM NEEDS YOU.'}</h3><p>${ready?'Your starting three are available. Fine-tune the match plan, manage workloads and prepare the next generation.':'Review player availability and fill your starting three before the next match.'}</p><button type="button" data-overview-go="senior">MANAGE YOUR SQUAD →</button></div><aside><span>NEXT FIXTURE</span><strong>${opponent?escapeHtml(opponent.name):'Awaiting fixtures'}</strong><p>${next?escapeHtml(shortDateLabel(next.date))+' · '+(next.homeClubId===club.id?'Home fixture':'Away fixture'):'Your next opponent will appear here when the schedule is confirmed.'}</p></aside></section><div class="sq-overview-metrics"><article><span>STARTING THREE</span><strong>${starters.filter(p=>!unavailable(p)).length} / 3</strong><small>Available for selection</small></article><article><span>DRESSING ROOM</span><strong>${escapeHtml(atmosphere.label)}</strong><small>${atmosphere.socialLabel||'SETTLED'} · ${Number(atmosphere.cohesion||60)} cohesion</small></article><article><span>CLUB CAPTAIN</span><strong>${escapeHtml(captain?.name||'Unassigned')}</strong><small>${escapeHtml(captain?.role||'Review leadership')}</small></article><article><span>AVAILABILITY</span><strong>${concerns.length} unavailable</strong><small>${concerns.length?concerns.map(p=>escapeHtml(p.name)).join(', '):'No injuries, suspensions or loan absences'}</small></article></div><div class="sq-overview-actions"><button type="button" data-overview-go="dynamics">SQUAD DYNAMICS →</button><button type="button" data-overview-go="tactics">TACTICAL PLAN →</button><button type="button" data-overview-go="training">TRAINING & READINESS →</button><button type="button" data-overview-go="youth">YOUTH PATHWAY →</button></div>`;
+    mount.querySelectorAll('[data-overview-go]').forEach(button=>button.addEventListener('click',()=>setSquadView(button.dataset.overviewGo)));
+  }
+
+  function squadDynamicsPlayerButton(player,meta=''){
+    if(!player)return'';return`<button type="button" class="people-player-chip" data-v48-player="${escapeHtml(player.id)}"><span>${avatarHTML(player.avatar,player.name)}</span><b>${escapeHtml(player.name)}</b>${meta?`<small>${escapeHtml(meta)}</small>`:''}</button>`;
+  }
+  function renderSquadDynamics(){
+    const club=currentClub||selectedClub,mount=$('#squadDynamicsView');if(!mount||!club)return;const social=squadSocialSnapshot(club),atmosphere=squadAtmosphereSnapshot(club),leaders=social.hierarchy.filter(entry=>['CAPTAIN','LEADER','CORE VOICE'].includes(entry.role)).slice(0,6),squadIds=new Set(getSquad(club).map(player=>String(player.id))),publicMemories=mediaWorld.peopleMemories.map(normalizePeopleMemory).filter(memory=>memory.personType==='PLAYER'&&squadIds.has(String(memory.personId))&&memory.expiresDate>=currentCareerISO()).sort((a,b)=>Number(b.strength)-Number(a.strength)||String(b.date).localeCompare(String(a.date))).slice(0,5);
+    mount.innerHTML=`<section class="people-power-hero"><div><span>PEOPLE &amp; POWER · ${escapeHtml(club.name.toUpperCase())}</span><h3>EVERY SQUAD HAS A SOCIAL SHAPE.</h3><p>Leaders carry your message. Friends reinforce it. Rival groups resist it. Selection, transfers, captaincy and public words keep changing the room.</p></div><aside><small>SQUAD COHESION</small><strong>${social.cohesion}</strong><b>${escapeHtml(social.label)}</b><i><span style="width:${social.cohesion}%"></span></i><em>${escapeHtml(atmosphere.label)} ATMOSPHERE</em></aside></section><div class="people-power-grid"><main><section class="people-panel people-hierarchy"><header><div><span>SQUAD HIERARCHY</span><h4>WHO SETS THE TONE</h4></div><small>Influence follows leadership, status, age and lived career history.</small></header><div class="people-hierarchy-list">${leaders.map((entry,index)=>`<article class="is-${String(entry.role).toLowerCase().replace(/ /g,'-')}"><b>${String(index+1).padStart(2,'0')}</b>${squadDynamicsPlayerButton(entry.player,entry.role)}<div><span>INFLUENCE</span><strong>${entry.influence}</strong><i><em style="width:${entry.influence}%"></em></i></div></article>`).join('')}</div></section><section class="people-panel people-cliques"><header><div><span>GROUPS &amp; ALLIANCES</span><h4>THE ROOM INSIDE THE ROOM</h4></div><small>Groups form through shared roles, age, background and moments together.</small></header><div class="people-clique-grid">${social.cliques.map(clique=>`<article><div class="people-clique-head"><span>${escapeHtml(clique.label)}</span><strong>${clique.cohesion}%</strong></div><div class="people-clique-members">${clique.members.map(player=>squadDynamicsPlayerButton(player,player.id===clique.leader?.id?'GROUP VOICE':player.lastHierarchyRole||'MEMBER')).join('')}</div><footer><i><b style="width:${clique.cohesion}%"></b></i><small>${clique.cohesion>=70?'Closely connected':clique.cohesion>=52?'Working relationship':'Loose association'}</small></footer></article>`).join('')}</div></section></main><aside class="people-power-rail"><section class="people-panel"><header><div><span>LIVE FAULT LINES</span><h4>PRESSURE IN THE GROUP</h4></div></header>${social.tensions.length?social.tensions.slice(0,4).map(row=>`<article class="people-tension"><b>${row.tension>=62?'FRACTURED':row.tension>=38?'HEATED':'UNEASY'}</b><strong>${escapeHtml(row.players.map(player=>player.name).join(' · '))}</strong><small>${escapeHtml(String(row.relationship.type||'TENSION').replace(/_/g,' '))}</small></article>`).join(''):'<p class="people-empty">No active rivalry is splitting the group.</p>'}</section><section class="people-panel"><header><div><span>PLACES UNDER THREAT</span><h4>DISPLACED STARTERS</h4></div></header>${social.displaced.length?social.displaced.slice(0,4).map(row=>`<article class="people-displaced">${squadDynamicsPlayerButton(row.player,'PLACE UNDER PRESSURE')}<span>challenged by</span>${squadDynamicsPlayerButton(row.challenger,'NEW COMPETITION')}</article>`).join(''):'<p class="people-empty">No established player currently feels displaced by a new arrival.</p>'}</section><section class="people-panel people-public-record"><header><div><span>PUBLIC RECORD</span><h4>WORDS IN THE ROOM</h4></div></header>${publicMemories.length?publicMemories.map(memory=>`<article class="is-${Number(memory.valence)>0?'positive':Number(memory.valence)<0?'negative':'neutral'}"><time>${shortDateLabel(memory.date)}</time><strong>${escapeHtml(memory.personName)}</strong><small>${escapeHtml(memory.label)} · ${escapeHtml(memory.summary)}</small></article>`).join(''):'<p class="people-empty">No active press comment is shaping this squad yet.</p>'}</section></aside></div>`;
   }
 
   function setSquadView(view){
     squadView=view;
-    $$('#squadSubnav [data-squad-view]').forEach(b=>{const active=b.dataset.squadView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-selected',active?'true':'false');});
+    $$('#squadSubnav [data-squad-view]').forEach(b=>{const active=b.dataset.squadView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-current',active?'page':'false');});
     $$('.squad-view').forEach(p=>{const active=p.dataset.squadPane===view;p.classList.toggle('is-active',active);p.setAttribute('aria-hidden',active?'false':'true');try{p.inert=!active;}catch(_e){}});
+    $('#screenSquad')?.classList.toggle('is-overview-view',view==='overview');
+    if(view==='overview')renderSquadOverview();
     $('#screenSquad')?.classList.toggle('is-tactics-view',view==='tactics');
+    $('#screenSquad')?.classList.toggle('is-dynamics-view',view==='dynamics');
     if(view!=='senior')swapSourceId=null;
     if(view==='senior'){renderSeniorSquad();renderPlayerProfile();renderSwapBanner();}
     $('#screenSquad')?.classList.toggle('is-training-view',view==='training');
     $('#screenSquad')?.classList.toggle('v35-academy-wide',view==='youth'&&v35AcademyView!=='prospects');
     if(view==='training')v23RenderTraining();
     if(view==='tactics')renderSquadTactics();
+    if(view==='dynamics')renderSquadDynamics();
     if(view==='youth')renderYouthAcademy();
     if(view==='legends')renderCareerArchive();
   }
@@ -7873,11 +8757,22 @@
     patchSquadCards($('#reservesGrid'),lineup.reserve.map((id,i)=>{const p=id?byId.get(id):null;const idx=i+MATCHDAY_SENIOR_SIZE;return p?playerCardHTML(p,false,idx,'reserve'):emptyPlayerSlotHTML(false,idx,'reserve');}).concat(awaitingRegistration.map((p,i)=>playerCardHTML(p,false,SENIOR_SQUAD_CAP+i,'reserve'))));
     const showcase=$('#startingThreeShowcase');
     patchSquadCards(showcase,lineup.starter.map((id,i)=>{const p=id?byId.get(id):null;const card=p?playerCardHTML(p,true,i,'starter'):emptyPlayerSlotHTML(true,i,'starter');return `<div class="v51-st3-slot"><span class="v51-st3-num" aria-hidden="true">ON PITCH · ${['LEFT','CENTRE','RIGHT'][i]}</span>${card}</div>`;}));
+    const reserveSummary=$('#squadReserveSummary');
+    if(reserveSummary)reserveSummary.textContent=`Reserve places · ${lineup.reserve.filter(Boolean).length} registered · ${lineup.reserve.filter(id=>!id).length} available`;
+    const reserveDetails=$('#squadReservePlaces');if(reserveDetails&&(swapSourceId||lineup.reserve.some(Boolean)||awaitingRegistration.length))reserveDetails.open=true;
+    $$('#seniorSquadView .empty-player-slot').forEach(slot=>{
+      if(squadClickBound.has(slot))return;squadClickBound.add(slot);
+      slot.addEventListener('click',()=>{
+        if(!swapSourceId){showToast('Select a player and choose “Swap with…” first');return;}
+        const moved=moveLineupPlayerToSlot(club,swapSourceId,slot.dataset.dropGroup,Number(slot.dataset.dropSlot));
+        if(moved){selectedPlayerId=swapSourceId;swapSourceId=null;refreshSeniorSquadUI({save:true});showToast('Player moved to '+rosterGroupLabel(slot.dataset.dropGroup));}
+      });
+    });
     const reserveCopy=$('#squadDepthCopy');
-    if(reserveCopy)reserveCopy.textContent=awaitingRegistration.length?`${awaitingRegistration.length} player${awaitingRegistration.length===1?' is':'s are'} awaiting registration. Drag one onto a squad slot to replace its current occupant.`:'Five additional senior places for new signings and promoted academy players.';
+    if(reserveCopy)reserveCopy.textContent=awaitingRegistration.length?`${awaitingRegistration.length} player${awaitingRegistration.length===1?' is':'s are'} awaiting registration. Drag one onto a squad slot to replace its current occupant.`:'Your matchday bench. Select a player to compare or change your starting three.';
     $$('#subsGrid [data-player-id], #reservesGrid [data-player-id], #startingThreeShowcase [data-player-id]').forEach(btn=>{if(squadClickBound.has(btn))return;squadClickBound.add(btn);btn.addEventListener('click',()=>onPlayerCardClick(btn.dataset.playerId));});
     bindSquadDragAndDrop();
-    $('#v51ConfirmStarters')&&($('#v51ConfirmStarters').onclick=v51ConfirmStartingThree);
+
     if(summary)renderSquadSummary(squad,club);
   }
 
@@ -7912,7 +8807,8 @@
     }
     const groups=row=>row.starter?0:row.bench?1:2;
     rows.sort((a,b)=>groups(a)-groups(b)||Number(b.player.ovr)-Number(a.player.ovr));
-    return {date,club,next:next?{date:next.date,home:next.homeClubId===club.id,opponent:clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId)?.name||'Opponent',venue:clubById(next.homeClubId)?.arena||'Home ground'}:null,preferences,rows,trainingFocus:careerPreferences.trainingFocus||'Balanced'};
+    const assistant=careerExpansion?.personnelForRole?.('coach',club)||null;
+    return {date,club,next:next?{date:next.date,home:next.homeClubId===club.id,opponent:clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId)?.name||'Opponent',venue:clubById(next.homeClubId)?.arena||'Home ground'}:null,preferences,rows,trainingFocus:careerPreferences.trainingFocus||'Balanced',assistant:assistant?{name:assistant.name,title:window.VelmoraPersonnelIdentity?.profile?.('coach')?.title||'Assistant Coach',portrait:assistant.portrait||window.VelmoraPersonnelIdentity?.asset?.('coach')}:null};
   }
   function v23SetTrainingPlayer(id,choice){
     const player=getSquad(currentClub).find(p=>String(p.id)===String(id)&&(!p.onLoan||p.clubId===currentClub.id));if(!player)return false;
@@ -7963,8 +8859,21 @@
     return Math.max(25_000,Math.round(remainingValue*0.45/1000)*1000);
   }
 
+  function playerRegistrationRights(club,p){
+    const loan=p?.id?livingLoanForPlayer(p.id):null,isLoan=!!(loan||p?.onLoan),registeredClubId=p?.clubId||loan?.loanClubId||null,ownerClubId=loan?.parentClubId||p?.parentClubId||p?.ownerClubId||(!isLoan?p?.clubId:null)||null,clubId=club?.id||null;
+    return{loan,isLoan,registeredClubId,ownerClubId,ownsContract:!!clubId&&ownerClubId===clubId,registeredHere:!!clubId&&registeredClubId===clubId,loanedIn:isLoan&&registeredClubId===clubId&&ownerClubId!==clubId,loanedOut:isLoan&&ownerClubId===clubId&&registeredClubId!==clubId};
+  }
+  function clubCanRenewPlayer(club,p){const rights=playerRegistrationRights(club,p);return rights.ownsContract&&!p?.freeAgent;}
+  function clubCanMarketPlayer(club,p){const rights=playerRegistrationRights(club,p);return rights.ownsContract&&rights.registeredHere&&!rights.isLoan&&!p?.freeAgent;}
+  function loanOwnershipActionMessage(club,p,action='change this player'){const rights=playerRegistrationRights(club,p),owner=clubById(rights.ownerClubId),borrower=clubById(rights.registeredClubId);if(rights.loanedIn)return`${owner?.name||'The parent club'} control ${p?.name||'this player'}'s contract. You cannot ${action} while the player is on loan.`;if(rights.loanedOut)return`${p?.name||'This player'} is on loan at ${borrower?.name||'another club'}. Recall the player before you ${action}.`;return`${club?.name||'This club'} do not hold ${p?.name||'this player'}'s registration rights.`;}
+  function blockUnownedPlayerAction(club,p,action,renewal=false){const allowed=renewal?clubCanRenewPlayer(club,p):clubCanMarketPlayer(club,p);if(allowed)return false;showToast(loanOwnershipActionMessage(club,p,action));return true;}
+
   function releaseSeniorPlayer(club,p,quiet=false){
     if(!club||!p)return false;
+    if(!clubCanMarketPlayer(club,p)){
+      if(!quiet)showToast(loanOwnershipActionMessage(club,p,'terminate the contract'));
+      return false;
+    }
     const squad=getSquad(club);
     const idx=squad.findIndex(x=>x.id===p.id);
     if(idx<0)return false;
@@ -8026,6 +8935,7 @@
     clubs.forEach(club=>{
       if(!includeOwn && club.id===own)return;
       getSquad(club).forEach((p,index)=>{
+        if(p.onLoan)return;
         pool.push({...p,club,clubId:club.id,clubName:club.name,freeAgent:false,rosterIndex:index});
       });
     });
@@ -8048,7 +8958,7 @@
       const band=rng();
       const ovr=band>.88?72+Math.floor(rng()*7):band>.45?62+Math.floor(rng()*10):53+Math.floor(rng()*10);
       const potential=clamp(ovr+(age<=21?4+Math.floor(rng()*11):age<=25?Math.floor(rng()*6):Math.floor(rng()*3)),ovr,91);
-      const value=Math.max(70_000,Math.round(Math.pow(Math.max(1,ovr-45),2.25)*2200*(age<24?1.1:age>30?.72:1)));
+      const value=Math.max(70_000,playerAbilityValue(ovr,age));
       freeAgentCache.push({
         id:`PLY-${hashString(`${worldSeed}-FREE-${i}`).toString(36).toUpperCase()}`,
         name:makePlayerName(nationality,rng,{usedNames:freeAgentNames,usedSurnames:freeAgentSurnames,ordinal:clubs.length*INITIAL_SENIOR_SQUAD_SIZE+i}),country:nationality,age,role,ovr,potential,basePotential:potential,dynamicPotentialDelta:0,
@@ -8160,7 +9070,7 @@
 
   function publicMarketStatus(p){
     if(p.freeAgent)return'FREE AGENT';
-    if(Number(p.contractYears||0)<=1)return'CONTRACT EXPIRING';
+    if(careerContractDaysRemaining(p)<=365)return'CONTRACT EXPIRING';
     if(['Unhappy','Very Unhappy'].includes(p.morale))return'UNHAPPY';
     const roll=hashString(`${worldSeed}-MARKET-STATUS-${careerSeason}-${p.id}`)%100;
     if(String(p.squadRole||'').toLowerCase()==='reserve'&&roll<42)return'TRANSFER LISTED';
@@ -8252,14 +9162,14 @@
     if(p.freeAgent)return{kind:'free',text:'FREE AGENT',lo:0,hi:0,mid:0};
     const rec=recruitmentIntelRecord(p,false);
     if(Number(rec?.knownAskingPrice||0)>0)return{kind:'club-ask',text:formatMoney(Number(rec.knownAskingPrice)),lo:Number(rec.knownAskingPrice),hi:Number(rec.knownAskingPrice),mid:Number(rec.knownAskingPrice)};
-    const stage=knowledgeStageFor(p),k=effectiveKnowledge(p),scout=estimateJudgement(p);
-    if(stage.key==='full')return{kind:'exact',text:formatMoney(p.value),lo:p.value,hi:p.value,mid:p.value};
+    const stage=knowledgeStageFor(p),k=effectiveKnowledge(p),scout=estimateJudgement(p),market=livingPlayerMarketValue(p);
+    if(stage.key==='full')return{kind:'exact',text:formatMoney(market),lo:market,hi:market,mid:market};
     if(stage.key==='unknown')return{kind:'unknown',text:'UNKNOWN',lo:0,hi:0,mid:0};
     const spread=stage.key==='limited'?.62:stage.key==='partial'?.42:stage.key==='good'?.24:.14;
     const judgementShrink=(scout.judgement-1)*.025+(scout.specialism==='VALUE'?0.035:0);
     const actualSpread=Math.max(.09,spread-judgementShrink);
     const skew=deterministicSigned(`${worldSeed}-VALUE-BIAS-${currentClub?.id||'CLUB'}-${scout.id}-${p.id}`,stage.key==='limited'?28:stage.key==='partial'?18:stage.key==='good'?10:5)/100;
-    const mid=Math.max(50_000,Number(p.value||0)*(1+skew));
+    const mid=Math.max(50_000,market*(1+skew));
     const lo=Math.max(50_000,Math.round(mid*(1-actualSpread)/50_000)*50_000);
     const hi=Math.max(lo+50_000,Math.round(mid*(1+actualSpread)/50_000)*50_000);
     return{kind:'range',text:`${formatMoney(lo)}–${formatMoney(hi)}`,lo,hi,mid:(lo+hi)/2};
@@ -8379,7 +9289,7 @@
 
   function clubStanceFor(p){
     if(p.freeAgent)return'AVAILABLE';
-    if(Number(p.contractYears||0)<=1)return'OPEN TO OFFERS';
+    if(careerContractDaysRemaining(p)<=365)return'OPEN TO OFFERS';
     if(['Unhappy','Very Unhappy'].includes(p.morale))return'WILL LISTEN';
     if(p.captain||String(p.squadRole||'').toLowerCase()==='crucial')return'RELUCTANT';
     return (hashString(`${worldSeed}-STANCE-${careerSeason}-${p.id}`)%100)<18?'NOT FOR SALE':'WILL LISTEN';
@@ -8428,7 +9338,7 @@
     if(status==='CONTRACT EXPIRING'||status==='TRANSFER LISTED')premium-=.12;
     if(stance==='RELUCTANT')premium+=.18;
     if(stance==='NOT FOR SALE')premium+=.42;
-    return Math.round(p.value*Math.max(.82,premium)/50_000)*50_000;
+    return Math.round(livingPlayerMarketValue(p)*Math.max(.82,premium)/50_000)*50_000;
   }
 
   function isPlayerDiscovered(p){
@@ -8641,7 +9551,7 @@
   function renderTransferHub(){
     initializeLivingSquadState(false);
     const target=$('#transferHubCards');if(!target)return;
-    const views=[['incoming','INCOMING OFFERS',livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status)).length],['active','ACTIVE TALKS',pendingNegotiations.filter(n=>n.status==='pending').length+(careerExpansion?.state().offers||[]).filter(o=>o.buyerId===currentClub?.id&&o.status==='AGREED'&&o.expires>=currentCareerISO()).length],['future','FUTURE ARRIVALS',careerExpansion?.reservedPlaces(currentClub)||0],['outgoing','OUTGOING',getSquad(currentClub).filter(p=>p.transferStatus==='TRANSFER_LISTED'||p.transferRequested).length+livingSquad.transferHistory.filter(x=>x.fromClubId===currentClub?.id&&x.seasonId===careerTime.seasonId).length],['loans','LOANS',activeLivingLoansForClub(currentClub).length+livingSquad.loanOffers.filter(o=>o.parentClubId===currentClub?.id&&o.status==='OPEN').length],['completed','COMPLETED',livingSquad.transferHistory.filter(x=>x.seasonId===careerTime.seasonId&&(x.fromClubId===currentClub?.id||x.toClubId===currentClub?.id)).length]];
+    const views=[['incoming','INCOMING OFFERS',livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status)&&clubCanMarketPlayer(currentClub,careerPlayerById(o.playerId))).length],['active','ACTIVE TALKS',pendingNegotiations.filter(n=>n.status==='pending').length+(careerExpansion?.state().offers||[]).filter(o=>o.buyerId===currentClub?.id&&o.status==='AGREED'&&o.expires>=currentCareerISO()).length],['future','FUTURE ARRIVALS',careerExpansion?.reservedPlaces(currentClub)||0],['outgoing','OUTGOING',getSquad(currentClub).filter(p=>clubCanMarketPlayer(currentClub,p)&&(p.transferStatus==='TRANSFER_LISTED'||p.transferRequested)).length+livingSquad.transferHistory.filter(x=>x.fromClubId===currentClub?.id&&x.seasonId===careerTime.seasonId).length],['loans','LOANS',activeLivingLoansForClub(currentClub).length+livingSquad.loanOffers.filter(o=>o.parentClubId===currentClub?.id&&o.status==='OPEN').length],['completed','COMPLETED',livingSquad.transferHistory.filter(x=>x.seasonId===careerTime.seasonId&&(x.fromClubId===currentClub?.id||x.toClubId===currentClub?.id)).length]];
     const nav=`<div class="living-transfer-hub-nav">${views.map(([key,label,count])=>`<button type="button" data-living-hub="${key}" class="${transferHubView===key?'is-active':''}"><span>${label}</span>${count?`<b>${count}</b>`:''}</button>`).join('')}</div>`;
     let html='';
     if(transferHubView==='incoming')html=livingIncomingOffersHTML();
@@ -8845,9 +9755,45 @@
     }
   }
 
+  // V89 — one shared recruitment pot, allocatable between fees and weekly wages.
+  const V89_WAGE_WEEKS=52,V89_WAGE_STEP=100;
+  function v89BudgetAllocationSnapshot(club){
+    const finance=v25ClubFinance(club),transferBudget=Math.max(0,moneyNumber(club?.budget)),wageBudget=Math.max(0,Number(finance.wageBudget)||0);
+    const committed=Math.max(0,v25ClubWeeklyWages(club)+(careerExpansion?.reservedWages(club)||0));
+    const totalAnnual=transferBudget+wageBudget*V89_WAGE_WEEKS;
+    const maximum=Math.max(wageBudget,Math.floor(totalAnnual/V89_WAGE_WEEKS/V89_WAGE_STEP)*V89_WAGE_STEP);
+    const minimum=Math.min(maximum,Math.ceil(Math.max(1200,committed)/V89_WAGE_STEP)*V89_WAGE_STEP);
+    return{finance,transferBudget,wageBudget,committed,totalAnnual,minimum,maximum,step:V89_WAGE_STEP};
+  }
+  function v89AllocateBudgets(club,requestedWageBudget){
+    if(!club)return null;
+    const snapshot=v89BudgetAllocationSnapshot(club),rounded=Math.round(Number(requestedWageBudget||0)/snapshot.step)*snapshot.step;
+    const wageBudget=clamp(rounded,snapshot.minimum,snapshot.maximum),transferBudget=Math.max(0,snapshot.totalAnnual-wageBudget*V89_WAGE_WEEKS);
+    snapshot.finance.wageBudget=wageBudget;snapshot.finance.allocationUpdatedDate=currentCareerISO();club.budget=formatExactMoney(transferBudget);
+    const state=roadToGlory.clubState?.[club.id];if(state)state.lastBudget=club.budget;
+    return{...snapshot,wageBudget,transferBudget,wageRoom:Math.max(0,wageBudget-snapshot.committed)};
+  }
+  function renderTransferBudgetAllocation(club){
+    const slider=$('#transferBudgetAllocation'),transfer=$('#transferBudgetValue'),wage=$('#transferWageBudgetValue'),committed=$('#transferWageCommitted');
+    if(!slider||!transfer||!wage||!committed||!club)return;
+    const snapshot=v89BudgetAllocationSnapshot(club),paint=value=>{
+      const selected=clamp(Math.round(Number(value||0)/snapshot.step)*snapshot.step,snapshot.minimum,snapshot.maximum);
+      const transferValue=Math.max(0,snapshot.totalAnnual-selected*V89_WAGE_WEEKS),room=Math.max(0,selected-snapshot.committed);
+      transfer.textContent=formatExactMoney(transferValue);wage.textContent=`${formatMoney(selected)}/w`;
+      committed.textContent=`Committed ${formatMoney(snapshot.committed)}/w · ${formatMoney(room)}/w free`;
+      slider.setAttribute('aria-valuetext',`${formatMoney(transferValue)} transfer budget and ${formatMoney(selected)} per week wage allocation`);
+      const range=Math.max(1,snapshot.maximum-snapshot.minimum),progress=(selected-snapshot.minimum)/range*100;slider.style.setProperty('--allocation-progress',`${progress}%`);
+    };
+    slider.min=String(snapshot.minimum);slider.max=String(snapshot.maximum);slider.step=String(snapshot.step);slider.value=String(clamp(snapshot.wageBudget,snapshot.minimum,snapshot.maximum));paint(slider.value);
+    if(slider.dataset.allocationBound==='1')return;
+    slider.dataset.allocationBound='1';
+    slider.addEventListener('input',event=>{const active=currentClub||selectedClub||clubs[0],live=v89BudgetAllocationSnapshot(active),selected=clamp(Number(event.target.value),live.minimum,live.maximum),transferValue=Math.max(0,live.totalAnnual-selected*V89_WAGE_WEEKS),room=Math.max(0,selected-live.committed);$('#transferBudgetValue').textContent=formatExactMoney(transferValue);$('#transferWageBudgetValue').textContent=`${formatMoney(selected)}/w`;$('#transferWageCommitted').textContent=`Committed ${formatMoney(live.committed)}/w · ${formatMoney(room)}/w free`;event.target.setAttribute('aria-valuetext',`${formatMoney(transferValue)} transfer budget and ${formatMoney(selected)} per week wage allocation`);const range=Math.max(1,live.maximum-live.minimum);event.target.style.setProperty('--allocation-progress',`${(selected-live.minimum)/range*100}%`);});
+    slider.addEventListener('change',event=>{const active=currentClub||selectedClub||clubs[0],result=v89AllocateBudgets(active,event.target.value);if(!result)return;saveCareerState();renderTransferBudgetAllocation(active);renderOffice();showToast(`Budgets adjusted · ${formatMoney(result.transferBudget)} transfers · ${formatMoney(result.wageBudget)}/w wages`);});
+  }
+
   function renderTransfers(){
     const club=currentClub||selectedClub||clubs[0];currentClub=club;$('.transfers-screen')?.style.setProperty('--club-accent',club.accent||'#1bb5b6');setBadge($('#transfersClubBadgeTop'),club);
-    const activeWindow=transferWindowForDate(),windowContext=v2073TransferWindowContext(activeWindow);$('#transferClubLine').textContent=`${club.name} · ${club.division} · ${windowContext.label} · ${shortDateLabel(currentCareerISO())}`;$('#transferBudgetValue').textContent=club.budget||'£--';
+    const activeWindow=transferWindowForDate(),windowContext=v2073TransferWindowContext(activeWindow);$('#transferClubLine').textContent=`${club.name} · ${club.division} · ${windowContext.label} · ${shortDateLabel(currentCareerISO())}`;renderTransferBudgetAllocation(club);
     populateTransferDiscoveryFilters();
     const f=getTransferFilters(),market=sortTransferPool(transferSearchPool(f),f);
     if(!selectedTransferPlayerId||!transferPlayerById(selectedTransferPlayerId))selectedTransferPlayerId=market[0]?.id||getFreeAgents()[0]?.id||null;
@@ -8857,7 +9803,7 @@
 
   function openNegotiation(p){
     const session=clubNegotiationSession(p,true);if(session&&!negotiationSessionCanReopen(session,currentCareerISO())){const days=negotiationCooldownRemaining(session);showToast(`Talks closed · try again in ${days} day${days===1?'':'s'}`);return;}
-    const modal=$('#negotiationModal'),prev=transferActivity.get(p.id)||{},pending=transferResponsePendingForPlayer(p.id),vi=valueEstimateInfo(p),budget=moneyNumber((currentClub||selectedClub)?.budget),estimateBase=vi.kind==='exact'?p.value:vi.kind==='range'?(vi.lo+vi.hi)/2:Math.max(250_000,Math.min(1_000_000,budget*.08));
+    const modal=$('#negotiationModal'),prev=transferActivity.get(p.id)||{},pending=transferResponsePendingForPlayer(p.id),vi=valueEstimateInfo(p),budget=availableTransferBudget(currentClub||selectedClub),estimateBase=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08));
     if(prev.status==='Talks Collapsed'&&session?.state==='ACTIVE')transferActivity.set(p.id,{...prev,status:'Negotiating',cooldownUntil:null});
     const latest=transferActivity.get(p.id)||prev,initial=latest?.counter||latest?.offer||session?.lastSellerCounter||Math.round(estimateBase*.90/50_000)*50_000;
     if(!latest.status)transferActivity.set(p.id,{status:'Negotiating',offer:initial});
@@ -8871,45 +9817,99 @@
   }
 
   function closeNegotiation(){
-    const modal=$('#negotiationModal');if(!modal)return;modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');syncPrimaryScreenInteractivity();renderTransferDossier();renderTransferHub();
+    const modal=$('#negotiationModal');if(!modal)return;window.VelmoraNegotiationScene?.reset(modal);modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');syncPrimaryScreenInteractivity();renderTransferDossier();renderTransferHub();
+  }
+
+  const v73NegotiationAgentProfiles=new Map();
+  function v73FormalNegotiationProfile(source,seed){
+    const profile=deepClone(source),formal=(managerAssetsByCategory.outfit||[]).filter(asset=>/^outfit_formal_\d+$/.test(asset.id)&&asset.unlockState!=='career-locked'&&asset.defaultAvailable!==false);
+    profile.wardrobePresets=profile.wardrobePresets||{};const preset=profile.wardrobePresets.formal||(profile.wardrobePresets.formal=defaultWardrobeSnapshot());
+    if(!/^outfit_formal_\d+$/.test(String(preset.outfitId||''))&&formal.length)preset.outfitId=formal[Math.abs(hashString(`NEGOTIATION-FORMAL-${seed}`))%formal.length].id;
+    profile.activeWardrobePresetId='formal';profile.expressionId='expression_00';
+    return normalizeManagerProfile(profile,{legacyFallback:false});
+  }
+  function v73NegotiationAgent(p,session){
+    const seed=String(session?.id||`${p.id}-${currentCareerISO()}`);
+    if(v73NegotiationAgentProfiles.has(seed))return v73NegotiationAgentProfiles.get(seed);
+    const rng=seededManagerRng(`NEGOTIATION-AGENT-${seed}`),nation=MANAGER_NATIONS[Math.floor(rng()*MANAGER_NATIONS.length)]||MANAGER_NATIONS[0],agent={id:`NEGOTIATION_AGENT_${hashString(seed).toString(36).toUpperCase()}`,name:randomManagerName(nation,rng),age:Math.floor(28+rng()*35),nationality:nation};
+    const profile=v73FormalNegotiationProfile(createAiManagerAppearanceProfile(agent,null),agent.id);
+    const result={agent,profile};v73NegotiationAgentProfiles.set(seed,result);return result;
+  }
+  function v73NegotiationCast(p,stage,session,seller,representative){
+    const playerManager=v73FormalNegotiationProfile(ensureManagerProfile(),`PLAYER-${managerName}`),playerManagerName=playerManager.identity?.name||managerName||'Your manager';
+    const cast={
+      playerManager:{name:playerManagerName,closedHTML:()=>managerPaperdollHTML(playerManager,'v73-cast-paperdoll','formal','expression_11'),openHTML:()=>managerPaperdollHTML(playerManager,'v73-cast-paperdoll','formal','expression_09'),cadence:780}
+    };
+    if(stage==='boardroom'){
+      const fallback={id:`BOARD_REP_${seller?.id||p.clubId||'CLUB'}`,name:`${seller?.name||'Club'} Director`,age:46,nationality:seller?.country||MANAGER_NATIONS[0]},rep=representative||fallback;
+      const profile=v73FormalNegotiationProfile(representative?ensureAiManagerAppearanceProfile(rep,seller):createAiManagerAppearanceProfile(rep,seller),rep.id);
+      cast.oppositionManager={name:rep.name||`${seller?.name||'Club'} Director`,closedHTML:()=>managerPaperdollHTML(profile,'v73-cast-paperdoll','formal','expression_00'),openHTML:()=>managerPaperdollHTML(profile,'v73-cast-paperdoll','formal','expression_09'),cadence:700};
+    }else{
+      const {agent,profile}=v73NegotiationAgent(p,session);
+      cast.agent={name:agent.name,closedHTML:()=>managerPaperdollHTML(profile,'v73-cast-paperdoll','formal','expression_00'),openHTML:()=>managerPaperdollHTML(profile,'v73-cast-paperdoll','formal','expression_09'),cadence:690};
+      cast.player={name:p.name,closedHTML:avatarHTML(p.avatar,p.name),openHTML:avatarHTML(p.avatar,p.name),cadence:820};
+    }
+    return cast;
+  }
+  function v72StageNegotiation(p,stage,session,status){
+    const seller=p.club||clubById(p.clubId),representative=stage==='boardroom'?currentClubManager(seller):null,traits=p.storyTraits||{},cast=v73NegotiationCast(p,stage,session,seller,representative),speakerRole=stage==='agent'?'agent':'oppositionManager';
+    window.VelmoraNegotiationScene?.update($('#negotiationModal'),{stage,session,status,playerId:p.id,playerName:p.name,clubName:seller?.name||'Selling club',counterpart:cast[speakerRole]?.name||representative?.name||`${seller?.name||'Selling club'} board`,badgeHTML:seller?badgeHTML(seller):'',ambition:traits.ambition,loyalty:traits.loyalty,cast,speakerRole,reactionRole:status==='accepted'?(stage==='agent'?'player':'playerManager'):'',hydrate:scope=>{queueManagerHydration(scope);queueAvatarHydration(scope);}});
+  }
+
+  function transferNegotiationContextHTML(p,session){
+    const value=careerPlayerValuationBreakdown(p,{club:p?.club||clubById(p?.clubId)}),days=value.contractDays,market=publicMarketStatus(p),interest=otherClubInterestFor(p),availability=Number(p?.injuryDaysRemaining||0)>0?`Medical risk · ${Number(p.injuryDaysRemaining)} days out`:value.performanceFactor>=1.055?'Strong current-season output':value.performanceFactor<=.955?'Form has cooled the market':'Stable current-season level',contract=days<=183?'Selling leverage is falling fast':days<=365?'Final-year contract pressure':days>=1095?'Long-term contract protects the seller':'Contract position is balanced',squad=Number(session?.importance||0)>=82?'Central to the current team':Number(session?.replacementDifficulty||0)>=72?'Difficult for the club to replace':market==='TRANSFER LISTED'||market==='UNHAPPY'?'Club may listen to a strong proposal':'Seller has no immediate need to move',competition=interest.count?`${interest.label.toLowerCase()} elsewhere`:'No confirmed rival bid';
+    return`<div class="negotiation-market-context" aria-label="Recruitment context"><div><span>CONTRACT LEVERAGE</span><strong>${escapeHtml(contract)}</strong></div><div><span>SELLER POSITION</span><strong>${escapeHtml(squad)}</strong></div><div><span>MARKET RISK</span><strong>${escapeHtml(availability)} · ${escapeHtml(competition)}</strong></div></div>`;
   }
 
   function renderNegotiation(p,offer,response){
-    const session=clubNegotiationSession(p,true),budget=moneyNumber((currentClub||selectedClub)?.budget),status=response?.status||'idle',content=$('#negotiationContent'),oi=visibleOvrInfo(p),vi=valueEstimateInfo(p),baseEstimate=vi.kind==='exact'?p.value:vi.kind==='range'?(vi.lo+vi.hi)/2:Math.max(250_000,Math.min(1_000_000,budget*.08)),reportState=isScouted(p)?'REPORT COMPLETE':scoutAssignment(p)?`SCOUTING · ${scoutingDaysRemaining(p)}D`:'INCOMPLETE INTEL',activity=transferActivity.get(p.id)||{},lockedFee=status==='accepted'?Number(activity.offer||session?.agreedFee||offer):status==='final'?Number(activity.counter||session?.finalOfferAmount||offer):Number(offer||0),stage=negotiationStageLabel(session,status),locked=status==='accepted'||status==='final';
+    const session=clubNegotiationSession(p,true),budget=availableTransferBudget(currentClub||selectedClub),status=response?.status||'idle',content=$('#negotiationContent'),oi=visibleOvrInfo(p),vi=valueEstimateInfo(p),baseEstimate=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08)),reportState=isScouted(p)?'REPORT COMPLETE':scoutAssignment(p)?`SCOUTING · ${scoutingDaysRemaining(p)}D`:'INCOMPLETE INTEL',activity=transferActivity.get(p.id)||{},lockedFee=status==='accepted'?Number(activity.offer||session?.agreedFee||offer):status==='final'?Number(activity.counter||session?.finalOfferAmount||offer):Number(offer||0),stage=negotiationStageLabel(session,status),locked=status==='accepted'||status==='final'||status==='walked';
     content.innerHTML=`
       <header class="negotiation-header"><div><div class="eyebrow">CLUB NEGOTIATION</div><h3 id="negotiationTitle">TRANSFER OFFER</h3><p>Agree a fee with ${escapeHtml(p.club.name)} before player talks.</p>${transferArrivalNote(p)}</div><div class="negotiation-step">${escapeHtml(stage)}</div></header>
       <div class="negotiation-body">
         <aside class="negotiation-player"><div class="transfer-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="dossier-ovr ${oi.kind!=='exact'?'is-estimate':''}" style="justify-content:center"><strong>${oi.text}</strong><small>${oi.kind==='range'?'OVR EST.':'OVR'}</small></div><h4>${escapeHtml(p.name)}</h4><p>${p.role} · AGE ${p.age}<br>${escapeHtml(p.country)}</p><div class="negotiation-club-lockup">${badgeHTML(p.club)}<span>${escapeHtml(p.club.name)}</span></div></aside>
         <section class="negotiation-talks">
-          <div class="negotiation-values"><div><span>YOUR ESTIMATE</span><strong>${vi.text}</strong></div><div><span>SCOUTING</span><strong>${reportState}</strong></div><div><span>YOUR BUDGET</span><strong>${formatMoney(budget)}</strong></div></div>
-          <div class="offer-builder ${locked?'is-locked':''}"><label for="offerAmount">${status==='final'?'SELLING CLUB FINAL FEE':status==='accepted'?'AGREED TRANSFER FEE':'YOUR TRANSFER FEE'}</label><div class="offer-control"><button type="button" id="offerMinus" ${locked?'disabled':''}>−</button><input id="offerAmount" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${Math.max(0,lockedFee)}" ${locked?'readonly':''}><button type="button" id="offerPlus" ${locked?'disabled':''}>+</button></div>${locked?'':`<div class="offer-shortcuts"><button type="button" data-offer-pct=".82">TEST VALUE</button><button type="button" data-offer-pct="1">MID EST.</button><button type="button" data-offer-pct="1.12">STRONG BID</button></div>`}</div>
-          <div id="negotiationResponse" class="negotiation-response ${status==='rejected'?'is-rejected':status==='counter'?'is-counter':status==='final'?'is-final':status==='accepted'?'is-accepted':status==='pending'?'is-pending':''}"><span>${status==='idle'?'NEGOTIATION ROOM':status==='rejected'?'OFFER REJECTED':status==='counter'?'COUNTER OFFER':status==='final'?'FINAL OFFER':status==='pending'?'AWAITING RESPONSE':'OFFER ACCEPTED'}</span><strong>${response?.title||`${p.club.name} are ready to hear your proposal.`}</strong><small>${response?.copy||(!isScouted(p)?'You are negotiating without a complete scouting report. Their internal valuation may differ sharply from your estimate.':'There is no universal acceptance percentage. Contract, importance, leverage and club circumstances all affect the seller’s position.')}</small></div>
+          <div class="negotiation-values"><div><span>YOUR ESTIMATE</span><strong>${vi.text}</strong></div><div><span>SCOUTING</span><strong>${reportState}</strong></div><div><span>AVAILABLE BUDGET</span><strong>${formatMoney(budget)}</strong></div></div>
+          ${transferNegotiationContextHTML(p,session)}
+          <div class="offer-builder ${locked?'is-locked':''}"><label for="offerAmount">${status==='final'?'SELLING CLUB FINAL FEE':status==='accepted'?'AGREED TRANSFER FEE':status==='walked'?'LAST SUBMITTED OFFER':'YOUR TRANSFER FEE'}</label><div class="offer-control"><button type="button" id="offerMinus" ${locked?'disabled':''}>−</button><input id="offerAmount" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${Math.max(0,lockedFee)}" ${locked?'readonly':''}><button type="button" id="offerPlus" ${locked?'disabled':''}>+</button></div>${locked?'':`<div class="offer-shortcuts"><button type="button" data-offer-pct=".82">TEST VALUE</button><button type="button" data-offer-pct="1">MID EST.</button><button type="button" data-offer-pct="1.12">STRONG BID</button></div>`}</div>
+          <div id="negotiationResponse" class="negotiation-response ${status==='rejected'?'is-rejected':status==='counter'?'is-counter':status==='final'?'is-final':status==='walked'?'is-walked':status==='accepted'?'is-accepted':status==='pending'?'is-pending':''}"><span>${status==='idle'?'NEGOTIATION ROOM':status==='rejected'?'OFFER REJECTED':status==='counter'?'COUNTER OFFER':status==='final'?'FINAL OFFER':status==='walked'?'TALKS CLOSED':status==='pending'?'AWAITING RESPONSE':'OFFER ACCEPTED'}</span><strong>${response?.title||`${p.club.name} are ready to hear your proposal.`}</strong><small>${response?.copy||(!isScouted(p)?'You are negotiating without a complete scouting report. Their internal valuation may differ sharply from your estimate.':'There is no universal acceptance percentage. Contract, importance, leverage and club circumstances all affect the seller’s position.')}</small></div>
           <div class="negotiation-intel-warning ${isScouted(p)?'is-clear':''}"><b>${isScouted(p)?'FULL REPORT AVAILABLE':'SCOUTING RISK'}</b><span>${isScouted(p)?'Your recruitment team has narrowed the player valuation, but the selling club still controls its own private valuation and leverage.':'Approaching early can save time, but you may overpay or misread how strongly the selling club wants to keep the player.'}</span></div>
-          <div class="negotiation-actions"><button type="button" id="walkAwayOffer">${status==='final'?'DECLINE FINAL OFFER':'BACK'}</button><button type="button" id="submitTransferOffer" class="submit-offer" ${status==='pending'?'disabled':''}>${status==='accepted'?'PROCEED TO PLAYER TALKS':status==='final'?'ACCEPT FINAL OFFER':status==='pending'?'AWAITING CLUB RESPONSE':'SUBMIT OFFER'}</button></div>
+          <div class="negotiation-actions"><button type="button" id="walkAwayOffer">${status==='final'?'DECLINE FINAL OFFER':'BACK'}</button><button type="button" id="submitTransferOffer" class="submit-offer" ${status==='pending'||status==='walked'?'disabled':''}>${status==='accepted'?'PROCEED TO PLAYER TALKS':status==='final'?'ACCEPT FINAL OFFER':status==='walked'?'TALKS CLOSED':status==='pending'?'AWAITING CLUB RESPONSE':'SUBMIT OFFER'}</button></div>
         </section>
       </div>`;
     const input=$('#offerAmount'),normalize=()=>Math.max(0,moneyNumber(input?.value)),update=v=>{if(!locked)input.value=String(Math.max(0,Math.round(Number(v||0)/1000)*1000));};
     $('#offerMinus')?.addEventListener('click',()=>update(normalize()-250_000));$('#offerPlus')?.addEventListener('click',()=>update(normalize()+250_000));$$('[data-offer-pct]').forEach(b=>b.addEventListener('click',()=>update(baseEstimate*Number(b.dataset.offerPct))));
     $('#walkAwayOffer')?.addEventListener('click',()=>{if(status==='final'&&session){session.state='WALKED_AWAY';session.cooldownUntil=addDaysISO(currentCareerISO(),3);session.finalOffer=false;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Talks Collapsed',cooldownUntil:session.cooldownUntil});saveCareerState();showToast('Final offer declined · talks ended');}closeNegotiation();});
-    $('#submitTransferOffer')?.addEventListener('click',e=>runLockedAction(`BUY_TRANSFER:${p.id}:${status}:R${session?.round||0}`,e.currentTarget,()=>{
+    $('#submitTransferOffer')?.addEventListener('click',e=>runLockedAction(`BUY_TRANSFER:${p.id}:${status}:R${session?.round||0}`,e.currentTarget,async()=>{
       if(status==='pending')return false;
       if(status==='accepted'){const agreed=Number(transferActivity.get(p.id)?.offer||session?.agreedFee||normalize());openContractNegotiation(p,agreed);return true;}
-      if(status==='final'){const agreed=Number(session?.finalOfferAmount||transferActivity.get(p.id)?.counter||normalize());if(!session)return false;session.state='AGREED';session.agreedFee=agreed;session.finalOffer=false;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Fee Agreed',offer:agreed,counter:null,finalOffer:false});saveCareerState();openContractNegotiation(p,agreed);return true;}
+      if(status==='final'){const agreed=Number(session?.finalOfferAmount||transferActivity.get(p.id)?.counter||normalize());if(!session)return false;session.state='AGREED';session.agreedFee=agreed;session.finalOffer=false;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Fee Agreed',offer:agreed,counter:null,finalOffer:false});if(!await saveCareerStateDurable())return false;openContractNegotiation(p,agreed);return true;}
       const amount=normalize();if(amount>budget){renderNegotiation(p,amount,{status:'rejected',title:'You cannot submit this fee.',copy:`Your current transfer budget is ${formatMoney(budget)}. Lower the offer before continuing.`});return false;}
       const result=evaluateClubTransferOffer(p,amount,session);if(result.outcome==='walked'&&result.copy?.includes('currently closed')){renderNegotiation(p,amount,{status:'rejected',title:result.title,copy:result.copy});return false;}
       const responseDate=currentCareerISO(),pending={id:`NEG-${hashString(`${worldSeed}-${session?.id||p.id}-${session?.round||0}-${amount}`).toString(36).toUpperCase()}`,kind:'clubOffer',sessionKey:session?.key||null,playerId:p.id,submittedDate:responseDate,responseDate,offer:result.offer||amount,outcome:result.outcome,counter:result.counter||null,finalOffer:!!result.finalOffer,responseTitle:result.title||null,responseCopy:result.copy||null,status:'pending'};
       pendingNegotiations=pendingNegotiations.filter(n=>!(n.playerId===p.id&&n.status==='pending'));pendingNegotiations.push(pending);transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Awaiting Club Response',offer:amount,responseDate});
       // Club fee responses are intentionally immediate. Negotiation depth comes from
       // valuation, leverage, counters, patience and walkouts — not artificial day-skips.
-      processPendingNegotiation({type:'TRANSFER_RESPONSE',payload:{negotiationId:pending.id,playerId:p.id}},responseDate);saveCareerState();openNegotiation(p);showToast('Club response received');return true;
+      processPendingNegotiation({type:'TRANSFER_RESPONSE',payload:{negotiationId:pending.id,playerId:p.id}},responseDate);
+      const resolvedStatus=result.outcome==='counter'&&result.finalOffer?'final':result.outcome,resolvedOffer=result.outcome==='counter'?Number(result.counter||amount):Number(result.offer||amount),resolvedResponse={status:resolvedStatus,title:result.title,copy:result.copy};
+      renderNegotiation(p,resolvedOffer,resolvedResponse);if(!await saveCareerStateDurable())return false;showToast(resolvedStatus==='walked'?'Talks have ended':'Club response received');return true;
     },{releaseDelay:360,busyText:status==='accepted'?'OPENING TALKS…':status==='final'?'ACCEPTING…':'SUBMITTING…'}));
     v35DealTypeControl(p,'NORMAL');
+    v72StageNegotiation(p,'boardroom',session,status);
   }
 
-  function expectedWage(p){
-    const agePremium=p.age<=22?1.08:p.age>=31?.96:1.02;
-    const potentialPremium=p.potential>=86?1.12:p.potential>=80?1.06:1;
-    return Math.max(600,Math.round(p.wage*agePremium*potentialPremium/100)*100);
+  function availableTransferBudget(club=currentClub||selectedClub){
+    const committed=Number(careerExpansion?.reservedTransferPayments?.(club)||0);
+    return Math.max(0,moneyNumber(club?.budget)-committed);
+  }
+
+  function playerMarketWage(p,club=clubById(p?.clubId)||currentClub||selectedClub){
+    const ovr=Number(p?.ovr||50),base=Math.max(600,Math.round(Math.pow(Math.max(1,ovr-45),2)*12/100)*100),levelFactor=club?clamp(.76+divisionLevel(club)*.075+Number(club.reputation||1)*.025,.84,1.18):1,role=suggestedRole(p),squad=club?getSquad(club).filter(x=>x.id!==p?.id):[],wages=squad.map(x=>Number(x.wage||0)).filter(Boolean).sort((a,b)=>a-b),top=wages.at(-1)||base,ladderFloor=top*({Crucial:.72,Important:.50,Rotation:.30,Prospect:.16,Reserve:.12}[role]||.3),potentialGap=Math.max(0,Number(p?.potential||ovr)-ovr),potentialPremium=Number(p?.age||27)<=23?1+Math.min(.12,potentialGap*.008):1;
+    return Math.max(600,Math.round(Math.max(base*levelFactor*potentialPremium,ladderFloor)/100)*100);
+  }
+
+  function expectedWage(p,club=clubById(p?.clubId)||currentClub||selectedClub){
+    const current=Math.max(0,Number(p?.wage||0)),market=playerMarketWage(p,club),currentProtection=p?.freeAgent ? .94 : 1.035,ageFactor=Number(p?.age||27)>=34 ? .94 : Number(p?.age||27)<=21 ? 1.025 : 1;
+    return Math.max(600,Math.round(Math.max(current*currentProtection,market*ageFactor)/100)*100);
   }
 
   function suggestedRole(p){
@@ -8925,7 +9925,7 @@
   }
 
   function renderContractNegotiation(p,agreedFee,response){
-    const session=contractNegotiationSession(p,'SIGNING',true),existing=transferActivity.get(p.id)||{},counter=session?.lastCounterPackage||{},currentWage=response?.counterWage||counter.wage||existing.proposedWage||Math.max(600,Math.round(Number(p.wage||600)*1.05/100)*100),currentBonus=response?.counterBonus??counter.bonus??existing.signingBonus??Math.max(5_000,Math.round((p.value*.012)/1000)*1000),currentRole=response?.counterRole||counter.role||existing.squadRole||suggestedRole(p),currentYears=response?.counterYears||counter.years||existing.contractLength||Math.min(5,p.age>=31?2:p.age<=21?5:4),status=response?.status||'idle',content=$('#negotiationContent'),club=currentClub||selectedClub,stage=negotiationStageLabel(session,status),playerTalkStatus=status==='accepted'?'TERMS AGREED':status==='counter'?'COUNTER RECEIVED':status==='walked'?'TALKS CLOSED':Number(session?.round||0)>0?'NEGOTIATING':'OPEN TO TALKS',termsLocked=status==='accepted'||status==='walked';
+    const session=contractNegotiationSession(p,'SIGNING',true),existing=transferActivity.get(p.id)||{},counter=session?.lastCounterPackage||{},club=currentClub||selectedClub,currentWage=response?.counterWage||counter.wage||existing.proposedWage||expectedWage(p,club),currentBonus=response?.counterBonus??counter.bonus??existing.signingBonus??Math.max(5_000,Math.round((livingPlayerMarketValue(p)*.012)/1000)*1000),currentRole=response?.counterRole||counter.role||existing.squadRole||suggestedRole(p),currentYears=response?.counterYears||counter.years||existing.contractLength||Math.min(5,p.age>=31?2:p.age<=21?5:4),status=response?.status||'idle',content=$('#negotiationContent'),stage=negotiationStageLabel(session,status),playerTalkStatus=status==='accepted'?'TERMS AGREED':status==='counter'?'PLAYER COUNTER':status==='walked'?'TALKS CLOSED':Number(session?.round||0)>0?'NEGOTIATING':'OPEN TO TALKS',termsLocked=status==='accepted'||status==='walked';
     content.innerHTML=`
       <header class="negotiation-header"><div><div class="eyebrow">PLAYER NEGOTIATION</div><h3 id="negotiationTitle">CONTRACT TALKS</h3><p>Agree personal terms with ${escapeHtml(p.name)}.</p>${transferArrivalNote(p)}</div><div class="negotiation-step">${escapeHtml(stage)}</div></header>
       <div class="negotiation-body">
@@ -8946,13 +9946,14 @@
     v35MountClauseFields(content.querySelector('.contract-grid'),p,session,'contract',termsLocked,false);
     const wageInput=$('#contractWage'),bonusInput=$('#contractBonus'),roleInput=$('#contractRole'),yearsInput=$('#contractYears'),num=el=>Math.max(0,moneyNumber(el?.value));
     $('#walkAwayContract')?.addEventListener('click',()=>p.freeAgent?closeNegotiation():renderNegotiation(p,agreedFee,{status:'accepted',title:`${p.club?.name||'Selling club'} accepted ${formatMoney(agreedFee)}.`,copy:'The club fee remains agreed. You can return to player talks while the deal is live.'}));
-    $('#submitContractOffer')?.addEventListener('click',e=>runLockedAction(`BUY_CONTRACT:${p.id}:${status}:R${session?.round||0}`,e.currentTarget,()=>{
+    $('#submitContractOffer')?.addEventListener('click',e=>runLockedAction(`BUY_CONTRACT:${p.id}:${status}:R${session?.round||0}`,e.currentTarget,async()=>{
       const wage=num(wageInput),bonus=num(bonusInput),role=roleInput?.value||'Rotation',years=Number(yearsInput?.value||3);if(status==='walked')return false;
-      if(status==='accepted'){const accepted=session?.acceptedPackage||{wage,bonus,role,years},completed=completeTransferSigning(p,agreedFee,accepted.wage,accepted.bonus,accepted.role,accepted.years,accepted.releaseClause||0);if(!completed.ok){showToast(completed.message);return false;}if(session)session.state='COMPLETED';closeNegotiation();if(completed.deferred)transferHubView='future';setTransferTab('hub');renderTransfers();renderSquad();renderOffice();showToast(completed.deferred?`${p.name} signed · joins ${shortDateLabel(completed.joinDate)}`:`${p.name} signed · registered in ${rosterGroupLabel(completed.group)}`);return true;}
-      const budget=moneyNumber(club?.budget);if(Number(agreedFee||0)+bonus>budget){renderContractNegotiation(p,agreedFee,{status:'rejected',title:'The package cannot be funded.',copy:`Transfer fee plus signing bonus exceeds your current ${formatMoney(budget)} transfer budget.`});return false;}
+      if(status==='accepted'){const accepted=session?.acceptedPackage||{wage,bonus,role,years},alreadyCompleted=transferActivity.get(p.id)?.status==='Completed',completed=alreadyCompleted?{ok:true,player:careerPlayerById(p.id)||p,group:playerLineupPosition(club,p.id)?.group||'reserve'}:completeTransferSigning(p,agreedFee,accepted.wage,accepted.bonus,accepted.role,accepted.years,accepted.releaseClause||0);if(!completed.ok){showToast(completed.message);return false;}if(!(alreadyCompleted?await saveCareerStateDurable():await confirmCareerSave()))return false;if(session)session.state='COMPLETED';closeNegotiation();if(completed.deferred)transferHubView='future';setTransferTab('hub');renderTransfers();renderSquad();renderOffice();showToast(completed.deferred?`${p.name} signed · joins ${shortDateLabel(completed.joinDate)}`:`${p.name} signed · registered in ${rosterGroupLabel(completed.group)}`);return true;}
+      const budget=availableTransferBudget(club);if(Number(agreedFee||0)+bonus>budget){renderContractNegotiation(p,agreedFee,{status:'rejected',title:'The package cannot be funded.',copy:`Transfer fee plus signing bonus exceeds your available ${formatMoney(budget)} transfer budget after existing commitments.`});return false;}
       const clause=v35ReadClauseFields('contract',p,session);if(!clause.ok){showToast(clause.message);return false;}
-      const next=evaluateContractPackage(p,{wage,bonus,role,years},session);if(next.status==='accepted'&&session?.acceptedPackage)session.acceptedPackage.releaseClause=clause.amount;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:next.status==='accepted'?'Terms Agreed':next.status==='counter'?'Player Counter':next.status==='walked'?'Player Talks Collapsed':'Terms Rejected',proposedWage:next.counterWage||wage,signingBonus:next.counterBonus??bonus,squadRole:next.counterRole||role,contractLength:next.counterYears||years});saveCareerState();renderContractNegotiation(p,agreedFee,next);return true;
+      const next=evaluateContractPackage(p,{wage,bonus,role,years},session);if(next.status==='accepted'&&session?.acceptedPackage)session.acceptedPackage.releaseClause=clause.amount;transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:next.status==='accepted'?'Terms Agreed':next.status==='counter'?'Player Counter':next.status==='walked'?'Player Talks Collapsed':'Terms Rejected',proposedWage:next.counterWage||wage,signingBonus:next.counterBonus??bonus,squadRole:next.counterRole||role,contractLength:next.counterYears||years});renderContractNegotiation(p,agreedFee,next);return saveCareerStateDurable();
     },{releaseDelay:380,busyText:status==='accepted'?'CONFIRMING…':'SUBMITTING…'}));
+    v72StageNegotiation(p,'agent',session,status);
   }
 
   function completeTransferSigning(p,agreedFee,wage,bonus,role,years,releaseClause=0){
@@ -8975,8 +9976,8 @@
     const fee=p.freeAgent?0:Math.max(0,Number(agreedFee||0));
     const signingBonus=Math.max(0,Number(bonus||0));
     const totalCost=fee+signingBonus;
-    const budget=moneyNumber(club.budget);
-    if(totalCost>budget)return{ok:false,message:`Need ${formatMoney(totalCost)} to complete this deal.`};
+    const grossBudget=moneyNumber(club.budget),budget=availableTransferBudget(club);
+    if(totalCost>budget)return{ok:false,message:`Need ${formatMoney(totalCost)} in uncommitted funds to complete this deal.`};
 
     if(!p.freeAgent&&!isTransferWindowOpen()){
       const deferred=careerExpansion.scheduleTransfer(p.id,{fee,wage,bonus:signingBonus,role,years,releaseClause});
@@ -9016,7 +10017,7 @@
     squad.push(signed);
     addPlayerToLineup(club,signed.id,'reserve');
     squad.forEach((x,i)=>x.captain=i===0);
-    club.budget=formatExactMoney(Math.max(0,budget-totalCost));
+    club.budget=formatExactMoney(Math.max(0,grossBudget-totalCost));
     recordLivingTransfer(signed,p.freeAgent?null:(p.club||clubs.find(c=>c.id===p.clubId)),club,fee,{type:p.freeAgent?'FREE_AGENT':'PERMANENT',source:'USER_BUY'});
     careerExpansion?.setClause(signed,releaseClause);
     transferShortlist.delete(p.id);
@@ -9093,6 +10094,7 @@
     if(action==='calendar'){seasonActiveTab='calendar';goCareerScreen('season');return;}
     if(action==='audio'){
       audioMuted=!audioMuted;applyMusicVolume();applySfxVolume();
+      syncMainMenuAudioToggle();
       showToast(audioMuted?'Audio muted':'Audio restored');
     }
   }
@@ -9161,20 +10163,24 @@
     const legend=tier===1
       ?`<span><i class="is-continental"></i>CHAMPIONS CROWN</span><span><i class="is-relegation"></i>RELEGATION</span>`
       :`<span><i class="is-auto-promotion"></i>AUTOMATIC PROMOTION</span><span><i class="is-playoff"></i>PLAYOFFS</span>${tier<4?`<span><i class="is-relegation"></i>RELEGATION</span>`:''}`;
+    const leader=rows[0]||null,focusClub=selection.isManaged?current:(leader?.club||selection.representative),focusRow=rows.find(r=>r.club.id===focusClub.id)||leader,target=selection.isManaged?primaryTargetPosition(current.expectation,rows.length):1,totalMatches=Math.max(0,(rows.length-1)*2),remaining=Math.max(0,totalMatches-Number(focusRow?.played||0)),pointsGap=Math.max(0,Number(leader?.pts||0)-Number(focusRow?.pts||0)),form=recentLeagueClubForm(focusClub,5,selection.key);
+    const formHTML=Array.from({length:5},(_,i)=>{const code=form[i]||'';return `<b class="${code?`is-${code.toLowerCase()}`:'is-empty'}">${escapeHtml(code||'·')}</b>`;}).join('');
     return `<section class="vm-table-broadcast" aria-label="${escapeHtml(selection.meta.name||selection.representative.division)} league table">
       <header class="vm-table-hero">
-        <img class="vm-table-league-logo" src="${escapeHtml(seasonLeagueLogoPath(selection.key))}" alt="${escapeHtml(selection.meta.name||selection.representative.division)} logo">
-        <h1>TABLE</h1>
-        <p>${escapeHtml(seasonLabel())} · ${escapeHtml(selection.world.toUpperCase())} · TIER ${tier}</p>
+        <div class="vm-table-identity"><img class="vm-table-league-logo" src="${escapeHtml(seasonLeagueLogoPath(selection.key))}" alt="${escapeHtml(selection.meta.name||selection.representative.division)} logo"><div class="vm-table-identity-copy"><div class="vm-table-kicker"><span><i></i>LIVE STANDINGS</span><b>${escapeHtml(selection.world.toUpperCase())} · TIER ${tier}</b></div><h1>${escapeHtml(String(selection.meta.name||selection.representative.division).toUpperCase())}</h1><p>${escapeHtml(seasonLabel())} · ${selection.isManaged?escapeHtml(current.name.toUpperCase()):'WORLD LEAGUE BROWSER'}</p><div class="vm-hero-form"><span>${selection.isManaged?'YOUR FORM':'LEADER FORM'}</span>${formHTML}</div></div></div>
+        <div class="vm-table-metric is-position"><span>${selection.isManaged?'YOUR POSITION':'LEAGUE LEADER'}</span><strong>${focusRow?ordinal(focusRow.pos):'—'}</strong><small>${escapeHtml(focusClub.name)}</small></div>
+        <div class="vm-table-metric"><span>POINTS</span><strong>${Number(focusRow?.pts||0)}</strong><small>${pointsGap?`${pointsGap} behind first`:'Level with the lead'}</small></div>
+        <div class="vm-table-metric"><span>${selection.isManaged?'BOARD TARGET':'TITLE TARGET'}</span><strong>${ordinal(target)}</strong><small>${selection.isManaged?escapeHtml(current.expectation||'Finish strongly'):'Finish first'}</small></div>
+        <div class="vm-table-metric is-progress"><span>SEASON PROGRESS</span><strong>${Number(focusRow?.played||0)}/${totalMatches}</strong><small>${remaining} league matches remaining</small><i><b style="width:${totalMatches?clamp(Math.round(Number(focusRow?.played||0)/totalMatches*100),0,100):0}%"></b></i></div>
       </header>
       ${seasonLeagueBrowserHtml(selection)}
       <div class="vm-table-strip"><div>${legend}</div><strong>UPDATED ${escapeHtml(shortDateLabel(currentCareerISO()))}</strong></div>
       <div class="vm-league-table" role="table" aria-label="Current standings">
-        <div class="live-table-head" role="row"><span role="columnheader">POS</span><span role="columnheader">TEAM</span><span role="columnheader" title="Played">P</span><span role="columnheader" title="Wins">W</span><span role="columnheader" title="Losses">L</span><span role="columnheader" title="Goal difference">GD</span><span role="columnheader">PTS</span></div>
-        <div class="vm-table-rows" role="rowgroup">${rows.map(r=>{const z=zoneFor(r.pos),isOwn=r.club.id===current.id;return `<button type="button" class="live-table-row ${isOwn?'is-own':''} ${r.pos===1?'is-leader':''} ${z.className}" style="--row-delay:${(r.pos-1)*20}ms" role="row" data-season-club="${escapeHtml(r.club.id)}" aria-label="Open ${escapeHtml(r.club.name)} club profile">
+        <div class="live-table-head" role="row"><span role="columnheader">POS</span><span role="columnheader">TEAM</span><span role="columnheader" title="Played">P</span><span role="columnheader" title="Wins">W</span><span role="columnheader" title="Draws">D</span><span role="columnheader" title="Losses">L</span><span role="columnheader" title="Goal difference">GD</span><span role="columnheader">PTS</span><span role="columnheader">FORM</span></div>
+        <div class="vm-table-rows" role="rowgroup">${rows.map(r=>{const z=zoneFor(r.pos),isOwn=r.club.id===current.id,rowForm=recentLeagueClubForm(r.club,5,selection.key);return `<button type="button" class="live-table-row ${isOwn?'is-own':''} ${r.pos===1?'is-leader':''} ${z.className}" style="--row-delay:${(r.pos-1)*20}ms" role="row" data-season-club="${escapeHtml(r.club.id)}" aria-label="Open ${escapeHtml(r.club.name)} club profile">
           <div class="vm-table-position" role="cell"><strong>${r.pos}</strong></div>
-          <div class="live-club-cell" role="cell">${badgeHTML(r.club)}<span><strong>${escapeHtml(r.club.name)}</strong></span></div>
-          <span role="cell">${r.played}</span><span role="cell">${r.wins}</span><span role="cell">${r.losses}</span><span role="cell" class="vm-goal-difference">${r.gd>0?'+':''}${r.gd}</span><strong role="cell" class="vm-table-points">${r.pts}</strong>
+          <div class="live-club-cell" role="cell">${badgeHTML(r.club)}<span><strong>${escapeHtml(r.club.name)}</strong><small>${escapeHtml(r.club.country||selection.world)}</small></span>${z.short?`<em class="table-zone-tag">${escapeHtml(z.short)}</em>`:''}</div>
+          <span role="cell">${r.played}</span><span role="cell">${r.wins}</span><span role="cell">${r.draws}</span><span role="cell">${r.losses}</span><span role="cell" class="vm-goal-difference">${r.gd>0?'+':''}${r.gd}</span><strong role="cell" class="vm-table-points">${r.pts}</strong><div role="cell" class="vm-table-form">${Array.from({length:5},(_,i)=>{const code=rowForm[i]||'';return `<b class="${code?`is-${code.toLowerCase()}`:'is-empty'}">${escapeHtml(code||'·')}</b>`;}).join('')}</div>
         </button>`}).join('')}</div>
       </div>
     </section>`;
@@ -9446,17 +10452,26 @@
     const iso=isoDate(date);const events=visibleCareerEventsOnDate(iso);const fixtureEvent=events.find(e=>['MATCH','CUP_MATCH','PLAYOFF_MATCH'].includes(e.type));const fixture=fixtureById(fixtureEvent?.payload?.fixtureId);const fc=fixtureClubs(fixture);const d=dateFromISO(iso);
     const status=iso===currentCareerISO()?'TODAY':iso<currentCareerISO()?'PAST':'UPCOMING';
     return `<div class="vm-calendar-selected"><div><span>SELECTED DATE</span><strong>${d.getUTCDate()}</strong></div><section><h2>${escapeHtml(longDateLabel(iso).toUpperCase())}</h2><small class="is-${status.toLowerCase()}">${status}</small></section></div>
-      ${fixture?`<article class="vm-calendar-fixture ${fixture.played?'is-played':''}"><header><span>${escapeHtml(fixture.competitionName||'MATCHDAY')}</span><b>${fixture.played?'FULL TIME':`ROUND ${escapeHtml(fixture.round||'—')}`}</b></header><div><section>${badgeHTML(fc.home)}<strong>${escapeHtml(fc.home?.name||'HOME')}</strong></section><b>${fixture.played?`${Number(fixture.homeScore||0)}–${Number(fixture.awayScore||0)}`:'VS'}</b><section>${badgeHTML(fc.away)}<strong>${escapeHtml(fc.away?.name||'AWAY')}</strong></section></div><footer>${escapeHtml(fixture.neutralVenue||fc.home?.arena||'VELMORA ARENA')}</footer></article>`:''}
+      ${fixture?`<article class="vm-calendar-fixture ${fixture.played?'is-played':''}"><header><span>${escapeHtml(fixture.competitionName||'MATCHDAY')}</span><b>${fixture.played?'FULL TIME':`ROUND ${escapeHtml(fixture.round||'—')}`}</b></header><div><section>${badgeHTML(fc.home)}<strong>${escapeHtml(fc.home?.name||'HOME')}</strong></section><b>${fixture.played?`${Number(fixture.homeScore||0)}–${Number(fixture.awayScore||0)}`:'VS'}</b><section>${badgeHTML(fc.away)}<strong>${escapeHtml(fc.away?.name||'AWAY')}</strong></section></div><footer>${escapeHtml(fixture.venueName||(typeof fixture.neutralVenue==='string'?fixture.neutralVenue:null)||fc.home?.arena||'VELMORA ARENA')}</footer></article>`:''}
       <div class="vm-calendar-agenda"><header><span>DAY AGENDA</span><strong>${events.length} ITEM${events.length===1?'':'S'}</strong></header>${events.length?events.map(e=>`<article class="calendar-agenda-row ${e.priority?.toLowerCase()||'normal'}"><b>${calendarEventIcon(e)}</b><div><span>${escapeHtml(e.type.replace(/_/g,' '))}</span><strong>${escapeHtml(e.title)}</strong></div><small>${escapeHtml(e.priority||'NORMAL')}</small></article>`).join(''):`<div class="calendar-empty-day"><i>✓</i><strong>RECOVERY DAY</strong><small>No scheduled events. Normal training, recovery and scouting continue.</small></div>`}</div>
       <div class="vm-calendar-key"><span><i class="is-match"></i>MATCH</span><span><i class="is-career"></i>CAREER</span><span><i class="is-deadline"></i>DEADLINE</span><span><i class="is-medical"></i>MEDICAL</span></div>`;
   }
 
   function seasonCupHtml(){
-    const world=clubWorldName(currentClub||selectedClub||clubs[0]);
-    const cupTeams=clubs.filter(c=>clubWorldName(c)===world);
-    const teams=cupTeams.slice(0,8);
-    return `<div class="cup-live"><h3>${escapeHtml(String(cupNameForWorld(world)).toUpperCase())}</h3><p>${cupTeams.length} clubs · ${escapeHtml(world)} domestic knockout</p><div class="cup-bracket-live">${teams.map((c,i)=>`<div class="cup-team">${badgeHTML(c)}<span>${escapeHtml(c.name)}</span><b>${i%2?'—':'V'}</b></div>`).join('')}</div><small>BRACKET PRESENTATION PREVIEW · Competition engine connects later.</small></div>`;
+    const managed=currentClub||selectedClub||clubs[0],world=worldMeta[seasonCupWorld]?seasonCupWorld:clubWorldName(managed),kind=seasonCupKind==='league'?'league':'national',def=domesticCupDefinition(world,kind),other=domesticCupDefinition(world,kind==='league'?'national':'league'),cup=fixtures.filter(f=>f.type==='CUP'&&f.competitionId===def.competitionId).sort((a,b)=>Number(a.round||1)-Number(b.round||1)||a.date.localeCompare(b.date)||Number(a.cupLeg||1)-Number(b.cupLeg||1)),rounds=[...new Set(cup.map(f=>Number(f.round||1)))].sort((a,b)=>a-b),pendingRounds=rounds.filter(round=>cup.some(f=>Number(f.round||1)===round&&!f.played)),activeRound=pendingRounds[0]||rounds.at(-1)||1,roundFixtures=cup.filter(f=>Number(f.round||1)===activeRound),stage=roundFixtures[0]?.cupStageLabel||domesticCupStageLabel(roundFixtures[0]?.cupStage||`ROUND_${activeRound}`,roundFixtures[0]),played=cup.filter(f=>f.played).length,holder=[...(roadToGlory.competitionHistory||[])].reverse().find(h=>h.type==='CUP'&&h.competitionId===def.competitionId),own=cup.filter(f=>f.homeClubId===managed?.id||f.awayClubId===managed?.id),nextOwn=own.find(f=>!f.played),lastOwn=[...own].reverse().find(f=>f.played),otherCup=fixtures.filter(f=>f.type==='CUP'&&f.competitionId===other.competitionId),otherPending=otherCup.find(f=>!f.played),byes=(cupRuntime.roundByes?.[`${def.competitionId}:${activeRound}`]||[]).map(clubById).filter(Boolean),accent=worldMeta[world]?.accent||'#1bb5b6';
+    const rule=kind==='national'?`All ${def.registeredClubs} clubs are registered. Tier 4 opens the draw before the other divisions join the 64-club knockout. Every tie is single-match, with extra time and penalties, and the final is staged at ${def.finalVenue}.`:`All ${def.registeredClubs} professional clubs enter. Tiers 2–4 begin in Round 1, non-Champions Crown top-flight clubs enter in Round 2, and the four Crown representatives enter in Round 3. Semi-finals are two-legged; the final at ${def.finalVenue} is a single neutral tie.`;
+    const route=kind==='national'?['OPENING','ROUND OF 64','ROUND OF 32','ROUND OF 16','QUARTER-FINALS','SEMI-FINALS','FINAL']:['ROUND 1','ROUND 2','CROWN ENTRY','ROUND 4','QUARTER-FINAL PATH','2-LEG SEMI-FINALS','FINAL'];
+    const matchCard=f=>{const home=clubById(f.homeClubId),away=clubById(f.awayClubId),totals=f.cupTwoLegged&&Number(f.cupLeg||0)===2?domesticCupTieTotals(f):null,aggregate=totals?` · AGG ${Number(totals[f.homeClubId]||0)}–${Number(totals[f.awayClubId]||0)}`:'',decision=f.decidedOnPenalties?` · PENS ${f.penaltiesHome}–${f.penaltiesAway}`:f.decidedAfterExtraTime?' · AET':'';return`<button type="button" class="dc-match ${f.played?'is-played':'is-upcoming'}" data-cup-match="${escapeHtml(f.fixtureId)}"><header><span>${escapeHtml(f.date===currentCareerISO()?'TODAY':shortDateLabel(f.date))}</span><b>${f.cupTwoLegged?`LEG ${f.cupLeg}`:f.neutralVenue?'NEUTRAL FINAL':f.played?'FULL TIME':'UPCOMING'}</b></header><div><span>${badgeHTML(home)}<strong>${escapeHtml(home?.name||'TBC')}</strong></span><em>${f.played?`${Number(f.homeScore||0)}–${Number(f.awayScore||0)}`:'VS'}</em><span>${badgeHTML(away)}<strong>${escapeHtml(away?.name||'TBC')}</strong></span></div>${f.played||f.neutralVenue?`<footer>${escapeHtml(`${f.venueName||home?.arena||'Home venue'}${decision}${aggregate}`)}</footer>`:''}</button>`;};
+    return `<section class="dc-hub" style="--dc-accent:${escapeHtml(accent)}"><header class="dc-world-header"><div><span>DOMESTIC COMPETITION CENTRE · ${escapeHtml(careerTime.seasonId)}</span><h1>THE ${escapeHtml(world.toUpperCase())} CUP SEASON</h1><p>Two domestic trophies in every world. One shared Champions Crown above them all.</p></div><nav>${worldNames.map(w=>`<button type="button" data-cup-world="${escapeHtml(w)}" class="${w===world?'is-active':''}"><i style="background:${escapeHtml(worldMeta[w]?.accent||'#1bb5b6')}"></i><strong>${escapeHtml(w)}</strong><small>2 CUPS</small></button>`).join('')}</nav></header>
+      <div class="dc-competition-switch"><button type="button" data-cup-kind="national" class="${kind==='national'?'is-active':''}"><span>OPEN NATIONAL CUP</span><strong>${escapeHtml(cupNameForWorld(world))}</strong><small>All clubs · single-leg knockout</small></button><button type="button" data-cup-kind="league" class="${kind==='league'?'is-active':''}"><span>PROFESSIONAL LEAGUE CUP</span><strong>${escapeHtml(leagueCupNameForWorld(world))}</strong><small>Staggered entry · two-leg semi-finals</small></button></div>
+      <section class="dc-hero"><div class="dc-trophy"><i>♛</i><small>${kind==='national'?'NATIONAL':'LEAGUE'} CUP</small></div><div class="dc-title"><span>${escapeHtml(world)} · ${escapeHtml(careerTime.seasonId)}</span><h2>${escapeHtml(def.name.toUpperCase())}</h2><p>${escapeHtml(rule)}</p></div><div class="dc-numbers"><article><strong>${def.registeredClubs}</strong><span>REGISTERED CLUBS</span></article><article><strong>${played}</strong><span>TIES PLAYED</span></article><article><strong>${cup.length-played}</strong><span>SCHEDULED</span></article><article><strong>${escapeHtml(holder?.championClubName||'—')}</strong><span>HOLDER</span></article></div></section>
+      <div class="dc-route">${route.map((label,index)=>`<span class="${index+1<activeRound?'is-complete':index+1===activeRound?'is-current':''}"><b>${String(index+1).padStart(2,'0')}</b><small>${escapeHtml(label)}</small></span>`).join('')}</div>
+      <div class="dc-content"><section class="dc-draw"><header><div><span>CURRENT DRAW</span><h3>${escapeHtml(stage.toUpperCase())}</h3></div><strong>${roundFixtures.filter(f=>!f.played).length?`${roundFixtures.filter(f=>!f.played).length} TIES TO PLAY`:'ROUND COMPLETE'}</strong></header><div class="dc-match-grid">${roundFixtures.length?roundFixtures.map(matchCard).join(''):'<div class="dc-empty"><strong>DRAW PENDING</strong><span>The competition office will publish the next ties after the current round is complete.</span></div>'}</div>${byes.length?`<footer class="dc-byes"><span>ROUND BYES</span>${byes.map(c=>`<b>${badgeHTML(c)}${escapeHtml(c.name)}</b>`).join('')}</footer>`:''}</section>
+      <aside class="dc-sidebar"><section><span>YOUR CLUB</span><div class="dc-own-club">${badgeHTML(managed)}<strong>${escapeHtml(managed?.name||'—')}</strong><small>${managed&&clubWorldName(managed)===world?(nextOwn?`${domesticCupStageLabel(nextOwn.cupStage,nextOwn)} · ${shortDateLabel(nextOwn.date)}`:lastOwn?(knockoutFixtureWinnerId(lastOwn)===managed.id?'Awaiting the next draw':'Campaign complete'):'Entry registered'):'Browsing another world'}</small></div></section><section><span>THE OTHER DOMESTIC CUP</span><strong>${escapeHtml(other.name)}</strong><small>${otherPending?`${domesticCupStageLabel(otherPending.cupStage,otherPending)} · next ties ${shortDateLabel(otherPending.date)}`:'Season complete or draw pending'}</small><button type="button" data-cup-kind="${kind==='league'?'national':'league'}">OPEN COMPETITION →</button></section><section><span>SHARED FOUR-WORLD TROPHY</span><strong>CHAMPIONS CROWN</strong><small>Top four from each world qualify. Domestic cup wins do not create an extra Crown place.</small><button type="button" data-open-crown>VIEW CHAMPIONS CROWN →</button></section></aside></div>
+      <footer class="dc-world-cabinet"><span>EVERY WORLD · EVERY TROPHY</span>${worldNames.map(w=>`<article><i style="background:${escapeHtml(worldMeta[w]?.accent||'#1bb5b6')}"></i><div><strong>${escapeHtml(w)}</strong><small>${escapeHtml(cupNameForWorld(w))} · ${escapeHtml(leagueCupNameForWorld(w))}</small></div></article>`).join('')}</footer></section>`;
   }
+
+  function seasonCupSideHtml(){const world=worldMeta[seasonCupWorld]?seasonCupWorld:clubWorldName(currentClub||selectedClub||clubs[0]),def=domesticCupDefinition(world,seasonCupKind);return`<div class="season-side-card"><span>CUP SYSTEM</span><strong>2 DOMESTIC · 1 SHARED</strong><small>${escapeHtml(cupNameForWorld(world))}<br>${escapeHtml(leagueCupNameForWorld(world))}<br>Champions Crown</small></div><div class="season-side-card compact"><span>FINAL VENUE</span><strong>${escapeHtml(def.finalVenue)}</strong><small>${escapeHtml(world)} · neutral showpiece</small></div>`;}
 
   function championsCrownMiniClub(club,sub=''){
     if(!club)return`<div class="cc-mini-club is-empty"><span>—</span></div>`;
@@ -9542,9 +10557,68 @@
 
   function getAllActivePlayers(){ return [...clubs.flatMap(c=>getSquad(c)),...getFreeAgents()]; }
 
+  function v96PreviousSeasonId(){
+    const year=Number(String(careerTime.seasonId||careerYear).match(/\d{4}/)?.[0]||careerYear);return`${year-1}/${String(year).slice(-2)}`;
+  }
+  function v96TopDivision(world){return(worldMeta[world]?.divisions||[]).filter(div=>clubs.some(c=>c.divisionKey===div.key)).sort((a,b)=>Number(a.tier||9)-Number(b.tier||9))[0]||null;}
+  function v96SeededPair(world,token,offset=0){
+    const division=v96TopDivision(world),pool=clubs.filter(c=>c.divisionKey===division?.key).sort((a,b)=>backgroundClubStrength(b)-backgroundClubStrength(a)||String(a.id).localeCompare(String(b.id))),span=Math.max(1,Math.min(7,pool.length)),index=(Math.abs(hashString(`${worldSeed}-V96-CANON-${world}-${token}`))+offset)%span,winner=pool[index]||pool[0]||null,runner=pool[(index+1+offset)%Math.max(1,pool.length)]||null;return{winner,runner};
+  }
+  function v96SeededHistory(){
+    const seasonId=v96PreviousSeasonId(),worlds={};worldNames.forEach(world=>{const league=v96SeededPair(world,'LEAGUE',0),national=v96SeededPair(world,'NATIONAL',2),leagueCup=v96SeededPair(world,'LEAGUE-CUP',4),division=v96TopDivision(world);worlds[world]={world,seasonId,league:{type:'LEAGUE',competition:division?.name||`${world} League`,competitionId:division?.key||'',winner:league.winner,runner:league.runner},national:{type:'NATIONAL_CUP',competition:cupNameForWorld(world),competitionId:domesticCupDefinition(world,'national').competitionId,winner:national.winner,runner:national.runner},leagueCup:{type:'LEAGUE_CUP',competition:leagueCupNameForWorld(world),competitionId:domesticCupDefinition(world,'league').competitionId,winner:leagueCup.winner,runner:leagueCup.runner}};});
+    const crownPool=worldNames.map((world,index)=>v96SeededPair(world,'CROWN',index).winner).filter(Boolean).sort((a,b)=>backgroundClubStrength(b)-backgroundClubStrength(a)||String(a.id).localeCompare(String(b.id))),crownIndex=Math.abs(hashString(`${worldSeed}-V96-CROWN-HOLDER`))%Math.max(1,crownPool.length),winner=crownPool[crownIndex]||clubs[0],runner=crownPool[(crownIndex+1)%Math.max(1,crownPool.length)]||clubs[1];return{seasonId,source:'FOUNDING ARCHIVE · PRE-CAREER CANON',worlds,crown:{type:'CONTINENTAL',competition:'Champions Crown',competitionId:CHAMPIONS_CROWN_ID,winner,runner}};
+  }
+  function v96ActualCompetitionRows(){
+    const rows=[];(roadToGlory.worldHistory||[]).forEach(season=>{
+      (season.leagues||[]).filter(l=>Number(l.tier||4)===1).forEach(l=>rows.push({seasonId:season.seasonId,world:l.world,type:'LEAGUE',competition:l.division,competitionId:l.divisionKey,winner:clubById(l.championClubId),winnerName:l.championClubName,runner:clubById(l.runnerUpClubId),runnerName:l.runnerUpClubName,source:'CAREER ARCHIVE'}));
+      (season.cups||[]).forEach(c=>{const def=domesticCupDefinitionById(c.competitionId);rows.push({seasonId:season.seasonId,world:c.world,type:def?.kind==='league'?'LEAGUE_CUP':'NATIONAL_CUP',competition:c.competition,competitionId:c.competitionId,winner:clubById(c.championClubId),winnerName:c.championClubName,runner:clubById(c.runnerUpClubId),runnerName:c.runnerUpClubName,score:c.score,source:'CAREER ARCHIVE'});});
+      if(season.championsCrown)rows.push({seasonId:season.seasonId,world:'ALL',type:'CONTINENTAL',competition:'Champions Crown',competitionId:CHAMPIONS_CROWN_ID,winner:clubById(season.championsCrown.championClubId),winnerName:season.championsCrown.championClubName,runner:clubById(season.championsCrown.runnerUpClubId),runnerName:season.championsCrown.runnerUpClubName,score:season.championsCrown.score,source:'CAREER ARCHIVE'});
+    });
+    if(!rows.length)(roadToGlory.competitionHistory||[]).forEach(h=>{const club=clubById(h.championClubId),def=domesticCupDefinitionById(h.competitionId);rows.push({seasonId:h.seasonId,world:h.world||clubWorldName(club),type:h.type==='CUP'?(def?.kind==='league'?'LEAGUE_CUP':'NATIONAL_CUP'):h.type,competition:h.competition,competitionId:h.competitionId||h.divisionKey,winner:club,winnerName:h.championClubName,runner:clubById(h.runnerUpClubId),runnerName:h.runnerUpClubName,source:'CAREER ARCHIVE'});});
+    return rows;
+  }
+  function v96CompetitionLineage(){
+    const seed=v96SeededHistory(),seedRows=[];worldNames.forEach(world=>{const set=seed.worlds[world];['league','national','leagueCup'].forEach(key=>seedRows.push({...set[key],seasonId:seed.seasonId,world,source:seed.source,winnerName:set[key].winner?.name||'',runnerName:set[key].runner?.name||''}));});seedRows.push({...seed.crown,seasonId:seed.seasonId,world:'ALL',source:seed.source,winnerName:seed.crown.winner?.name||'',runnerName:seed.crown.runner?.name||''});return[...v96ActualCompetitionRows(),...seedRows].sort((a,b)=>String(b.seasonId).localeCompare(String(a.seasonId))||String(a.competition).localeCompare(String(b.competition)));
+  }
+  function v96HoldersForWorld(world){
+    const seed=v96SeededHistory().worlds[world],all=v96CompetitionLineage(),latest=type=>all.find(row=>row.world===world&&row.type===type)||null,league=latest('LEAGUE')||{...seed.league,seasonId:v96PreviousSeasonId(),source:'FOUNDING ARCHIVE'},national=latest('NATIONAL_CUP')||{...seed.national,seasonId:v96PreviousSeasonId(),source:'FOUNDING ARCHIVE'},leagueCup=latest('LEAGUE_CUP')||{...seed.leagueCup,seasonId:v96PreviousSeasonId(),source:'FOUNDING ARCHIVE'},division=v96TopDivision(world),leader=standingsForDivision(division?.key)[0]||null;return{world,league,national,leagueCup,leader};
+  }
+  function v96CrownHolder(){const row=v96CompetitionLineage().find(r=>r.type==='CONTINENTAL');return row||null;}
+  function v96PlayerRecordRows(){
+    v43MigrateLegacyStatistics();let raw=v43Rows();if(seasonRecordsSeason!=='all'&&seasonRecordsSeason!=='current')raw=raw.filter(r=>r.seasonId===seasonRecordsSeason);else if(seasonRecordsSeason==='current')raw=raw.filter(r=>r.seasonId===careerTime.seasonId);if(seasonRecordsWorld!=='all')raw=raw.filter(r=>r.world===seasonRecordsWorld);let rows=v43AggregateRows(raw);
+    if(!rows.length){rows=clubs.filter(c=>seasonRecordsWorld==='all'||clubWorldName(c)===seasonRecordsWorld).flatMap(club=>getSquad(club).map(player=>{ensurePlayerCareerMeta(player);const s=player.seasonStats||{};return{playerId:player.id,playerName:player.name,avatar:player.avatar,role:player.role,clubs:[club.name],clubIds:[club.id],worlds:[clubWorldName(club)],apps:Number(s.apps||0),goals:Number(s.goals||0),assists:Number(s.assists||0),ratingSum:Number(s.ratingSum||0),ratingCount:Number(s.ratingCount||0),avgRating:Number(s.ratingCount||0)?Number(s.ratingSum||0)/Math.max(1,Number(s.ratingCount)):null,potm:Number(s.potm||0),yellowCards:Number(s.yellowCards||0),redCards:Number(s.redCards||0),lastClubId:club.id};}));}
+    return rows.map(row=>({...row,discipline:Number(row.yellowCards||0)+Number(row.redCards||0)*2,clubId:row.lastClubId||row.clubIds?.at(-1)||careerPlayerById(row.playerId)?.clubId||null}));
+  }
+  function v96MetricDefinition(key=seasonRecordsMetric){return({apps:{label:'APPEARANCES',short:'APP',value:r=>Number(r.apps||0)},goals:{label:'GOALS',short:'G',value:r=>Number(r.goals||0)},assists:{label:'ASSISTS',short:'A',value:r=>Number(r.assists||0)},rating:{label:'AVERAGE RATING',short:'AVG',value:r=>Number(r.ratingCount||0)>=3?Number(r.avgRating||0):-1},potm:{label:'PLAYER OF THE MATCH',short:'POTM',value:r=>Number(r.potm||0)},discipline:{label:'DISCIPLINE POINTS',short:'DISC',value:r=>Number(r.discipline||0)}}[key]||v96MetricDefinition('goals'));}
+  function v96TopPlayers(metric=seasonRecordsMetric,limit=12){const def=v96MetricDefinition(metric);return v96PlayerRecordRows().filter(r=>def.value(r)>=0).sort((a,b)=>def.value(b)-def.value(a)||Number(b.apps||0)-Number(a.apps||0)||String(a.playerName).localeCompare(String(b.playerName))).slice(0,limit);}
+  function v96FilteredLineage(){return v96CompetitionLineage().filter(row=>(seasonRecordsWorld==='all'||row.world===seasonRecordsWorld||row.type==='CONTINENTAL')&&(seasonRecordsSeason==='all'||seasonRecordsSeason==='current'?seasonRecordsSeason!=='current':row.seasonId===seasonRecordsSeason));}
+  function v96EntityClubButton(club,name=club?.name||'Unknown club',extra=''){return club?`<button type="button" class="v96-entity v96-club-link" data-v96-club="${escapeHtml(club.id)}">${badgeHTML(club)}<span><strong>${escapeHtml(name)}</strong>${extra}</span></button>`:`<span class="v96-entity"><i class="v96-empty-crest">◇</i><span><strong>${escapeHtml(name)}</strong>${extra}</span></span>`;}
+  function v96RecordSnapshot(){const live=seasonRecordSnapshot(careerTime.seasonId),book=roadToGlory.recordBook||{},best=(a,b,key)=>Number(a?.[key]||0)>=Number(b?.[key]||0)?a:b;return{biggestWin:best(live.biggestWin,book.biggestWin,'margin'),highestScoringMatch:best(live.highestScoringMatch,book.highestScoringMatch,'total'),longestUnbeaten:best(live.longestUnbeaten,book.longestUnbeaten,'matches'),recordTransfer:best(live.recordTransfer,book.recordTransfer,'fee')};}
+  function v96RecordCard(type,label,record){
+    if(!record)return`<article class="v96-record is-open"><span>${escapeHtml(label)}</span><strong>RECORD OPEN</strong><p>The first qualifying career result will establish this mark.</p><small>LIVE TRACKING ACTIVE</small></article>`;
+    if(type==='biggestWin')return`<article class="v96-record"><span>${escapeHtml(label)}</span><strong>${escapeHtml(record.score||'—')}</strong><p>${escapeHtml(record.winnerClubName||'Club')} over ${escapeHtml(record.loserClubName||'opposition')}</p><small>${escapeHtml(record.seasonId||careerTime.seasonId)} · ${escapeHtml(record.competition||'COMPETITIVE')}</small></article>`;
+    if(type==='highestScoringMatch')return`<article class="v96-record"><span>${escapeHtml(label)}</span><strong>${escapeHtml(record.score||'—')}</strong><p>${escapeHtml(record.homeClubName||'Home')} against ${escapeHtml(record.awayClubName||'Away')}</p><small>${Number(record.total||0)} GOALS · ${escapeHtml(record.seasonId||careerTime.seasonId)}</small></article>`;
+    if(type==='longestUnbeaten')return`<article class="v96-record"><span>${escapeHtml(label)}</span><strong>${Number(record.matches||0)} MATCHES</strong><p>${escapeHtml(record.clubName||'Club')}</p><small>${escapeHtml(record.division||record.world||'CAREER RECORD')}</small></article>`;
+    return`<article class="v96-record"><span>${escapeHtml(label)}</span><strong>${record.fee?formatMoney(record.fee):'—'}</strong><p>${escapeHtml(record.playerName||'Player')}</p><small>${escapeHtml(record.seasonId||careerTime.seasonId)} · RECORD FEE</small></article>`;
+  }
+  function v96RecordsOverviewHTML(){
+    const holders=worldNames.map(v96HoldersForWorld),crown=v96CrownHolder(),records=v96RecordSnapshot(),leaders=['goals','assists','rating'].map(metric=>({metric,def:v96MetricDefinition(metric),row:v96TopPlayers(metric,1)[0]}));return`<section class="v96-overview"><div class="v96-world-grid">${holders.map(set=>`<article class="v96-world-card" style="--v96-accent:${escapeHtml(worldMeta[set.world]?.accent||'#1bb5b6')}"><header><i></i><span><small>WORLD CABINET</small><strong>${escapeHtml(set.world)}</strong></span><b>${escapeHtml(set.leader?.club?.abbr||'TOP')}</b></header><div><small>${escapeHtml(set.league.competition)}</small>${v96EntityClubButton(set.league.winner||clubById(set.league.winner?.id),set.league.winnerName||set.league.winner?.name||'—',`<em>${escapeHtml(set.league.seasonId)} HOLDER</em>`)}</div><footer><span><small>${escapeHtml(set.national.competition)}</small><b>${escapeHtml(set.national.winnerName||set.national.winner?.name||'—')}</b></span><span><small>${escapeHtml(set.leagueCup.competition)}</small><b>${escapeHtml(set.leagueCup.winnerName||set.leagueCup.winner?.name||'—')}</b></span></footer></article>`).join('')}</div><section class="v96-crown-marquee"><img src="${CHAMPIONS_CROWN_ASSETS.trophy}" alt=""><div><span>ONE CROWN · FOUR WORLDS</span><h2>CHAMPIONS CROWN</h2><p>The shared continental honour sits above every domestic competition.</p></div>${v96EntityClubButton(crown?.winner||clubById(crown?.winner?.id),crown?.winnerName||crown?.winner?.name||'—',`<em>${escapeHtml(crown?.seasonId||v96PreviousSeasonId())} CHAMPIONS</em>`)}</section><section class="v96-record-section"><header><div><span>CAREER-ERA RECORD BOOK</span><h2>Marks that can be broken every matchday.</h2></div><button type="button" data-v96-view="clubs">OPEN CLUB RECORDS →</button></header><div class="v96-record-grid">${v96RecordCard('biggestWin','BIGGEST VICTORY',records.biggestWin)}${v96RecordCard('highestScoringMatch','HIGHEST-SCORING MATCH',records.highestScoringMatch)}${v96RecordCard('longestUnbeaten','LONGEST UNBEATEN RUN',records.longestUnbeaten)}${v96RecordCard('recordTransfer','RECORD TRANSFER',records.recordTransfer)}</div></section><section class="v96-leader-strip"><header><span>LIVE LEADERS</span><button type="button" data-v96-view="players">FULL PLAYER RECORDS →</button></header><div>${leaders.map(({metric,def,row},index)=>row?`<button type="button" data-v96-player="${escapeHtml(row.playerId)}" data-v96-player-club="${escapeHtml(row.clubId||'')}"><b>0${index+1}</b>${avatarHTML(row.avatar,row.playerName)}<span><small>${escapeHtml(def.label)}</small><strong>${escapeHtml(row.playerName)}</strong><em>${metric==='rating'?Number(def.value(row)).toFixed(1):Number(def.value(row))} ${escapeHtml(def.short)}</em></span></button>`:`<div><b>0${index+1}</b><span><small>${escapeHtml(def.label)}</small><strong>CHASE NOT YET OPEN</strong><em>PLAY MATCHES</em></span></div>`).join('')}</div></section></section>`;
+  }
+  function v96RecordsCompetitionsHTML(){
+    const rows=v96FilteredLineage();return`<section class="v96-ledger"><header><div><span>TITLE LINEAGE</span><h2>Every champion. Every world. One permanent archive.</h2></div><strong>${rows.length} RECORDED HONOURS</strong></header><div class="v96-ledger-head"><span>SEASON</span><span>COMPETITION</span><span>CHAMPION</span><span>FINALIST / CONTEXT</span><span>SOURCE</span></div><div class="v96-ledger-body">${rows.length?rows.map(row=>`<article><b>${escapeHtml(row.seasonId)}</b><span><small>${escapeHtml(row.world==='ALL'?'FOUR WORLDS':row.world)}</small><strong>${escapeHtml(row.competition||row.type)}</strong></span>${v96EntityClubButton(row.winner||clubById(row.winner?.id),row.winnerName||row.winner?.name||'—')}${v96EntityClubButton(row.runner||clubById(row.runner?.id),row.runnerName||row.runner?.name||'Runner-up',row.score?`<em>FINAL ${escapeHtml(row.score)}</em>`:'')}<em class="v96-source ${String(row.source).includes('PRE-CAREER')?'is-canon':''}">${escapeHtml(row.source)}</em></article>`).join(''):`<div class="v96-empty-state"><strong>NO ARCHIVE MATCHES THIS FILTER</strong><span>Change world or season to see the established lineage.</span></div>`}</div></section>`;
+  }
+  function v96RecordsPlayersHTML(){
+    const def=v96MetricDefinition(),rows=v96TopPlayers(seasonRecordsMetric,20);return`<section class="v96-player-book"><header><div><span>PLAYER RECORD BOOK</span><h2>${escapeHtml(def.label)}</h2><p>Competitive career statistics. Rating records require at least three rated appearances.</p></div><nav>${['apps','goals','assists','rating','potm','discipline'].map(key=>`<button type="button" data-v96-metric="${key}" class="${key===seasonRecordsMetric?'is-active':''}">${escapeHtml(v96MetricDefinition(key).short)}</button>`).join('')}</nav></header><div class="v96-player-ranks">${rows.length?rows.map((row,index)=>{const club=clubById(row.clubId),value=def.value(row);return`<button type="button" data-v96-player="${escapeHtml(row.playerId)}" data-v96-player-club="${escapeHtml(row.clubId||'')}"><b>${String(index+1).padStart(2,'0')}</b>${avatarHTML(row.avatar,row.playerName)}<span><strong>${escapeHtml(row.playerName)}</strong><small>${escapeHtml(club?.name||row.clubs?.at(-1)||'Historical club')} · ${escapeHtml(String(row.role||'PLAYER').replace(/-/g,' '))}</small></span><em>${seasonRecordsMetric==='rating'?Number(value).toFixed(1):Number(value)}<small>${escapeHtml(def.short)}</small></em></button>`;}).join(''):`<div class="v96-empty-state"><strong>THE RECORD CHASE HAS NOT STARTED</strong><span>Competitive appearances will build this leaderboard.</span></div>`}</div></section>`;
+  }
+  function v96ClubRows(){
+    const honours=new Map();v96CompetitionLineage().filter(r=>r.type!=='CONTINENTAL'&&(seasonRecordsWorld==='all'||r.world===seasonRecordsWorld)).forEach(row=>{const id=row.winner?.id||row.winnerClubId;if(id)honours.set(id,Number(honours.get(id)||0)+1);});return clubs.filter(c=>seasonRecordsWorld==='all'||clubWorldName(c)===seasonRecordsWorld).map(club=>{const histories=roadToGlory.clubHistory?.[club.id]||[],best=histories.length?Math.min(...histories.map(h=>Number(h.finish||99))):null,row=standingsForDivision(club.divisionKey).find(r=>r.club.id===club.id),manager=currentClubManager(club);return{club,honours:Number(honours.get(club.id)||0),best,row,manager};}).sort((a,b)=>b.honours-a.honours||Number(a.best||99)-Number(b.best||99)||Number(a.row?.pos||99)-Number(b.row?.pos||99)).slice(0,40);
+  }
+  function v96RecordsClubsHTML(){const records=v96RecordSnapshot(),rows=v96ClubRows();return`<section class="v96-club-book"><header><div><span>CLUB HISTORY</span><h2>The institutions shaping the four worlds.</h2></div><strong>${rows.length} CLUBS IN VIEW</strong></header><div class="v96-club-feature">${v96RecordCard('biggestWin','BIGGEST VICTORY',records.biggestWin)}${v96RecordCard('longestUnbeaten','LONGEST UNBEATEN RUN',records.longestUnbeaten)}${v96RecordCard('recordTransfer','RECORD TRANSFER',records.recordTransfer)}</div><div class="v96-club-table"><header><span>#</span><span>CLUB</span><span>WORLD / DIVISION</span><span>ARCHIVE HONOURS</span><span>BEST FINISH</span><span>LIVE POSITION</span><span>MANAGER</span></header>${rows.map((row,index)=>`<button type="button" data-v96-club="${escapeHtml(row.club.id)}"><b>${String(index+1).padStart(2,'0')}</b>${badgeHTML(row.club)}<span><strong>${escapeHtml(row.club.name)}</strong><small>${escapeHtml(row.club.abbr||'')}</small></span><span>${escapeHtml(clubWorldName(row.club))}<small>${escapeHtml(row.club.division)}</small></span><em>${row.honours}</em><em>${row.best?ordinal(row.best):'OPEN'}</em><em>${row.row?ordinal(row.row.pos):'—'}<small>${row.row?.pts||0} PTS</small></em><span>${escapeHtml(row.manager?.name||'Vacant')}<small>${escapeHtml(row.manager?.id===PLAYER_MANAGER_ID?'PLAYER MANAGER':managerProfileDescriptor(row.manager||{}))}</small></span></button>`).join('')}</div></section>`;}
+  function v96ManagerRows(){
+    initializeManagerMarketState();const rows=[];if(currentClub&&employmentStatus==='employed')rows.push({id:PLAYER_MANAGER_ID,name:managerName,club:currentClub,record:roadToGlory.managerCareerTotals||{},honours:Number(roadToGlory.managerCareerTotals?.leagueTitles||0)+Number(roadToGlory.managerCareerTotals?.domesticCups||0)+Number(roadToGlory.managerCareerTotals?.continentalCups||0),rep:Number(roadToGlory.managerReputation||0),rivalries:Object.values(managerMarket.rivalries||{}).filter(r=>Number(r.meetings||0)>=3).length,player:true});Object.values(managerMarket.managers||{}).forEach(manager=>{const club=clubById(manager.currentClubId);if(!club||(seasonRecordsWorld!=='all'&&clubWorldName(club)!==seasonRecordsWorld))return;const record=manager.careerRecord||aiManagerSpellRecord(manager,club)||{},honours=Number(manager.honours?.titles||0)+Number(manager.honours?.cups||0)+Number(manager.honours?.promotions||0)+Number(manager.honours?.awards||0);rows.push({id:manager.id,name:manager.name,club,record,honours,rep:Number(manager.reputation||0),rivalries:0,manager});});return rows.sort((a,b)=>b.honours-a.honours||b.rep-a.rep||Number(b.record?.wins||0)-Number(a.record?.wins||0)).slice(0,36);}
+  function v96RecordsManagersHTML(){const rows=v96ManagerRows(),totals=roadToGlory.managerCareerTotals||{},rivals=Object.entries(managerMarket.rivalries||{}).map(([id,r])=>({manager:managerMarket.managers?.[id],record:r})).filter(x=>x.manager&&Number(x.record.meetings||0)>=3).sort((a,b)=>Number(b.record.heat||0)-Number(a.record.heat||0)).slice(0,4);return`<section class="v96-manager-book"><header><div><span>MANAGER RECORDS</span><h2>Careers, pressure and rivalries leave a permanent trail.</h2></div><div><b>${Number(totals.matches||0)}<small>MATCHES MANAGED</small></b><b>${Number(totals.wins||0)}<small>CAREER WINS</small></b><b>${Number(totals.promotions||0)}<small>PROMOTIONS</small></b></div></header>${rivals.length?`<section class="v96-rivalries"><span>ESTABLISHED RIVALRIES</span>${rivals.map(({manager,record})=>`<button type="button" data-v96-manager="${escapeHtml(manager.id)}" data-v96-club="${escapeHtml(manager.currentClubId||'')}"><strong>${escapeHtml(managerName)} v ${escapeHtml(manager.name)}</strong><small>${Number(record.meetings||0)} meetings · ${Number(record.wins||0)}W ${Number(record.draws||0)}D ${Number(record.losses||0)}L · heat ${Math.round(Number(record.heat||0))}</small></button>`).join('')}</section>`:''}<div class="v96-manager-table"><header><span>#</span><span>MANAGER / CLUB</span><span>REPUTATION</span><span>RECORD</span><span>HONOURS</span><span>IDENTITY</span></header>${rows.map((row,index)=>{const matches=Number(row.record?.matches||0),winPct=matches?Math.round(Number(row.record?.wins||0)/matches*100):0;return`<button type="button" data-v96-manager="${escapeHtml(row.id)}" data-v96-club="${escapeHtml(row.club?.id||'')}"><b>${String(index+1).padStart(2,'0')}</b><span>${row.club?badgeHTML(row.club):''}<strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.club?.name||'Available')}</small></span><em>${escapeHtml(managerRepLabel(row.rep))}<small>${row.rep}/100</small></em><em>${Number(row.record?.wins||0)}W · ${winPct}%<small>${matches} matches</small></em><em>${row.honours}</em><span>${escapeHtml(row.player?'YOUR CAREER':managerProfileDescriptor(row.manager||{}))}</span></button>`;}).join('')}</div></section>`;}
   function seasonRecordsHtml(){
-    const club=currentClub||selectedClub||clubs[0],latest=[...roadToGlory.competitionHistory].reverse().find(h=>h.type==='LEAGUE'&&h.divisionKey===club.divisionKey),continental=[...championsCrown.history].reverse()[0],history=roadToGlory.careerHistory.slice(-4).reverse();
-    return `<div class="records-live"><div><span>REIGNING ${escapeHtml(String(club.division||'LEAGUE').toUpperCase())} CHAMPION</span><strong>${escapeHtml(latest?.championClubName||'TO BE CROWNED')}</strong><small>${escapeHtml(latest?.seasonId||careerTime.seasonId)}</small></div><div><span>CHAMPIONS CROWN HOLDER</span><strong>${escapeHtml(continental?.championClubName||'TO BE CROWNED')}</strong><small>${escapeHtml(continental?.seasonId||'INAUGURAL EDITION')}</small></div><div><span>MANAGER REPUTATION</span><strong>${managerRepStars()}</strong><small>${escapeHtml(managerRepLabel())}</small></div><div><span>CAREER HISTORY</span><strong>${roadToGlory.careerHistory.length}</strong><small>completed seasons</small></div></div>${history.length?`<div class="competition-history-strip">${history.map(h=>`<div><span>${escapeHtml(h.seasonId)}</span><strong>${escapeHtml(h.clubName)}</strong><small>${escapeHtml(h.division)} · ${ordinal(h.finish||0)} · ${escapeHtml(h.status)}${h.continentalOutcome&&h.continentalOutcome!=='NOT QUALIFIED'?` · ${escapeHtml(h.continentalOutcome)}`:''}</small></div>`).join('')}</div>`:''}`;
+    const seasons=[...new Set([...(roadToGlory.worldHistory||[]).map(x=>x.seasonId),...(roadToGlory.competitionHistory||[]).map(x=>x.seasonId),v96PreviousSeasonId()].filter(Boolean))].sort((a,b)=>String(b).localeCompare(String(a))),played=fixtures.filter(f=>f.played&&f.type!=='FRIENDLY').length,viewHtml=seasonRecordsView==='competitions'?v96RecordsCompetitionsHTML():seasonRecordsView==='players'?v96RecordsPlayersHTML():seasonRecordsView==='clubs'?v96RecordsClubsHTML():seasonRecordsView==='managers'?v96RecordsManagersHTML():v96RecordsOverviewHTML();return`<section class="v96-history-hub"><header class="v96-history-hero"><div><span>THE LIVING ARCHIVE · ${escapeHtml(careerTime.seasonId)}</span><h1>WORLD HISTORY & RECORDS</h1><p>Four domestic worlds. One Champions Crown. Every result becomes part of the permanent record.</p></div><aside><b>${worldNames.length}<small>WORLDS</small></b><b>${v96CompetitionLineage().length}<small>HONOURS</small></b><b>${played}<small>RESULTS TRACKED</small></b><b>${roadToGlory.careerHistory.length}<small>SEASONS PLAYED</small></b></aside></header><nav class="v96-history-nav">${[['overview','OVERVIEW'],['competitions','COMPETITIONS'],['players','PLAYERS'],['clubs','CLUBS'],['managers','MANAGERS']].map(([key,label])=>`<button type="button" data-v96-view="${key}" class="${seasonRecordsView===key?'is-active':''}">${label}</button>`).join('')}</nav><section class="v96-history-filters"><div><span>WORLD</span><button type="button" data-v96-world="all" class="${seasonRecordsWorld==='all'?'is-active':''}">ALL WORLDS</button>${worldNames.map(world=>`<button type="button" data-v96-world="${escapeHtml(world)}" class="${seasonRecordsWorld===world?'is-active':''}"><i style="background:${escapeHtml(worldMeta[world]?.accent||'#1bb5b6')}"></i>${escapeHtml(world)}</button>`).join('')}</div><label><span>SEASON</span><select data-v96-season><option value="all" ${seasonRecordsSeason==='all'?'selected':''}>ALL HISTORY</option><option value="current" ${seasonRecordsSeason==='current'?'selected':''}>${escapeHtml(careerTime.seasonId)} · LIVE</option>${seasons.map(season=>`<option value="${escapeHtml(season)}" ${seasonRecordsSeason===season?'selected':''}>${escapeHtml(season)}${season===v96PreviousSeasonId()?' · FOUNDING ARCHIVE':''}</option>`).join('')}</select></label><small><b>PRE-CAREER CANON</b> is deterministic founding history. Career-era entries come only from played results.</small></section>${viewHtml}</section>`;
   }
 
   function renderSeason(){
@@ -9553,7 +10627,10 @@
     const seasonScreen=$('#screenSeason');
     seasonScreen?.classList.toggle('is-table-view',seasonActiveTab==='table');
     seasonScreen?.classList.toggle('is-calendar-view',seasonActiveTab==='calendar');
+    seasonScreen?.classList.toggle('is-stats-view',seasonActiveTab==='stats');
     seasonScreen?.classList.toggle('is-fixtures-view',seasonActiveTab==='fixtures');
+    seasonScreen?.classList.toggle('is-cup-view',seasonActiveTab==='cup');
+    seasonScreen?.classList.toggle('is-records-view',seasonActiveTab==='records');
     setBadge($('#seasonClubBadge'),club);$('#seasonClubName').textContent=club.name;$('#seasonCompetitionName').textContent=club.division;
     $$('#seasonSubnav [data-season-tab]').forEach(b=>b.classList.toggle('is-active',b.dataset.seasonTab===seasonActiveTab));
     const main=$('#seasonMainContent');
@@ -9611,9 +10688,24 @@
       main.querySelector('[data-calendar-nav="prev"]')?.addEventListener('click',()=>{const d=dateFromISO(seasonCalendarCursor);d.setUTCMonth(d.getUTCMonth()-1);seasonCalendarCursor=isoDate(new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)));selectedCalendarDate=seasonCalendarCursor;renderSeason();});
       main.querySelector('[data-calendar-nav="next"]')?.addEventListener('click',()=>{const d=dateFromISO(seasonCalendarCursor);d.setUTCMonth(d.getUTCMonth()+1);seasonCalendarCursor=isoDate(new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)));selectedCalendarDate=seasonCalendarCursor;renderSeason();});
       main.querySelector('[data-calendar-nav="today"]')?.addEventListener('click',()=>{selectedCalendarDate=currentCareerISO();seasonCalendarCursor=`${currentCareerISO().slice(0,7)}-01`;renderSeason();});
+    }else if(seasonActiveTab==='cup'){
+      $('#seasonSideContent').innerHTML=seasonCupSideHtml();
+      main.querySelectorAll('[data-cup-world]').forEach(btn=>btn.addEventListener('click',()=>{seasonCupWorld=btn.dataset.cupWorld;renderSeason();}));
+      main.querySelectorAll('[data-cup-kind]').forEach(btn=>btn.addEventListener('click',()=>{seasonCupKind=btn.dataset.cupKind==='league'?'league':'national';renderSeason();}));
+      main.querySelectorAll('[data-cup-match]').forEach(btn=>btn.addEventListener('click',()=>{const fixture=fixtureById(btn.dataset.cupMatch);if(!fixture)return;if(fixture.played){seasonSelectedFixtureId=fixture.fixtureId;seasonMatchReportReturn='list';seasonActiveTab='fixtures';}else{selectedCalendarDate=fixture.date;seasonCalendarCursor=`${fixture.date.slice(0,7)}-01`;seasonActiveTab='calendar';}renderSeason();}));
+      main.querySelector('[data-open-crown]')?.addEventListener('click',()=>{seasonActiveTab='champions-crown';renderSeason();});
     }else if(seasonActiveTab==='champions-crown'){
       $('#seasonSideContent').innerHTML=championsCrownSideHTML();
       wireChampionsCrownHub(main);
+    }else if(seasonActiveTab==='records'){
+      $('#seasonSideContent').innerHTML='';
+      main.querySelectorAll('[data-v96-view]').forEach(btn=>btn.addEventListener('click',()=>{seasonRecordsView=btn.dataset.v96View||'overview';renderSeason();}));
+      main.querySelectorAll('[data-v96-world]').forEach(btn=>btn.addEventListener('click',()=>{seasonRecordsWorld=btn.dataset.v96World||'all';renderSeason();}));
+      main.querySelector('[data-v96-season]')?.addEventListener('change',event=>{seasonRecordsSeason=event.currentTarget.value||'all';renderSeason();});
+      main.querySelectorAll('[data-v96-metric]').forEach(btn=>btn.addEventListener('click',()=>{seasonRecordsMetric=btn.dataset.v96Metric||'goals';renderSeason();}));
+      main.querySelectorAll('[data-v96-player]').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.dataset.v96Player,player=careerPlayerById(id),clubId=player?.clubId||btn.dataset.v96PlayerClub||null;if(!clubId||!clubById(clubId)){showToast('This historical player no longer has an active club dossier.');return;}seasonSelectedClubId=clubId;seasonSelectedPlayerId=id;seasonSelectedManagerId=null;seasonClubProfileTab='squad';seasonActiveTab='table';renderSeason();}));
+      main.querySelectorAll('[data-v96-manager]').forEach(btn=>btn.addEventListener('click',()=>{const clubId=btn.dataset.v96Club;if(!clubId||!clubById(clubId)){showToast('This manager does not currently have a club dossier.');return;}seasonSelectedClubId=clubId;seasonSelectedPlayerId=null;seasonSelectedManagerId=btn.dataset.v96Manager;seasonClubProfileTab='overview';seasonActiveTab='table';renderSeason();}));
+      main.querySelectorAll('[data-v96-club]:not([data-v96-manager])').forEach(btn=>btn.addEventListener('click',()=>{const clubId=btn.dataset.v96Club;if(!clubId||!clubById(clubId))return;seasonSelectedClubId=clubId;seasonSelectedPlayerId=null;seasonSelectedManagerId=null;seasonClubProfileTab='overview';seasonActiveTab='table';renderSeason();}));
     }else{
       $('#seasonSideContent').innerHTML=`<div class="season-side-card"><span>COMPETITION SUMMARY</span><div class="season-side-lockup">${badgeHTML(club)}<div><strong>${escapeHtml(club.division)}</strong><small>${own?.pos||'-'}TH · ${own?.pts||0} PTS</small></div></div><div class="season-side-progress"><i style="width:${clamp((own?.pts||0)*3,12,88)}%"></i></div></div><div class="season-side-card"><span>SEASON HIGHLIGHTS</span><div class="highlight-tiles"><b>${own?.wins||0}<small>WINS</small></b><b>${own?.gf||0}<small>FOR</small></b><b>${own?.ga||0}<small>AGAINST</small></b></div></div><div class="season-side-card compact"><span>CAREER DATE</span><strong>${shortDateLabel(currentCareerISO())}</strong><small>${seasonLabel()} · World ${worldSeed.replace('VELMORA-','')}</small></div>`;
     }
@@ -9652,17 +10744,26 @@
     return{label:'BALANCED',attacking:'Balanced',defensive:'Balanced',copy:'Trust the current structure and avoid giving the opponent easy transitions.'};
   }
   function matchDaysUntil(fixture){return fixture?Math.max(0,diffDaysISO(currentCareerISO(),fixture.date)):0;}
-  function matchMoraleModifier(club){const squad=getSquad(club);if(!squad.length)return 0;return (squad.reduce((a,p)=>a+moraleIndex(p.morale),0)/squad.length-2)*.6;}
-  function matchFitnessModifier(club){const s=activeStarters(club);if(!s.length)return 0;const avg=s.reduce((a,p)=>a+Number(p.fitness||80),0)/s.length;return (avg-82)/12;}
+  function matchMoraleModifier(club){const squad=activeStarters(club);if(!squad.length)return 0;if(typeof performanceRules!=='undefined'&&performanceRules)return squad.reduce((sum,p)=>sum+performanceRules.moraleModifier(p.morale)*100,0)/squad.length;return (squad.reduce((a,p)=>a+moraleIndex(p.morale),0)/squad.length-2)*.6;}
+  function matchFitnessModifier(club){const s=activeStarters(club);if(!s.length)return 0;const avg=s.reduce((a,p)=>a+clamp(Number.isFinite(Number(p.fitness??82))?Number(p.fitness??82):82,0,100),0)/s.length;return (avg-82)/12;}
   function userTacticalModifier(opponent){
     const rec=matchStaffRecommendation(opponent),t=careerPreferences.tactics||{};let mod=0;
     if(t.attacking===rec.attacking)mod+=.45;if(t.defensive===rec.defensive)mod+=.35;
-    if(t.mentality==='Attacking')mod+=.12;if(t.mentality==='Defensive')mod-=.04;return mod;
+    if(t.mentality==='Attacking')mod+=.12;if(t.mentality==='Defensive')mod-=.04;
+    if(t.width==='Wide'&&['Direct','Fast Break'].includes(t.attacking))mod+=.12;if(t.width==='Compact'&&t.defensive==='Drop Back')mod+=.12;
+    if(t.tempo==='Patient'&&t.attacking==='Possession')mod+=.14;if(t.tempo==='Urgent'&&['Direct','Fast Break'].includes(t.attacking))mod+=.13;
+    if(t.freedom==='Fluid'&&t.mentality==='Attacking')mod+=.1;if(t.freedom==='Structured'&&t.mentality==='Defensive')mod+=.1;
+    if(t.tempo==='Urgent'&&t.attacking==='Possession')mod-=.08;if(t.freedom==='Fluid'&&t.defensive==='Drop Back')mod-=.07;return mod;
   }
   // V24: six attributes contribute to attack/defence; OVR remains the overall anchor.
   function v24PlayerStat(player,key){const value=player?.stats?.[key],fallback=Number.isFinite(Number(player?.ovr))?Number(player.ovr):60;v49EnsureTraits(player);return clamp((value!=null&&Number.isFinite(Number(value))?Number(value):fallback)+(window.VelmoraTraits?.stat(player,key)||0),0,99);}
-  function v24TeamProfile(club){
+  function v24TeamProfile(club,fixture=null){
     const players=activeStarters(club);if(!players.length)return{attackDelta:0,defenceDelta:0};
+    if(performanceRules){
+      const profile=performanceRules.teamProfile(players,{stat:v24PlayerStat,role:p=>typeof v44DeployedRoleFor==='function'?(v44DeployedRoleFor(p,club,fixture)||p.role):p.role,modifier:(p,role)=>typeof v44RoleSuitabilityModifier==='function'?v44RoleSuitabilityModifier(p,role):1});
+      const leadership=((window.VelmoraTraits?.aura(players,false)||0)*.65+(window.VelmoraTraits?.aura(players,true)||0)*.35)*55;
+      return{...profile,attackDelta:profile.attackDelta+leadership,defenceDelta:profile.defenceDelta+leadership};
+    }
     let attack=0,defence=0;
     for(const p of players){const st=key=>v24PlayerStat(p,key),ovr=Number(p.ovr||60);
       attack+=(st('SHO')*.34+st('PAS')*.23+st('HAN')*.18+st('PAC')*.15+st('STA')*.10-ovr)*.65;
@@ -9672,11 +10773,12 @@
     return{attackDelta:attack/players.length+leadership,defenceDelta:defence/players.length+leadership};
   }
   function v24ExpectedGoals(home,away,userTactics=false,fixture=null){
-    const hp=v24TeamProfile(home),ap=v24TeamProfile(away);
+    const hp=v24TeamProfile(home,fixture),ap=v24TeamProfile(away,fixture);
     let hs=v44FixtureClubStrength(home,fixture)+matchMoraleModifier(home)+matchFitnessModifier(home)+v23TeamSharpness(home),as=v44FixtureClubStrength(away,fixture)+matchMoraleModifier(away)+matchFitnessModifier(away)+v23TeamSharpness(away);
     if(userTactics&&home.id===currentClub?.id)hs+=userTacticalModifier(away);
     if(userTactics&&away.id===currentClub?.id)as+=userTacticalModifier(home);
-    return {home:clamp(1.5+(hs+hp.attackDelta-as-ap.defenceDelta)/18,.30,3.2),away:clamp(1.18+(as+ap.attackDelta-hs-hp.defenceDelta)/18,.30,3.2)};
+    const neutral=!!fixture?.neutralVenue,homeBase=neutral?1.34:1.5,awayBase=neutral?1.34:1.18;
+    return {home:clamp(homeBase+(hs+hp.attackDelta-as-ap.defenceDelta)/18,.30,3.2),away:clamp(awayBase+(as+ap.attackDelta-hs-hp.defenceDelta)/18,.30,3.2)};
   }
   function v24ScorerWeight(player,role=player?.role){
     const technique=v24PlayerStat(player,'SHO')*.65+v24PlayerStat(player,'HAN')*.15+v24PlayerStat(player,'PAC')*.10+Number(player?.ovr||60)*.10;
@@ -9692,32 +10794,54 @@
     if(Number(f.awayScore)>Number(f.homeScore))return f.awayClubId;
     return shootoutWinner;
   }
+  function domesticCupEntrantsForRound(def,round,cup){
+    if(def.kind!=='league'||![2,3].includes(Number(round)))return[];
+    const exempt=new Set(leagueCupCrownExemptClubIds(def.world)),wanted=clubs.filter(c=>clubWorldName(c)===def.world&&Number(c.tier||4)===1&&(Number(round)===3?exempt.has(c.id):!exempt.has(c.id)));
+    const seen=new Set(cup.flatMap(f=>[f.homeClubId,f.awayClubId]));Object.entries(cupRuntime.roundByes||{}).filter(([key])=>key.startsWith(`${def.competitionId}:`)).forEach(([,ids])=>(ids||[]).forEach(id=>seen.add(id)));
+    return wanted.map(c=>c.id).filter(id=>!seen.has(id));
+  }
+  function domesticCupRoundWinnerIds(roundFixtures){
+    if(!roundFixtures.some(f=>f.cupTwoLegged))return roundFixtures.map(f=>knockoutFixtureWinnerId(f)).filter(Boolean);
+    const groups=new Map();roundFixtures.forEach(f=>{const key=f.cupTieId||f.fixtureId;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);});
+    return[...groups.values()].map(group=>domesticCupTieWinnerId(group[0])).filter(Boolean);
+  }
+  function scheduleDomesticCupFixture(f){
+    fixtures.push(f);if(f.homeClubId===currentClub?.id||f.awayClubId===currentClub?.id){const home=clubById(f.homeClubId),away=clubById(f.awayClubId);scheduleCalendarEvent({id:`EVT-FIXTURE-${f.fixtureId}`,date:f.date,type:'CUP_MATCH',priority:'BLOCKING',blocking:true,title:`${f.competitionName}: ${home?.name||''} v ${away?.name||''}`,payload:{fixtureId:f.fixtureId}});}
+  }
   function ensureCupProgression(date=currentCareerISO()){
     const allCup=fixtures.filter(f=>f.type==='CUP');if(!allCup.length)return;
     const competitions=[...new Set(allCup.map(f=>f.competitionId||'domestic_cup'))];
     cupRuntime.roundByes=cupRuntime.roundByes||{};
     competitions.forEach(compId=>{
       const cup=fixtures.filter(f=>f.type==='CUP'&&(f.competitionId||'domestic_cup')===compId);if(!cup.length)return;
-      const competitionName=cup[0]?.competitionName||'Domestic Cup',world=clubWorldName(clubById(cup[0]?.homeClubId)||clubById(cup[0]?.awayClubId));
+      const world=cup[0]?.cupWorld||clubWorldName(clubById(cup[0]?.homeClubId)||clubById(cup[0]?.awayClubId)),kind=cup[0]?.cupKind||(String(compId).includes('league_cup')?'league':'national'),def=domesticCupDefinitionById(compId)||domesticCupDefinition(world,kind),competitionName=cup[0]?.competitionName||def.name;
       const rounds=[...new Set(cup.map(f=>Number(f.round||1)))].sort((a,b)=>a-b);
       rounds.forEach(round=>{
         const roundFixtures=cup.filter(f=>Number(f.round||1)===round);if(!roundFixtures.length||roundFixtures.some(f=>!f.played))return;
         if(cup.some(f=>Number(f.round||1)===round+1))return;
-        const winners=roundFixtures.map(f=>knockoutFixtureWinnerId(f)).filter(Boolean);
+        const winners=domesticCupRoundWinnerIds(roundFixtures);if(!winners.length)return;
         const byeKey=`${compId}:${round}`,nextByeKey=`${compId}:${round+1}`;
         const priorByes=Array.isArray(cupRuntime.roundByes[byeKey])?cupRuntime.roundByes[byeKey]:[];
-        const pool=seededShuffle([...winners,...priorByes],`CUP-${compId}-R${round+1}-${careerTime.seasonId}`);
+        const entrants=domesticCupEntrantsForRound(def,round+1,cup),pool=seededShuffle([...new Set([...winners,...priorByes,...entrants])],`CUP-${compId}-R${round+1}-${careerTime.seasonId}`);
         if(pool.length<=1){const champion=clubById(pool[0]);if(champion){addCareerNews({id:`cup-champion-${compId}-${careerTime.seasonId}`,category:String(competitionName).toUpperCase(),title:`${champion.name.toUpperCase()} WIN ${String(competitionName).toUpperCase()}`,body:[`${champion.name} have completed their knockout run and lifted ${competitionName}.`],image:champion.badge,date});}return;}
         cupRuntime.roundByes[nextByeKey]=[];
-        if(pool.length%2===1){const bye=pool.pop();cupRuntime.roundByes[nextByeKey]=[bye];if(bye===currentClub?.id)addCareerInboxMessage({id:`cup-bye-${compId}-${round+1}-${careerTime.seasonId}`,type:'BOARD',sender:'COMPETITION OFFICE',subject:`${competitionName} bye`,preview:'Your club has advanced without a tie in the next round.',title:'Cup progression confirmed',body:[`${currentClub.name} have received a bye in the next ${competitionName} round.`,`You advance automatically while the remaining clubs contest their ties.`],signoff:`${competitionName} Office`,date});}
-        const lastDate=roundFixtures.map(f=>f.date).sort().at(-1)||date,nextDate=addDaysISO(lastDate,14);
-        for(let i=0;i<pool.length;i+=2){const home=clubById(pool[i]),away=clubById(pool[i+1]);if(!home||!away)continue;const f={fixtureId:`${String(compId).toUpperCase().replace(/[^A-Z0-9]+/g,'')}_${careerTime.seasonId.replace('-','')}_R${round+1}_${home.abbr||home.id}_${away.abbr||away.id}`,competitionId:compId,competitionName,round:round+1,date:nextDate,homeClubId:home.id,awayClubId:away.id,played:false,homeScore:null,awayScore:null,type:'CUP'};fixtures.push(f);if(home.id===currentClub?.id||away.id===currentClub?.id)scheduleCalendarEvent({id:`EVT-FIXTURE-${f.fixtureId}`,date:f.date,type:'CUP_MATCH',priority:'BLOCKING',blocking:true,title:`${competitionName}: ${home.name} v ${away.name}`,payload:{fixtureId:f.fixtureId}});}
+        const nextRound=round+1,lastDate=roundFixtures.map(f=>f.date).sort().at(-1)||date;
+        if(def.kind==='league'&&pool.length===4){
+          for(let i=0;i<pool.length;i+=2){const firstHome=clubById(pool[i]),firstAway=clubById(pool[i+1]);if(!firstHome||!firstAway)continue;const tieId=`${compId}-${careerTime.seasonId}-SF-${i/2+1}`,leg1Date=domesticCupRoundDate(def,nextRound,1,lastDate),leg2Date=domesticCupRoundDate(def,nextRound,2,leg1Date);scheduleDomesticCupFixture(domesticCupMakeFixture(def,nextRound,firstHome,firstAway,{stage:'SEMI_FINALS',twoLegged:true,tieId,leg:1,date:leg1Date,suffix:'_L1'}));scheduleDomesticCupFixture(domesticCupMakeFixture(def,nextRound,firstAway,firstHome,{stage:'SEMI_FINALS',twoLegged:true,tieId,leg:2,date:leg2Date,suffix:'_L2'}));}
+        }else{
+          if(pool.length%2===1){const bye=pool.pop();cupRuntime.roundByes[nextByeKey]=[bye];if(bye===currentClub?.id)addCareerInboxMessage({id:`cup-bye-${compId}-${nextRound}-${careerTime.seasonId}`,type:'BOARD',sender:'COMPETITION OFFICE',subject:`${competitionName} bye`,preview:'Your club has advanced without a tie in the next round.',title:'Cup progression confirmed',body:[`${currentClub.name} have received a bye in the next ${competitionName} round.`,`You advance automatically while the remaining clubs contest their ties.`],signoff:`${competitionName} Office`,date});}
+          const stage=domesticCupStageForPool(def,pool.length+cupRuntime.roundByes[nextByeKey].length,nextRound),nextDate=domesticCupRoundDate(def,nextRound,1,lastDate);
+          for(let i=0;i<pool.length;i+=2){const home=clubById(pool[i]),away=clubById(pool[i+1]);if(!home||!away)continue;scheduleDomesticCupFixture(domesticCupMakeFixture(def,nextRound,home,away,{stage,poolSize:pool.length,date:nextDate}));}
+        }
         fixtures.sort((a,b)=>a.date.localeCompare(b.date)||a.fixtureId.localeCompare(b.fixtureId));
+        v202MarkCompetitionDataDirty();
       });
     });
   }
   function simulateUserFixture(fixture,mode='QUICK SIM',liveEngineResult=null){
-    if(!fixture||fixture.played)return null;const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
+    if(!fixture||fixture.played)return null;
+    const onlineGate=v104MatchGate(fixture);
+    if(onlineGate&&!onlineGate.allowed){showToast(onlineGate.message);return null;}const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
     v37CaptureSelectionEligibility(fixture,home,away);
     const rng=mulberry32(hashString(`${worldSeed}-USER-MATCH-${fixture.fixtureId}`)),disciplineEvents=liveEngineResult?(Array.isArray(liveEngineResult.disciplineEvents)?liveEngineResult.disciplineEvents:[]):disciplineSimulatedEvents(fixture,home,away);
     fixture.decidedOnPenalties=false;fixture.decidedAfterExtraTime=false;fixture.penaltiesHome=null;fixture.penaltiesAway=null;fixture.shootoutWinnerId=null;fixture.ccShootoutWinnerId=null;
@@ -9728,8 +10852,9 @@
         const winner=liveEngineResult.shootoutWinner==='home'?fixture.homeClubId:liveEngineResult.shootoutWinner==='away'?fixture.awayClubId:null;fixture.shootoutWinnerId=winner;if(fixture.type==='CHAMPIONS_CROWN')fixture.ccShootoutWinnerId=winner;
       }
     }else{
-      const expected=v24ExpectedGoals(home,away,true,fixture),homeRed=disciplineRedImpact(disciplineEvents,'home'),awayRed=disciplineRedImpact(disciplineEvents,'away'),homeXg=clamp(expected.home*(1-.27*homeRed)*(1+.16*awayRed),.22,3.8),awayXg=clamp(expected.away*(1-.27*awayRed)*(1+.16*homeRed),.22,3.8);fixture.homeScore=backgroundGoals(rng,homeXg);fixture.awayScore=backgroundGoals(rng,awayXg);if(['CUP','PLAYOFF'].includes(fixture.type)&&fixture.homeScore===fixture.awayScore){if(rng()<.5)fixture.homeScore++;else fixture.awayScore++;fixture.decidedAfterExtraTime=true;}resolveChampionsCrownDecider(fixture,rng);
+      const expected=v24ExpectedGoals(home,away,true,fixture),homeRed=disciplineRedImpact(disciplineEvents,'home'),awayRed=disciplineRedImpact(disciplineEvents,'away'),homeXg=clamp(expected.home*(1-.27*homeRed)*(1+.16*awayRed),.22,3.8),awayXg=clamp(expected.away*(1-.27*awayRed)*(1+.16*homeRed),.22,3.8);fixture.homeScore=backgroundGoals(rng,homeXg);fixture.awayScore=backgroundGoals(rng,awayXg);if(fixture.type==='PLAYOFF'&&fixture.homeScore===fixture.awayScore){if(rng()<.5)fixture.homeScore++;else fixture.awayScore++;fixture.decidedAfterExtraTime=true;}resolveChampionsCrownDecider(fixture,rng);
     }
+    resolveDomesticCupDecider(fixture,rng);
     if(liveEngineResult?.matchday)fixture.matchday=matchdayNormaliseReport(liveEngineResult.matchday,home,away);
     const matchPlayers=[...matchdayParticipants(home,fixture),...matchdayParticipants(away,fixture)];
     fixture.played=true;fixture.resultMode=mode;fixture.playedDate=currentCareerISO();if(liveEngineResult)fixture.liveEngine=liveEngineResult.matchday?'REPO_SPORTS_V2_CAREER_V26':'REPO_SPORTS_V2_CAREER_V26';v202MarkCompetitionDataDirty();
@@ -9756,7 +10881,7 @@
     const genericTitle=resultCode==='W'?`${currentClub.name.toUpperCase()} TAKE THE POINTS`:resultCode==='L'?`${opponent.name.toUpperCase()} DEFEAT ${currentClub.name.toUpperCase()}`:`${currentClub.name.toUpperCase()} HELD BY ${opponent.name.toUpperCase()}`;
     const storyBody=[`${home.name} ${fixture.homeScore}–${fixture.awayScore} ${away.name}${fixture.decidedOnPenalties?` (${fixture.penaltiesHome}–${fixture.penaltiesAway} pens)`:''}.`,resultMoment?.copy||null,postRow?`${currentClub.name} are now ${ordinal(postRow.pos)} with ${postRow.pts} points.`:isFriendly?'The result is non-competitive and is used for readiness, form and squad assessment only.':(continentalLine||'The knockout campaign moves on from another decisive night.')].filter(Boolean);
     addCareerNews({id:`news-match-${fixture.fixtureId}`,category:newsCategory,title:resultMoment?.newsTitle||(isFriendly?`${currentClub.name.toUpperCase()} CONTINUE PRE-SEASON PREPARATIONS`:genericTitle),body:storyBody,image:potm?.avatar,date:fixture.date});
-    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);generateContextualCareerDecision(fixture.date);}saveCareerState();
+    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);generateContextualCareerDecision(fixture.date);v96CaptureLiveRecords(fixture);}saveCareerState();v104AfterUserFixture(fixture,mode);
     return{saved:true,mode,fixture,home,away,homeScore:fixture.homeScore,awayScore:fixture.awayScore,potm,homeSquad:matchdayParticipants(home,fixture),awaySquad:matchdayParticipants(away,fixture),ratings,events:scorers,prePosition:preRow?.pos||null,postPosition:postRow?.pos||null,prePoints:preRow?.pts||0,postPoints:postRow?.pts||0,resultCode,opponent,occasion,resultMoment};
   }
   function playCurrentUserFixture(mode='QUICK SIM'){
@@ -9765,12 +10890,15 @@
   }
   // ---------- V21.0: RepoSports-derived live Quidditch engine ----------
   let v210EngineLoadPromise=null,v210WatchActive=false;
-  const V210_ENGINE_JS='velmora-quidditch-engine.js?v=v61-audio-v1',V210_ENGINE_CSS='velmora-quidditch-engine.css?v=endgame-v30',V210_STANDING_ROOT='assets/quidditch-engine/standing/',V210_RIDER_ROOT='assets/quidditch-engine/players/';
+  const V210_ENGINE_JS='velmora-quidditch-engine.js?v=v103-1-scroll-layout',V210_ENGINE_CSS='velmora-quidditch-engine.css?v=v103-1-scroll-layout',V210_STANDING_ROOT='assets/quidditch-engine/standing/',V210_RIDER_ROOT='assets/quidditch-engine/players/';
   function v210AvatarNumber(player){const m=String(player?.avatar||'').match(/player-(\d+)/i),n=m?Number(m[1]):0;return playerSpriteIds.has(n)?n:playerSpriteCatalog.ids[Math.abs(hashString(`${player?.id||player?.name||'player'}-QUIDDITCH-SPRITE`))%playerSpriteCatalog.ids.length];}
-  function v210EngineStat(v,base=60){const n=Number(v??base);return clamp(.70+((clamp(n,30,99)-40)/59)*.285,.65,.985);}
-  function v210PlayerAttributes(player){const st=player?.stats||{},form=({Excellent:.018,Good:.009,Average:0,'New Signing':.004,Poor:-.012,Terrible:-.022}[player?.form]||0),morale=({'Very Happy':.012,Happy:.006,Content:0,Unhappy:-.010,'Very Unhappy':-.018,Excellent:.012,Good:.006,Okay:0,Poor:-.010,Bad:-.018}[player?.morale]||0),ov=v210EngineStat(player?.ovr,65),fitness=clamp(Number(player?.fitness??82),45,100);const tune=(value,extra=0)=>clamp(value+form+morale+extra,.60,.99);const readiness=trainingRules.technicalModifier(player),ready=(value)=>tune(value,readiness);return{speed:tune(v210EngineStat(st.PAC,player?.ovr)),accel:tune(v210EngineStat(st.PAC,player?.ovr),.006),turn:tune((v210EngineStat(st.PAS,player?.ovr)+ov)/2),passing:ready(v210EngineStat(st.PAS,player?.ovr)),catching:ready(v210EngineStat(st.HAN,player?.ovr)),shooting:ready(v210EngineStat(st.SHO,player?.ovr)),interception:ready(v210EngineStat(st.DEF,player?.ovr)),awareness:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),positioning:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),reaction:ready((v210EngineStat(st.PAC,player?.ovr)+ov)/2),anticipation:ready((v210EngineStat(st.DEF,player?.ovr)+v210EngineStat(st.PAS,player?.ovr))/2),decision:ready((v210EngineStat(st.PAS,player?.ovr)+ov)/2),composure:ready(ov),aggression:tune(.82),stamina:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/900),recovery:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/950)};}
-  function v210PlayerConfig(player,fixture=null){const n=v210AvatarNumber(player),key=String(n).padStart(3,'0');return{id:String(player.id),name:player.name,role:player.role,unavailable:matchdayUnavailable(player,fixture),standing:playerSpriteAssetUrl(`${V210_STANDING_ROOT}player-${key}.png`),riding:playerSpriteAssetUrl(`${V210_RIDER_ROOT}player-${key}.webp`),spriteMetrics:playerSpriteCatalog.frames[n],attributes:v210PlayerAttributes(player),playingTraits:[...(v49EnsureTraits(player)||[])],careerMeta:{sharpness:trainingRules.read(player).sharpness,ovr:Number(player.ovr||0),fitness:Number(player.fitness??100),form:player.form||'',morale:player.morale||''}};}
-  function v210ClubTactics(club){if(club?.id===currentClub?.id)return{defensive:careerPreferences.tactics?.defensive||'Balanced',attacking:careerPreferences.tactics?.attacking||'Balanced',mentality:careerPreferences.tactics?.mentality||'Balanced'};const manager=currentClubManager(club);if(manager&&manager.id!==PLAYER_MANAGER_ID)return aiManagerTacticalProfile(manager,club);return{defensive:'Balanced',attacking:'Balanced',mentality:'Balanced'};}
+  function v210EngineStat(v,base=60){return performanceRules?performanceRules.engineStat(v,base):clamp(.70+((clamp(Number(v??base),30,99)-40)/59)*.285,.65,.985);}
+  function v210PlayerAttributes(player,roleModifier=1){
+    if(performanceRules)return performanceRules.engineAttributes(player,{sharpness:trainingRules.read(player).sharpness,roleModifier});
+    const st=player?.stats||{},form=({Excellent:.018,Good:.009,Average:0,'New Signing':.004,Poor:-.012,Terrible:-.022}[player?.form]||0),morale=({'Very Happy':.005,Happy:.009,Content:0,Unhappy:-.010,'Very Unhappy':-.020,Excellent:.005,Good:.009,Okay:0,Poor:-.010,Bad:-.020}[player?.morale]||0),ov=v210EngineStat(player?.ovr,65),fitness=clamp(Number(player?.fitness??82),45,100);const tune=(value,extra=0)=>clamp(value+form+morale+extra,.60,.99);const readiness=trainingRules.technicalModifier(player),ready=(value)=>tune(value,readiness);return{speed:tune(v210EngineStat(st.PAC,player?.ovr)),accel:tune(v210EngineStat(st.PAC,player?.ovr),.006),turn:tune((v210EngineStat(st.PAS,player?.ovr)+ov)/2),passing:ready(v210EngineStat(st.PAS,player?.ovr)),catching:ready(v210EngineStat(st.HAN,player?.ovr)),shooting:ready(v210EngineStat(st.SHO,player?.ovr)),interception:ready(v210EngineStat(st.DEF,player?.ovr)),awareness:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),positioning:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),reaction:ready((v210EngineStat(st.PAC,player?.ovr)+ov)/2),anticipation:ready((v210EngineStat(st.DEF,player?.ovr)+v210EngineStat(st.PAS,player?.ovr))/2),decision:ready((v210EngineStat(st.PAS,player?.ovr)+ov)/2),composure:ready(ov),aggression:tune(.82),stamina:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/900),recovery:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/950)};
+  }
+  function v210PlayerConfig(player,fixture=null,club=null){const n=v210AvatarNumber(player),key=String(n).padStart(3,'0'),owner=club||clubById(player?.clubId)||currentClub,role=v44DeployedRoleFor(player,owner,fixture)||player.role,roleModifier=v44RoleSuitabilityModifier(player,role);return{id:String(player.id),name:player.name,role,unavailable:matchdayUnavailable(player,fixture),standing:playerSpriteAssetUrl(`${V210_STANDING_ROOT}player-${key}.png`),riding:playerSpriteAssetUrl(`${V210_RIDER_ROOT}player-${key}.webp`),spriteMetrics:playerSpriteCatalog.frames[n],attributes:v210PlayerAttributes(player,roleModifier),playingTraits:[...(v49EnsureTraits(player)||[])],careerMeta:{sharpness:trainingRules.read(player).sharpness,ovr:Number(player.ovr||0),fitness:Number(player.fitness??100),form:player.form||'',morale:player.morale||'',primaryRole:player.role,deployedRole:role,roleFamiliarity:v44RoleFamiliarity(player,role),roleModifier}};}
+  function v210ClubTactics(club){if(club?.id===currentClub?.id){careerPreferences=normalizeCareerPreferences(careerPreferences);return v96NormalizeTactics(careerPreferences.tactics);}const manager=currentClubManager(club);if(manager&&manager.id!==PLAYER_MANAGER_ID)return v96NormalizeTactics(aiManagerTacticalProfile(manager,club));return v96NormalizeTactics({});}
   function v210KnockoutConfig(fixture){let knockoutDecider=['CUP','PLAYOFF'].includes(fixture?.type)||(fixture?.type==='CHAMPIONS_CROWN'&&fixture.ccStage==='FINAL'),aggregateHomeOffset=0,aggregateAwayOffset=0;if(fixture?.type==='CHAMPIONS_CROWN'&&['QUARTER_FINALS','SEMI_FINALS'].includes(fixture.ccStage)&&Number(fixture.ccLeg)===2){knockoutDecider=true;const otherLeg=fixtures.find(f=>f.type==='CHAMPIONS_CROWN'&&f.ccTieId===fixture.ccTieId&&f.fixtureId!==fixture.fixtureId&&f.played);if(otherLeg){aggregateHomeOffset=fixture.homeClubId===otherLeg.homeClubId?Number(otherLeg.homeScore||0):Number(otherLeg.awayScore||0);aggregateAwayOffset=fixture.awayClubId===otherLeg.homeClubId?Number(otherLeg.homeScore||0):Number(otherLeg.awayScore||0);}}return{knockoutDecider,aggregateHomeOffset,aggregateAwayOffset};}
   function ensureVelmoraQuidditchEngineLoaded(){if(window.VelmoraQuidditchEngine)return Promise.resolve(window.VelmoraQuidditchEngine);if(v210EngineLoadPromise)return v210EngineLoadPromise;v210EngineLoadPromise=new Promise((resolve,reject)=>{if(!document.querySelector(`link[href="${V210_ENGINE_CSS}"]`)){const link=document.createElement('link');link.rel='stylesheet';link.href=V210_ENGINE_CSS;document.head.appendChild(link);}const existing=document.querySelector(`script[src="${V210_ENGINE_JS}"]`);if(existing){existing.addEventListener('load',()=>window.VelmoraQuidditchEngine?resolve(window.VelmoraQuidditchEngine):reject(new Error('Quidditch engine API missing')),{once:true});existing.addEventListener('error',()=>reject(new Error('Quidditch engine failed to load')),{once:true});return;}const script=document.createElement('script');script.src=V210_ENGINE_JS;script.async=true;script.onload=()=>window.VelmoraQuidditchEngine?resolve(window.VelmoraQuidditchEngine):reject(new Error('Quidditch engine API missing'));script.onerror=()=>reject(new Error('Quidditch engine failed to load'));document.body.appendChild(script);});return v210EngineLoadPromise;}
   function v210ResumeCareerMusic(wasPlaying){document.body.classList.remove('vm-live-quidditch');if(wasPlaying&&menuMusic?.paused){try{const p=menuMusic.play();p?.catch?.(()=>{});}catch(_){}}v20731UpdateMusicMiniPlayer?.();}
@@ -9778,7 +10906,7 @@
     if(v210WatchActive)return;const {home,away}=fixtureClubs(fixture);if(!home||!away)return;const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:true});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before Watch Match can begin.');return;}const homePlayers=activeStarters(home),awayPlayers=activeStarters(away);
     v210WatchActive=true;const wasMusicPlaying=!!(menuMusic&&!menuMusic.paused);if(wasMusicPlaying){try{menuMusic.pause();}catch(_){}}document.body.classList.add('vm-live-quidditch');v20731UpdateMusicMiniPlayer?.();
     try{
-      const engine=await ensureVelmoraQuidditchEngineLoaded(),stadium=window.VELMORA_STADIUMS.forHomeClub(home),ko=v210KnockoutConfig(fixture),occasion=matchOccasionProfile(fixture,currentClub),opened=await engine.open({careerMode:true,disableAudio:false,ballAsset:'assets/quidditch-engine/ball/velmora-quaffle.png?v=quaffle-1',...stadium,careerFixtureId:fixture.fixtureId,refStandingAsset:'assets/quidditch-engine/referee/whistleworth-standing.webp',refFlyingAsset:'assets/quidditch-engine/referee/whistleworth-flying.webp',homeName:home.name,awayName:away.name,homeAbbr:home.abbr||'',awayAbbr:away.abbr||'',homeBadge:home.badge||'',awayBadge:away.badge||'',homePlayerData:homePlayers.map(p=>v210PlayerConfig(p,fixture)),awayPlayerData:awayPlayers.map(p=>v210PlayerConfig(p,fixture)),homeBenchData:matchdayBench(home).map(p=>v210PlayerConfig(p,fixture)),awayBenchData:matchdayBench(away).map(p=>v210PlayerConfig(p,fixture)),managerSide:currentClub.id===home.id?'home':'away',homeTactics:v210ClubTactics(home),awayTactics:v210ClubTactics(away),stage:fixture.type==='FRIENDLY'?'PRE-SEASON FRIENDLY':fixture.type==='CHAMPIONS_CROWN'?`CHAMPIONS CROWN · ${championsCrownStageLabel(fixture.ccStage)}`:occasion.primaryLabel||fixture.competitionName||'MATCHDAY',seed:hashString(`${worldSeed}-V21-WATCH-${fixture.fixtureId}`),...ko,onClose:()=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);},onComplete:result=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);lastPresentationResult=simulateUserFixture(fixture,'WATCH MATCH',result);if(!lastPresentationResult){showToast('Unable to save live match result');return;}renderResults();showScreen('results');scheduleOverlaySync();}});if(!opened){v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast(engine.getStatus?.().lastOpenError||'Quidditch broadcast could not start');}
+      const engine=await ensureVelmoraQuidditchEngineLoaded(),stadium=window.VELMORA_STADIUMS.forHomeClub(home),ko=v210KnockoutConfig(fixture),occasion=matchOccasionProfile(fixture,currentClub),opened=await engine.open({careerMode:true,disableAudio:false,ballAsset:'assets/quidditch-engine/ball/velmora-quaffle.png?v=quaffle-1',...stadium,careerFixtureId:fixture.fixtureId,refStandingAsset:'assets/quidditch-engine/referee/whistleworth-standing.webp',refFlyingAsset:'assets/quidditch-engine/referee/whistleworth-flying.webp',homeName:home.name,awayName:away.name,homeAbbr:home.abbr||'',awayAbbr:away.abbr||'',homeBadge:home.badge||'',awayBadge:away.badge||'',homePlayerData:homePlayers.map(p=>v210PlayerConfig(p,fixture,home)),awayPlayerData:awayPlayers.map(p=>v210PlayerConfig(p,fixture,away)),homeBenchData:matchdayBench(home).map(p=>v210PlayerConfig(p,fixture,home)),awayBenchData:matchdayBench(away).map(p=>v210PlayerConfig(p,fixture,away)),managerSide:currentClub.id===home.id?'home':'away',homeTactics:v210ClubTactics(home),awayTactics:v210ClubTactics(away),stage:fixture.type==='FRIENDLY'?'PRE-SEASON FRIENDLY':fixture.type==='CHAMPIONS_CROWN'?`CHAMPIONS CROWN · ${championsCrownStageLabel(fixture.ccStage)}`:occasion.primaryLabel||fixture.competitionName||'MATCHDAY',seed:hashString(`${worldSeed}-V21-WATCH-${fixture.fixtureId}`),...ko,onClose:()=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);},onComplete:result=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);lastPresentationResult=simulateUserFixture(fixture,'WATCH MATCH',result);if(!lastPresentationResult){showToast('Unable to save live match result');return;}renderResults();showScreen('results');scheduleOverlaySync();}});if(!opened){v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast(engine.getStatus?.().lastOpenError||'Quidditch broadcast could not start');}
     }catch(error){console.error('[V21] Watch Match failed',error);v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast('Watch Match engine failed to load');}
   }
 
@@ -9808,7 +10936,7 @@
     const maxRound=leagueFixtureRoundMax(fixture.competitionId);return !future&&(!maxRound||Number(fixture.round||0)>=maxRound);
   }
   function isDomesticCupFinal(fixture){
-    if(!fixture||fixture.type!=='CUP')return false;const compId=fixture.competitionId||'domestic_cup',round=Number(fixture.round||1),same=fixtures.filter(f=>f.type==='CUP'&&(f.competitionId||'domestic_cup')===compId&&Number(f.round||1)===round),roundByes=Array.isArray(cupRuntime?.roundByes?.[`${compId}:${round}`])?cupRuntime.roundByes[`${compId}:${round}`]:[];return same.length===1&&roundByes.length===0;
+    if(!fixture||fixture.type!=='CUP')return false;if(fixture.cupStage==='FINAL')return true;const compId=fixture.competitionId||'domestic_cup',round=Number(fixture.round||1),same=fixtures.filter(f=>f.type==='CUP'&&(f.competitionId||'domestic_cup')===compId&&Number(f.round||1)===round),roundByes=Array.isArray(cupRuntime?.roundByes?.[`${compId}:${round}`])?cupRuntime.roundByes[`${compId}:${round}`]:[];return same.length===1&&roundByes.length===0;
   }
   function matchdayUnbeatenStreak(club,beforeDate=null){
     if(!club)return 0;const list=fixtures.filter(f=>f.played&&f.type==='LEAGUE'&&(f.homeClubId===club.id||f.awayClubId===club.id)&&(!beforeDate||f.date<beforeDate)).sort((a,b)=>b.date.localeCompare(a.date)||b.fixtureId.localeCompare(a.fixtureId));let run=0;for(const f of list){const home=f.homeClubId===club.id,gf=Number(home?f.homeScore:f.awayScore),ga=Number(home?f.awayScore:f.homeScore);if(gf<ga)break;run++;}return run;
@@ -10041,7 +11169,7 @@
       ['matchdayIntelHeadline','matchdayIntelNote','matchdayRecHeadline','matchdayRecNote'].forEach(id=>{const el=$(`#${id}`);if(el)el.textContent='';});
       return;
     }
-    const fc=fixtureClubs(fixture),home=fc.home||club,away=fc.away||currentOpponent(),opponent=home.id===club.id?away:home;repairMatchdayLineupForFixture(opponent,fixture,{notify:false});const userReadiness=matchdayLineupReadiness(club,fixture),opponentReadiness=matchdayLineupReadiness(opponent,fixture),days=matchDaysUntil(fixture),isLive=days===0&&!fixture.played,isCC=fixture.type==='CHAMPIONS_CROWN',isCup=['CUP','PLAYOFF'].includes(fixture.type),venue=fixture.neutralVenue||home.arena||'VELMORA ARENA',occasion=matchOccasionProfile(fixture,club),stakes=occasion.primaryLabel,profile=opponentTacticalProfile(opponent),rec=matchStaffRecommendation(opponent),oppRow=leagueRowForClub(opponent),form=recentClubForm(opponent,5),top=currentClub?.id===opponent.id?[...getSquad(opponent)].sort((a,b)=>b.ovr-a.ovr)[0]:seasonPublicKeyPlayer(opponent),topIntel=top?seasonPlayerIntel(top,opponent):null,scoutState=matchdayScoutingSummary(opponent);
+    const fc=fixtureClubs(fixture),home=fc.home||club,away=fc.away||currentOpponent(),opponent=home.id===club.id?away:home;repairMatchdayLineupForFixture(opponent,fixture,{notify:false});const userReadiness=matchdayLineupReadiness(club,fixture),opponentReadiness=matchdayLineupReadiness(opponent,fixture),days=matchDaysUntil(fixture),isLive=days===0&&!fixture.played,isCC=fixture.type==='CHAMPIONS_CROWN',isCup=['CUP','PLAYOFF'].includes(fixture.type),venue=fixture.venueName||(typeof fixture.neutralVenue==='string'?fixture.neutralVenue:null)||home.arena||'VELMORA ARENA',occasion=matchOccasionProfile(fixture,club),stakes=occasion.primaryLabel,profile=opponentTacticalProfile(opponent),rec=matchStaffRecommendation(opponent),oppRow=leagueRowForClub(opponent),form=recentClubForm(opponent,5),top=currentClub?.id===opponent.id?[...getSquad(opponent)].sort((a,b)=>b.ovr-a.ovr)[0]:seasonPublicKeyPlayer(opponent),topIntel=top?seasonPlayerIntel(top,opponent):null,scoutState=matchdayScoutingSummary(opponent);
     screen?.classList.toggle('is-champions-crown',!!isCC);screen?.classList.toggle('is-cup-match',!!isCup);screen?.classList.toggle('is-preview-mode',days>0);screen?.classList.toggle('is-live-mode',isLive);screen?.classList.toggle('is-complete',!!fixture.played);screen?.classList.remove('is-no-fixture','occasion-standard','occasion-major','occasion-marquee','occasion-showpiece');screen?.classList.add(`occasion-${String(occasion.tier||'STANDARD').toLowerCase()}`);
     const competitionBits=[fixture.competitionName||home.division,stakes,shortDateLabel(fixture.date)].filter(Boolean);$('#matchdayCompetition').textContent=competitionBits.join(' · ');if($('#matchdayDateTop'))$('#matchdayDateTop').textContent=shortDateLabel(fixture.date);
     const md2HeroCard=$('#matchdayHeroCard');if(md2HeroCard){const arenaId=String(home.id||'').toLowerCase().replace(/[^a-z0-9-]/g,'');if(arenaId)md2HeroCard.style.setProperty('--matchday-arena',`url('assets/quidditch-engine/arenas/clubs/${arenaId}.webp')`);else md2HeroCard.style.removeProperty('--matchday-arena');}
@@ -10134,7 +11262,9 @@
   }
 
   function makePresentationResult(mode='RESULTS PREVIEW'){
-    const home=currentClub||selectedClub||clubs[0],away=currentOpponent();const rng=mulberry32(hashString(`${worldSeed}-${home.id}-${away.id}-${mode}-${careerSeason}`)),h=Math.floor(rng()*5),a=Math.floor(rng()*5),hs=activeStarters(home),as=activeStarters(away),all=[...hs,...as].sort((x,y)=>y.ovr-x.ovr),potm=all[0]||getSquad(home)[0]||getSquad(away)[0];return {saved:false,mode,home,away,homeScore:h,awayScore:a,potm,homeSquad:hs,awaySquad:as,ratings:[],events:[]};
+    const home=currentClub||selectedClub||clubs[0],away=currentOpponent();const rng=mulberry32(hashString(`${worldSeed}-${home.id}-${away.id}-${mode}-${careerSeason}`)),h=Math.floor(rng()*5),a=Math.floor(rng()*5),hs=activeStarters(home),as=activeStarters(away),events=[];
+    for(let i=0;i<h;i++){const player=weightedScorer(home,rng);events.push({team:home,player,minute:Math.min(88,6+Math.floor(rng()*78))});}for(let i=0;i<a;i++){const player=weightedScorer(away,rng);events.push({team:away,player,minute:Math.min(88,6+Math.floor(rng()*78))});}events.sort((x,y)=>x.minute-y.minute);
+    const goalCount=id=>events.filter(e=>e.player?.id===id).length,all=[...hs,...as].sort((x,y)=>goalCount(y.id)-goalCount(x.id)||y.ovr-x.ovr),potm=all[0]||getSquad(home)[0]||getSquad(away)[0],totalPossession=90+Math.floor(rng()*31),homePossession=Math.round(totalPossession*(.44+rng()*.12)),awayPossession=totalPossession-homePossession,statsFor=(goals,poss)=>{const shots=Math.max(goals+2,goals+3+Math.floor(rng()*7)),onTarget=Math.max(goals,Math.min(shots,goals+1+Math.floor(rng()*4))),passes=34+Math.floor(poss*.72)+Math.floor(rng()*18);return{shots,onTarget,passes,completed:Math.round(passes*(.7+rng()*.18)),possession:poss,interceptions:4+Math.floor(rng()*9),tacklesWon:3+Math.floor(rng()*8),fouls:2+Math.floor(rng()*7)};};return {saved:false,mode,home,away,homeScore:h,awayScore:a,potm,homeSquad:hs,awaySquad:as,ratings:[],events,previewStats:{home:statsFor(h,homePossession),away:statsFor(a,awayPossession)}};
   }
 
   function championsCrownResultImpactHTML(r){
@@ -10149,7 +11279,7 @@
   }
 
   function v24ResultStatsHTML(result){
-    const stats=(result?.fixture?.matchday?.report||result?.fixture?.matchReport)?.teamStats,discipline=result?.fixture?.discipline?.summary||null;
+    const stats=(result?.fixture?.matchday?.report||result?.fixture?.matchReport)?.teamStats||result?.previewStats,discipline=result?.fixture?.discipline?.summary||null;
     const row=(label,home,away)=>`<div><span>${label}</span><b>${home}</b><b>${away}</b></div>`,cardRows=discipline?row('Yellow cards',discipline.home?.yellow||0,discipline.away?.yellow||0)+row('Red cards',discipline.home?.red||0,discipline.away?.red||0):'';
     if(!stats?.home||!stats?.away)return '<h3>MATCH STATISTICS</h3>'+row('Goals',Number(result?.homeScore)||0,Number(result?.awayScore)||0)+cardRows+'<p>Detailed statistics were not recorded for this match.</p>';
     const value=(side,key)=>Math.max(0,Number(stats[side][key])||0),total=value('home','possession')+value('away','possession');
@@ -10158,12 +11288,16 @@
     return '<h3>MATCH STATISTICS</h3>'+row('Possession',homePossession==null?'—':homePossession+'%',homePossession==null?'—':(100-homePossession)+'%')+
       [['Shots','shots'],['On target','onTarget'],['Interceptions','interceptions'],['Tackles won','tacklesWon'],['Fouls','fouls']].map(([label,key])=>row(label,value('home',key),value('away',key))).join('')+cardRows+row('Passing',passing('home'),passing('away'));
   }
+  function v96ResultGoalEvents(result){
+    const actual=(result?.events||[]).map(e=>({minute:Number(e.minute||1),label:e.player?.name||e.playerName||'Goal',detail:`GOAL · ${e.team?.name||e.teamName||''}`,sort:0,kind:'goal'})),expected={home:Math.max(0,Number(result?.homeScore||0)),away:Math.max(0,Number(result?.awayScore||0))},count={home:0,away:0};(result?.events||[]).forEach(e=>{const id=e.team?.id||e.teamId;if(id===result?.home?.id||e.team==='home')count.home++;else if(id===result?.away?.id||e.team==='away')count.away++;});
+    for(const side of ['home','away'])for(let i=count[side];i<expected[side];i++){const team=result?.[side],minute=Math.min(89,Math.max(2,Math.round((i+1)/(expected[side]+1)*88)+(side==='away'?2:0)));actual.push({minute,label:team?.name||`${side} team`,detail:'SCORING PLAY · RESULT RECORD',sort:0,kind:'goal'});}return actual;
+  }
 
   function renderResults(){
     const r=lastPresentationResult||makePresentationResult('RESULTS PREVIEW'),saved=!!r.saved,resultScreen=$('#screenResults'),occasion=r.occasion||(saved?matchOccasionProfile(r.fixture,currentClub):null);resultScreen?.classList.toggle('is-champions-crown',!!(saved&&r.fixture?.type==='CHAMPIONS_CROWN'));if(resultScreen){resultScreen.classList.remove('occasion-standard','occasion-major','occasion-marquee','occasion-showpiece');if(occasion)resultScreen.classList.add(`occasion-${String(occasion.tier||'STANDARD').toLowerCase()}`);const arenaId=String(r.home?.id||'').toLowerCase().replace(/[^a-z0-9-]/g,''),arenaAsset=arenaId?`assets/quidditch-engine/arenas/clubs/${arenaId}.webp`:'assets/ui-v2/results.webp';resultScreen.style.setProperty('--results-arena',`url("${arenaAsset}")`);resultScreen.style.setProperty('--results-home-accent',r.home?.accent||'#c8f51b');resultScreen.style.setProperty('--results-away-accent',r.away?.accent||'#376de5');resultScreen.dataset.resultTone=r.resultCode||'D';resultScreen.dataset.competitionType=r.fixture?.type||'PREVIEW';}$('#resultsCompetition').textContent=saved?`${r.fixture.competitionName} · ${occasion?.primaryLabel?occasion.primaryLabel+' · ':r.fixture.type==='CHAMPIONS_CROWN'?championsCrownStageLabel(r.fixture.ccStage)+' · ':''}${r.mode} · ${shortDateLabel(r.fixture.date)}`:`${r.mode} · PRESENTATION PREVIEW`;setBadge($('#resultsHomeBadge'),r.home);setBadge($('#resultsAwayBadge'),r.away);const homeTeamNode=$('.results-team-home'),awayTeamNode=$('.results-team-away');if(homeTeamNode)homeTeamNode.dataset.score=String(r.homeScore);if(awayTeamNode)awayTeamNode.dataset.score=String(r.awayScore);$('#resultsHomeName').textContent=r.home.name;$('#resultsAwayName').textContent=r.away.name;$('#resultsScore').innerHTML=`<strong>${r.homeScore}</strong><span>–</span><strong>${r.awayScore}</strong>${r.fixture?.decidedOnPenalties?`<small>PENS ${r.fixture.penaltiesHome}–${r.fixture.penaltiesAway}</small>`:''}`;
     $('#resultsStats').innerHTML=v24ResultStatsHTML(r);
-    const goalEvents=(r.events||[]).map(e=>({minute:Number(e.minute||1),label:e.player?.name||'Goal',detail:`GOAL · ${e.team?.name||''}`,sort:0,kind:'goal'})),cardEvents=(r.fixture?.discipline?.events||[]).map(e=>{const team=e.team==='home'?r.home:r.away,p=careerPlayerById(e.playerId),card=e.card==='SECOND_YELLOW'?'SECOND YELLOW / RED':e.card==='RED'?'RED CARD':'YELLOW CARD',isRed=e.card==='RED'||e.card==='SECOND_YELLOW',reason=isRed?disciplineReasonLabel(e.reason):team?.name||'';return{minute:Number(e.minute||1),label:e.playerName||p?.name||'Player',detail:`${card} · ${reason}`,sort:1,kind:'card',tone:isRed?'red':'yellow',second:e.card==='SECOND_YELLOW'};}),ev=[...goalEvents,...cardEvents].sort((a,b)=>a.minute-b.minute||a.sort-b.sort);$('#resultsEvents').innerHTML=`<h3>MATCH EVENTS</h3>${ev.length?ev.map(e=>`<div class="${e.kind==='card'?'is-discipline-event':''}"><span>${e.minute}'</span><strong>${e.kind==='card'?`${e.second?'<i class="discipline-card discipline-card-yellow"></i>':''}<i class="discipline-card discipline-card-${e.tone}"></i>`:''}${escapeHtml(e.label)}</strong><small>${escapeHtml(e.detail)}</small></div>`).join(''):`<div><span>FT</span><strong>NO MAJOR EVENTS</strong><small>DEFENSIVE BATTLE</small></div>`}`;
-    if(r.fixture?.matchday){const log=r.fixture.matchday.substitutions||[],tactics=r.fixture.matchday.tacticalChanges||[];$('#resultsEvents').insertAdjacentHTML('beforeend',`<h3 style="margin-top:18px">MANAGER DECISIONS</h3>${log.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.inName||'Substitute')} ON · ${escapeHtml(e.outName||'Player')} OFF</span></div>`).join('')}${tactics.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.team==='home'?r.home.name:r.away.name)} · ${escapeHtml(e.defensive)} / ${escapeHtml(e.attacking)} / ${escapeHtml(e.mentality)}</span></div>`).join('')}${!log.length&&!tactics.length?'<p>Both teams kept their opening selection and instructions.</p>':''}`);}
+    const goalEvents=v96ResultGoalEvents(r),cardEvents=(r.fixture?.discipline?.events||[]).map(e=>{const team=e.team==='home'?r.home:r.away,p=careerPlayerById(e.playerId),card=e.card==='SECOND_YELLOW'?'SECOND YELLOW / RED':e.card==='RED'?'RED CARD':'YELLOW CARD',isRed=e.card==='RED'||e.card==='SECOND_YELLOW',reason=isRed?disciplineReasonLabel(e.reason):team?.name||'';return{minute:Number(e.minute||1),label:e.playerName||p?.name||'Player',detail:`${card} · ${reason}`,sort:1,kind:'card',tone:isRed?'red':'yellow',second:e.card==='SECOND_YELLOW'};}),ev=[...goalEvents,...cardEvents].sort((a,b)=>a.minute-b.minute||a.sort-b.sort);$('#resultsEvents').innerHTML=`<h3>MATCH EVENTS</h3>${ev.length?ev.map(e=>`<div class="${e.kind==='card'?'is-discipline-event':''}"><span>${e.minute}'</span><strong>${e.kind==='card'?`${e.second?'<i class="discipline-card discipline-card-yellow"></i>':''}<i class="discipline-card discipline-card-${e.tone}"></i>`:''}${escapeHtml(e.label)}</strong><small>${escapeHtml(e.detail)}</small></div>`).join(''):`<div><span>FT</span><strong>NO GOALS</strong><small>SCORELESS CONTEST</small></div>`}`;
+    if(r.fixture?.matchday){const log=r.fixture.matchday.substitutions||[],tactics=r.fixture.matchday.tacticalChanges||[];$('#resultsEvents').insertAdjacentHTML('beforeend',`<h3 style="margin-top:18px">MANAGER DECISIONS</h3>${log.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.inName||'Substitute')} ON · ${escapeHtml(e.outName||'Player')} OFF</span></div>`).join('')}${tactics.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.team==='home'?r.home.name:r.away.name)} · ${escapeHtml(e.defensive)} / ${escapeHtml(e.attacking)} / ${escapeHtml(e.mentality)} · ${escapeHtml(e.width||'Balanced')} width / ${escapeHtml(e.tempo||'Balanced')} tempo / ${escapeHtml(e.freedom||'Balanced')} freedom</span></div>`).join('')}${!log.length&&!tactics.length?'<p>Both teams kept their opening selection and instructions.</p>':''}`);}
     const ratings=r.ratings?.length?r.ratings:[...r.homeSquad,...r.awaySquad].map((p,i)=>({player:p,rating:Number((6.5+((p.ovr+i)%25)/10).toFixed(1))}));$('#resultsRatings').innerHTML=`<h3>PLAYER RATINGS</h3>${ratings.map(({player:p,rating})=>{const part=r.fixture?.matchday?.participation?.[p.id],status=part?.sentOff?'SENT OFF':part?.started?'STARTED':'SUBSTITUTE';return`<div>${avatarHTML(p.avatar,'')}<strong>${escapeHtml(p.name)}${r.fixture?.matchday?`<small style="display:block;font-size:10px;color:${part?.sentOff?'#a52d2d':'#89a6b4'}">${Math.round(part?.minutes||0)} MIN · ${status}</small>`:''}</strong><b>${rating.toFixed(1)}</b></div>`;}).join('')}`;$('#resultsPotm').innerHTML=`<span>PLAYER OF THE MATCH</span><div class="potm-live">${avatarHTML(r.potm.avatar,'')}<div><strong>${escapeHtml(r.potm.name)}</strong><small>${r.potm.role}</small><b>★ ${(ratings.find(x=>x.player.id===r.potm.id)?.rating||8.4).toFixed(1)}</b></div></div>`;
     let impact='';if(saved&&r.fixture.type==='LEAGUE')impact=`<span>LEAGUE IMPACT</span><div class="impact-live">${badgeHTML(currentClub)}<div><strong>${r.prePosition?ordinal(r.prePosition):'—'} → ${r.postPosition?ordinal(r.postPosition):'—'}</strong><small>${r.prePoints} → ${r.postPoints} points · Board confidence ${ensureBoardConfidence()}/100</small></div></div>`;else if(saved&&r.fixture.type==='FRIENDLY'){const ps=v2080PreSeasonProgress();impact=`<span>PRE-SEASON IMPACT</span><div class="impact-live is-friendly">${badgeHTML(currentClub)}<div><strong>${ps.w}W ${ps.d}D ${ps.l}L · ${ps.played}/${ps.total}</strong><small>Readiness and form only · no competitive record or board-confidence change${preSeasonExperience.rewardPaid&&preSeasonExperience.rewardAmount?` · ${formatMoney(preSeasonExperience.rewardAmount)} programme revenue`:''}</small></div></div>`;}else if(saved&&r.fixture.type==='CHAMPIONS_CROWN')impact=championsCrownResultImpactHTML(r);else if(saved)impact=`<span>CUP IMPACT</span><div class="impact-live">${badgeHTML(currentClub)}<div><strong>${r.resultCode==='W'?'ADVANCE':'ELIMINATED / TIE LOST'}</strong><small>${escapeHtml(r.fixture.competitionName||'Domestic Cup')} · Round ${r.fixture.round}</small></div></div>`;else impact=`<span>LEAGUE IMPACT</span><div class="impact-live">${badgeHTML(r.home)}<div><strong>PREVIEW ONLY</strong><small>No career result has been saved.</small></div></div>`;$('#resultsLeagueImpact').innerHTML=`${saved?matchResultMomentHTML(r):''}${impact}`;queueAvatarHydration($('#screenResults'));
   }
@@ -10174,7 +11308,7 @@
     return mediaWorld.pressConferences;
   }
   function pressPlayerPack(player){
-    return player?{id:player.id,name:player.name,role:player.role,age:Number(player.age||0),ovr:Number(player.ovr||0),avatar:player.avatar||'',morale:player.morale||'Content',form:player.form||'Average'}:null;
+    const memories=player?personMemories('PLAYER',player.id):[];return player?{id:player.id,name:player.name,role:player.role,squadRole:player.squadRole||'Squad player',age:Number(player.age||0),ovr:Number(player.ovr||0),avatar:player.avatar||'',morale:player.morale||'Content',form:player.form||'Average',managerTrust:Number(player.managerTrust||50),playingTimeSatisfaction:Number(player.playingTimeSatisfaction||50),contractYears:Number(player.contractYears||0),transferStatus:player.transferStatus||'',publicHistory:memories.length?peopleMemoryLabel('PLAYER',player.id):'',seasonStats:{apps:Number(player.seasonStats?.apps||0),starts:Number(player.seasonStats?.starts||0),goals:Number(player.seasonStats?.goals||0),assists:Number(player.seasonStats?.assists||0)}}:null;
   }
   function pressConferenceContext(stage,fixture){
     if(!fixture||!currentClub)return null;
@@ -10187,36 +11321,49 @@
     const captain=squad.find(p=>p.captain)||starters[0]||featured,young=[...squad].filter(p=>Number(p.age||99)<=21).sort((a,b)=>Number(b.potential||0)-Number(a.potential||0)||Number(b.ovr||0)-Number(a.ovr||0))[0]||null;
     const unavailable=squad.find(p=>matchdayUnavailable(p,fixture))||null,contract=[...squad].filter(p=>Number(p.contractYears||9)<=1).sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0]||null;
     const transfer=squad.find(p=>p.transferRequested||p.transferListed||p.transferStatus==='TRANSFER_LISTED'||transferActivity.has(p.id))||null,opponentStar=[...opposition].sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0]||null;
-    const table=standingsForDivision(currentClub.divisionKey).find(r=>r.club.id===currentClub.id),rivalManager=currentClubManager(opponent),occasion=matchOccasionProfile(fixture,currentClub),world=clubWorldName(currentClub);
+    const table=standingsForDivision(currentClub.divisionKey).find(r=>r.club.id===currentClub.id),rivalManager=currentClubManager(opponent),occasion=matchOccasionProfile(fixture,currentClub),world=clubWorldName(currentClub),rivalManagerHistory=rivalManager?personMemories('MANAGER',rivalManager.id):[];
     const recentStory=careerNewsStories.find(story=>(story.clubId===currentClub.id||(story.relatedClubIds||[]).includes(currentClub.id))&&story.date<=currentCareerISO()&&diffDaysISO(story.date,currentCareerISO())<=14);
-    const reporters=(WORLD_REPORTERS[world]||Object.values(WORLD_REPORTERS)[0]||[]).map((reporter,index)=>{const profile=mediaJournalistProfile(reporter,world),brand=(WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora||[])[index%(WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora||[{short:'VELMORA SPORT'}]).length];return{...profile,outlet:brand?.short||brand?.name||'VELMORA SPORT',avatar:officeIdentityAsset(`portrait-${String(9+(hashString(`${world}-${reporter.name}`)%32)).padStart(2,'0')}.webp`)};});
+    const reporters=(WORLD_REPORTERS[world]||Object.values(WORLD_REPORTERS)[0]||[]).map((reporter,index)=>{const profile=mediaJournalistProfile(reporter,world),brand=(WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora||[])[index%(WORLD_MEDIA_BRANDS[world]||WORLD_MEDIA_BRANDS.Velmora||[{short:'VELMORA SPORT'}]).length],memories=personMemories('REPORTER',profile.id);return{...profile,outlet:brand?.short||brand?.name||'VELMORA SPORT',avatar:officeIdentityAsset(`portrait-${String(9+(hashString(`${world}-${reporter.name}`)%32)).padStart(2,'0')}.webp`),publicHistory:memories.length?peopleMemoryLabel('REPORTER',profile.id):''};});
     const homeScore=Number(fixture.homeScore||0),awayScore=Number(fixture.awayScore||0),ownScore=currentClub.id===home.id?homeScore:awayScore,oppScore=currentClub.id===home.id?awayScore:homeScore,resultCode=stage==='post'?(ownScore>oppScore?'W':ownScore<oppScore?'L':'D'):null;
     const cardCount=(fixture.discipline?.events||[]).filter(e=>(e.team==='home'?home.id:away.id)===currentClub.id).length;
-    return{stage,fixtureId:fixture.fixtureId,date:fixture.date||currentCareerISO(),club:{id:currentClub.id,name:currentClub.name,abbr:currentClub.abbr,badge:currentClub.badge},opponent:{id:opponent.id,name:opponent.name,abbr:opponent.abbr,badge:opponent.badge},competition:fixture.competitionName||'Matchday',venue:fixture.venue||home.stadium||`${home.name} Stadium`,world,managerName,occasion:occasion.primaryLabel||occasion.secondaryLabel||fixture.competitionName||'Matchday',marquee:['MARQUEE','SHOWPIECE'].includes(String(occasion.tier||'')),form:recentClubForm(currentClub,5).join(' ')||'Season opening',boardLabel:boardRelationshipLabel(ensureBoardConfidence()),tablePosition:table?.pos||0,tableSuffix:table?ordinal(table.pos).replace(String(table.pos),''):'',tactic:careerPreferences?.tactics?.attacking||'Balanced',recentStory:recentStory?.title||'',rivalManager:rivalManager&&rivalManager.id!==PLAYER_MANAGER_ID?{id:rivalManager.id,name:rivalManager.name,style:rivalManager.mediaStyle||rivalManager.archetype||'Measured'}:null,score:stage==='post'?`${homeScore}–${awayScore}`:'',resultCode,resultLabel:resultCode==='W'?'victory':resultCode==='L'?'defeat':'draw',cards:cardCount,players:{featured:pressPlayerPack(featured),captain:pressPlayerPack(captain),young:pressPlayerPack(young),unavailable:pressPlayerPack(unavailable),contract:pressPlayerPack(contract),transfer:pressPlayerPack(transfer),potm:pressPlayerPack(ownPotm),scorer:pressPlayerPack(scorer),opponentStar:pressPlayerPack(opponentStar)},reporters};
+    return{stage,fixtureId:fixture.fixtureId,date:fixture.date||currentCareerISO(),club:{id:currentClub.id,name:currentClub.name,abbr:currentClub.abbr,badge:currentClub.badge},opponent:{id:opponent.id,name:opponent.name,abbr:opponent.abbr,badge:opponent.badge},competition:fixture.competitionName||'Matchday',venue:fixture.venue||home.stadium||`${home.name} Stadium`,world,managerName,occasion:occasion.primaryLabel||occasion.secondaryLabel||fixture.competitionName||'Matchday',marquee:['MARQUEE','SHOWPIECE'].includes(String(occasion.tier||'')),form:recentClubForm(currentClub,5).join(' ')||'Season opening',boardLabel:boardRelationshipLabel(ensureBoardConfidence()),tablePosition:table?.pos||0,tableSuffix:table?ordinal(table.pos).replace(String(table.pos),''):'',tactic:careerPreferences?.tactics?.attacking||'Balanced',recentStory:recentStory?.title||'',rivalManager:rivalManager&&rivalManager.id!==PLAYER_MANAGER_ID?{id:rivalManager.id,name:rivalManager.name,style:rivalManager.mediaStyle||rivalManager.archetype||'Measured',publicHistory:rivalManagerHistory.length?peopleMemoryLabel('MANAGER',rivalManager.id):''}:null,score:stage==='post'?`${homeScore}–${awayScore}`:'',resultCode,resultLabel:resultCode==='W'?'victory':resultCode==='L'?'defeat':'draw',cards:cardCount,players:{featured:pressPlayerPack(featured),captain:pressPlayerPack(captain),young:pressPlayerPack(young),unavailable:pressPlayerPack(unavailable),contract:pressPlayerPack(contract),transfer:pressPlayerPack(transfer),potm:pressPlayerPack(ownPotm),scorer:pressPlayerPack(scorer),opponentStar:pressPlayerPack(opponentStar)},reporters};
   }
   function pressReporterRecord(reporter){
     const record=mediaJournalistRelation(reporter?.id||reporter?.name||'PRESS ROOM');record.interactions=Number(record.interactions||0)+1;record.lastDate=currentCareerISO();return record;
   }
   function pressImpactChip(label,tone='neutral'){return{label,tone};}
+  function pressImpactCopy(text,question,context){const player=question?.targetName||'The player',subject=question?.targetName||context?.opponent?.name||context?.club?.name||'the situation';return String(text||'').replaceAll('{player}',player).replaceAll('{subject}',subject).replaceAll('{club}',context?.club?.name||'the club').replaceAll('{opponent}',context?.opponent?.name||'the opposition');}
   function applyPressConferenceImpact(choice,question,context,text,session){
-    const squad=getSquad(currentClub),target=squad.find(p=>p.id===question.targetId)||null,reporter=pressReporterRecord(question.reporter),chips=[];let positive=0,negative=0,relationDelta=0,statementTone='neutral';
-    const touchSquad=(delta,count=2)=>squad.filter(p=>p.id!==target?.id).sort((a,b)=>hashString(`${session.id}-${question.id}-${a.id}`)-hashString(`${session.id}-${question.id}-${b.id}`)).slice(0,count).forEach(p=>adjustPlayerMorale(p,delta));
-    if(choice.id==='supportive'){if(target){adjustPlayerMorale(target,1);adjustPlayerManagerTrust(target,2,'Publicly backed in press conference');chips.push(pressImpactChip(`${target.name} feels backed`,'positive'));}else{touchSquad(1,3);chips.push(pressImpactChip('Dressing room lifted','positive'));}relationDelta=1;positive+=2;}
-    if(choice.id==='accountable'){if(context.stage==='post'&&context.resultCode!=='W'){touchSquad(1,2);chips.push(pressImpactChip('Pressure taken off players','positive'));}shiftBoardConfidence(1,'Manager accepted public responsibility');relationDelta=2;roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+1,0,100);chips.push(pressImpactChip('Board respects accountability','positive'));positive+=2;}
-    if(choice.id==='demanding'){if(target){const traits=playerStoryTraits(target),responds=Number(traits.professionalism||60)>=70;adjustPlayerMorale(target,responds?1:-1);adjustPlayerManagerTrust(target,responds?1:-1,'Public standards challenge');chips.push(pressImpactChip(`${target.name} ${responds?'accepts the challenge':'feels exposed'}`,responds?'positive':'negative'));if(responds)positive++;else negative++;}else{touchSquad(context.resultCode==='L'?-1:0,3);chips.push(pressImpactChip('Squad challenged',context.resultCode==='L'?'negative':'neutral'));}shiftBoardConfidence(1,'Publicly reinforced performance standards');chips.push(pressImpactChip('Board notes high standards','positive'));positive++;statementTone='provocative';}
-    if(choice.id==='guarded'){if(target){adjustPlayerManagerTrust(target,2,'Protected from public criticism');chips.push(pressImpactChip(`${target.name} feels protected`,'positive'));positive++;}relationDelta=-3;chips.push(pressImpactChip('Reporter access cools','negative'));negative++;}
-    if(choice.id==='bold'){touchSquad(1,3);statementTone='provocative';const boardDelta=context.stage==='post'&&context.resultCode==='L'?-1:1;shiftBoardConfidence(boardDelta,'Bold public press statement');roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+1,0,100);relationDelta=1;chips.push(pressImpactChip('Squad energised','positive'),pressImpactChip('Words may return later',boardDelta<0?'negative':'neutral'));positive+=2;if(boardDelta<0)negative++;}
-    if(choice.id==='human'){if(target){adjustPlayerMorale(target,1);adjustPlayerManagerTrust(target,1,'Human public response');}else touchSquad(1,2);relationDelta=3;chips.push(pressImpactChip('Authenticity lands well','positive'),pressImpactChip('Media access warms','positive'));positive+=2;}
-    reporter.score=clamp(Number(reporter.score||50)+relationDelta,0,100);question.reporter.relationship=reporter.score;
-    const statement=recordMediaStatement({clubId:currentClub.id,tone:statementTone,topic:question.categoryId,rivalManagerId:context.rivalManager?.id||null,reporterId:question.reporter?.id||null,summary:text,date:context.date});
-    recordCareerMemory({type:'PRESS_CONFERENCE_ANSWER',clubId:currentClub.id,playerId:target?.id||null,date:context.date,metadata:{stage:context.stage,fixtureId:context.fixtureId,question:question.categoryId,stance:choice.stance||choice.label,statementId:statement.id}});
-    const reaction=relationDelta>=3?'IMPRESSED':relationDelta>0?'ENGAGED':relationDelta<=-3?'PUSHING BACK':choice.id==='bold'?'HEADLINE MADE':'NOTED';
-    return{chips,reaction,positive,negative,relationship:reporter.score,ticker:choice.id==='bold'?'A strong line ripples across the press room.':choice.id==='guarded'?'The reporter is already preparing a follow-up.':choice.id==='human'?'The room softens as the answer lands.':'Your answer is being filed for the matchday story.'};
+    const squad=getSquad(currentClub),target=squad.find(p=>p.id===question.targetId)||null,namedTarget=careerPlayerById(question.targetId)||target,reporter=pressReporterRecord(question.reporter),effects=choice.effects&&typeof choice.effects==='object'?choice.effects:{},chips=[];let positive=0,negative=0;
+    const addChip=(label,tone='neutral')=>{if(!label)return;chips.push(pressImpactChip(label,tone));if(tone==='positive')positive++;if(tone==='negative')negative++;};
+    const touchSquad=(delta,count=2,reason='Public press-conference message')=>squad.filter(p=>p.id!==target?.id).sort((a,b)=>hashString(`${session.id}-${question.id}-${a.id}`)-hashString(`${session.id}-${question.id}-${b.id}`)).slice(0,count).forEach(p=>{adjustPlayerMorale(p,delta);if(delta)adjustPlayerManagerTrust(p,Math.sign(delta),reason);});
+    if(target&&Number(effects.targetMorale||0)){adjustPlayerMorale(target,Number(effects.targetMorale));addChip(`${target.name} · morale ${Number(effects.targetMorale)>0?'up':'down'}`,Number(effects.targetMorale)>0?'positive':'negative');}
+    if(target&&Number(effects.targetTrust||0)){adjustPlayerManagerTrust(target,Number(effects.targetTrust),'Public press-conference statement');addChip(`${target.name} · trust ${Number(effects.targetTrust)>0?'up':'down'}`,Number(effects.targetTrust)>0?'positive':'negative');}
+    if(Number(effects.squadMorale||0)){touchSquad(Number(effects.squadMorale),Number(effects.squadCount||3));addChip(`Dressing room ${Number(effects.squadMorale)>0?'lifted':'unsettled'}`,Number(effects.squadMorale)>0?'positive':'negative');}
+    if(target&&effects.targetTest){const traits=playerStoryTraits(target),score=Number(traits[effects.targetTest]||traits.professionalism||60),responds=score>=68;adjustPlayerMorale(target,responds?1:-1);adjustPlayerManagerTrust(target,responds?1:-2,'Publicly challenged by manager');addChip(`${target.name} ${responds?'accepts the challenge':'feels exposed'}`,responds?'positive':'negative');}
+    if(effects.squadTest){const sample=squad.filter(p=>p.id!==target?.id).sort((a,b)=>hashString(`${session.id}-${choice.id}-${a.id}`)-hashString(`${session.id}-${choice.id}-${b.id}`)).slice(0,Number(effects.squadCount||4)),responders=sample.filter(p=>Number(playerStoryTraits(p)[effects.squadTest]||60)>=68);sample.forEach(p=>adjustPlayerMorale(p,responders.includes(p)?1:-1));addChip(responders.length>=Math.ceil(sample.length/2)?'Senior players accept the challenge':'Some players feel publicly exposed',responders.length>=Math.ceil(sample.length/2)?'positive':'negative');}
+    if(Number(effects.board||0)){shiftBoardConfidence(Number(effects.board),'Press-conference statement');addChip(`Board confidence ${Number(effects.board)>0?'up':'down'}`,Number(effects.board)>0?'positive':'negative');}
+    if(Number(effects.reputation||0)){roadToGlory.managerReputation=clamp(Number(roadToGlory.managerReputation||18)+Number(effects.reputation),0,100);addChip(`Manager reputation ${Number(effects.reputation)>0?'up':'down'}`,Number(effects.reputation)>0?'positive':'negative');}
+    const rivalry=context.rivalManager?.id?(managerMarket.rivalries[context.rivalManager.id]||(managerMarket.rivalries[context.rivalManager.id]={meetings:0,wins:0,draws:0,losses:0,lastDate:null,heat:20,respect:55})):null;
+    if(rivalry&&Number(effects.rivalHeat||0)){rivalry.heat=clamp(Number(rivalry.heat||0)+Number(effects.rivalHeat),0,100);addChip(`Rivalry heat ${Number(effects.rivalHeat)>0?'up':'down'}`,Number(effects.rivalHeat)>0?'negative':'positive');}
+    if(rivalry&&Number(effects.rivalRespect||0)){rivalry.respect=clamp(Number(rivalry.respect??55)+Number(effects.rivalRespect),0,100);addChip(`${context.rivalManager.name} · respect ${Number(effects.rivalRespect)>0?'up':'down'}`,Number(effects.rivalRespect)>0?'positive':'negative');}
+    const relationDelta=Number(effects.reporter||0);reporter.score=clamp(Number(reporter.score||50)+relationDelta,0,100);question.reporter.relationship=reporter.score;if(relationDelta)addChip(`${question.reporter?.name||'Reporter'} · access ${relationDelta>0?'warmer':'cooler'}`,relationDelta>0?'positive':'negative');
+    if(effects.callback)addChip('Your words can be revisited','neutral');
+    (effects.tags||[]).forEach(tag=>addChip(pressImpactCopy(tag,question,context),'neutral'));
+    const statementTone=effects.tone==='respectful'?'respectful':effects.headline||effects.callback||Number(effects.rivalHeat||0)>=3?'provocative':'neutral',statement=recordMediaStatement({clubId:currentClub.id,tone:statementTone,topic:question.categoryId,rivalManagerId:context.rivalManager?.id||null,reporterId:question.reporter?.id||null,summary:text,date:context.date});
+    statement.choiceId=choice.id;statement.choiceLabel=choice.label;statement.callback=effects.callback||null;statement.headline=!!effects.headline;statement.fixtureId=context.fixtureId;statement.targetId=namedTarget?.id||null;
+    const assessment=pressMemoryAssessment(choice,effects,question,text);if(namedTarget){recordPeopleMemory({personType:'PLAYER',personId:namedTarget.id,personName:namedTarget.name,clubId:namedTarget.clubId||currentClub.id,label:assessment.label,summary:text,valence:assessment.valence,strength:assessment.strength,statementId:statement.id,fixtureId:context.fixtureId,reporterId:question.reporter?.id||null,callbackEligible:assessment.callbackEligible});const cascade=target?applyCliquePressReaction(target,assessment.valence,assessment.strength,text):null;if(cascade?.affected)addChip(`${cascade.label} reacts`,assessment.valence>0?'positive':assessment.valence<0?'negative':'neutral');if(assessment.strength>=3)addChip(`${namedTarget.name} will remember this`,assessment.valence<0?'negative':'neutral');}
+    if(context.rivalManager?.id&&(Number(effects.rivalHeat||0)||Number(effects.rivalRespect||0)||String(question.categoryId).includes('RIVAL'))){const managerValue=Number(effects.rivalRespect||0)-Number(effects.rivalHeat||0),managerValence=managerValue>=2?1:managerValue<=-2?-1:assessment.valence,managerStrength=clamp(Math.round(1+Math.abs(managerValue)/2+(effects.headline?1:0)),1,5),blockUntil=managerValence<0&&managerStrength>=4?addDaysISO(context.date,150+managerStrength*30):null;recordPeopleMemory({personType:'MANAGER',personId:context.rivalManager.id,personName:context.rivalManager.name,clubId:context.opponent.id,label:managerValence<0?'PUBLIC RIFT':managerValence>0?'PUBLIC RESPECT':'RIVALRY HISTORY',summary:text,valence:managerValence,strength:managerStrength,statementId:statement.id,fixtureId:context.fixtureId,reporterId:question.reporter?.id||null,blockUntil,callbackEligible:true});if(managerStrength>=3)addChip(`${context.rivalManager.name} remembers`,managerValence<0?'negative':'neutral');}
+    if(question.reporter?.id&&(relationDelta||effects.callback||effects.headline)){const reporterValence=relationDelta>0?1:relationDelta<0?-1:0;recordPeopleMemory({personType:'REPORTER',personId:question.reporter.id,personName:question.reporter.name,clubId:currentClub.id,label:reporterValence<0?'PRESS FRICTION':reporterValence>0?'TRUSTED ACCESS':'NOTABLE EXCHANGE',summary:text,valence:reporterValence,strength:clamp(Math.abs(relationDelta)+(effects.callback?1:0)+(effects.headline?1:0),1,5),statementId:statement.id,fixtureId:context.fixtureId,reporterId:question.reporter.id,callbackEligible:true});}
+    recordCareerMemory({type:'PRESS_CONFERENCE_ANSWER',clubId:currentClub.id,playerId:namedTarget?.id||null,date:context.date,metadata:{stage:context.stage,fixtureId:context.fixtureId,question:question.categoryId,stance:choice.stance||choice.label,choiceId:choice.id,choiceLabel:choice.label,statementId:statement.id,callback:effects.callback||null,headline:!!effects.headline}});
+    const delayedThread=recordPressConferenceAudienceMemory(choice,question,context,text,session,effects,assessment);if(delayedThread)addChip('Story remains live','neutral');
+    const reaction=relationDelta<=-2?'PUSHES BACK':effects.headline?'HAS THE HEADLINE':relationDelta>=2?'GETS THE DETAIL':effects.targetTest||effects.squadTest?'NOTES THE CHALLENGE':'FILES THE ANSWER',ticker=relationDelta<=-2?`${question.reporter?.name||'The reporter'} is not satisfied and may press the point.`:effects.headline?'Camera shutters fire as the strongest line lands.':effects.callback?'The answer is marked for a future question.':namedTarget?`${namedTarget.name} will hear exactly what was said.`:'The answer goes onto the matchday record.';
+    return{chips:chips.slice(0,6),reaction,positive,negative,relationship:reporter.score,ticker,headline:!!effects.headline,callback:effects.callback||null};
   }
   function completePressConference(session,context){
     const state=pressConferenceState(),clean=deepClone(session);delete clean.context;clean.status='COMPLETED';state.fixtureSessions[session.key]=clean;state.history.push({id:session.id,fixtureId:session.fixtureId,stage:session.stage,date:session.date,status:'COMPLETED',answers:session.answers.length,lastStance:session.answers.at(-1)?.stance||'MEASURED'});state.history=state.history.slice(-180);
-    const last=session.answers.at(-1),bold=session.answers.some(a=>a.choiceId==='bold');
-    if(bold||session.answers.length>=4){addCareerNews({id:`press-${session.fixtureId}-${session.stage}`,category:'PRESS CONFERENCE',clubId:currentClub.id,relatedClubIds:[currentClub.id,context.opponent.id],title:bold?`${managerName.toUpperCase()} SETS BOLD TONE AROUND ${currentClub.name.toUpperCase()}`:`${managerName.toUpperCase()} FACES MEDIA AROUND ${context.opponent.name.toUpperCase()} FIXTURE`,body:[last?.text||`${managerName} completed media duties.`,`${session.answers.length} questions were answered in the ${context.stage==='pre'?'pre-match':'post-match'} press conference.`,`The comments now form part of the public record around ${currentClub.name}.`],date:context.date,sourceConfidence:'CONFIRMED'});}
+    const last=session.answers.at(-1),lead=session.answers.find(answer=>answer.impact?.headline)||session.answers.find(answer=>answer.impact?.callback)||last;
+    if(lead||session.answers.length>=3){addCareerNews({id:`press-${session.fixtureId}-${session.stage}`,category:'PRESS CONFERENCE',clubId:currentClub.id,relatedClubIds:[currentClub.id,context.opponent.id],title:lead?.impact?.headline?`“${String(lead.choiceLabel||lead.stance||'MANAGER STATEMENT').toUpperCase()}” — ${managerName.toUpperCase()}`:`${managerName.toUpperCase()} FACES QUESTIONS AROUND ${context.opponent.name.toUpperCase()} FIXTURE`,body:[lead?.text||`${managerName} completed media duties.`,...(session.answers.filter(answer=>answer!==lead).slice(0,2).map(answer=>answer.text)),`${session.answers.length} answers are now attached to the fixture record.`],date:context.date,sourceConfidence:'CONFIRMED',reporterId:lead?.reporterId||null});}
     saveCareerState();
   }
   let pressConferenceSystem=null;
@@ -10358,8 +11505,9 @@
     return pool[seed%pool.length];
   }
   function officeSenderPortrait(m){
-    if(m.senderPortrait)return m.senderPortrait;
     const player=officeSenderPlayer(m);if(player?.avatar)return player.avatar;
+    const personnelRole=window.VelmoraPersonnelIdentity?.roleForMessage?.(m);if(personnelRole)return window.VelmoraPersonnelIdentity.asset(personnelRole);
+    if(m.senderPortrait)return m.senderPortrait;
     return officeIdentityAsset(`portrait-${String(officeIdentityPortraitIndex(m)).padStart(2,'0')}.webp`);
   }
   function officeMessageFacts(m){
@@ -10622,21 +11770,67 @@
     return true;
   }
 
+  // V73 — turn correspondence into a readable management situation without
+  // changing the underlying event facts, outcomes or save-game structures.
+  function officeInboxSceneAsset(m,style=v38MailStyle(m)){
+    const root='assets/inbox-pixel-v2/';
+    if(['TRAINING','SQUAD','STAFF'].includes(m.type)||style.key==='player')return`${root}scene-dressing-room.png`;
+    if(['TRANSFERS','SCOUTING','CONTRACTS'].includes(m.type)||['scout','transfer'].includes(style.key))return`${root}scene-recruitment.png`;
+    if(m.type==='MEDICAL'||style.key==='medical')return`${root}scene-medical.png`;
+    if(m.type==='YOUTH')return`${root}scene-academy.png`;
+    if(m.type==='MEDIA'||style.key==='press')return`${root}scene-press.png`;
+    return`${root}scene-boardroom.png`;
+  }
+
+  function officeInboxSituation(m){
+    const event=v37InboxDecision(m),club=currentClub||selectedClub||clubs[0],player=event?.playerId?careerPlayerById(event.playerId):officeSenderPlayer(m),secondary=event?.secondaryPlayerId?careerPlayerById(event.secondaryPlayerId):null,next=nextUserFixture(currentCareerISO(),true),opponent=next?clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId):null;
+    const trust=player?playerTrustLabel(player.managerTrust):m.type==='BOARD'?boardRelationshipLabel(boardConfidenceValue()):'Club channel';
+    const mood=player?playerHappinessLabel(playerHappinessBreakdown(player,club).overall):event&&!event.resolved?'Awaiting direction':'Professional';
+    const due=event?.resolved?'Decision recorded':event?.expiresDate?`Due ${shortDateLabel(event.expiresDate)}`:event&&!event.optional?(next?`Before ${shortDateLabel(next.date)}`:'Reply requested'):m.action?'Follow-up available':'No action needed';
+    const stakes=({PLAYING_TIME:'Trust & selection',TRAINING_CLASH:'Squad harmony',DISCIPLINE_APPEAL:'Player availability',CONTRACT:'Player future',BAD_RUN:'Morale & confidence',PROSPECT:'Development pathway',GOOD_RUN:'Squad mentality',PLAYER_RELATIONSHIP:'Manager trust',CAPTAIN_MEETING:'Dressing-room mood',CLUB_LIFE:'Club relationships',UNEXPECTED_EVENT:'Club direction'}[event?.kind]||({BOARD:'Board confidence',TRANSFERS:'Recruitment plan',SCOUTING:'Squad planning',MEDICAL:'Match availability',FINANCE:'Club resources',CONTRACTS:'Squad planning',YOUTH:'Player pathway',SQUAD:'Dressing-room mood',TRAINING:'Preparation',MEDIA:'Public narrative'}[m.type]||'Club context'));
+    const nextLabel=next&&opponent?`${next.homeClubId===club.id?'HOME':'AWAY'} · ${opponent.name}`:'Awaiting fixture';
+    return{event,player,secondary,trust,mood,due,stakes,nextLabel};
+  }
+
+  function officeInboxChoiceMeta(event,choice,index=0){
+    const key=String(choice?.id||'').toLowerCase(),explicit=String(choice?.tone||'').toUpperCase();
+    let tone=explicit||({promise:'COMMIT',work:'CHALLENGE',plans:'DIRECT',captain:'TAKE A SIDE',other:'TAKE A SIDE',internal:'MEDIATE',accept:'PRAGMATIC',appeal:'DEFEND',back:'SUPPORT',demand:'DEMAND',listen:'LISTEN',protect:'PROTECT',standards:'RAISE STANDARDS',supportive:'SUPPORTIVE',playful:'PERSONAL',focused:'FOCUSED'}[key]||['MEASURED','DIRECT','BOLD'][index%3]);
+    const impact=({PLAYING_TIME:'Trust · selection',TRAINING_CLASH:'Morale · hierarchy',DISCIPLINE_APPEAL:'Availability · risk',CONTRACT:'Future · morale',BAD_RUN:'Morale · standards',PROSPECT:'Development',GOOD_RUN:'Squad mentality',PLAYER_RELATIONSHIP:'Manager trust',CAPTAIN_MEETING:'Leadership · morale',CLUB_LIFE:'Relationships',UNEXPECTED_EVENT:'Club direction'}[event?.kind]||'Situation outcome');
+    const color=/SUPPORT|LISTEN|PROTECT|PERSONAL/.test(tone)?'#3eae8e':/DIRECT|DEMAND|SIDE|BOLD|DEFEND/.test(tone)?'#d47756':/COMMIT/.test(tone)?'#b79445':'#398da0';
+    return{tone,impact,color};
+  }
+
+  function officeInboxOutcome(event,choice){
+    const key=`${event?.kind||'GENERAL'}:${choice?.id||''}`,specific={
+      'TRAINING_CLASH:internal':{copy:'The room settles. Both players accept that the matter stays inside the group, but the next training session will show whether the tension has truly passed.',tags:['Squad harmony','Board noticed']},
+      'TRAINING_CLASH:captain':{copy:'You have backed one voice in the dispute. The player feels supported; the other side of the dressing room will remember the call.',tags:['Player trust','Dressing-room hierarchy']},
+      'TRAINING_CLASH:other':{copy:'You have backed one voice in the dispute. The player feels supported; the other side of the dressing room will remember the call.',tags:['Player trust','Dressing-room hierarchy']},
+      'PLAYING_TIME:promise':{copy:'The player leaves with a clear commitment. Your next team sheets now carry more weight than the conversation itself.',tags:['Promise active','Manager trust']},
+      'PLAYING_TIME:work':{copy:'The player accepts the challenge, though the uncertainty around their role remains.',tags:['Selection pressure','Manager trust']},
+      'PLAYING_TIME:plans':{copy:'The conversation ends clearly. The player now understands that a move may be the next step.',tags:['Player future','Transfer status']},
+      'DISCIPLINE_APPEAL:appeal':{copy:'The paperwork has gone to the panel. The club must now wait for the ruling.',tags:['Appeal pending','Availability']},
+      'DISCIPLINE_APPEAL:accept':{copy:'The club accepts the ruling and will plan around the suspension.',tags:['Decision final','Availability']}
+    };
+    return specific[key]||{copy:'Your response is now part of the club’s story. Its effects will surface through relationships, selection and the next developments around the team.',tags:['Decision recorded','World will react']};
+  }
+
   function renderOfficeInbox(){
-    const all=buildOfficeMessages();
+    const all=buildOfficeMessages(),club=currentClub||selectedClub||clubs[0],next=nextUserFixture(currentCareerISO(),true),opponent=next?clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId):null;
     const unread=all.filter(m=>!officeReadMessages.has(m.id)&&notificationPriorityForMessage(m)!=='ROUTINE');
     $('#officeUnreadCount').textContent=unread.length;
     const filterWrap=$('#officeInboxFilters');
     if(filterWrap){
-      filterWrap.innerHTML=`<button type="button" ${officeInboxFilter==='all'?'class="is-active"':''} data-inbox-filter="all">ALL</button><button type="button" ${officeInboxFilter==='unread'?'class="is-active"':''} data-inbox-filter="unread">UNREAD</button><button type="button" ${officeInboxFilter==='action'?'class="is-active"':''} data-inbox-filter="action">ACTION</button><button type="button" ${officeInboxFilter==='board'?'class="is-active"':''} data-inbox-filter="board">BOARD</button><button type="button" ${officeInboxFilter==='squad'?'class="is-active"':''} data-inbox-filter="squad">SQUAD</button><button type="button" ${officeInboxFilter==='transfers'?'class="is-active"':''} data-inbox-filter="transfers">TRANSFERS</button>`;
+      filterWrap.innerHTML=`<button type="button" ${officeInboxFilter==='all'?'class="is-active"':''} data-inbox-filter="all">BRIEFING</button><button type="button" ${officeInboxFilter==='action'?'class="is-active"':''} data-inbox-filter="action">DECISIONS</button><button type="button" ${officeInboxFilter==='unread'?'class="is-active"':''} data-inbox-filter="unread">UNREAD</button><button type="button" ${officeInboxFilter==='squad'?'class="is-active"':''} data-inbox-filter="squad">PEOPLE</button><button type="button" ${officeInboxFilter==='transfers'?'class="is-active"':''} data-inbox-filter="transfers">RECRUITMENT</button><button type="button" ${officeInboxFilter==='board'?'class="is-active"':''} data-inbox-filter="board">BOARD</button>`;
     }
     const list=all.filter(m=>officeMessageMatchesFilter(m,officeInboxFilter)||(officeInboxFilter==='unread'&&m.id===selectedOfficeMessageId)),routine=list.filter(m=>notificationPriorityForMessage(m)==='ROUTINE'),featured=list.filter(m=>notificationPriorityForMessage(m)!=='ROUTINE'),collapseRoutine=['all','unread'].includes(officeInboxFilter);
     if(!selectedOfficeMessageId||!list.some(m=>m.id===selectedOfficeMessageId))selectedOfficeMessageId=(featured[0]||routine[0])?.id||null;
     $('#officeUnreadCount').textContent=all.filter(m=>!officeReadMessages.has(m.id)&&notificationPriorityForMessage(m)!=='ROUTINE').length;
     const waiting=all.filter(m=>{const d=v37InboxDecision(m);return d&&!d.resolved&&!d.optional;}).length,optional=all.filter(m=>{const d=v37InboxDecision(m);return d&&!d.resolved&&d.optional;}).length;
-    const row=m=>{const priority=officeMessagePriority(m),isRead=officeReadMessages.has(m.id),style=v38MailStyle(m);return `<button type="button" class="v37-mail-row v38-mail-row v38-tone-${style.key} priority-${notificationPriorityForMessage(m).toLowerCase()} ${m.id===selectedOfficeMessageId?'is-selected':''} ${isRead?'is-read':'is-unread'}" data-office-message="${escapeHtml(m.id)}" aria-pressed="${m.id===selectedOfficeMessageId}"><span class="v38-mail-portrait"><span class="v37-mail-avatar">${avatarHTML(officeSenderPortrait(m),m.sender)}</span><span class="v38-mail-emblem">${v38MailIcon(style.icon)}</span></span><span class="v37-mail-copy"><span class="v38-mail-department">${escapeHtml(style.label)}</span><span class="v37-mail-sender">${escapeHtml(m.sender)}</span><strong>${escapeHtml(m.subject)}</strong><span class="v37-mail-snippet">${escapeHtml(m.body?.[0]||m.preview||'')}</span><span class="v37-mail-meta"><time>${escapeHtml(m.isBriefing?'Club briefing':m.time||shortDateLabel(m.date||currentCareerISO()))}</time><b class="mail-priority is-${notificationPriorityForMessage(m).toLowerCase()}">${escapeHtml(priority.label)}</b>${!isRead&&notificationPriorityForMessage(m)!=='ROUTINE'?'<i aria-label="Unread"></i>':''}</span></span></button>`;};
+    const row=m=>{const priority=officeMessagePriority(m),isRead=officeReadMessages.has(m.id),style=v38MailStyle(m),situation=officeInboxSituation(m);return `<button type="button" class="v37-mail-row v38-mail-row v38-tone-${style.key} priority-${notificationPriorityForMessage(m).toLowerCase()} ${m.id===selectedOfficeMessageId?'is-selected':''} ${isRead?'is-read':'is-unread'}" data-office-message="${escapeHtml(m.id)}" aria-pressed="${m.id===selectedOfficeMessageId}"><span class="v38-mail-portrait"><span class="v37-mail-avatar">${avatarHTML(officeSenderPortrait(m),m.sender)}</span><span class="v38-mail-emblem">${v38MailIcon(style.icon)}</span></span><span class="v37-mail-copy"><span class="v38-mail-department">${escapeHtml(style.label)}</span><span class="v37-mail-sender">${escapeHtml(m.sender)}</span><strong>${escapeHtml(m.subject)}</strong><span class="v37-mail-snippet">${escapeHtml(m.body?.[0]||m.preview||'')}</span><span class="office-sim-row-context"><span>${escapeHtml(situation.stakes)}</span><span>${escapeHtml(situation.due)}</span></span><span class="v37-mail-meta"><time>${escapeHtml(m.isBriefing?'Club briefing':m.time||shortDateLabel(m.date||currentCareerISO()))}</time><b class="mail-priority is-${notificationPriorityForMessage(m).toLowerCase()}">${escapeHtml(priority.label)}</b>${!isRead&&notificationPriorityForMessage(m)!=='ROUTINE'?'<i aria-label="Unread"></i>':''}</span></span></button>`;};
     const routineBlock=routine.length?`${collapseRoutine?`<button type="button" class="office-routine-toggle" data-office-routine-toggle aria-expanded="${officeRoutineExpanded}"><span><b>ROUTINE CLUB UPDATES</b><small>Grouped so they do not compete with decisions and stories</small></span><strong>${routine.length} ${officeRoutineExpanded?'HIDE':'SHOW'} →</strong></button>`:''}<div class="office-routine-group ${collapseRoutine&&!officeRoutineExpanded?'is-collapsed':''}">${routine.map(row).join('')}</div>`:'';
-    $('#officeMessageList').innerHTML=list.length?`<div class="v37-inbox-count v38-inbox-count"><span><strong>${featured.length}</strong> meaningful update${featured.length===1?'':'s'}${routine.length?` · ${routine.length} routine`:''}</span><span>${waiting?`${waiting} needs a reply`:optional?`${optional} optional conversation${optional===1?'':'s'}`:'Nothing needs clearing'}</span></div>${featured.map(row).join('')}${routineBlock}`:'<div class="office-reader-empty"><div><h3>All clear here</h3><p>No messages in this view. The rest of your postbag is under All.</p></div></div>';
+    const briefingMessage=all.find(m=>m.id===selectedOfficeMessageId)||featured[0]||all[0],briefingPortrait=briefingMessage?officeSenderPortrait(briefingMessage):'';
+    const briefing=`<section class="office-sim-briefing" aria-label="Manager briefing"><header><span class="office-sim-briefing-badge">${briefingPortrait?avatarHTML(briefingPortrait,'Club representative'):badgeHTML(club)}</span><span><span>MANAGER BRIEFING</span><strong>${escapeHtml(club.name)}</strong></span><time>${escapeHtml(shortDateLabel(currentCareerISO()))}</time></header><div class="office-sim-briefing-grid"><div class="${waiting?'is-alert':''}"><span>DECISIONS</span><strong>${waiting?`${waiting} waiting`:'All clear'}</strong></div><div><span>UNREAD</span><strong>${unread.length} meaningful</strong></div><div><span>NEXT FIXTURE</span><strong>${escapeHtml(opponent?opponent.name:'Awaiting schedule')}</strong></div></div></section>`;
+    $('#officeMessageList').innerHTML=list.length?`${briefing}<div class="office-sim-lane-label"><span>${officeInboxFilter==='action'?'NEEDS YOUR DECISION':'CLUB SITUATIONS'}</span><b>${featured.length}</b></div>${featured.map(row).join('')}${routineBlock}`:'<div class="office-reader-empty"><div><h3>A quiet moment at the club</h3><p>No situations are waiting in this view. Return to Briefing for the full club picture.</p></div></div>';
     $('#officeMessageList [data-office-routine-toggle]')?.addEventListener('click',()=>{officeRoutineExpanded=!officeRoutineExpanded;renderOfficeInbox();});
     $$('#officeMessageList [data-office-message]').forEach(btn=>btn.addEventListener('click',()=>{
       selectedOfficeMessageId=btn.dataset.officeMessage;
@@ -10655,17 +11849,18 @@
     const related=all.filter(x=>x.id!==m.id&&x.threadKey===m.threadKey&&!x.isBriefing&&(x.date||'')<=(m.date||currentCareerISO())).slice(0,4);
     const resolved=decision?.resolved,choice=resolved?decision.choices?.find(c=>c.id===decision.choiceId):null,settled=decision?.resolution==='SELECTION_UPDATED';
     const date=m.isBriefing?'Current club briefing':m.time||shortDateLabel(m.date||currentCareerISO()),isNew=target.dataset.letterId!==m.id;
+    const situation=officeInboxSituation(m),scene=officeInboxSceneAsset(m,style),outcome=resolved?officeInboxOutcome(decision,choice):null;
     target.dataset.letterId=m.id;
     target.innerHTML=`<article class="v37-letter v38-letter v38-tone-${style.key} ${m.isBriefing?'is-briefing':''}">
-      <header class="v38-letter-hero">
+      <header class="v38-letter-hero office-sim-scene" style="--office-scene:url('${scene}')">
         <div class="v38-letter-eyebrow"><span>${v38MailIcon(style.icon)}${escapeHtml(style.label)}</span><span class="v37-mail-state ${priority.className}">${escapeHtml(priority.label==='REPLIED'?'You replied':priority.label==='SETTLED'?'Settled':priority.label==='REPLY NEEDED'?'Waiting for you':priority.label==='OPTIONAL'?'Optional conversation':m.isBriefing?'Briefing':priority.label==='ROUTINE'?'Routine update':'Delivered')}</span></div>
-        <div class="v38-letter-intro"><div class="v38-letter-title"><span>${escapeHtml(style.detail)}</span><h3>${escapeHtml(m.subject)}</h3><div class="v38-sender-line"><strong>${escapeHtml(m.sender)}</strong><span>${escapeHtml(m.senderRole||m.type)}</span></div></div><div class="v38-sender-portrait">${avatarHTML(portrait,m.sender)}</div></div>
+        <div class="v38-letter-intro"><div class="v38-letter-title"><span>${escapeHtml(style.detail)}</span><h3>${escapeHtml(m.subject)}</h3><div class="v38-sender-line"><strong>${escapeHtml(m.sender)}</strong><span>${escapeHtml(m.senderRole||m.type)}</span></div></div><div class="office-sim-cast"><div class="office-sim-actor"><div class="office-sim-actor-portrait">${avatarHTML(portrait,m.sender)}</div><small>${escapeHtml(situation.mood)}</small></div>${situation.secondary?`<div class="office-sim-actor is-secondary"><div class="office-sim-actor-portrait">${avatarHTML(situation.secondary.avatar,situation.secondary.name)}</div><small>${escapeHtml(situation.secondary.name)}</small></div>`:''}</div></div>
         <div class="v38-letter-address"><span>To ${escapeHtml(managerName||'the manager')}</span><time>${escapeHtml(date)}</time></div>
       </header>
-      <div class="v38-letter-paper"><div class="v37-letter-body">${m.greeting?`<p class="v38-salutation">${escapeHtml(m.greeting)}</p>`:''}${(m.body||[]).map(p=>`<p>${escapeHtml(p)}</p>`).join('')}<div class="v37-letter-signature">${m.closing?`<span>${escapeHtml(m.closing)}</span>`:''}<strong>${escapeHtml(m.signoff||m.sender)}</strong><small>${escapeHtml(m.senderRole||'')}</small></div></div>
-      ${resolved?`<section class="v37-reply-receipt v38-reply-receipt ${settled?'is-settled':''}" role="status" tabindex="-1"><header><span class="v38-reply-crest">${badgeHTML(club)}</span><span><b>${settled?'Settled on the pitch':escapeHtml(managerName||'You')}</b><small>${settled?'No further reply needed':'Your reply'}${decision.resolvedDate?' · '+escapeHtml(shortDateLabel(decision.resolvedDate)):''}</small></span>${v38MailIcon(settled?'shield':'mail')}</header><p>${settled?'Your recent team selections have settled this concern. No new promise is needed.':escapeHtml(choice?v38ReplySpeech(decision,choice):'Decision recorded.')}</p></section>`:''}
+      <div class="v38-letter-paper"><section class="office-sim-intel" aria-label="Situation context"><div><span>DEADLINE</span><strong>${escapeHtml(situation.due)}</strong></div><div><span>WHAT IS AT STAKE</span><strong>${escapeHtml(situation.stakes)}</strong></div><div><span>${situation.player?'MANAGER TRUST':'NEXT FIXTURE'}</span><strong>${escapeHtml(situation.player?situation.trust:situation.nextLabel)}</strong></div></section><div class="office-sim-conversation"><div class="v37-letter-body">${m.greeting?`<p class="v38-salutation">${escapeHtml(m.greeting)}</p>`:''}${(m.body||[]).map(p=>`<p>${escapeHtml(p)}</p>`).join('')}<div class="v37-letter-signature">${m.closing?`<span>${escapeHtml(m.closing)}</span>`:''}<strong>${escapeHtml(m.signoff||m.sender)}</strong><small>${escapeHtml(m.senderRole||'')}</small></div></div></div>
+      ${resolved?`<section class="v37-reply-receipt v38-reply-receipt ${settled?'is-settled':''}" role="status" tabindex="-1"><header><span class="v38-reply-crest">${badgeHTML(club)}</span><span><b>${settled?'Settled on the pitch':escapeHtml(managerName||'You')}</b><small>${settled?'No further reply needed':'Your reply'}${decision.resolvedDate?' · '+escapeHtml(shortDateLabel(decision.resolvedDate)):''}</small></span>${v38MailIcon(settled?'shield':'mail')}</header><p>${settled?'Your recent team selections have settled this concern. No new promise is needed.':escapeHtml(choice?v38ReplySpeech(decision,choice):'Decision recorded.')}</p>${outcome&&!settled?`<span class="office-sim-outcome-label">CONSEQUENCE RECORDED</span><p>${escapeHtml(outcome.copy)}</p><div class="office-sim-consequences">${outcome.tags.map(tag=>`<span>${escapeHtml(tag)}</span>`).join('')}</div>`:''}</section>`:''}
       ${v38PromiseHTML(m)}
-      ${decision&&!resolved?`<section class="v37-mail-replies v38-mail-replies" aria-label="Reply to ${escapeHtml(m.sender)}"><header><span>${v38MailIcon('mail')}Your reply</span><h4>What do you say?</h4></header>${(decision.choices||[]).map((c,i)=>`<button type="button" data-mail-reply="${escapeHtml(c.id)}"><span class="v38-reply-number" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="v38-reply-copy"><strong>${escapeHtml(v38ReplySpeech(decision,c))}</strong><span>${escapeHtml(c.copy||'')}</span></span><span class="v38-reply-arrow" aria-hidden="true">↗</span></button>`).join('')}</section>`:''}
+      ${decision&&!resolved?`<section class="v37-mail-replies v38-mail-replies" aria-label="Reply to ${escapeHtml(m.sender)}"><header><span>${v38MailIcon('mail')}YOUR WORDS WILL BE REMEMBERED</span><h4>How do you respond?</h4></header>${(decision.choices||[]).map((c,i)=>{const meta=officeInboxChoiceMeta(decision,c,i);return`<button type="button" data-mail-reply="${escapeHtml(c.id)}" style="--choice-tone:${meta.color}"><span class="v38-reply-number" aria-hidden="true">${String(i+1).padStart(2,'0')}</span><span class="v38-reply-copy"><span class="office-sim-choice-topline"><span class="office-sim-choice-tone">${escapeHtml(meta.tone)}</span><span class="office-sim-choice-impact">LIKELY AFFECTS · ${escapeHtml(meta.impact)}</span></span><strong>${escapeHtml(v38ReplySpeech(decision,c))}</strong><span>${escapeHtml(c.copy||'')}</span></span><span class="v38-reply-arrow" aria-hidden="true">↗</span></button>`;}).join('')}</section>`:''}
       ${m.action?`<footer class="v37-letter-attachment v38-letter-attachment"><span>${v38MailIcon(m.action.route==='dossier'?'search':'ledger')}<span>Enclosed with this message<small>${escapeHtml(m.action.label)}</small></span></span><button type="button" data-office-route="${escapeHtml(m.action.route)}">Open <span aria-hidden="true">↗</span></button></footer>`:''}
       ${related.length?`<details class="v37-mail-history"><summary>Earlier in this conversation <span>${related.length}</span></summary>${related.map(r=>`<section><header><b>${escapeHtml(r.sender)}</b><time>${escapeHtml(shortDateLabel(r.date||currentCareerISO()))}</time></header><h4>${escapeHtml(r.subject)}</h4>${r.body.map(p=>`<p>${escapeHtml(p)}</p>`).join('')}</section>`).join('')}</details>`:''}
       <footer class="v38-letter-foot"><span>${escapeHtml(club.name)}</span><span>${style.key==='player'?'Private · Player & manager':'Club correspondence'}</span></footer></div></article>`;
@@ -10690,27 +11885,36 @@
 
   function renderOfficeBoard(){
     const club=currentClub||selectedClub||clubs[0];
+    const chairman=chairmanForClub(club),chairmanRelation=chairmanRelationship(club,PLAYER_MANAGER_ID),chairmanPriorities=window.VelmoraChairmen?.priorityNames(chairman)||[],policy=chairmanPolicy(club),chairmanEvidence=[...(chairmanRelation?.evidence||[])].slice(-3).reverse();
     const confidence=boardConfidenceValue();
     const objectives=buildBoardObjectives(club);
+    const rows=standingsForDivision(club.divisionKey),own=rows.find(r=>r.club.id===club.id),target=primaryTargetPosition(club.expectation,rows.length),gap=Number(own?.pos||target)-target,form=recentLeagueClubForm(club,5,club.divisionKey),formPoints=form.reduce((sum,result)=>sum+(result==='W'?3:result==='D'?1:0),0),finance=officeFinanceSnapshot(),security=playerJobSecurityScore(),warning=managerMarket.warning||{phase:'NONE'},review=warningReviewRecord(warning),next=nextUserFixture(currentCareerISO(),true),opponent=next?clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId):null,contract=managerMarket.playerContract,contractDays=contract?.endDate?Math.max(0,diffDaysISO(currentCareerISO(),contract.endDate)):null,objectiveAverage=objectives.length?Math.round(objectives.reduce((sum,o)=>sum+Number(o.progress||0),0)/objectives.length):0;
+    const assessmentSignals=[
+      {tone:gap<=0?'good':gap>=4?'risk':'warn',score:clamp(70-gap*10,10,100),label:'LEAGUE DELIVERY',value:own?`${ordinal(own.pos)} · target ${ordinal(target)}`:'Pre-season',copy:gap<=0?'Meeting the board benchmark':`${Math.max(0,gap)} place${gap===1?'':'s'} below expectation`},
+      {tone:formPoints>=9?'good':form.length&&formPoints<=4?'risk':'warn',score:form.length?Math.round(formPoints/(form.length*3)*100):50,label:'RECENT RESULTS',value:form.length?form.join(' · '):'Awaiting fixtures',copy:form.length?`${formPoints}/${form.length*3} points from the recent run`:'No competitive form yet'},
+      {tone:finance.health>=70?'good':finance.health<45?'risk':'warn',score:finance.health,label:'FINANCIAL CONTROL',value:`${finance.health}/100`,copy:`${formatMoney(finance.wageRoom)} weekly wage room`},
+      {tone:security>=65?'good':security<35?'risk':'warn',score:security,label:'MANAGER SECURITY',value:`${security}/100`,copy:managerSecurityLabel(security)}
+    ];
+    const fixtureVenue=next?(next.homeClubId===club.id?'HOME':'AWAY'):'—',reviewTrigger=gap<=0?'Protect the target position':`Close the ${gap}-place league gap`;
     $('#officeBoardContent').innerHTML=`
-      <div class="office-board-hero">
+      <section class="board-expectations-dashboard"><section class="chairman-dossier"><div class="chairman-dossier-portrait">${chairmanPortraitHTML(chairman,'chairman-board-portrait')}</div><div class="chairman-dossier-copy"><span>CLUB OWNERSHIP · ${escapeHtml(chairman?.publicReputation||'ESTABLISHED')}</span><h2>${chairmanNameHTML(chairman)}</h2><strong>${escapeHtml(chairman?.title||'Chair')} · ${escapeHtml(chairman?.ageBand||'Age undisclosed')} · AT CLUB SINCE ${chairman?.tenureStartYear||'—'}</strong><p>${escapeHtml(chairman?.biography||'The club ownership sets the sporting and financial direction.')}</p><div class="chairman-priorities">${chairmanPriorities.map((priority,index)=>`<span class="is-${index===0?'primary':'support'}"><b>${index===0?'DEFINING PRIORITY':'SUPPORTING PRIORITY'}</b>${escapeHtml(priority)}</span>`).join('')}</div></div><aside class="chairman-relationship"><span>WORKING RELATIONSHIP</span><h3>${escapeHtml(chairmanRelation?.state||'First Impressions')}</h3><b>${confidence}/100</b><div class="chairman-confidence-track"><i style="width:${confidence}%"></i></div><small>${escapeHtml(chairmanRelation?.lastReason||'Opening assessment')}</small></aside></section><section class="chairman-policy-strip"><span><b>TRANSFER CONTROL</b>${policy.sellToBuy?'Sell to buy':'Flexible within allocation'}</span><span><b>RESERVE</b>${Math.round(policy.reserveRatio*100)}% protected</span><span><b>ACADEMY COMMITMENT</b>${Math.round(policy.academyProtection)}/100</span><span><b>NEGOTIATION STYLE</b>${escapeHtml(chairman?.communicationStyleLabel||'Formal')}</span></section><div class="office-board-hero">
         <section class="board-confidence-card">
           <div class="board-big-ring" style="--confidence:${confidence}"><div><strong>${confidence}</strong><span>CONFIDENCE</span></div></div>
-          <div class="board-confidence-copy"><span>BOARD RELATIONSHIP</span><h3>${boardRelationshipLabel(confidence)}</h3><p>The board currently views your position as <b>${boardConfidenceStatus(confidence).toLowerCase()}</b>. Results are not yet being simulated, so this is the opening career baseline.</p></div>
+          <div class="board-confidence-copy"><span>BOARD RELATIONSHIP</span><h3>${boardRelationshipLabel(confidence)}</h3><p>${Number(own?.played||0)?`The board currently rate your position as <b>${escapeHtml(boardConfidenceStatus(confidence).toLowerCase())}</b>. League delivery, recent results, finances and active objectives all shape the next review.`:`This opening assessment combines the club's expectations, starting position and available resources. Competitive results will move it from here.`}</p></div>
         </section>
         <section class="board-directive-card">
           <span>CLUB DIRECTIVE</span><h3>${escapeHtml(club.archetype||'Professional club')}</h3>
           <p>${escapeHtml(club.identity||`${club.name} expects the manager to compete while protecting the club's identity.`)}</p>
           <div class="board-crest-watermark">${badgeHTML(club)}</div>
         </section>
-      </div>
-      <div class="office-objective-grid">
-        ${objectives.map((o,i)=>`<article class="office-objective-card" style="--objective-accent:${i===0?'#d8b665':'#56c7c2'}">
+      </div><div class="board-kpi-ribbon"><article><span>LEAGUE POSITION</span><strong>${own?ordinal(own.pos):'PRE-SEASON'}</strong><small>${Number(own?.pts||0)} points · target ${ordinal(target)}</small></article><article><span>RECENT FORM</span><strong>${form.length?form.join(' · '):'—'}</strong><small>${form.length?`${formPoints} points from ${form.length}`:'Awaiting competitive fixtures'}</small></article><article><span>OBJECTIVE DELIVERY</span><strong>${objectiveAverage}%</strong><small>${objectives.filter(o=>o.status==='COMPLETE'||o.status==='ON TRACK').length}/${objectives.length} currently on track</small></article><article><span>JOB SECURITY</span><strong>${escapeHtml(managerSecurityLabel(security))}</strong><small>${security}/100 live assessment</small></article></div>
+      <section class="board-objectives-section"><header><div><span>BOARD EXPECTATIONS</span><h3>What the club is measuring</h3></div><strong>${objectives.length} ACTIVE OBJECTIVE${objectives.length===1?'':'S'}</strong></header><div class="office-objective-grid">
+        ${objectives.map((o,i)=>`<article class="office-objective-card is-${String(o.status||'active').toLowerCase().replace(/\s+/g,'-')}" style="--objective-accent:${i===0?'#d8b665':o.status==='ELIMINATED'?'#dc6570':'#56c7c2'}">
           <div class="objective-tag"><span>${escapeHtml(o.tag)}</span><b>IMPACT · ${o.impact.toUpperCase()}</b></div>
-          <h4>${escapeHtml(o.title)}</h4><p>${escapeHtml(o.copy)}</p>
+          <h4>${escapeHtml(o.title)}</h4><p>${escapeHtml(o.copy)}</p>${o.reason?`<small class="chairman-objective-reason">WHY · ${escapeHtml(o.reason)}</small>`:''}
           <div class="office-objective-progress"><div><i style="width:${o.progress}%"></i></div><span><span>${escapeHtml(o.status||'CURRENT STATUS')}</span><strong>${o.progress}%</strong></span></div>
         </article>`).join('')}
-      </div>`;
+      </div></section><div class="board-outlook-grid"><article class="board-assessment-card"><header><div><span>LIVE BOARD ASSESSMENT</span><h3>Why confidence is moving</h3></div><b>${confidence}/100</b></header><div>${assessmentSignals.map(signal=>`<section class="is-${signal.tone}"><header><span>${escapeHtml(signal.label)}</span><b>${signal.score}%</b></header><strong>${escapeHtml(signal.value)}</strong><i><b style="width:${signal.score}%"></b></i><small>${escapeHtml(signal.copy)}</small></section>`).join('')}</div></article><article class="board-checkpoint-card"><span>NEXT BOARD CHECKPOINT</span><h3>${warning.phase!=='NONE'?`${escapeHtml(warning.phase)} REVIEW`:'ROUTINE PERFORMANCE REVIEW'}</h3><p>${warning.phase==='WARNING'||warning.phase==='FINAL'?`${review.points}/${warning.targetPoints} points collected across ${review.matches}/${warning.targetMatches} review matches.`:`${opponent?`Next fixture: ${escapeHtml(opponent.name)} on ${escapeHtml(shortDateLabel(next.date))}.`:'The board will reassess once competitive fixtures create a meaningful trend.'}`}</p><div class="board-checkpoint-plan"><section><span>EVIDENCE WINDOW</span><strong>${opponent?`${fixtureVenue} · ${escapeHtml(opponent.name)}`:'Opening competitive run'}</strong><small>${next?escapeHtml(shortDateLabel(next.date)):'Fixtures pending'}</small></section><section><span>BOARD BENCHMARK</span><strong>${ordinal(target)} or better</strong><small>${escapeHtml(club.expectation||'Build steadily')}</small></section><section><span>STATUS TRIGGER</span><strong>${escapeHtml(reviewTrigger)}</strong><small>${warning.phase!=='NONE'?`${escapeHtml(warning.phase)} process active`:'No formal warning active'}</small></section></div><div class="board-checkpoint-facts"><span><b>CONTRACT</b>${contractDays===null?'No active term':`${contractDays} days remaining`}</span><span><b>EXPECTATION</b>${escapeHtml(club.expectation||'Build steadily')}</span></div></article></div><section class="chairman-memory-ledger"><header><span>OWNER'S RECORD</span><h3>Decisions that still matter</h3></header><div>${chairmanEvidence.length?chairmanEvidence.map(item=>`<article class="is-${Number(item.delta||0)>=0?'positive':'negative'}"><time>${escapeHtml(shortDateLabel(item.date))}</time><strong>${escapeHtml(item.reason)}</strong><b>${Number(item.delta||0)>0?'+':''}${Number(item.delta||0)}</b></article>`).join(''):'<article><time>OPENING</time><strong>No major decisions recorded yet.</strong><b>—</b></article>'}</div></section></section>`;
   }
 
   function officeFinanceTrend(){
@@ -10769,9 +11973,9 @@
     const squad=getSquad(club);
     if(!selectedContractPlayerId||!squad.some(p=>p.id===selectedContractPlayerId))selectedContractPlayerId=squad[0]?.id||null;
     $('#officeContractList').innerHTML=squad.length?squad.map(p=>{
-      const st=contractStatusInfo(p),role=contractSquadRole(p,squad);
+      const rights=playerRegistrationRights(club,p),loanParent=rights.loanedIn?clubById(rights.ownerClubId):null,st=rights.loanedIn?{tone:'steady',label:'ON LOAN'}:contractStatusInfo(p),role=contractSquadRole(p,squad);
       return `<button type="button" class="office-contract-row ${p.id===selectedContractPlayerId?'is-selected':''}" data-contract-player="${p.id}">
-        <span class="contract-player-cell"><span class="contract-avatar">${avatarHTML(p.avatar,p.name)}</span><span><strong>${escapeHtml(p.name)}</strong><small>AGE ${p.age} · ${p.ovr} OVR · ${escapeHtml(v2075RenewalReadiness(p,club).label)}</small></span></span>
+        <span class="contract-player-cell"><span class="contract-avatar">${avatarHTML(p.avatar,p.name)}</span><span><strong>${escapeHtml(p.name)}</strong><small>AGE ${p.age} · ${p.ovr} OVR · ${rights.loanedIn?`LOAN FROM ${escapeHtml(loanParent?.name||'PARENT CLUB')}`:escapeHtml(v2075RenewalReadiness(p,club).label)}</small></span></span>
         <span class="contract-cell"><strong>${escapeHtml(role)}</strong></span>
         <span class="contract-cell"><strong>${formatMoney(p.wage)}/w</strong></span>
         <span class="contract-cell"><strong>${p.contractYears}Y</strong></span>
@@ -10787,15 +11991,28 @@
     const p=squad.find(x=>x.id===selectedContractPlayerId);
     const target=$('#officeContractDetail');if(!target)return;
     if(!p){target.innerHTML='<div class="office-reader-empty"><div><b>CONTRACTS</b><h3>Select a player</h3><p>Current terms and renewal options will appear here.</p></div></div>';return;}
-    const st=contractStatusInfo(p),role=contractSquadRole(p,squad),renewal=v2075RenewalReadiness(p,club);
+    const rights=playerRegistrationRights(club,p),loan=rights.loan,loanParent=clubById(rights.ownerClubId),st=rights.loanedIn?{tone:'steady',label:'LOAN REGISTRATION'}:contractStatusInfo(p),role=contractSquadRole(p,squad),renewal=v2075RenewalReadiness(p,club);
     const advice=renewal.copy;
+    if(rights.loanedIn){
+      target.innerHTML=`
+        <div class="contract-detail-hero"><div class="contract-detail-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="contract-detail-copy"><span>${escapeHtml(p.role)}</span><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.country)} · Age ${p.age} · ${p.ovr} OVR</p><b>ON LOAN FROM ${escapeHtml(loanParent?.name||'PARENT CLUB')}</b></div></div>
+        <div class="contract-detail-grid">
+          <div><span>PARENT CLUB</span><strong>${escapeHtml(loanParent?.name||'UNKNOWN')}</strong></div>
+          <div><span>LOAN ENDS</span><strong>${shortDateLabel(loan?.endDate||p.loanEndDate||currentCareerISO())}</strong></div>
+          <div><span>AGREED ROLE</span><strong>${escapeHtml(loan?.expectedRole||role)}</strong></div>
+          <div><span>WAGE SHARE</span><strong>${Number(loan?.wageContribution||0)}%</strong></div>
+          <div><span>PLAYER VALUE</span><strong>${formatMoney(livingPlayerMarketValue(p))}</strong></div>
+        </div>
+        <div class="contract-advice v2075-contract-readiness is-steady"><b>LOAN REGISTRATION</b><span>${escapeHtml(loanParent?.name||'The parent club')} retain the player's contract and transfer rights. You can select and develop ${escapeHtml(p.name)}, but cannot renew, sell, release, set an asking price or loan the player again.</span></div>`;
+      return;
+    }
     target.innerHTML=`
       <div class="contract-detail-hero"><div class="contract-detail-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="contract-detail-copy"><span>${escapeHtml(p.role)}</span><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.country)} · Age ${p.age} · ${p.ovr} OVR</p><b>${escapeHtml(st.label)}</b></div></div>
       <div class="contract-detail-grid">
         <div><span>WEEKLY WAGE</span><strong>${formatMoney(p.wage)}</strong></div>
         <div><span>REMAINING TERM</span><strong>${p.contractYears} YEAR${p.contractYears===1?'':'S'}</strong></div>
         <div><span>SQUAD ROLE</span><strong>${escapeHtml(role)}</strong></div>
-        <div><span>PLAYER VALUE</span><strong>${formatMoney(p.value)}</strong></div>
+        <div><span>PLAYER VALUE</span><strong>${formatMoney(livingPlayerMarketValue(p))}</strong></div>
         <div><span>RELEASE CLAUSE</span><strong>${p.releaseClause?formatExactMoney(p.releaseClause):'NONE'}</strong></div>
       </div>
       <div class="contract-advice v2075-contract-readiness is-${renewal.tone}"><b>${escapeHtml(renewal.label)}</b><span>${escapeHtml(advice)}</span></div>
@@ -10805,6 +12022,7 @@
       </div>`;
     target.querySelector('[data-renew-contract]')?.addEventListener('click',()=>openContractRenewal(p));
     target.querySelector('[data-release-contract]')?.addEventListener('click',()=>{
+      if(blockUnownedPlayerAction(club,p,'terminate the contract'))return;
       const fee=calculateReleaseCost(p);
       const ok=window.confirm(`Terminate ${p.name}'s contract? This will cost ${formatExactMoney(fee)} in compensation.`);
       if(ok && releaseSeniorPlayer(currentClub||selectedClub||clubs[0],p)){renderSquad();renderTransfers();renderOffice();}
@@ -10814,7 +12032,7 @@
   function contractRoleRank(role){return({Reserve:1,Prospect:1.5,Rotation:2,Important:3,Crucial:4}[role]||2);}
 
   function openContractRenewal(p,result=null){
-    const club=currentClub||selectedClub||clubs[0],squad=getSquad(club),role=contractSquadRole(p,squad);let session=contractNegotiationSession(p,'RENEWAL',false);const readiness=v2075RenewalReadiness(p,club);if(!readiness.canNegotiate&&!session&&!result){showToast(`${p.name} · ${readiness.label.toLowerCase()}`);return;}session=session||contractNegotiationSession(p,'RENEWAL',true);if(session&&!negotiationSessionCanReopen(session,currentCareerISO())&&!result){const days=negotiationCooldownRemaining(session);showToast(`Renewal talks closed · try again in ${days} day${days===1?'':'s'}`);return;}
+    const club=currentClub||selectedClub||clubs[0];if(!clubCanRenewPlayer(club,p)){showToast(loanOwnershipActionMessage(club,p,'offer a new contract'));return false;}const squad=getSquad(club),role=contractSquadRole(p,squad);let session=contractNegotiationSession(p,'RENEWAL',false);const readiness=v2075RenewalReadiness(p,club);if(!readiness.canNegotiate&&!session&&!result){showToast(`${p.name} · ${readiness.label.toLowerCase()}`);return;}session=session||contractNegotiationSession(p,'RENEWAL',true);if(session&&!negotiationSessionCanReopen(session,currentCareerISO())&&!result){const days=negotiationCooldownRemaining(session);showToast(`Renewal talks closed · try again in ${days} day${days===1?'':'s'}`);return;}
     const counter=session?.lastCounterPackage||{},proposedWage=result?.counterWage||counter.wage||Math.max(500,Math.round(Number(p.wage||800)*1.05/100)*100),proposedRole=result?.counterRole||counter.role||role,years=result?.counterYears||counter.years||Math.min(5,Math.max(2,Number(p.contractYears||2)+1)),status=result?.status||(result?.accepted?'accepted':'idle'),modal=$('#contractModal'),content=$('#contractModalContent');
     content.innerHTML=`
       <div class="contract-modal-top"><div class="contract-modal-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="contract-modal-copy"><span>CONTRACT RENEWAL · ${escapeHtml(negotiationStageLabel(session,status))}</span><h3 id="contractModalTitle">${escapeHtml(p.name)}</h3><p>${escapeHtml(club.name)} · Current ${formatMoney(p.wage)}/w · ${p.contractYears} year${p.contractYears===1?'':'s'} remaining</p></div></div>
@@ -10827,7 +12045,7 @@
       <div class="contract-modal-actions"><button type="button" data-contract-cancel>${result?.accepted?'DONE':'CANCEL'}</button>${result?.accepted||status==='walked'?'':`<button type="button" class="primary" id="submitRenewal">PROPOSE TERMS</button>`}</div>`;
     modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();content.querySelector('[data-contract-cancel]')?.addEventListener('click',()=>{closeContractRenewal();renderOfficeContracts();});
     v35MountClauseFields(content.querySelector('.contract-modal-grid'),p,session,'renew',!!result?.accepted||status==='walked',true);
-    content.querySelector('#submitRenewal')?.addEventListener('click',e=>runLockedAction(`PLAYER_RENEWAL:${p.id}:R${session?.round||0}`,e.currentTarget,()=>{const wage=Math.max(500,moneyNumber($('#renewWage')?.value)),yrs=clamp(Number($('#renewYears')?.value||2),1,5),offeredRole=$('#renewRole')?.value||'Rotation';const clause=v35ReadClauseFields('renew',p,session);if(!clause.ok){showToast(clause.message);return false;}const next=evaluateRenewalPackage(p,{wage,role:offeredRole,years:yrs},session);if(next.status==='accepted'){const accepted=session?.acceptedPackage||{wage,role:offeredRole,years:yrs};p.wage=accepted.wage;p.contractYears=accepted.years;p.squadRole=accepted.role;p.morale=['Unhappy','Very Unhappy'].includes(p.morale)?'Content':'Happy';setLivingPlayerContract(p,club,accepted.years,accepted.wage,accepted.role,currentCareerISO(),'RENEWAL');careerExpansion?.setClause(p,clause.amount);if(session)session.state='COMPLETED';saveCareerState();openContractRenewal(p,{...next,accepted:true});return true;}saveCareerState();openContractRenewal(p,next);return true;},{releaseDelay:300,busyText:'PROPOSING…'}));
+    content.querySelector('#submitRenewal')?.addEventListener('click',e=>runLockedAction(`PLAYER_RENEWAL:${p.id}:R${session?.round||0}`,e.currentTarget,()=>{if(!clubCanRenewPlayer(club,p)){showToast(loanOwnershipActionMessage(club,p,'offer a new contract'));closeContractRenewal();return false;}const wage=Math.max(500,moneyNumber($('#renewWage')?.value)),yrs=clamp(Number($('#renewYears')?.value||2),1,5),offeredRole=$('#renewRole')?.value||'Rotation';const clause=v35ReadClauseFields('renew',p,session);if(!clause.ok){showToast(clause.message);return false;}const next=evaluateRenewalPackage(p,{wage,role:offeredRole,years:yrs},session);if(next.status==='accepted'){const accepted=session?.acceptedPackage||{wage,role:offeredRole,years:yrs};p.wage=accepted.wage;p.contractYears=accepted.years;p.squadRole=accepted.role;p.morale=['Unhappy','Very Unhappy'].includes(p.morale)?'Content':'Happy';setLivingPlayerContract(p,club,accepted.years,accepted.wage,accepted.role,currentCareerISO(),'RENEWAL');careerExpansion?.setClause(p,clause.amount);if(session)session.state='COMPLETED';saveCareerState();openContractRenewal(p,{...next,accepted:true});return true;}saveCareerState();openContractRenewal(p,next);return true;},{releaseDelay:300,busyText:'PROPOSING…'}));
   }
 
   function closeContractRenewal(){
@@ -10838,16 +12056,16 @@
 
   function renderOfficeManager(){
     initializeManagerMarketState();ensureCareerMarketVacancies(currentCareerISO());
-    const club=currentClub||selectedClub||clubs[0],confidence=employmentStatus==='employed'?boardConfidenceValue():null,careerTotals=roadToGlory.managerCareerTotals||{},careerHonours=Number(careerTotals.leagueTitles||0)+Number(careerTotals.domesticCups||0)+Number(careerTotals.continentalCups||0),repLabel=managerRepLabel(roadToGlory.managerReputation),contract=managerMarket.playerContract;
-    const offers=managerMarket.offers.filter(o=>o.status==='OPEN'),interviews=managerMarket.applications.filter(a=>a.status==='INTERVIEW'),spell=managerMarket.playerSpell,spellRec=spell?playerSpellRecord(spell):null;
+    const club=currentClub||selectedClub||clubs[0],careerTotals=roadToGlory.managerCareerTotals||{},careerHonours=Number(careerTotals.leagueTitles||0)+Number(careerTotals.domesticCups||0)+Number(careerTotals.continentalCups||0),repScore=Math.round(Number(roadToGlory.managerReputation||0)),repLabel=managerRepLabel(repScore),contract=managerMarket.playerContract;
+    const offers=managerMarket.offers.filter(o=>o.status==='OPEN'),interviews=managerMarket.applications.filter(a=>a.status==='INTERVIEW'),approaches=managerMarket.applications.filter(a=>a.status==='INTERVIEW'&&a.source==='APPROACH'),spell=managerMarket.playerSpell,spellRec=spell?playerSpellRecord(spell):null,security=employmentStatus==='employed'?playerJobSecurityScore():50,milestone=managerCareerNextRepMilestone(),standing=managerCareerStandingProfile(),form=managerCareerFormProfile();
     const headerClub=employmentStatus==='employed'?currentClub:null;
-    const header=`<section class="manager-profile-card manager-market-profile"><div class="manager-profile-hero"><div class="manager-career-avatar">${managerPortraitHTML(ensureManagerProfile(),'office-manager-paperdoll','office')}</div><div class="manager-profile-copy"><span>MANAGER CAREER</span><h3>${escapeHtml(managerName)}</h3><p>${escapeHtml(managerCityName(ensureManagerProfile().nationId,ensureManagerProfile().cityId))}, ${escapeHtml(managerNationName(ensureManagerProfile().nationId))} · ${headerClub?escapeHtml(headerClub.name):'UNEMPLOYED'}</p><b>${escapeHtml(repLabel)} · ${managerRepStars(roadToGlory.managerReputation)}</b></div><div class="manager-crest-stage">${headerClub?badgeHTML(headerClub):'<span class="manager-free-agent-mark">FREE</span>'}</div></div><div class="manager-metrics manager-market-metrics"><div class="manager-metric"><span>JOB SECURITY</span><strong>${escapeHtml(managerMarketJobSecurity())}</strong></div><div class="manager-metric"><span>CAREER RECORD</span><strong>${Number(careerTotals.wins||0)+(spellRec?.wins||0)}W · ${Number(careerTotals.draws||0)+(spellRec?.draws||0)}D · ${Number(careerTotals.losses||0)+(spellRec?.losses||0)}L</strong></div><div class="manager-metric"><span>CLUBS MANAGED</span><strong>${new Set([...managerMarket.spellHistory.map(s=>s.clubId),...(spell?[spell.clubId]:[])]).size}</strong></div><div class="manager-metric"><span>HONOURS</span><strong>${careerHonours}</strong></div><div class="manager-metric"><span>PROMOTIONS</span><strong>${Number(careerTotals.promotions||0)}</strong></div><div class="manager-metric"><span>MANAGER REP</span><strong>${Math.round(Number(roadToGlory.managerReputation||0))}/100</strong></div></div></section>`;
+    const header=`<section class="mc-command-hero" style="--mc-club:${escapeHtml(headerClub?.accent||'#174f9f')}"><div class="mc-manager-stage">${managerPortraitHTML(ensureManagerProfile(),'mc-manager-paperdoll','office')}</div><div class="mc-manager-identity"><span>MANAGER CAREER · ${employmentStatus==='employed'?'IN POST':'AVAILABLE'}</span><h2>${escapeHtml(managerName)}</h2><p>${escapeHtml(managerCityName(ensureManagerProfile().nationId,ensureManagerProfile().cityId))}, ${escapeHtml(managerNationName(ensureManagerProfile().nationId))}</p><div><b>${escapeHtml(repLabel)}</b><small>${managerRepStars(repScore)}</small></div></div><div class="mc-command-status"><section><header><span>REPUTATION</span><strong>${repScore}/100</strong></header><div class="mc-command-meter"><i style="width:${repScore}%"></i></div><small>${milestone.remaining?`${milestone.remaining} points to ${escapeHtml(milestone.label)}`:'Highest reputation tier achieved'}</small></section><section><header><span>JOB SECURITY</span><strong>${employmentStatus==='employed'?`${security}/100`:'FREE AGENT'}</strong></header><div class="mc-command-meter is-security"><i style="width:${employmentStatus==='employed'?security:100}%"></i></div><small>${escapeHtml(managerMarketJobSecurity())} · driven by results and expectations</small></section></div><div class="mc-current-club">${headerClub?badgeHTML(headerClub):'<span class="manager-free-agent-mark">FREE</span>'}<small>${headerClub?'CURRENT CLUB':'CAREER STATUS'}</small><strong>${escapeHtml(headerClub?.name||'OPEN TO WORK')}</strong><span>${escapeHtml(headerClub?.division||'LIVE JOB MARKET')}</span></div></section><section class="mc-metric-ribbon"><div><span>CAREER RECORD</span><strong>${Number(careerTotals.wins||0)+(spellRec?.wins||0)}W · ${Number(careerTotals.draws||0)+(spellRec?.draws||0)}D · ${Number(careerTotals.losses||0)+(spellRec?.losses||0)}L</strong></div><div><span>CLUBS MANAGED</span><strong>${new Set([...managerMarket.spellHistory.map(s=>s.clubId),...(spell?[spell.clubId]:[])]).size}</strong></div><div><span>HONOURS</span><strong>${careerHonours}</strong></div><div><span>PROMOTIONS</span><strong>${Number(careerTotals.promotions||0)}</strong></div><div><span>LIVE APPROACHES</span><strong>${approaches.length}</strong></div><div><span>OPEN OFFERS</span><strong>${offers.length}</strong></div></section>`;
     const nav=`<nav class="manager-career-tabs"><button type="button" data-manager-career-view="career" class="${managerCareerView==='career'?'is-active':''}">YOUR CAREER</button><button type="button" data-manager-career-view="vacancies" class="${managerCareerView==='vacancies'?'is-active':''}">OPEN VACANCIES <i>${activeManagerVacancies().length}</i></button><button type="button" data-manager-career-view="interest" class="${managerCareerView==='interest'?'is-active':''}">CLUB INTEREST</button><button type="button" data-manager-career-view="contract" class="${managerCareerView==='contract'?'is-active':''}">CONTRACT ${offers.length?`<i>${offers.length}</i>`:''}</button></nav>`;
     let body='';
     if(managerCareerView==='vacancies')body=`<section class="manager-career-pane">${managerMarketVacanciesHTML()}</section>`;
     else if(managerCareerView==='interest')body=`<section class="manager-career-pane">${managerMonitoringHTML()}</section>`;
     else if(managerCareerView==='contract')body=`<section class="manager-career-pane">${managerContractHTML()}${offers.filter(o=>o.type==='JOB').length?`<div class="manager-active-offers"><span>ACTIVE JOB OFFERS</span>${offers.filter(o=>o.type==='JOB').map(o=>{const c=clubById(o.clubId);return c?`<article>${badgeHTML(c)}<div><small>${escapeHtml(c.division)}</small><strong>${escapeHtml(c.name)}</strong><span>${o.contractYears} years · £${Number(o.weeklySalary||0).toLocaleString('en-GB')}/wk</span></div><button type="button" data-manager-offer="${o.id}">REVIEW OFFER</button></article>`:'';}).join('')}</div>`:''}</section>`;
-    else body=`<section class="manager-career-pane"><div class="manager-career-overview-grid"><article class="manager-career-status-card"><span>CURRENT CHAPTER</span><h3>${headerClub?escapeHtml(headerClub.name):'BETWEEN JOBS'}</h3><p>${headerClub?`${escapeHtml(headerClub.division)} · ${escapeHtml(managerMarketJobSecurity())}`:'Your career continues while the world moves around you.'}</p><div><b>${managerRepStars()}</b><small>${escapeHtml(repLabel)}</small></div>${contract?`<em>Contract to ${escapeHtml(shortDateLabel(contract.endDate))}</em>`:''}</article><article class="manager-career-opportunity-card"><span>CAREER OPPORTUNITIES</span><h3>${activeManagerVacancies().length} live vacancies</h3><p>${interviews.length} interview${interviews.length===1?'':'s'} waiting · ${offers.filter(o=>o.type==='JOB').length} active offer${offers.filter(o=>o.type==='JOB').length===1?'':'s'}</p><button type="button" data-manager-open-market>VIEW MANAGER MARKET</button></article></div>${managerWorldPulseHTML()}<section class="manager-spell-card"><div class="manager-pane-heading"><span>CAREER SPELLS</span><h3>Your managerial journey</h3></div>${managerCareerSpellsHTML()}</section>${managerRivalsHTML()}</section>`;
+    else body=`<section class="manager-career-pane"><div class="mc-overview-lead"><article class="mc-mandate-card"><header><div><span>CURRENT MANDATE</span><h3>${headerClub?escapeHtml(headerClub.name):'BUILD YOUR NEXT CHAPTER'}</h3></div>${headerClub?`<b>${escapeHtml(managerMarketJobSecurity())}</b>`:'<b>AVAILABLE</b>'}</header>${headerClub?`<div class="mc-mandate-body"><div><span>BOARD EXPECTATION</span><strong>${escapeHtml(contract?.initialExpectation||headerClub.expectation||'Build steadily')}</strong><p>Your security reflects league position, recent form, board confidence and the time available in this spell.</p></div><aside><span>LEAGUE POSITION</span><strong>${escapeHtml(standing.label)}</strong><small>${form.label} from the last ${form.form.length||0} matches</small></aside></div>`:`<div class="mc-mandate-body"><div><span>CAREER STATUS</span><strong>Ready for interviews</strong><p>Your reputation, achievements and tactical fit determine which clubs will progress an application.</p></div><aside><span>MARKET ACCESS</span><strong>${activeManagerVacancies().length} live roles</strong><small>${managerMonitoringClubs().length} clubs currently above the monitoring threshold</small></aside></div>`}</article><article class="mc-opportunity-card"><span>CAREER OPPORTUNITIES</span><h3>${offers.filter(o=>o.type==='JOB').length?`${offers.filter(o=>o.type==='JOB').length} decision${offers.filter(o=>o.type==='JOB').length===1?'':'s'} waiting`:`${activeManagerVacancies().length} live vacancies`}</h3><p>${interviews.length} interview${interviews.length===1?'':'s'} ready · ${approaches.length} confidential approach${approaches.length===1?'':'es'} · ${managerMonitoringClubs().length} clubs monitoring</p><div><button type="button" data-manager-open-market>EXPLORE JOB MARKET</button>${offers.filter(o=>o.type==='JOB')[0]?`<button type="button" data-manager-offer="${offers.filter(o=>o.type==='JOB')[0].id}">REVIEW OFFER</button>`:''}</div></article></div>${managerCareerSignalsHTML()}<section class="mc-reputation-path"><div><span>NEXT REPUTATION MILESTONE</span><h3>${escapeHtml(milestone.label)}</h3><p>${milestone.remaining?`${milestone.remaining} points remaining. Results, overachievement, promotions and honours move your standing.`:'Your reputation has reached its highest tier.'}</p></div><strong>${repScore}<small>/100</small></strong><div class="mc-reputation-track"><i style="width:${milestone.progress}%"></i></div></section>${managerWorldPulseHTML()}${managerCareerTargetClubsHTML()}<section class="manager-spell-card"><div class="manager-pane-heading"><span>CAREER TIMELINE</span><h3>Clubs, records and defining chapters</h3><p>Every spell stays attached to its dates, results and reason for ending.</p></div>${managerCareerSpellsHTML()}</section>${managerRivalsHTML()}</section>`;
     $('#officeManagerContent').innerHTML=`${header}${nav}${body}`;
     $('#officeManagerContent').querySelectorAll('[data-manager-career-view]').forEach(b=>b.addEventListener('click',()=>{managerCareerView=b.dataset.managerCareerView;renderOfficeManager();}));
     $('#officeManagerContent').querySelector('[data-manager-open-market]')?.addEventListener('click',()=>{managerCareerView='vacancies';renderOfficeManager();});
@@ -10860,6 +12078,12 @@
   $('#btnNewCareer').addEventListener('click',()=>{ensureMenuMusic();openCareerSaveMenu('new');});
   $('#btnContinue').addEventListener('click',()=>{ensureMenuMusic();openCareerSaveMenu('continue');});
   $('#btnSettings').addEventListener('click',()=>{ensureMenuMusic();openSettings();});
+  $('#btnTutorial')?.addEventListener('click',openTutorial);
+  $('#tutorialClose')?.addEventListener('click',closeTutorial);
+  $('#tutorialBack')?.addEventListener('click',closeTutorial);
+  $('#tutorialReturn')?.addEventListener('click',closeTutorial);
+  $('#tutorialReplay')?.addEventListener('click',playTutorialFromStart);
+  installTutorialExperience();
   $('#btnBackToMenu').addEventListener('click',()=>{ensureMenuMusic();renderCareerStart();showScreen('careerStart');});
 
   $('#countrySelect').addEventListener('change',e=>{activeCountry=e.target.value;renderGrid();});
@@ -10885,6 +12109,7 @@
   $('#careerStartBack')?.addEventListener('click',()=>{ensureMenuMusic();managerCreatorStage=3;renderManagerCreator();showScreen('managerCreator');});
   $('#careerPathChooseClub')?.addEventListener('click',()=>{ensureMenuMusic();openAnyClubCareerPath();});
   $('#careerPathUnemployed')?.addEventListener('click',()=>{ensureMenuMusic();startUnemployedCareer();});
+  $('#careerPathChallenge')?.addEventListener('click',()=>{ensureMenuMusic();openCareerChallengeSelector();});
   $('#unemployedToMenu')?.addEventListener('click',()=>{ensureMenuMusic();saveCareerState();showScreen('menu');showToast('Job search saved · returned to main menu');});
   $('#jobAdvanceDay')?.addEventListener('click',e=>runLockedAction('UNEMPLOYED_ADVANCE_DAY',e.currentTarget,()=>advanceUnemployedDays(1),{releaseDelay:280,busyText:'ADVANCING…'}));
   $('#jobAdvanceWeek')?.addEventListener('click',e=>runLockedAction('UNEMPLOYED_ADVANCE_WEEK',e.currentTarget,()=>advanceUnemployedDays(7),{releaseDelay:360,busyText:'ADVANCING…'}));
@@ -11012,7 +12237,7 @@
     return true;
   },{releaseDelay:260,busyText:'CONTINUING…'}));
   $('#transferSubnav').addEventListener('click',e=>{const b=e.target.closest('[data-transfer-tab]');if(b&&b.dataset.transferTab!==transferActiveTab)setTransferTab(b.dataset.transferTab);});
-  $('#squadTacticsView')?.addEventListener('click',e=>{const opt=e.target.closest('[data-squad-tactic-group]');if(opt){const group=opt.dataset.squadTacticGroup,value=opt.dataset.squadTacticValue;if(['defensive','attacking','mentality'].includes(group)&&value){careerPreferences=normalizeCareerPreferences(careerPreferences);careerPreferences.tactics[group]=value;saveCareerState();renderSquadTactics();showToast(`${group==='defensive'?'Defensive':group==='attacking'?'Attacking':'Mentality'} plan set to ${value}`);}return;}if(e.target.closest('[data-squad-tactic-reset]')){careerPreferences=normalizeCareerPreferences(careerPreferences);careerPreferences.tactics={defensive:'Balanced',attacking:'Balanced',mentality:'Balanced'};saveCareerState();renderSquadTactics();showToast('Team tactics reset to Balanced');}});
+  $('#squadTacticsView')?.addEventListener('click',e=>{const opt=e.target.closest('[data-squad-tactic-group]'),load=e.target.closest('[data-squad-plan-load]'),save=e.target.closest('[data-squad-plan-save]');if(opt){const group=opt.dataset.squadTacticGroup,value=opt.dataset.squadTacticValue;if(V96_TACTIC_VALUES[group]?.includes(value)){careerPreferences=normalizeCareerPreferences(careerPreferences);careerPreferences.tactics[group]=value;saveCareerState();renderSquadTactics();showToast(`${({defensive:'Defensive',attacking:'Attacking',mentality:'Mentality',width:'Width',tempo:'Tempo',freedom:'Freedom'})[group]} set to ${value}`);}return;}if(load){const id=load.dataset.squadPlanLoad;careerPreferences=normalizeCareerPreferences(careerPreferences);const plan=careerPreferences.tacticalPlans[id];if(plan){careerPreferences.tactics=v96NormalizeTactics(plan.tactics);careerPreferences.activeTacticalPlan=id;saveCareerState();renderSquadTactics();showToast(`${plan.name} loaded`);}return;}if(save){const id=save.dataset.squadPlanSave;careerPreferences=normalizeCareerPreferences(careerPreferences);const plan=careerPreferences.tacticalPlans[id];if(plan){plan.tactics=v96NormalizeTactics(careerPreferences.tactics);careerPreferences.activeTacticalPlan=id;saveCareerState();renderSquadTactics();showToast(`${plan.name} updated`);}return;}if(e.target.closest('[data-squad-tactic-reset]')){careerPreferences=normalizeCareerPreferences(careerPreferences);careerPreferences.tactics=v96NormalizeTactics({});saveCareerState();renderSquadTactics();showToast('Team tactics reset to Balanced');}});
   $('#squadSubnav').addEventListener('click',e=>{const b=e.target.closest('[data-squad-view]');if(b&&b.dataset.squadView!==squadView)setSquadView(b.dataset.squadView);});
   $('#settingsReturnMenu')?.addEventListener('click',returnToMainMenu);
   v39BindTransferSearchControls();
@@ -11039,7 +12264,9 @@
       if(overlay){
         const critical=overlay.matches('.career-decision-overlay,.watch-match-overlay,.manager-interview-overlay,.manager-offer-overlay,.manager-dismissal-overlay,.cc-draw-overlay,.cc-final-overlay,.rtg-review-overlay,.press-conference-overlay');
         if(critical){e.preventDefault();return;}
-        if(overlay.id==='settingsModal')closeSettings();
+        if(overlay.id==='v48PlayerProfile')window.VelmoraPlayerProfiles?.close();
+        else if(overlay.id==='settingsModal')closeSettings();
+        else if(overlay.id==='tutorialModal')closeTutorial();
         else if(overlay.id==='infoModal')closeInfo();
         else if(overlay.id==='negotiationModal')closeNegotiation();
         else if(overlay.id==='contractModal')closeContractRenewal();
@@ -11063,6 +12290,8 @@
   window.addEventListener('pageshow',()=>v20731InstallMusicMiniPlayer());
   if(musicVolume) musicVolume.addEventListener('input',applyMusicVolume);
   if(sfxVolume) sfxVolume.addEventListener('input',applySfxVolume);
+  if(uiScale)uiScale.addEventListener('input',()=>{accessibilityPreferences=applyAccessibilityPreferences({...accessibilityPreferences,scale:Number(uiScale.value)});});
+  if(reducedMotion)reducedMotion.addEventListener('change',()=>{accessibilityPreferences=applyAccessibilityPreferences({...accessibilityPreferences,reducedMotion:reducedMotion.checked});});
   applySfxVolume();
   document.addEventListener('click',e=>{
     const btn=e.target.closest('button');
@@ -11076,14 +12305,14 @@
     const v=value&&typeof value==='object'?value:{};
     const rawLife=v.clubLife&&typeof v.clubLife==='object'?v.clubLife:{};
     const frequency=['QUIET','STANDARD','LIVELY'].includes(String(rawLife.frequency||'STANDARD').toUpperCase())?String(rawLife.frequency||'STANDARD').toUpperCase():'STANDARD';
-    const clubLife={version:2,frequency,lastEvaluationDate:rawLife.lastEvaluationDate||null,lastInteractiveDate:rawLife.lastInteractiveDate||null,lastPassiveDate:rawLife.lastPassiveDate||null,categoryCooldowns:rawLife.categoryCooldowns&&typeof rawLife.categoryCooldowns==='object'?rawLife.categoryCooldowns:{},playerCooldowns:rawLife.playerCooldowns&&typeof rawLife.playerCooldowns==='object'?rawLife.playerCooldowns:{},pairCooldowns:rawLife.pairCooldowns&&typeof rawLife.pairCooldowns==='object'?rawLife.pairCooldowns:{},relationships:rawLife.relationships&&typeof rawLife.relationships==='object'?rawLife.relationships:{},continuity:Array.isArray(rawLife.continuity)?rawLife.continuity.slice(-120):[],continuityFacts:Array.isArray(rawLife.continuityFacts)?rawLife.continuityFacts.slice(-180):[],history:Array.isArray(rawLife.history)?rawLife.history.slice(-280):[]};
+    const clubLife={version:3,frequency,lastEvaluationDate:rawLife.lastEvaluationDate||null,lastInteractiveDate:rawLife.lastInteractiveDate||null,lastPassiveDate:rawLife.lastPassiveDate||null,lastHierarchyReviewDate:rawLife.lastHierarchyReviewDate||null,categoryCooldowns:rawLife.categoryCooldowns&&typeof rawLife.categoryCooldowns==='object'?rawLife.categoryCooldowns:{},playerCooldowns:rawLife.playerCooldowns&&typeof rawLife.playerCooldowns==='object'?rawLife.playerCooldowns:{},pairCooldowns:rawLife.pairCooldowns&&typeof rawLife.pairCooldowns==='object'?rawLife.pairCooldowns:{},relationships:rawLife.relationships&&typeof rawLife.relationships==='object'?rawLife.relationships:{},hierarchyHistory:Array.isArray(rawLife.hierarchyHistory)?rawLife.hierarchyHistory.slice(-80):[],continuity:Array.isArray(rawLife.continuity)?rawLife.continuity.slice(-120):[],continuityFacts:Array.isArray(rawLife.continuityFacts)?rawLife.continuityFacts.slice(-180):[],history:Array.isArray(rawLife.history)?rawLife.history.slice(-280):[]};
     const rawMemory=v.careerMemory&&typeof v.careerMemory==='object'?v.careerMemory:{};
     const memoryEvents=Array.isArray(rawMemory.events)?rawMemory.events.filter(e=>e&&e.type&&e.id).slice(-5000):[];
     const derivedKeys=memoryEvents.map(e=>e.key).filter(Boolean);
     const careerMemory={version:1,legacyMigrationVersion:Number(rawMemory.legacyMigrationVersion||0),events:memoryEvents,eventKeys:Array.from(new Set([...(Array.isArray(rawMemory.eventKeys)?rawMemory.eventKeys:[]),...derivedKeys])).slice(-6500),environment:rawMemory.environment&&typeof rawMemory.environment==='object'?{version:1,slots:rawMemory.environment.slots&&typeof rawMemory.environment.slots==='object'?rawMemory.environment.slots:{}}:{version:1,slots:{}}};
     const rawStats=v.statistics&&typeof v.statistics==='object'?v.statistics:{};
     const statistics={version:1,trackingStartedDate:rawStats.trackingStartedDate||null,migratedLegacyVersion:Number(rawStats.migratedLegacyVersion||0),rows:rawStats.rows&&typeof rawStats.rows==='object'?rawStats.rows:{}};
-    return {version:7,sequence:Number(v.sequence||0),incomingOffers:Array.isArray(v.incomingOffers)?v.incomingOffers:[],loanOffers:Array.isArray(v.loanOffers)?v.loanOffers:[],transferHistory:Array.isArray(v.transferHistory)?v.transferHistory:[],loanHistory:Array.isArray(v.loanHistory)?v.loanHistory:[],playerHistory:v.playerHistory&&typeof v.playerHistory==='object'?v.playerHistory:{},playerStoryHistory:Array.isArray(v.playerStoryHistory)?v.playerStoryHistory:[],marketStates:v.marketStates&&typeof v.marketStates==='object'?v.marketStates:{},clubRecords:v.clubRecords&&typeof v.clubRecords==='object'?v.clubRecords:{},globalRecords:v.globalRecords&&typeof v.globalRecords==='object'?{recordFee:0,recordFeePlayerId:null,...v.globalRecords}:{recordFee:0,recordFeePlayerId:null},lastDailyProcess:v.lastDailyProcess||null,lastMonthlyProcess:v.lastMonthlyProcess||null,lastPlayerStoryDate:v.lastPlayerStoryDate||null,lastMarketProcess:v.lastMarketProcess||null,lastSeasonArchive:v.lastSeasonArchive||null,statistics,careerMemory,clubLife};
+    return {version:8,sequence:Number(v.sequence||0),incomingOffers:Array.isArray(v.incomingOffers)?v.incomingOffers:[],loanOffers:Array.isArray(v.loanOffers)?v.loanOffers:[],transferHistory:Array.isArray(v.transferHistory)?v.transferHistory:[],loanHistory:Array.isArray(v.loanHistory)?v.loanHistory:[],playerHistory:v.playerHistory&&typeof v.playerHistory==='object'?v.playerHistory:{},playerStoryHistory:Array.isArray(v.playerStoryHistory)?v.playerStoryHistory:[],marketStates:v.marketStates&&typeof v.marketStates==='object'?v.marketStates:{},clubRecords:v.clubRecords&&typeof v.clubRecords==='object'?v.clubRecords:{},globalRecords:v.globalRecords&&typeof v.globalRecords==='object'?{recordFee:0,recordFeePlayerId:null,...v.globalRecords}:{recordFee:0,recordFeePlayerId:null},lastDailyProcess:v.lastDailyProcess||null,lastMonthlyProcess:v.lastMonthlyProcess||null,lastPlayerStoryDate:v.lastPlayerStoryDate||null,lastMarketProcess:v.lastMarketProcess||null,lastSeasonArchive:v.lastSeasonArchive||null,statistics,careerMemory,clubLife};
   }
   function livingSquadNextId(prefix='LS'){livingSquad.sequence=Number(livingSquad.sequence||0)+1;return`${prefix}-${careerTime.seasonId}-${livingSquad.sequence.toString(36).toUpperCase()}`;}
 
@@ -11318,9 +12547,39 @@
   function playerTrustLabel(score){score=Number(score||0);if(score>=85)return'EXCELLENT';if(score>=70)return'STRONG';if(score>=55)return'STABLE';if(score>=40)return'FRAGILE';return'DAMAGED';}
   function playerInfluenceScore(p){const t=playerStoryTraits(p);return clamp(Math.round(Number(t.leadership||40)*.55+Math.min(30,Number(p.age||18)-18)*.75+(p.captain?25:0)+(['Crucial','Important'].includes(p.squadRole)?8:0)),0,100);}
   function playerInfluenceLabel(p){const s=playerInfluenceScore(p);return s>=80?'LEADER':s>=62?'INFLUENTIAL':s>=45?'ESTABLISHED':'LOW-KEY';}
+  function squadPairAffinity(a,b,club=currentClub){
+    if(!a||!b||a.id===b.id)return 0;const ageGap=Math.abs(Number(a.age||24)-Number(b.age||24)),pair=clubLifeState().relationships[clubLifePairKey(a,b)],sameCountry=a.country&&b.country&&a.country===b.country,sameWorld=playerWorld(a)===playerWorld(b),sameRole=a.role===b.role,sameGroup=clubLifePersonalityGroup(a)===clubLifePersonalityGroup(b);let score=30;
+    score+=ageGap<=2?16:ageGap<=5?10:ageGap<=8?4:0;score+=sameCountry?13:sameWorld?5:0;score+=sameRole?10:0;score+=sameGroup?7:0;if(a.captain||b.captain)score+=4;if(a.storyFlags?.academyGraduate&&b.storyFlags?.academyGraduate)score+=8;if(Number(a.integration||100)<70||Number(b.integration||100)<70)score-=4;
+    if(pair){const type=String(pair.type||'').toUpperCase();score+=/FRIEND|MENTOR|TEAM/.test(type)?12+Number(pair.score||0)*3:/COMPETITION/.test(type)?5+Number(pair.score||0):0;score-=Math.max(0,Number(pair.tension||0))*.42;if(/RIVAL|TENSION|CONFLICT/.test(type))score-=8;}
+    return clamp(Math.round(score),0,100);
+  }
+  function squadCliqueLabel(members,index=0){
+    if(members.some(player=>player.captain))return'LEADERSHIP CIRCLE';const averageAge=members.reduce((total,player)=>total+Number(player.age||24),0)/Math.max(1,members.length),roles=[...new Set(members.map(player=>player.role).filter(Boolean))],countries=[...new Set(members.map(player=>player.country).filter(Boolean))],integration=members.reduce((total,player)=>total+Number(player.integration||100),0)/Math.max(1,members.length);if(integration<72)return'NEW ARRIVALS';if(averageAge<=23)return'NEXT GENERATION';if(averageAge>=29)return'SENIOR CORE';if(roles.length===1)return`${String(roles[0]).replace(/-/g,' ')} UNIT`;if(countries.length===1)return`${countries[0]} CIRCLE`;return['COMPETITIVE CORE','SOCIAL CIRCLE','TRAINING GROUP'][index%3];
+  }
+  function squadSocialSnapshot(club=currentClub){
+    const squad=getSquad(club).filter(player=>!player.onLoan).map(player=>ensurePlayerStoryMeta(player,club));if(!squad.length)return{clubId:club?.id||null,cohesion:60,label:'SETTLING',hierarchy:[],cliques:[],tensions:[],displaced:[]};
+    const ranked=[...squad].sort((a,b)=>(Number(!!b.captain)-Number(!!a.captain))||playerInfluenceScore(b)-playerInfluenceScore(a)||Number(b.age)-Number(a.age));const hierarchy=ranked.map((player,index)=>{const influence=playerInfluenceScore(player),recent=player.lastTransferDate&&diffDaysISO(player.lastTransferDate,currentCareerISO())<=120;let role=player.captain?'CAPTAIN':index<3&&influence>=62?'LEADER':index<Math.min(6,squad.length)&&influence>=48?'CORE VOICE':recent||Number(player.integration||100)<68?'NEW ARRIVAL':influence<38?'PERIPHERAL':'FOLLOWER';return{player,playerId:player.id,role,influence,index};});
+    const remaining=new Set(ranked.map(player=>String(player.id))),cliques=[];for(const seed of ranked){if(!remaining.has(String(seed.id)))continue;const candidates=ranked.filter(player=>player.id!==seed.id&&remaining.has(String(player.id))).map(player=>({player,affinity:squadPairAffinity(seed,player,club)})).sort((a,b)=>b.affinity-a.affinity);const members=[seed,...candidates.filter(row=>row.affinity>=52).slice(0,4).map(row=>row.player)];if(members.length===1&&candidates[0]?.affinity>=44)members.push(candidates[0].player);members.forEach(player=>remaining.delete(String(player.id)));const cohesion=members.length<2?42:Math.round(members.slice(1).reduce((total,player)=>total+squadPairAffinity(seed,player,club),0)/(members.length-1));cliques.push({id:`${club?.id||'CLUB'}-CLIQUE-${cliques.length+1}`,label:squadCliqueLabel(members,cliques.length),members,memberIds:members.map(player=>player.id),leader:[...members].sort((a,b)=>playerInfluenceScore(b)-playerInfluenceScore(a))[0],cohesion});}
+    const relationships=Object.values(clubLifeState().relationships||{}),tensions=relationships.filter(row=>row.playerIds?.every(id=>squad.some(player=>String(player.id)===String(id)))&&(Number(row.tension||0)>=18||/RIVAL|TENSION|CONFLICT/.test(String(row.type||'').toUpperCase()))).map(row=>({relationship:row,players:row.playerIds.map(careerPlayerById).filter(Boolean),tension:Math.max(Number(row.tension||0),/RIVAL|TENSION|CONFLICT/.test(String(row.type||'').toUpperCase())?24:0)})).sort((a,b)=>b.tension-a.tension);
+    const displaced=squad.filter(player=>player.storyFlags?.displacedById&&squad.some(other=>String(other.id)===String(player.storyFlags.displacedById))).map(player=>({player,challenger:careerPlayerById(player.storyFlags.displacedById),since:player.storyFlags.displacedSince||null}));const cliqueAverage=cliques.reduce((total,clique)=>total+clique.cohesion,0)/Math.max(1,cliques.length),integration=squad.reduce((total,player)=>total+Number(player.integration||100),0)/squad.length,cohesion=clamp(Math.round(cliqueAverage*.62+integration*.38-tensions.reduce((total,row)=>total+row.tension,0)/Math.max(8,squad.length*2)),18,94),label=cohesion>=78?'UNITED':cohesion>=65?'CONNECTED':cohesion>=52?'SETTLED':cohesion>=38?'DIVIDED':'FRACTURED';
+    hierarchy.forEach(entry=>{const clique=cliques.find(row=>row.memberIds.some(id=>String(id)===String(entry.playerId)));entry.player.lastHierarchyRole=entry.role;entry.player.lastCliqueId=clique?.id||null;entry.player.lastCliqueLabel=clique?.label||'UNATTACHED';entry.player.lastCliqueMemberIds=clique?.memberIds.filter(id=>String(id)!==String(entry.playerId))||[];entry.player.lastHierarchyDate=currentCareerISO();});return{clubId:club?.id||null,cohesion,label,hierarchy,cliques,tensions,displaced};
+  }
+  function playerSocialStanding(player,club=currentClub){const snapshot=squadSocialSnapshot(club),hierarchy=snapshot.hierarchy.find(entry=>String(entry.playerId)===String(player?.id)),clique=snapshot.cliques.find(row=>row.memberIds.some(id=>String(id)===String(player?.id))),tension=snapshot.tensions.filter(row=>row.players.some(member=>String(member.id)===String(player?.id))).reduce((total,row)=>total+row.tension,0),score=clamp(Math.round(48+(hierarchy?.influence||0)*.25+(clique?.cohesion||40)*.25-Math.min(24,tension*.2)),18,92);return{role:hierarchy?.role||'PERIPHERAL',clique:clique?.label||'UNATTACHED',cliqueId:clique?.id||null,cohesion:clique?.cohesion||40,score,tensions:tension};}
+  function applyCliquePressReaction(target,valence,strength,reason='Public comment'){
+    if(!target||!valence)return null;const club=clubById(target.parentClubId||target.ownerClubId||target.clubId)||currentClub,snapshot=squadSocialSnapshot(club),clique=snapshot.cliques.find(row=>row.memberIds.some(id=>String(id)===String(target.id)));if(!clique)return null;const companions=clique.members.filter(player=>player.id!==target.id).slice(0,4),delta=Math.sign(valence);companions.forEach(player=>{if(Number(strength)>=3)adjustPlayerMorale(player,delta);adjustPlayerManagerTrust(player,delta,`${reason} · ${target.name}`);});return{affected:companions.length,label:clique.label,memberIds:companions.map(player=>player.id)};
+  }
+  function applyCaptaincyHierarchyImpact(previous,picked,club=currentClub){
+    if(!picked||previous?.id===picked.id)return;const before=previous?playerSocialStanding(previous,club):null;if(previous){adjustPlayerManagerTrust(previous,-4,'Captaincy changed');adjustPlayerMorale(previous,-1);(previous.lastCliqueMemberIds||[]).map(careerPlayerById).filter(Boolean).slice(0,3).forEach(player=>adjustPlayerManagerTrust(player,-1,'Leadership group displaced'));}adjustPlayerManagerTrust(picked,5,'Named club captain');adjustPlayerMorale(picked,1);(picked.lastCliqueMemberIds||[]).map(careerPlayerById).filter(Boolean).slice(0,3).forEach(player=>adjustPlayerManagerTrust(player,1,'Leadership group promoted'));if(previous&&before?.role&&['CAPTAIN','LEADER'].includes(before.role)){const relation=clubLifeRelationship(previous,picked,'LEADERSHIP_RIVALRY',currentCareerISO());if(relation)relation.tension=clamp(Number(relation.tension||0)+10,0,100);}squadSocialSnapshot(club);
+  }
+  function applySquadArrivalImpact(player,club,date=currentCareerISO()){
+    if(!player||!club)return null;const incumbent=getSquad(club).filter(other=>other.id!==player.id&&!other.onLoan&&other.role===player.role&&['Crucial','Important','Rotation'].includes(other.squadRole)).sort((a,b)=>Number(b.seasonStats?.starts||0)-Number(a.seasonStats?.starts||0)||Number(b.ovr||0)-Number(a.ovr||0))[0];if(!incumbent||Number(player.ovr||0)<Number(incumbent.ovr||0)-4)return null;incumbent.storyFlags=incumbent.storyFlags||{};incumbent.storyFlags.displacedById=player.id;incumbent.storyFlags.displacedSince=date;adjustPlayerManagerTrust(incumbent,-2,'New competition for starting place');if(['Crucial','Important'].includes(incumbent.squadRole))adjustPlayerMorale(incumbent,-1);const relation=clubLifeRelationship(incumbent,player,'COMPETITION',date);if(relation)relation.tension=clamp(Number(relation.tension||0)+6,0,100);recordPlayerStory(incumbent,'DISPLACED_STARTER',date,{challengerId:player.id});return incumbent;
+  }
+  function applySquadDepartureImpact(player,club,date=currentCareerISO()){
+    if(!player||!club)return null;const important=['CAPTAIN','LEADER'].includes(player.lastHierarchyRole)||player.captain;if(!important)return null;const affected=(player.lastCliqueMemberIds||[]).map(careerPlayerById).filter(member=>member&&String(member.clubId||member.ownerClubId)===String(club.id)).slice(0,4);affected.forEach(member=>{adjustPlayerMorale(member,-1);member.integration=clamp(Number(member.integration||100)-2,0,100);});clubLifeState().hierarchyHistory.push({date,clubId:club.id,type:'LEADER_DEPARTED',playerId:player.id,playerName:player.name,affectedPlayerIds:affected.map(member=>member.id)});clubLifeState().hierarchyHistory=clubLifeState().hierarchyHistory.slice(-80);return{affected:affected.length,playerId:player.id};
+  }
   function squadAtmosphereSnapshot(club=currentClub){
     const squad=getSquad(club).map(p=>ensurePlayerStoryMeta(p,club));if(!squad.length)return{score:60,label:'SETTLED',unhappy:0,positive:0,captainInfluence:0};
-    const values=squad.map(p=>playerHappinessBreakdown(p,club).overall),avg=values.reduce((a,b)=>a+b,0)/values.length,captain=squad.find(p=>p.captain),captainInfluence=captain?playerInfluenceScore(captain):0,captainTrust=captain?Number(captain.managerTrust||60):60,leadershipEffect=captain?clamp((captainInfluence-55)/10+(captainTrust-60)/18,-5,6):0,score=clamp(Math.round(avg+leadershipEffect),0,100),label=score>=80?'HARMONIOUS':score>=68?'POSITIVE':score>=56?'SETTLED':score>=43?'UNEASY':'FRACTURED';return{score,label,unhappy:values.filter(v=>v<42).length,positive:values.filter(v=>v>=70).length,captainInfluence};
+    const values=squad.map(p=>playerHappinessBreakdown(p,club).overall),avg=values.reduce((a,b)=>a+b,0)/values.length,captain=squad.find(p=>p.captain),captainInfluence=captain?playerInfluenceScore(captain):0,captainTrust=captain?Number(captain.managerTrust||60):60,leadershipEffect=captain?clamp((captainInfluence-55)/10+(captainTrust-60)/18,-5,6):0,social=squadSocialSnapshot(club),socialEffect=clamp((social.cohesion-58)/12,-4,4),score=clamp(Math.round(avg+leadershipEffect+socialEffect),0,100),label=score>=80?'HARMONIOUS':score>=68?'POSITIVE':score>=56?'SETTLED':score>=43?'UNEASY':'FRACTURED';return{score,label,unhappy:values.filter(v=>v<42).length,positive:values.filter(v=>v>=70).length,captainInfluence,cohesion:social.cohesion,socialLabel:social.label};
   }
   function recordPlayerStory(p,type,date=currentCareerISO(),extra={}){if(!p)return null;livingSquad=normalizeLivingSquadState(livingSquad);const record={id:livingSquadNextId('STORY'),date:isoDate(date),seasonId:careerTime.seasonId,playerId:p.id,playerName:p.name,clubId:p.parentClubId||p.ownerClubId||p.clubId||null,type,...extra};livingSquad.playerStoryHistory.push(record);livingSquad.playerStoryHistory=livingSquad.playerStoryHistory.slice(-300);recordLivingCareerEvent(p,`STORY_${type}`,clubById(record.clubId),null,0,date,extra);return record;}
   function processUserSquadRelationshipsAfterMatch(club,fixture,resultForClub,starterIds){
@@ -11330,7 +12589,7 @@
   function maybePlayerBreakoutStory(p,club,date){if(Number(p.age||99)>22||p.storyFlags?.breakoutSeason===careerTime.seasonId)return false;const starts=Number(p.seasonStats?.starts||0),growth=Number(p.careerGrowthThisSeason||0),goals=Number(p.seasonStats?.goals||0),formGood=['Excellent','Good'].includes(p.form);if(starts>=4&&formGood&&(growth>=1||goals>=2||Number(p.potential||p.ovr)>=Number(p.ovr||0)+8))return publishPlayerBreakoutStory(p,club,date);return false;}
   function maybePlayerStruggleBrief(p,club,date){if(!['Crucial','Important'].includes(p.squadRole)||!['Poor','Terrible'].includes(p.form)||Number(p.seasonStats?.starts||0)<4)return false;const key=`STRUGGLE-${p.id}`;if(!eventCooldownReady(key,date,70))return false;setEventCooldown(key,date);recordPlayerStory(p,'FORM_STRUGGLE',date);addCareerInboxMessage({id:`player-struggle-${p.id}-${date}`,type:'SQUAD',sender:'ASSISTANT COACH',subject:`Form watch: ${p.name}`,preview:'A senior player is going through a difficult spell.',title:`${p.name} needs a response`,body:[`${p.name}'s recent form has dropped below the level expected of a ${String(p.squadRole||'senior').toLowerCase()} player.`,`This is a confidence and selection issue rather than a permanent decline. A run of good performances can reverse it.`],signoff:'Assistant Coach',action:{label:'VIEW SQUAD',route:'squad'},date});return true;}
   function maybePlayerRelationshipConversation(p,club,date){const h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p),key=`RELATIONSHIP-${p.id}`;if(Number(p.managerTrust||60)>=36||h.overall>=48||activePromiseForPlayer(p.id)||p.transferRequested||!eventCooldownReady(key,date,65))return null;setEventCooldown(key,date);return queueDecisionEvent({id:`DEC-REL-${p.id}-${date}`,kind:'PLAYER_RELATIONSHIP',category:'PRIVATE PLAYER MEETING',playerId:p.id,cooldownKey:key,title:'Can we clear the air?',body:`I do not feel fully connected to the way things are going right now. I want to understand where I stand with you and with this team.`,choices:[{id:'reassure',label:'REASSURE THE PLAYER',copy:'Rebuild trust and make clear they remain valued.'},{id:'challenge',label:'CHALLENGE THEM',copy:`Demand a stronger response. ${traits.professionalism>=75?'This personality may respond well.':'This may create more tension.'}`},{id:'honest',label:'BE COMPLETELY HONEST',copy:'Set expectations without making a new promise.'}]});}
-  function maybeLoanPathwayConversation(p,club,date){if(!isTransferWindowOpen(date)||matchdayUnavailable(p)||Number(p.age||99)>21||p.onLoan||p.loanListed||p.transferRequested||!['Prospect','Reserve'].includes(p.squadRole))return null;const matches=v37PlayingTimeWindow(p,club,10).total,starts=playerStartsInRecentMatches(p,club,10),h=playerHappinessBreakdown(p,club),key=`LOAN-PATH-${p.id}`;if(matches<7||starts>0||h.components.find(c=>c.label==='Development pathway')?.score>62||!eventCooldownReady(key,date,100))return null;setEventCooldown(key,date);return queueDecisionEvent({id:`DEC-LOAN-PATH-${p.id}-${date}`,kind:'LOAN_PATHWAY',category:'DEVELOPMENT MEETING',playerId:p.id,cooldownKey:key,title:'What is the plan for me?',body:`I am working hard, but I need competitive minutes to keep progressing. If there is not a senior opportunity here, I would like us to consider a loan.`,choices:[{id:'loan',label:'FIND A LOAN',copy:'List the player for a development loan.'},{id:'minutes',label:'PROMISE AN OPPORTUNITY',copy:'Promise a start in the next four eligible competitive matches.'},{id:'stay',label:'STAY PATIENT',copy:'Make no promise and keep the current pathway.'}]});}
+  function maybeLoanPathwayConversation(p,club,date){if(!isTransferWindowOpen(date)||!clubCanMarketPlayer(club,p)||matchdayUnavailable(p)||Number(p.age||99)>21||p.onLoan||p.loanListed||p.transferRequested||!['Prospect','Reserve'].includes(p.squadRole))return null;const matches=v37PlayingTimeWindow(p,club,10).total,starts=playerStartsInRecentMatches(p,club,10),h=playerHappinessBreakdown(p,club),key=`LOAN-PATH-${p.id}`;if(matches<7||starts>0||h.components.find(c=>c.label==='Development pathway')?.score>62||!eventCooldownReady(key,date,100))return null;setEventCooldown(key,date);return queueDecisionEvent({id:`DEC-LOAN-PATH-${p.id}-${date}`,kind:'LOAN_PATHWAY',category:'DEVELOPMENT MEETING',playerId:p.id,cooldownKey:key,title:'What is the plan for me?',body:`I am working hard, but I need competitive minutes to keep progressing. If there is not a senior opportunity here, I would like us to consider a loan.`,choices:[{id:'loan',label:'FIND A LOAN',copy:'List the player for a development loan.'},{id:'minutes',label:'PROMISE AN OPPORTUNITY',copy:'Promise a start in the next four eligible competitive matches.'},{id:'stay',label:'STAY PATIENT',copy:'Make no promise and keep the current pathway.'}]});}
   function maybeCaptainAtmosphereMeeting(club,date){const atmosphere=squadAtmosphereSnapshot(club),captain=getSquad(club).find(p=>p.captain);if(!captain||atmosphere.score>=44||!eventCooldownReady('CAPTAIN-ATMOSPHERE',date,55))return null;setEventCooldown('CAPTAIN-ATMOSPHERE',date);return queueDecisionEvent({id:`DEC-CAPTAIN-ATM-${date}`,kind:'CAPTAIN_MEETING',category:'DRESSING ROOM',playerId:captain.id,cooldownKey:'CAPTAIN-ATMOSPHERE',title:'The dressing room needs attention',body:`The mood around the group has become uneasy. ${captain.name} has asked for a private conversation before the tension becomes a bigger problem.`,choices:[{id:'listen',label:'LISTEN TO THE LEADERS',copy:'Give the captain and senior group a voice.'},{id:'protect',label:'PROTECT THE SQUAD',copy:'Take pressure off the players and rebuild confidence.'},{id:'standards',label:'RAISE THE STANDARDS',copy:'Demand accountability. Professional personalities may respond best.'}]});}
 
   // ---------- AAA Club Life: memorable moments without manufacturing problems ----------
@@ -11364,7 +12623,7 @@
     {id:'ACADEMY_WELCOME',category:'MENTORSHIP',interactive:false,cooldown:49,weight:8,factType:'ACADEMY_PROMOTION'},
     {id:'SHARED_HISTORY',category:'HISTORY',interactive:false,cooldown:84,weight:4}
   ];
-  function clubLifeState(){livingSquad=normalizeLivingSquadState(livingSquad);return livingSquad.clubLife;}
+  function clubLifeState(){if(!livingSquad?.clubLife||Number(livingSquad.clubLife.version||0)<3)livingSquad=normalizeLivingSquadState(livingSquad);return livingSquad.clubLife;}
   function v44ClubLifeFact(type,metadata={},date=currentCareerISO(),club=currentClub){
     if(!type||!club||!currentClub||club.id!==currentClub.id)return null;
     const state=clubLifeState(),safeDate=isoDate(date),m=metadata&&typeof metadata==='object'?metadata:{};
@@ -11381,7 +12640,7 @@
   function v44ConsumeClubLifeFact(factId,date=currentCareerISO()){
     if(!factId)return false;const fact=clubLifeState().continuityFacts.find(f=>f.id===factId);if(!fact||fact.consumed)return false;fact.consumed=true;fact.consumedDate=date;return true;
   }
-  function clubLifeConfig(){const key=clubLifeState().frequency;return key==='QUIET'?{interactiveChance:28,passiveChance:44,interactiveGap:18,passiveGap:9}:key==='LIVELY'?{interactiveChance:96,passiveChance:82,interactiveGap:5,passiveGap:5}:{interactiveChance:88,passiveChance:58,interactiveGap:6,passiveGap:7};}
+  function clubLifeConfig(){const key=clubLifeState().frequency;return key==='QUIET'?{interactiveChance:24,passiveChance:45,interactiveGap:49,passiveGap:21}:key==='LIVELY'?{interactiveChance:78,passiveChance:82,interactiveGap:14,passiveGap:9}:{interactiveChance:52,passiveChance:62,interactiveGap:28,passiveGap:14};}
   function clubLifePairKey(a,b){return[a?.id,b?.id].filter(Boolean).map(String).sort().join('::');}
   function clubLifePick(rows,seed){return rows.length?rows[Math.abs(hashString(seed))%rows.length]:null;}
   function clubLifePersonalityGroup(p){const name=String(playerStoryTraits(p).name||p?.personality||'Professional').toUpperCase();if(/CONFIDENT/.test(name))return'CONFIDENT';if(/QUIET|RESERVED/.test(name))return'QUIET';if(/AMBITIOUS|DRIVEN/.test(name))return'AMBITIOUS';if(/LOYAL|HOMEBODY/.test(name))return'LOYAL';if(/TEMPER/.test(name))return'HOT';if(/LIVELY|JOKER/.test(name))return'LIVELY';return'PROFESSIONAL';}
@@ -11466,18 +12725,19 @@
   function maybeGenerateClubLifeMoment(date=currentCareerISO()){
     if(!currentClub||employmentStatus!=='employed')return null;const state=clubLifeState();clubLifeExpireOptionalConversations(date);if(state.lastEvaluationDate===date)return null;state.lastEvaluationDate=date;const candidates=clubLifeCandidates(date);if(!candidates.length)return null;const cfg=clubLifeConfig(),interactiveReady=!state.lastInteractiveDate||diffDaysISO(state.lastInteractiveDate,date)>=cfg.interactiveGap,passiveReady=!state.lastPassiveDate||diffDaysISO(state.lastPassiveDate,date)>=cfg.passiveGap,interactiveGate=hashString(`${worldSeed}-${currentClub.id}-${date}-CLUB-LIFE-TALK`)%100,passiveGate=hashString(`${worldSeed}-${currentClub.id}-${date}-CLUB-LIFE-PASSIVE`)%100;let mode=interactiveReady&&interactiveGate<cfg.interactiveChance?'INTERACTIVE':passiveReady&&passiveGate<cfg.passiveChance?'PASSIVE':null;if(!mode)return null;let pool=mode==='INTERACTIVE'?candidates.filter(x=>x.scene.interactive):candidates;if(!pool.length&&mode==='INTERACTIVE'){mode='PASSIVE';pool=candidates;}const expanded=[];pool.forEach(x=>{for(let i=0;i<Math.max(1,Number(x.scene.weight||1));i++)expanded.push(x);});const chosen=clubLifePick(expanded,`${worldSeed}-${date}-${currentClub.id}-CLUB-LIFE-PICK`),title=clubLifeTitle(chosen.scene,chosen.actors),body=clubLifeSceneCopy(chosen.scene,chosen.actors,date),p=chosen.actors.player,q=chosen.actors.secondary;
     if(mode==='INTERACTIVE'){
-      const decisionId=`DEC-CLUB-LIFE-${chosen.scene.id}-${date}`;state.lastInteractiveDate=date;clubLifeRecord(chosen.scene,chosen.actors,date,mode,title,body,decisionId);return queueDecisionEvent({id:decisionId,kind:'CLUB_LIFE',optional:true,category:'LIFE AROUND THE CLUB',sceneId:chosen.scene.id,sceneCategory:chosen.scene.category,playerId:p?.id||null,secondaryPlayerId:q?.id||null,cooldownKey:`CLUB-LIFE-${chosen.scene.id}-${p?.id||'CLUB'}`,title,body:body.join(' '),choices:[{id:'supportive',tone:'SUPPORTIVE',label:'BACK THE MOMENT',copy:'Recognise what this means to the people involved.'},{id:'playful',tone:'PLAYFUL',label:'JOIN THE MOOD',copy:'Respond warmly and share the lighter side of the moment.'},{id:'focused',tone:'FOCUSED',label:'CHANNEL IT FORWARD',copy:'Connect the moment to the standards the group is building.'}]});
+      const decisionId=`DEC-CLUB-LIFE-${chosen.scene.id}-${date}`;state.lastInteractiveDate=date;clubLifeRecord(chosen.scene,chosen.actors,date,mode,title,body,decisionId);return queueDecisionEvent({id:decisionId,kind:'CLUB_LIFE',optional:true,category:'LIFE AROUND THE CLUB',sceneId:chosen.scene.id,sceneCategory:chosen.scene.category,playerId:p?.id||null,secondaryPlayerId:q?.id||null,cooldownKey:`CLUB-LIFE-${chosen.scene.id}-${p?.id||'CLUB'}`,title,body:body.join(' '),scene:clubLifeDecisionScene(chosen.scene,chosen.actors,body,date),choices:clubLifeInteractiveChoices(chosen.scene.id,p,q)});
     }
     state.lastPassiveDate=date;const record=clubLifeRecord(chosen.scene,chosen.actors,date,mode,title,body);addCareerNews({id:`club-life-${record.id}`,clubLife:true,notificationPriority:'INTERESTING',category:'AROUND THE CLUB',clubId:currentClub.id,relatedClubIds:[currentClub.id],playerId:p?.id||null,relatedPlayerIds:[p?.id,q?.id].filter(Boolean),title:title.toUpperCase(),body,image:p?.avatar||currentClub.badge,date});return record;
   }
-  function resolveClubLifeChoice(event,choiceId){const p=careerPlayerById(event.playerId),q=careerPlayerById(event.secondaryPlayerId),group=clubLifePersonalityGroup(p);if(!p)return;let trust=1,morale=0,integration=0;if(choiceId==='supportive'){trust=2;morale=1;}if(choiceId==='playful'){trust=['LIVELY','CONFIDENT','HOT'].includes(group)?2:1;morale=1;}if(choiceId==='focused'){trust=['AMBITIOUS','PROFESSIONAL','LOYAL'].includes(group)?2:1;integration=2;}adjustPlayerManagerTrust(p,trust,`Club-life conversation: ${event.sceneId}`);if(morale)adjustPlayerMorale(p,morale);p.integration=clamp(Number(p.integration||100)+integration,0,100);if(q){adjustPlayerManagerTrust(q,1,`Shared club-life moment: ${event.sceneId}`);if(choiceId==='playful')adjustPlayerMorale(q,1);}const state=clubLifeState(),row=state.history.find(x=>x.decisionId===event.id);if(row){row.status='ANSWERED';row.choiceId=choiceId;row.resolvedDate=currentCareerISO();}recordPlayerStory(p,'CLUB_LIFE_RESPONSE',currentCareerISO(),{sceneId:event.sceneId,choiceId,secondaryPlayerId:q?.id||null});}
+  function resolveClubLifeChoice(event,choiceId){const p=careerPlayerById(event.playerId),q=careerPlayerById(event.secondaryPlayerId),group=clubLifePersonalityGroup(p),choice=event.choices?.find(row=>row.id===choiceId);if(!p)return null;let trust=1,morale=0,integration=0,strong=false;if(choiceId==='supportive'){trust=3;morale=1;strong=true;}if(choiceId==='playful'){strong=['LIVELY','CONFIDENT','HOT'].includes(group);trust=strong?3:1;morale=1;}if(choiceId==='focused'){strong=['AMBITIOUS','PROFESSIONAL','LOYAL'].includes(group);trust=strong?3:1;integration=2;}adjustPlayerManagerTrust(p,trust,`Club-life conversation: ${event.sceneId}`);if(morale)adjustPlayerMorale(p,morale);p.integration=clamp(Number(p.integration||100)+integration,0,100);if(q){adjustPlayerManagerTrust(q,strong?2:1,`Shared club-life moment: ${event.sceneId}`);if(choiceId==='playful')adjustPlayerMorale(q,1);}const state=clubLifeState(),row=state.history.find(x=>x.decisionId===event.id);if(row){row.status='ANSWERED';row.choiceId=choiceId;row.resolvedDate=currentCareerISO();row.responseLabel=choice?.label||choiceId;}recordPlayerStory(p,'CLUB_LIFE_RESPONSE',currentCareerISO(),{sceneId:event.sceneId,choiceId,secondaryPlayerId:q?.id||null});const title=choiceId==='supportive'?'THE MOMENT FEELS SEEN':choiceId==='playful'?(strong?'YOU BECOME PART OF THE STORY':'THE ROOM WARMS, CAUTIOUSLY'):(strong?'THE MOMENT GAINS A PURPOSE':'THE MESSAGE LANDS QUIETLY'),copy=choiceId==='supportive'?`${p.name} leaves knowing the detail mattered to you, not only the next result.`:choiceId==='playful'?(strong?`${p.name}${q?` and ${q.name}`:''} respond naturally to seeing the manager join the mood.`:`The warmth is appreciated, although ${p.name}'s personality keeps the reaction understated.`):(strong?`${p.name} responds to the clear link between this moment and what comes next.`:`${p.name} accepts the direction, but the personal meaning of the moment matters more than the target.`);event.outcome={eyebrow:'CLUBHOUSE MEMORY',title,copy,tags:[choice?.intent||'MANAGER RESPONSE',`${p.name} · TRUST UP`,morale?'MORALE LIFT':'INTEGRATION UPDATED',q?'RELATIONSHIP DEEPENED':'MOMENT REMEMBERED']};return event.outcome;}
 
   function processPlayerStoryDay(date=currentCareerISO()){
     if(!currentClub||employmentStatus!=='employed'||livingSquad.lastPlayerStoryDate===date)return null;livingSquad.lastPlayerStoryDate=date;const squad=getSquad(currentClub);squad.forEach(p=>ensurePlayerStoryMeta(p,currentClub));const weekly=dateFromISO(date).getUTCDay()===1;if(!weekly)return null;
     let breakoutPublished=false,struggleBriefed=false;squad.forEach(p=>{const traits=playerStoryTraits(p);if(Number(p.integration||100)<100)p.integration=clamp(Number(p.integration||0)+3+Math.round(Number(traits.adaptability||60)/28),0,100);const h=playerHappinessBreakdown(p,currentClub);if(h.overall>=82&&moraleIndex(p.morale)<4&&hashString(`${worldSeed}-HAPPY-SYNC-${date}-${p.id}`)%4===0)adjustPlayerMorale(p,1);if(h.overall<=36&&moraleIndex(p.morale)>0&&hashString(`${worldSeed}-LOW-SYNC-${date}-${p.id}`)%3===0)adjustPlayerMorale(p,-1);if(!breakoutPublished)breakoutPublished=maybePlayerBreakoutStory(p,currentClub,date)||false;if(!struggleBriefed)struggleBriefed=maybePlayerStruggleBrief(p,currentClub,date)||false;});
+    const life=clubLifeState(),social=squadSocialSnapshot(currentClub);if(!life.lastHierarchyReviewDate||diffDaysISO(life.lastHierarchyReviewDate,date)>=28){life.lastHierarchyReviewDate=date;life.hierarchyHistory.push({date,clubId:currentClub.id,type:'SQUAD_REVIEW',cohesion:social.cohesion,label:social.label,leaders:social.hierarchy.filter(entry=>['CAPTAIN','LEADER'].includes(entry.role)).map(entry=>entry.playerId),cliques:social.cliques.map(clique=>({id:clique.id,label:clique.label,memberIds:clique.memberIds}))});life.hierarchyHistory=life.hierarchyHistory.slice(-80);}processPeopleMemoryCallbacks(date);
     if(pendingDecisionEvent())return null;const clubLife=maybeGenerateClubLifeMoment(date);if(clubLife)return clubLife;const atmosphereMeeting=maybeCaptainAtmosphereMeeting(currentClub,date);if(atmosphereMeeting)return atmosphereMeeting;const ordered=[...squad].sort((a,b)=>playerHappinessBreakdown(a,currentClub).overall-playerHappinessBreakdown(b,currentClub).overall);for(const p of ordered){const relation=maybePlayerRelationshipConversation(p,currentClub,date);if(relation)return relation;const loan=maybeLoanPathwayConversation(p,currentClub,date);if(loan)return loan;}return null;
   }
-  function playerStoryOverviewHTML(p,club){const h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p),promise=activePromiseForPlayer(p.id),concern=h.concerns[0],positive=h.positives[0];return`<section class="player-story-panel"><header><div><span>DRESSING ROOM</span><strong>${escapeHtml(playerHappinessLabel(h.overall))}</strong></div><b>${h.overall}/100</b></header><div class="player-story-metrics"><div><span>PERSONALITY</span><strong>${escapeHtml(traits.name)}</strong></div><div><span>MANAGER TRUST</span><strong>${escapeHtml(playerTrustLabel(p.managerTrust))}</strong><small>${Math.round(Number(p.managerTrust||0))}/100</small></div><div><span>INFLUENCE</span><strong>${escapeHtml(playerInfluenceLabel(p))}</strong></div><div><span>INTEGRATION</span><strong>${Math.round(Number(p.integration||100))}%</strong></div></div><div class="player-story-reasons"><span class="is-positive"><b>POSITIVE</b>${escapeHtml(positive?.label||'Club role')}</span><span class="is-concern"><b>WATCH</b>${escapeHtml(concern?.label||'No major concern')}</span>${promise?`<span class="is-promise"><b>PROMISE</b>${escapeHtml(promise.label||'Playing time')} · ${promise.matchesRemaining} matches</span>`:''}</div></section>`;}
+  function playerStoryOverviewHTML(p,club){const h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p),promise=activePromiseForPlayer(p.id),concern=h.concerns[0],positive=h.positives[0],social=playerSocialStanding(p,club),memories=personMemories('PLAYER',p.id);return`<section class="player-story-panel"><header><div><span>DRESSING ROOM</span><strong>${escapeHtml(playerHappinessLabel(h.overall))}</strong></div><b>${h.overall}/100</b></header><div class="player-story-metrics"><div><span>PERSONALITY</span><strong>${escapeHtml(traits.name)}</strong></div><div><span>MANAGER TRUST</span><strong>${escapeHtml(playerTrustLabel(p.managerTrust))}</strong><small>${Math.round(Number(p.managerTrust||0))}/100</small></div><div><span>HIERARCHY</span><strong>${escapeHtml(social.role)}</strong><small>${escapeHtml(social.clique)}</small></div><div><span>INTEGRATION</span><strong>${Math.round(Number(p.integration||100))}%</strong></div></div><div class="player-story-reasons"><span class="is-positive"><b>POSITIVE</b>${escapeHtml(positive?.label||'Club role')}</span><span class="is-concern"><b>WATCH</b>${escapeHtml(concern?.label||'No major concern')}</span>${promise?`<span class="is-promise"><b>PROMISE</b>${escapeHtml(promise.label||'Playing time')} · ${promise.matchesRemaining} matches</span>`:''}${memories.length?`<span class="is-memory"><b>PUBLIC RECORD</b>${escapeHtml(peopleMemoryLabel('PLAYER',p.id))}</span>`:''}</div></section>`;}
   function livingPlayerHistoryRecord(p){if(!p)return null;return livingSquad.playerHistory[p.id]||(livingSquad.playerHistory[p.id]={playerId:p.id,name:p.name,seasons:[],careerEvents:[],honours:[],transfers:[],peakOvr:Number(p.peakOvr||p.ovr||0)});}
   function contractExpiryForYears(startDate,years){const start=dateFromISO(startDate),year=start.getUTCFullYear()+Math.max(1,Number(years||1));return `${year}-07-31`;}
   function syncLivingContractYears(p,date=currentCareerISO()){
@@ -11493,12 +12753,12 @@
     if(!p.freeAgent&&!p.contractEndDate){const spread=1+(hashString(`${worldSeed}-CONTRACT-MIG-${p.id}`)%5),years=clamp(Number(p.contractYears||spread),1,5);p.contractStartDate=p.contractStartDate||`${careerYear}-08-01`;p.contractEndDate=contractExpiryForYears(p.contractStartDate,years);p.contractStatus='ACTIVE';}
     if(!p.freeAgent)syncLivingContractYears(p,currentCareerISO());livingPlayerHistoryRecord(p);ensurePlayerStoryMeta(p,club);return p;
   }
-  function initializeLivingSquadState(fromLoad=false){livingSquad=normalizeLivingSquadState(livingSquad);clubs.forEach(c=>getSquad(c).forEach(p=>ensureLivingPlayerMeta(p,c)));getFreeAgents().forEach(p=>{p.freeAgent=true;p.contractStatus='FREE_AGENT';p.contractYears=0;ensureLivingPlayerMeta(p,null);});getAcademy(currentClub||clubs[0]);livingSquad.incomingOffers.forEach(o=>{if(!o.expiresDate)o.expiresDate=addDaysISO(o.createdDate||currentCareerISO(),4);});repairLivingLoans();migrateLegacyCareerMemory();v43MigrateLegacyStatistics();v49MigrateTraitState();return livingSquad;}
+  function initializeLivingSquadState(fromLoad=false){livingSquad=normalizeLivingSquadState(livingSquad);clubs.forEach(c=>getSquad(c).forEach(p=>ensureLivingPlayerMeta(p,c)));getFreeAgents().forEach(p=>{p.freeAgent=true;p.contractStatus='FREE_AGENT';p.contractYears=0;ensureLivingPlayerMeta(p,null);});getAcademy(currentClub||clubs[0]);livingSquad.incomingOffers.forEach(o=>{if(!o.expiresDate)o.expiresDate=addDaysISO(o.createdDate||currentCareerISO(),4);});repairLivingLoans();migrateLegacyCareerMemory();v43MigrateLegacyStatistics();v49MigrateTraitState();if(currentClub)squadSocialSnapshot(currentClub);return livingSquad;}
   function recordLivingCareerEvent(p,type,fromClub=null,toClub=null,fee=0,date=currentCareerISO(),extra={}){const h=livingPlayerHistoryRecord(p);if(!h)return null;const evt={id:livingSquadNextId('PCE'),date:isoDate(date),seasonId:careerTime.seasonId,type,fromClubId:fromClub?.id||null,toClubId:toClub?.id||null,fee:Number(fee||0),...extra};h.careerEvents.push(evt);h.careerEvents=h.careerEvents.slice(-80);h.peakOvr=Math.max(Number(h.peakOvr||0),Number(p.ovr||0));return evt;}
   function recordLivingTransfer(p,fromClub,toClub,fee=0,options={}){
-    if(!p||!toClub)return null;livingSquad=normalizeLivingSquadState(livingSquad);careerExpansion?.onTransfer(p,fromClub,toClub,fee);
+    if(!p||!toClub)return null;livingSquad=normalizeLivingSquadState(livingSquad);const departureImpact=fromClub?applySquadDepartureImpact(p,fromClub,currentCareerISO()):null;careerExpansion?.onTransfer(p,fromClub,toClub,fee);
     const h=livingPlayerHistoryRecord(p),priorDestination=!!h&&([...(h.seasons||[])].some(x=>x.clubId===toClub.id)||[...(h.transfers||[])].some(x=>x.toClubId===toClub.id)),previousPaid=Number(livingSquad.clubRecords?.[toClub.id]?.recordPaid||0),previousReceived=Number(fromClub?(livingSquad.clubRecords?.[fromClub.id]?.recordReceived||0):0),numericFee=Number(fee||0),recordSigning=numericFee>0&&previousPaid>0&&numericFee>previousPaid,recordSale=!!fromClub&&numericFee>0&&previousReceived>0&&numericFee>previousReceived,farewell=fromClub?careerFarewellLevel(p,fromClub):'ROUTINE DEPARTURE';
-    const record={id:livingSquadNextId('TRF'),date:currentCareerISO(),seasonId:careerTime.seasonId,playerId:p.id,playerName:p.name,fromClubId:fromClub?.id||null,toClubId:toClub.id,fee:numericFee,type:options.type||'PERMANENT',source:options.source||'CAREER',...(options.marketContext?{marketContext:options.marketContext}:{})};livingSquad.transferHistory.push(record);livingSquad.transferHistory=livingSquad.transferHistory.slice(-3000);p.lastTransferDate=record.date;p.integration=record.type==='LOAN'?62:46;ensurePlayerStoryMeta(p,toClub);p.managerTrust=clamp(Math.round(56+Number(playerStoryTraits(p).adaptability||60)/12),52,68);h.transfers.push(record);recordLivingCareerEvent(p,record.type==='FREE_AGENT'?'SIGNED_FREE':'TRANSFER',fromClub,toClub,fee,record.date);recordPlayerStory(p,'NEW_CLUB',record.date,{fromClubId:fromClub?.id||null,toClubId:toClub.id});
+    const record={id:livingSquadNextId('TRF'),date:currentCareerISO(),seasonId:careerTime.seasonId,playerId:p.id,playerName:p.name,fromClubId:fromClub?.id||null,toClubId:toClub.id,fee:numericFee,type:options.type||'PERMANENT',source:options.source||'CAREER',departureImpact:departureImpact?.affected||0,...(options.marketContext?{marketContext:options.marketContext}:{})};livingSquad.transferHistory.push(record);livingSquad.transferHistory=livingSquad.transferHistory.slice(-3000);p.lastTransferDate=record.date;p.integration=record.type==='LOAN'?62:46;ensurePlayerStoryMeta(p,toClub);p.managerTrust=clamp(Math.round(56+Number(playerStoryTraits(p).adaptability||60)/12),52,68);const displaced=record.type!=='LOAN'?applySquadArrivalImpact(p,toClub,record.date):null;record.displacedPlayerId=displaced?.id||null;h.transfers.push(record);recordLivingCareerEvent(p,record.type==='FREE_AGENT'?'SIGNED_FREE':'TRANSFER',fromClub,toClub,fee,record.date);recordPlayerStory(p,'NEW_CLUB',record.date,{fromClubId:fromClub?.id||null,toClubId:toClub.id,displacedPlayerId:displaced?.id||null});
     if(record.type!=='LOAN'){const humanInvolved=fromClub?.id===currentClub?.id||toClub.id===currentClub?.id,meaningfulFarewell=!['ROUTINE DEPARTURE','SMALL GOODBYE'].includes(farewell),significantFee=numericFee>0&&numericFee>=Math.max(500000,Math.round(Math.max(moneyNumber(toClub.budget),1)*.06)),trackTransfer=humanInvolved||priorDestination||recordSigning||recordSale||meaningfulFarewell||significantFee||careerMemoryShouldTrackPlayerDetail(p,toClub);if(trackTransfer)recordCareerMemory({type:'TRANSFER_COMPLETED',clubId:toClub.id,playerId:p.id,date:record.date,transferId:record.id,importance:recordSigning||recordSale?'HISTORIC':priorDestination||meaningfulFarewell?'MAJOR':'NOTABLE',metadata:{fromClubId:fromClub?.id||null,toClubId:toClub.id,fee:numericFee,transferType:record.type,source:record.source,returningPlayer:priorDestination,recordSigning,recordSale,clubRecord:recordSigning||recordSale,farewellLevel:farewell}});}
     updateLivingTransferRecords(record);markAiClubPlanDirty(fromClub);markAiClubPlanDirty(toClub);if(record.type!=='LOAN'&&toClub.id===currentClub?.id){const major=recordSigning||numericFee>=Math.max(750000,Math.round(Math.max(1,moneyNumber(toClub.budget))*.08))||Number(p.ovr||0)>=backgroundClubStrength(toClub)+5;v44ShowManagerScene({key:`SIGNING-${record.id}`,type:recordSigning?'RECORD SIGNING':major?'MAJOR SIGNING':'NEW ARRIVAL',eyebrow:'RECRUITMENT ROOM',title:`${p.name} arrives at ${toClub.name}`,copy:recordSigning?`${p.name} arrives as a new club-record investment.`:major?'An important recruitment target is finally through the door and ready to join the squad.':'The transfer is complete. The manager welcomes the new arrival into the club.',club:toClub,player:p,playerLabel:'NEW ARRIVAL',sceneArt:'assets/career/recruitment-room.png'});}return record;
   }
@@ -11509,8 +12769,50 @@
   function livingDevelopmentPlanFactor(p){return({Balanced:.006,Attacking:.014,Playmaking:.014,Defensive:.014,Physical:.012}[p?.developmentPlan]||.006);}
   function applyLivingDevelopmentStatGrowth(p,delta=1){if(!p||delta<=0)return;const map={Balanced:['PAC','SHO','PAS','HAN','DEF','STA'],Attacking:['PAC','SHO','HAN'],Playmaking:['PAS','HAN','STA'],Defensive:['DEF','STA','HAN'],Physical:['PAC','STA','DEF']},keys=map[p.developmentPlan]||map.Balanced;keys.forEach((k,i)=>{const extra=i===0&&p.developmentPlan!=='Balanced'?1:0;p.stats[k]=clamp(Number(p.stats[k]||p.ovr)+delta+extra,30,94);});}
   function livingLoanDevelopmentFactor(p){const loan=livingLoanForPlayer(p?.id);if(!loan)return 0;const roleBonus=({Crucial:.035,Important:.025,Rotation:.012,Prospect:.004}[loan.expectedRole]||0),apps=Math.min(.03,Number(p.seasonStats?.starts||0)*.004);return roleBonus+apps;}
-  function livingPlayerReputationScore(p,club=null){club=club||clubById(p?.clubId);const cc=championsCrown.playerRecords?.[p?.id]||{},form=['Excellent','Good'].includes(p?.form)?8:['Poor','Terrible'].includes(p?.form)?-5:0,apps=Math.min(12,Number(p?.seasonStats?.apps||0)*.35),goals=Math.min(18,Number(p?.seasonStats?.goals||0)*1.6),continental=Math.min(20,Number(cc.goals||0)*2+Number(cc.apps||0)*.4),clubLevel=club?divisionLevel(club)*4:0;return clamp(Math.round((Number(p?.ovr||50)-45)*1.35+form+apps+goals+continental+clubLevel),4,100);}
-  function livingPlayerMarketValue(p){const base=Number(p?.value||0),years=Math.max(0,Number(p?.contractYears||0)),contractFactor=p?.freeAgent?0:years<=1?.72:years>=4?1.16:1,potFactor=p?.age<=23?1+Math.max(0,Number(p.potential||p.ovr)-Number(p.ovr||0))*.018:1,repFactor=.88+livingPlayerReputationScore(p)/380,requestFactor=p?.transferRequested?.96:1;return Math.max(60000,Math.round(base*contractFactor*potFactor*repFactor*requestFactor/5000)*5000);}
+  function livingPlayerReputationScore(p,club=null){
+    club=club||clubById(p?.clubId);const cc=championsCrown.playerRecords?.[p?.id]||{},stats=p?.seasonStats||{},role=String(p?.role||'ALL-ROUNDER').toUpperCase(),apps=Number(stats.apps||0),goals=Number(stats.goals||0),assists=Number(stats.assists||0),ratings=Number(stats.ratingCount||0),average=ratings?Number(stats.ratingSum||0)/ratings:6.45;
+    const outputWeights=role==='ATTACKER'?[1.35,.42]:role==='PLAYMAKER'?[.55,1.08]:role==='DEFENDER'?[.22,.40]:[.72,.66],output=Math.min(18,goals*outputWeights[0]+assists*outputWeights[1]),rating=Math.min(12,Math.max(-7,(average-6.45)*8)*Math.min(1,ratings/8)),form=['Excellent','Good'].includes(p?.form)?7:['Poor','Terrible'].includes(p?.form)?-5:0,appearances=Math.min(10,apps*.28),honours=Math.min(5,Number(stats.potm||0)*1.2),continental=Math.min(18,Number(cc.goals||0)*1.2+Number(cc.apps||0)*.35),clubLevel=club?divisionLevel(club)*3.5+Number(club.reputation||1)*1.2:0;
+    return clamp(Math.round((Number(p?.ovr||50)-45)*1.22+form+appearances+rating+output+honours+continental+clubLevel),4,100);
+  }
+
+  function careerContractDaysRemaining(p,date=currentCareerISO()){
+    if(!p||p.freeAgent)return 730;
+    if(p.contractEndDate)return Math.max(0,diffDaysISO(date,p.contractEndDate));
+    return Math.max(0,Number(p.contractYears||0)*365);
+  }
+
+  function careerContractValueFactor(p,date=currentCareerISO()){
+    if(p?.freeAgent)return 1;
+    const days=careerContractDaysRemaining(p,date),points=[[0,.30],[30,.38],[90,.50],[183,.63],[365,.78],[548,.90],[730,1],[1095,1.09],[1460,1.15],[1825,1.19]];
+    if(days<=points[0][0])return points[0][1];if(days>=points.at(-1)[0])return points.at(-1)[1];
+    for(let i=1;i<points.length;i++){const [rightDays,right]=points[i],[leftDays,left]=points[i-1];if(days<=rightDays){const progress=(days-leftDays)/Math.max(1,rightDays-leftDays);return left+(right-left)*progress;}}
+    return 1;
+  }
+
+  function careerRoleQualityFactor(p){
+    const s=p?.stats||{},ovr=Number(p?.ovr||55),role=String(p?.role||'ALL-ROUNDER').toUpperCase(),weights=role==='ATTACKER'?{SHO:.36,PAC:.24,HAN:.20,PAS:.12,STA:.08}:role==='PLAYMAKER'?{PAS:.36,HAN:.24,STA:.16,PAC:.12,SHO:.12}:role==='DEFENDER'?{DEF:.38,STA:.24,HAN:.18,PAS:.12,PAC:.08}:{PAC:.17,SHO:.17,PAS:.19,HAN:.17,DEF:.14,STA:.16};let weighted=0,total=0;
+    Object.entries(weights).forEach(([key,weight])=>{weighted+=Number(s[key]??ovr)*weight;total+=weight;});const delta=weighted/Math.max(.01,total)-ovr,scarcity={ATTACKER:1.025,PLAYMAKER:1.02,DEFENDER:1.015,'ALL-ROUNDER':1.01}[role]||1;
+    return clamp((1+delta*.006)*scarcity,.94,1.08);
+  }
+
+  function careerPerformanceValueFactor(p){
+    const stats=p?.seasonStats||{},apps=Math.max(0,Number(stats.apps||0)),ratings=Math.max(0,Number(stats.ratingCount||0)),average=ratings?Number(stats.ratingSum||0)/ratings:6.45,goals=Math.max(0,Number(stats.goals||0)),assists=Math.max(0,Number(stats.assists||0)),potm=Math.max(0,Number(stats.potm||0)),role=String(p?.role||'ALL-ROUNDER').toUpperCase(),sample=Math.min(1,Math.max(apps,ratings)/12),goalRate=goals/Math.max(1,apps),assistRate=assists/Math.max(1,apps),formAdj=({Excellent:.026,Good:.014,Average:0,Poor:-.016,Terrible:-.03,'New Signing':0,'Newly Promoted':.006}[p?.form]||0),weights=role==='ATTACKER'?[.13,.035]:role==='PLAYMAKER'?[.045,.13]:role==='DEFENDER'?[.018,.045]:[.075,.075];
+    const ratingAdj=clamp((average-6.45)*.075,-.075,.12),outputAdj=clamp(goalRate*weights[0]+assistRate*weights[1],0,.075),recognition=Math.min(.025,potm*.004),modifier=1+formAdj*(.35+sample*.65)+(ratingAdj+outputAdj+recognition)*sample;
+    return clamp(modifier,.90,1.14);
+  }
+
+  function careerPotentialValueFactor(p){
+    const age=Number(p?.age||27),gap=Math.max(0,Number(p?.potential||p?.ovr||0)-Number(p?.ovr||0)),weight=age<=20?1:age<=23?.84:age<=25?.58:age<=27?.28:0;
+    return 1+Math.min(.38,gap*.02*weight);
+  }
+
+  function careerPlayerValuationBreakdown(p,options={}){
+    const club=options.club||clubById(p?.clubId)||p?.club||null,date=options.date||currentCareerISO(),abilityBase=Math.max(60_000,playerAbilityValue(p?.ovr,p?.age)),roleFactor=careerRoleQualityFactor(p),potentialFactor=careerPotentialValueFactor(p),performanceFactor=careerPerformanceValueFactor(p),reputation=livingPlayerReputationScore(p,club),reputationFactor=clamp(.94+reputation/720,.945,1.08),clubFactor=club?clamp(.95+(divisionLevel(club)-1)*.012+(Number(club.reputation||1)-1)*.006,.95,1.055):1,contractFactor=careerContractValueFactor(p,date),requestFactor=p?.transferRequested?.96:1,statusFactor=['Unhappy','Very Unhappy'].includes(p?.morale)?.985:1;
+    const raw=abilityBase*roleFactor*potentialFactor*performanceFactor*reputationFactor*clubFactor*contractFactor*requestFactor*statusFactor,value=Math.max(60_000,Math.round(raw/5000)*5000);
+    return{value,abilityBase,roleFactor,potentialFactor,performanceFactor,reputationFactor,clubFactor,contractFactor,requestFactor,statusFactor,contractDays:careerContractDaysRemaining(p,date),reputation};
+  }
+
+  function livingPlayerMarketValue(p,options={}){return careerPlayerValuationBreakdown(p,options).value;}
   const LIVING_MARKET_STAGES=['MONITORING','INTERESTED','SERIOUS_INTEREST','PREPARING_OFFER','BID_SUBMITTED'];
   function marketStageRank(stage){return Math.max(0,LIVING_MARKET_STAGES.indexOf(stage));}
   function marketStateFor(p,create=true){
@@ -11525,7 +12827,7 @@
   function marketAskingRatio(p){const market=livingPlayerMarketValue(p),ask=Number(p.askingPrice||0);return ask>0&&market>0?ask/market:1;}
   function playerMarketExposure(p,date=currentCareerISO()){
     const status=p.transferRequested?'TRANSFER_REQUESTED':p.transferStatus||'LISTEN',traits=playerStoryTraits(p),rep=Number(p.playerReputation||livingPlayerReputationScore(p,currentClub)),form=String(p.form||'Average'),askRatio=marketAskingRatio(p);let score=status==='TRANSFER_REQUESTED'?90:status==='TRANSFER_LISTED'?76:status==='LISTEN'?28:status==='LOAN_LISTED'?12:2;
-    score+=Math.min(15,rep*.15);if(['Excellent','Good'].includes(form))score+=7;if(['Poor','Terrible'].includes(form))score-=5;if(Number(p.contractYears||0)<=1)score+=8;if(Number(p.injuryDaysRemaining||0)>0)score-=18;if(Number(p.age||0)>32)score-=5;if(askRatio>1.2)score-=Math.min(38,(askRatio-1.2)*60);if(Number(traits.ambition||60)>=82&&status==='TRANSFER_REQUESTED')score+=4;return clamp(Math.round(score),0,100);
+    score+=Math.min(15,rep*.15);if(['Excellent','Good'].includes(form))score+=7;if(['Poor','Terrible'].includes(form))score-=5;if(careerContractDaysRemaining(p,date)<=365)score+=8;if(Number(p.injuryDaysRemaining||0)>0)score-=18;if(Number(p.age||0)>32)score-=5;if(askRatio>1.2)score-=Math.min(38,(askRatio-1.2)*60);if(Number(traits.ambition||60)>=82&&status==='TRANSFER_REQUESTED')score+=4;return clamp(Math.round(score),0,100);
   }
   function buyerRoleNeedScore(p,buyer){
     if(!p||!buyer)return 0;return aiClubRoleNeedScore(buyer,p.role,p,currentCareerISO());
@@ -11560,25 +12862,25 @@
     return state;
   }
   function processOutgoingTransferMarket(date=currentCareerISO()){
-    if(!currentClub)return;livingSquad=normalizeLivingSquadState(livingSquad);if(livingSquad.lastMarketProcess===date)return;livingSquad.lastMarketProcess=date;getSquad(currentClub).filter(p=>!p.onLoan&&(['LISTEN','TRANSFER_LISTED'].includes(p.transferStatus||'LISTEN')||p.transferRequested)).forEach(p=>updatePlayerMarketInterest(p,date));
+    if(!currentClub)return;livingSquad=normalizeLivingSquadState(livingSquad);if(livingSquad.lastMarketProcess===date)return;livingSquad.lastMarketProcess=date;getSquad(currentClub).filter(p=>clubCanMarketPlayer(currentClub,p)&&(['LISTEN','TRANSFER_LISTED'].includes(p.transferStatus||'LISTEN')||p.transferRequested)).forEach(p=>updatePlayerMarketInterest(p,date));
   }
-  function setLivingPlayerAskingPrice(p,value){if(!p)return;const state=marketStateFor(p,true),old=Number(p.askingPrice||0);p.askingPrice=value>0?Number(value):null;state.lastPriceChangeDate=currentCareerISO();state.lastEvalDate=null;if(old!==Number(p.askingPrice||0)){state.interest.forEach(i=>{if(marketStageRank(i.stage)<4)i.lastUpdate=addDaysISO(currentCareerISO(),-2);});}saveCareerState();return p.askingPrice;}
+  function setLivingPlayerAskingPrice(p,value){const club=currentClub||selectedClub||clubs[0];if(!p||!clubCanMarketPlayer(club,p)){if(p)showToast(loanOwnershipActionMessage(club,p,'set an asking price'));return false;}const state=marketStateFor(p,true),old=Number(p.askingPrice||0);p.askingPrice=value>0?Number(value):null;state.lastPriceChangeDate=currentCareerISO();state.lastEvalDate=null;if(old!==Number(p.askingPrice||0)){state.interest.forEach(i=>{if(marketStageRank(i.stage)<4)i.lastUpdate=addDaysISO(currentCareerISO(),-2);});}saveCareerState();return p.askingPrice;}
   function setLivingPlayerMarketStatus(p,status){
-    if(!p)return;status=['LISTEN','TRANSFER_LISTED','NOT_FOR_SALE','LOAN_LISTED'].includes(status)?status:'LISTEN';const previous=p.transferStatus||'LISTEN',state=marketStateFor(p,true);p.transferStatus=status;p.transferListed=status==='TRANSFER_LISTED';p.loanListed=status==='LOAN_LISTED';if(status==='NOT_FOR_SALE')p.transferRequested=false;
+    const club=currentClub||selectedClub||clubs[0];if(!p||!clubCanMarketPlayer(club,p)){if(p)showToast(loanOwnershipActionMessage(club,p,'change the transfer status'));return false;}status=['LISTEN','TRANSFER_LISTED','NOT_FOR_SALE','LOAN_LISTED'].includes(status)?status:'LISTEN';const previous=p.transferStatus||'LISTEN',state=marketStateFor(p,true);p.transferStatus=status;p.transferListed=status==='TRANSFER_LISTED';p.loanListed=status==='LOAN_LISTED';if(status==='NOT_FOR_SALE')p.transferRequested=false;
     state.status=p.transferRequested?'TRANSFER_REQUESTED':status;state.lastStatusDate=currentCareerISO();state.lastEvalDate=null;if(status==='TRANSFER_LISTED'&&previous!=='TRANSFER_LISTED')state.listedDate=currentCareerISO();if(status==='NOT_FOR_SALE'){state.interest=state.interest.filter(i=>marketStageRank(i.stage)>=4);}if(status==='LISTEN'&&previous==='TRANSFER_LISTED'){state.listedDate=null;state.interest.forEach(i=>{if(marketStageRank(i.stage)<4)i.stage=LIVING_MARKET_STAGES[Math.max(0,marketStageRank(i.stage)-1)];});}
     if(previous!==status){ensurePlayerStoryMeta(p,currentClub);const traits=playerStoryTraits(p);if(status==='TRANSFER_LISTED'&&!p.transferRequested&&['Crucial','Important'].includes(p.squadRole)&&Number(traits.loyalty||60)>=72){adjustPlayerMorale(p,-1);adjustPlayerManagerTrust(p,-2,'Placed on transfer list');recordPlayerStory(p,'TRANSFER_LISTED',currentCareerISO());}else if(status==='TRANSFER_LISTED')recordPlayerStory(p,'TRANSFER_LISTED',currentCareerISO());if(previous==='TRANSFER_LISTED'&&status==='LISTEN')recordPlayerStory(p,'TRANSFER_LIST_REMOVED',currentCareerISO());}
-    mediaOnPlayerMarketStatusChange(p,status,currentCareerISO());saveCareerState();showToast(`${p.name} · ${status.replace(/_/g,' ')}`);
+    mediaOnPlayerMarketStatusChange(p,status,currentCareerISO());saveCareerState();showToast(`${p.name} · ${status.replace(/_/g,' ')}`);return true;
   }
   function livingRoleSatisfaction(p,club){const w=v37PlayingTimeWindow(p,club,10),expected=({Crucial:.75,Important:.55,Rotation:.30,Prospect:.15,Reserve:.05}[p.squadRole]??.3),share=w.total?Math.max(w.starts/w.total,w.minutes/(w.total*90)):expected;return clamp(Math.round(75+(share-expected)*85),0,100);}
   function maybeLivingTransferRequest(p,club,date){if(!p||p.transferRequested||p.captain||p.onLoan||Number(p.age||0)<19)return null;ensurePlayerStoryMeta(p,club);const sat=livingRoleSatisfaction(p,club),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p);p.playingTimeSatisfaction=Math.round(Number(p.playingTimeSatisfaction||70)*.72+sat*.28);const ambitious=Number(p.ovr||0)>backgroundClubStrength(club)+7&&divisionLevel(club)<=2&&Number(traits.ambition||60)>=70,unhappy=moraleIndex(p.morale)<=1||h.overall<36,trustBroken=Number(p.managerTrust||60)<30,trigger=p.playingTimeSatisfaction<26||unhappy||ambitious||trustBroken;if(!trigger||!eventCooldownReady(`MOVE-${p.id}`,date,100))return null;const threshold=clamp(10+(100-Number(traits.loyalty||60))*.18+(100-Number(traits.patience||60))*.12+(h.overall<32?10:0)+(ambitious?7:0),10,38),roll=hashString(`${worldSeed}-MOVE-REQUEST-${date}-${p.id}`)%100;if(roll>threshold)return null;setEventCooldown(`MOVE-${p.id}`,date);p.transferRequested=true;recordPlayerStory(p,'TRANSFER_REQUEST',date,{reason:ambitious?'AMBITION':trustBroken?'TRUST':'HAPPINESS'});if(Number(p.playerReputation||0)>=45||['Crucial','Important'].includes(p.squadRole))addCareerNews({id:`player-future-${p.id}-${date}`,category:'PLAYER FUTURE',world:clubWorldName(club),clubId:club.id,relatedClubIds:[club.id],title:`${p.name.toUpperCase()} FUTURE IN DOUBT AT ${club.name.toUpperCase()}`,body:[`${p.name} has asked for clarity over the next stage of their career.`,ambitious?'The player believes the time may be right to test themselves at a higher level.':'The situation follows a period of frustration around role, form or the relationship with the manager.'],image:p.avatar,date});return queueDecisionEvent({id:`DEC-MOVE-${p.id}-${date}`,kind:'TRANSFER_REQUEST',category:'PLAYER FUTURE',playerId:p.id,cooldownKey:`MOVE-${p.id}`,title:'I want to discuss my future',body:ambitious?'I feel ready to test myself at a higher level and I want the club to consider serious offers.':trustBroken?'I do not think the relationship between us is working. I need to think seriously about a move.':'I am not happy with how my situation is developing and I think a move may be best.',choices:[{id:'convince',label:'CONVINCE TO STAY',copy:'Explain the project and ask the player to remain.'},{id:'role-talk',label:'PROMISE A ROLE',copy:'Offer an immediate playing-time pathway.'},{id:'accept-request',label:'ACCEPT REQUEST',copy:'Place the player on the transfer list.'}]});}
-  function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
+  function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processDressingRoomIncidentFollowUps(date);processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
   function processLivingSquadMonthly(date=currentCareerISO()){if(livingSquad.lastMonthlyProcess===date.slice(0,7))return;livingSquad.lastMonthlyProcess=date.slice(0,7);processLivingLoanMonth(date);clubs.forEach(club=>{getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);p.playerReputation=Math.round(Number(p.playerReputation||50)*.65+livingPlayerReputationScore(p,club)*.35);});if(club.id!==currentClub?.id)livingAiSquadPlan(club,date);});recordMonthlyAwards(date);}
   function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(club.id!==currentClub?.id){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,date);if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
   function recordLivingInjuryState(p,date){if(!p)return;const active=Number(p.injuryDaysRemaining||0)>0;if(active){const last=p.injuryHistory.at(-1);if(!last||last.endDate){p.injuryHistory.push({startDate:date,endDate:null,type:p.injury||'Injury',initialDays:Number(p.injuryDaysRemaining||0)});p.injuryHistory=p.injuryHistory.slice(-10);}}else{const last=p.injuryHistory.at(-1);if(last&&!last.endDate)last.endDate=date;}}
   function livingAiSquadPlan(club,date){
     if(!club||club.id===currentClub?.id)return;
     const squad=getSquad(club),plan=aiClubSquadPlanReview(club,date,true),manager=currentClubManager(club),avg=aiClubRawStrength(club);
-    squad.forEach(p=>{if(p.v34Precontract)return;
+    squad.forEach(p=>{if(p.v34Precontract||p.onLoan)return;
       ensureLivingPlayerMeta(p,club);const status=plan?.playerStatuses?.[p.id]?.status||'ROTATION';
       if(Number(p.contractYears||0)<=1&&p.contractStatus==='ACTIVE'){
         const renewScore=v2075AiRenewalScore(p,club,status),keep=renewScore>=55;
@@ -11598,10 +12900,9 @@
   function incomingLivingOffersForPlayer(id){return livingSquad.incomingOffers.filter(o=>o.playerId===id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(o.status));}
   function livingIncomingOfferValuation(p,buyer,options={}){
     const market=Math.max(50_000,Number(options.market||livingPlayerMarketValue(p))),buyerNeed=clamp(Number(options.buyerNeed||50),0,100),competition=Math.max(0,Number(options.competition||0)),phase=String(options.phase||'EARLY').toUpperCase(),style=String(options.negotiatorStyle||'PRAGMATIC').toUpperCase(),status=String(options.status||p?.transferStatus||'LISTEN').toUpperCase(),rng=typeof options.rng==='function'?options.rng:mulberry32(hashString(`${worldSeed}-V32-BUYER-VALUE-${p?.id||'P'}-${buyer?.id||'C'}-${currentCareerISO()}`));
-    const age=Number(p?.age||27),years=Math.max(0,Number(p?.contractYears||0)),potentialGap=Math.max(0,Number(p?.potential||p?.ovr||0)-Number(p?.ovr||0));
-    const agePremium=age<=21?.075:age<=24?.055:age<=28?.025:age<=31?0:age<=33?-.045:-.09;
-    const contractPremium=years>=4?.045:years===3?.025:years<=1?-.055:0;
-    const potentialPremium=Math.min(.045,potentialGap*.0045),needPremium=Math.max(0,buyerNeed-50)/50*.105,competitionPremium=Math.min(.085,competition*.0275),phasePremium=phase==='DEADLINE'?.06:phase==='LATE'?.035:phase==='MID'?.012:0,stylePremium=style==='DESPERATE'?.055:style==='AGGRESSIVE'?.025:style==='DEALMAKER'?.012:style==='TESTING'?-.025:0;
+    // Age, potential and exact contract time are already priced into the canonical
+    // benchmark. Buyer-specific premiums describe this deal, not the player twice.
+    const agePremium=0,contractPremium=0,potentialPremium=0,needPremium=Math.max(0,buyerNeed-50)/50*.105,competitionPremium=Math.min(.085,competition*.0275),phasePremium=phase==='DEADLINE'?.06:phase==='LATE'?.035:phase==='MID'?.012:0,stylePremium=style==='DESPERATE'?.055:style==='AGGRESSIVE'?.025:style==='DEALMAKER'?.012:style==='TESTING'?-.025:0;
     let exceptionalChance=clamp(.035+competition*.018+(buyerNeed>=82?.025:0)+(phase==='DEADLINE'?.018:0),.025,.12);if(options.allowExceptional===false)exceptionalChance=0;const exceptional=options.forceExceptional===true||(options.forceExceptional!==false&&rng()<exceptionalChance),exceptionalPremium=exceptional?.14+rng()*.16:0;
     let ceilingMultiplier=1.04+agePremium+contractPremium+potentialPremium+needPremium+competitionPremium+phasePremium+stylePremium+exceptionalPremium;
     if(status==='TRANSFER_REQUESTED')ceilingMultiplier-=.035;else if(status==='TRANSFER_LISTED'&&competition===0)ceilingMultiplier-=.018;
@@ -11616,7 +12917,7 @@
   }
   function maybeGenerateLivingSquadIncomingOffer(date=currentCareerISO()){
     if(!currentClub||!isTransferWindowOpen(date))return null;processOutgoingTransferMarket(date);const active=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status));if(active.length>=5)return null;
-    const eligible=getSquad(currentClub).filter(p=>!p.captain&&!p.onLoan&&p.transferStatus!=='NOT_FOR_SALE'&&Number(p.age||0)>=18&&incomingLivingOffersForPlayer(p.id).length<2).map(p=>{const state=updatePlayerMarketInterest(p,date),summary=livingMarketInterestSummary(p),status=p.transferRequested?'TRANSFER_REQUESTED':p.transferStatus||'LISTEN',stage=Math.max(-1,...state.interest.map(i=>marketStageRank(i.stage))),weight=(status==='TRANSFER_REQUESTED'?68:status==='TRANSFER_LISTED'?54:14)+Number(state.exposure||0)*.4+Math.max(0,stage)*12+summary.serious*10;return{p,state,summary,status,stage,weight};}).filter(x=>x.state.interest.length||x.status!=='LISTEN');
+    const eligible=getSquad(currentClub).filter(p=>!p.captain&&clubCanMarketPlayer(currentClub,p)&&p.transferStatus!=='NOT_FOR_SALE'&&Number(p.age||0)>=18&&incomingLivingOffersForPlayer(p.id).length<2).map(p=>{const state=updatePlayerMarketInterest(p,date),summary=livingMarketInterestSummary(p),status=p.transferRequested?'TRANSFER_REQUESTED':p.transferStatus||'LISTEN',stage=Math.max(-1,...state.interest.map(i=>marketStageRank(i.stage))),weight=(status==='TRANSFER_REQUESTED'?68:status==='TRANSFER_LISTED'?54:14)+Number(state.exposure||0)*.4+Math.max(0,stage)*12+summary.serious*10;return{p,state,summary,status,stage,weight};}).filter(x=>x.state.interest.length||x.status!=='LISTEN');
     if(!eligible.length)return null;const total=eligible.reduce((sum,x)=>sum+Math.max(1,x.weight),0),pickRoll=(hashString(`${worldSeed}-V2065-OFFER-PICK-${date}-${currentClub.id}`)%10000)/10000*total;let acc=0,chosen=eligible[0];for(const x of eligible){acc+=Math.max(1,x.weight);if(pickRoll<=acc){chosen=x;break;}}
     const {p,state,summary,status}=chosen,phase=transferMarketWindowPhase(date),offerGate=status==='TRANSFER_REQUESTED'?42:status==='TRANSFER_LISTED'?30:10,stageBoost=chosen.stage>=3?20:chosen.stage>=2?10:0,phaseBoost=phase==='DEADLINE'?16:phase==='LATE'?8:0;if((hashString(`${worldSeed}-V2065-INCOMING-GATE-${date}-${p.id}`)%100)>=clamp(offerGate+stageBoost+phaseBoost,8,78))return null;
     let threads=state.interest.filter(i=>marketStageRank(i.stage)>=2&&!incomingLivingOffersForPlayer(p.id).some(o=>o.buyerClubId===i.clubId));if(!threads.length)threads=state.interest.filter(i=>!incomingLivingOffersForPlayer(p.id).some(o=>o.buyerClubId===i.clubId));if(!threads.length){const fallbacks=plausibleMarketBuyers(p,date,5);if(!fallbacks.length)return null;threads=fallbacks.map(x=>({clubId:x.club.id,stage:'INTERESTED',score:x.score,since:date,lastUpdate:date}));}
@@ -11630,15 +12931,16 @@
   }
 
   function livingOfferById(id){return livingSquad.incomingOffers.find(o=>o.id===id)||null;}
+  function validateLivingSaleOfferOwnership(offer,p,notify=true){const seller=clubById(offer?.sellerClubId)||currentClub,allowed=!!offer&&!!p&&seller?.id===currentClub?.id&&clubCanMarketPlayer(seller,p);if(allowed)return true;if(offer&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(offer.status)){offer.status='CLOSED';offer.statusCopy='The offer closed because this club no longer controls the player’s permanent registration.';}if(notify&&p)showToast(loanOwnershipActionMessage(currentClub,p,'negotiate a permanent sale'));return false;}
   function openLivingIncomingOffer(id){
-    const offer=livingOfferById(id),p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId);if(!offer||!p||!buyer)return;let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>INCOMING TRANSFER NEGOTIATION</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]'),status=offer.status,market=livingPlayerMarketValue(p),canCounter=['OPEN','COUNTERED'].includes(status),isFinal=status==='FINAL_OFFER';
+    const offer=livingOfferById(id),p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId);if(!offer||!p||!buyer)return;if(!validateLivingSaleOfferOwnership(offer,p)){saveCareerState();renderTransferHub();return;}let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>INCOMING TRANSFER NEGOTIATION</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]'),status=offer.status,market=livingPlayerMarketValue(p),canCounter=['OPEN','COUNTERED'].includes(status),isFinal=status==='FINAL_OFFER';
     body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${p.ovr} OVR · AGE ${Number(p.age||0)} · ${escapeHtml(livingContractLabel(p))}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub?.name||'Your club')} → ${escapeHtml(buyer.name)}</p></section><aside>${badgeHTML(buyer)}</aside></div><div class="living-negotiation-values"><div><span>${isFinal?'FINAL OFFER':'CURRENT OFFER'}</span><strong>${formatMoney(offer.currentFee)}</strong></div><div><span>MARKET VALUE</span><strong>${formatMoney(market)}</strong></div><div><span>ASKING PRICE</span><strong>${p.askingPrice?formatMoney(p.askingPrice):'NOT SET'}</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div>${canCounter?`<label class="living-counter-field"><span>YOUR COUNTER OFFER</span><div><b>£</b><input id="livingCounterAmount" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${Math.round(Math.max(offer.currentFee*1.15,market*1.04)/50000)*50000}"></div></label><div class="living-offer-status"><strong>NEGOTIATION POSITION</strong><span>${escapeHtml(offer.statusCopy||'The opening bid may not reflect the buyer’s full willingness to pay. Counter carefully: repeated unrealistic demands can end talks.')}</span></div><div class="living-negotiation-actions"><button type="button" data-living-reject>REJECT</button><button type="button" data-living-counter>COUNTER</button><button type="button" class="is-primary" data-living-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:isFinal?`<div class="living-offer-status is-final"><strong>FINAL OFFER</strong><span>${escapeHtml(offer.statusCopy||`${buyer.name} have reached their final position. Accept it or end the negotiation.`)}</span></div><div class="living-negotiation-actions is-final"><button type="button" data-living-reject>DECLINE FINAL OFFER</button><button type="button" class="is-primary" data-living-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:`<div class="living-offer-status"><strong>${escapeHtml(status.replace(/_/g,' '))}</strong><span>${escapeHtml(offer.statusCopy||'Negotiation closed.')}</span></div>`}`;
     const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;body.querySelector('[data-living-reject]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_REJECT:${offer.id}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status))return false;offer.status='REJECTED';offer.statusCopy=isFinal?'You declined the buyer’s final offer.':'You rejected the offer.';offer.finalOffer=false;saveCareerState();close();renderTransferHub();return true;},{releaseDelay:300,busyText:'REJECTING…'}));body.querySelector('[data-living-accept]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_ACCEPT:${offer.id}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status))return false;resolveLivingIncomingFee(offer,offer.currentFee,'ACCEPT');close();renderTransferHub();return true;},{releaseDelay:420,busyText:'ACCEPTING…'}));body.querySelector('[data-living-counter]')?.addEventListener('click',e=>runLockedAction(`PLAYER_OFFER_COUNTER:${offer.id}:R${offer.round||0}`,e.currentTarget,()=>{if(!['OPEN','COUNTERED'].includes(offer.status))return false;const amount=Math.max(offer.currentFee,Math.max(1_000,moneyNumber(body.querySelector('#livingCounterAmount')?.value)));counterLivingIncomingOffer(offer,amount);openLivingIncomingOffer(offer.id);renderTransferHub();return true;},{releaseDelay:340,busyText:'COUNTERING…'}));root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);
     if(['OPEN','COUNTERED','FINAL_OFFER'].includes(offer.status)&&careerExpansion){body.insertAdjacentHTML('beforeend','<details class="v35-sale-details"><summary>NEGOTIATE A SELL-ON CLAUSE</summary><div id="v35SaleTerms"></div></details>');careerExpansion.embed(body.querySelector('#v35SaleTerms'),'sales',offer.id);}
   }
 
   function counterLivingIncomingOffer(offer,amount){
-    const p=careerPlayerById(offer.playerId),buyer=clubById(offer.buyerClubId);if(!p||!buyer||!['OPEN','COUNTERED'].includes(offer.status))return false;amount=negotiationMoney(Math.max(Number(offer.currentFee||0),amount));offer.round=Number(offer.round||0)+1;offer.lastCounter=amount;offer.patienceLeft=Math.max(0,Number(offer.patienceLeft??offer.basePatience??4));const phase=transferMarketWindowPhase(currentCareerISO()),summary=livingMarketInterestSummary(p),competition=Math.max(0,summary.serious-1),style=offer.negotiatorStyle||'PRAGMATIC',urgencyBoost=phase==='DEADLINE'?.04:phase==='LATE'?.02:0,competitionBoost=Math.min(.08,competition*.025),market=livingPlayerMarketValue(p),dynamicCap=negotiationMoney(market*(offer.marketContext?.exceptionalPremium?1.68:1.48)),dynamicMax=Math.min(dynamicCap,negotiationMoney(Number(offer.maxFee||0)*(1+urgencyBoost+competitionBoost))),target=Math.min(dynamicMax,Math.max(Number(offer.targetFee||0),Number(offer.currentFee||0))),priorDemand=Number(offer.previousSellerDemand||0),tiny=priorDemand>0&&Math.abs(amount-priorDemand)<Math.max(50_000,priorDemand*.015);if(tiny)offer.patienceLeft=Math.max(0,offer.patienceLeft-1);offer.previousSellerDemand=amount;
+    const p=careerPlayerById(offer.playerId),buyer=clubById(offer.buyerClubId);if(!p||!buyer||!['OPEN','COUNTERED'].includes(offer.status)||!validateLivingSaleOfferOwnership(offer,p))return false;amount=negotiationMoney(Math.max(Number(offer.currentFee||0),amount));offer.round=Number(offer.round||0)+1;offer.lastCounter=amount;offer.patienceLeft=Math.max(0,Number(offer.patienceLeft??offer.basePatience??4));const phase=transferMarketWindowPhase(currentCareerISO()),summary=livingMarketInterestSummary(p),competition=Math.max(0,summary.serious-1),style=offer.negotiatorStyle||'PRAGMATIC',urgencyBoost=phase==='DEADLINE'?.04:phase==='LATE'?.02:0,competitionBoost=Math.min(.08,competition*.025),market=livingPlayerMarketValue(p),dynamicCap=negotiationMoney(market*(offer.marketContext?.exceptionalPremium?1.68:1.48)),dynamicMax=Math.min(dynamicCap,negotiationMoney(Number(offer.maxFee||0)*(1+urgencyBoost+competitionBoost))),target=Math.min(dynamicMax,Math.max(Number(offer.targetFee||0),Number(offer.currentFee||0))),priorDemand=Number(offer.previousSellerDemand||0),tiny=priorDemand>0&&Math.abs(amount-priorDemand)<Math.max(50_000,priorDemand*.015);if(tiny)offer.patienceLeft=Math.max(0,offer.patienceLeft-1);offer.previousSellerDemand=amount;
     if(amount<=Number(offer.currentFee||0)){resolveLivingIncomingFee(offer,offer.currentFee,'COUNTER_ACCEPTED');return true;}
     const acceptThreshold=target*(1+Math.min(.045,offer.round*.012)),roll=negotiationSeedUnit(`SALE-${offer.id}-R${offer.round}-${amount}`);if(amount<=acceptThreshold&&(offer.round>=2||style==='DESPERATE'||roll<.38)){offer.currentFee=amount;resolveLivingIncomingFee(offer,amount,'COUNTER_ACCEPTED');return true;}
     const extreme=amount>dynamicMax*(style==='HARDLINE'?1.12:style==='TESTING'?1.18:1.22);if(extreme||offer.patienceLeft<=0){offer.status='WALKED_AWAY';offer.statusCopy=`${buyer.name} ended negotiations after deciding the gap was too large.`;offer.finalOffer=false;saveCareerState();return false;}
@@ -11646,11 +12948,11 @@
     const final=offer.patienceLeft<=1||offer.round>=Math.max(3,Number(offer.basePatience||4))||(phase==='DEADLINE'&&offer.round>=2);if(final){offer.status='FINAL_OFFER';offer.finalOffer=true;offer.statusCopy=`${buyer.name} have made their final offer at ${formatMoney(buyerCounter)}. They will not negotiate further.`;}else{offer.status='COUNTERED';offer.statusCopy=`${buyer.name} have improved their offer to ${formatMoney(buyerCounter)}. They remain interested, but the gap has not fully closed.`;}saveCareerState();return true;
   }
 
-  function resolveLivingIncomingFee(offer,fee,source){const p=careerPlayerById(offer.playerId),buyer=clubById(offer.buyerClubId);if(!p||!buyer||!currentClub)return;if(moneyNumber(buyer.budget)<Number(fee||0)||!v25CanAffordWage(buyer,p,Math.max(expectedWage(p),p.wage))){offer.status='WALKED_AWAY';offer.statusCopy=`${buyer.name} withdrew after their available funds or wage allocation changed.`;addCareerInboxMessage({id:`buyer-budget-withdraw-${offer.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Talks collapse: ${p.name}`,preview:`${buyer.name} can no longer fund the agreed level.`,title:`${buyer.name} withdraw from negotiations`,body:[`The buyer's available funds or wage allocation changed before personal terms could begin.`,`No fee has changed hands and ${p.name} remains at the club.`],signoff:'Transfer Office',date:currentCareerISO()});saveCareerState();return;}offer.currentFee=fee;offer.status='FEE_AGREED';ensurePlayerStoryMeta(p,currentClub);const traits=playerStoryTraits(p),currentLevel=divisionLevel(currentClub),buyerLevel=divisionLevel(buyer),buyerManager=currentClubManager(buyer),sameWorld=clubWorldName(currentClub)===clubWorldName(buyer),sporting=(buyerLevel-currentLevel)*11+(backgroundClubStrength(buyer)-backgroundClubStrength(currentClub))*.55,ambition=(Number(traits.ambition||60)-60)*.16,loyalty=-(Number(traits.loyalty||60)-60)*.12,homebody=!sameWorld&&String(traits.name)==='Homebody'?-18:0,trust=-(Number(p.managerTrust||60)-60)*.12,happiness=playerHappinessBreakdown(p,currentClub).overall<40?8:0,request=p.transferRequested?18:0,managerPull=Number(buyerManager?.reputation||40)>Number(roadToGlory.managerReputation||18)+20?4:0,interest=clamp(65+sporting+ambition+loyalty+homebody+trust+happiness+request+managerPull+(sameWorld?4:0),14,94),roll=hashString(`${worldSeed}-PLAYER-TERMS-${offer.id}-${fee}`)%100;if(roll>interest){offer.status='PLAYER_REJECTED';offer.statusCopy=`${p.name} could not agree personal terms with ${buyer.name}.`;addCareerInboxMessage({id:`player-reject-sale-${offer.id}`,type:'TRANSFERS',sender:'PLAYER REPRESENTATIVE',subject:`Deal collapsed: ${p.name}`,preview:'Personal terms were not agreed.',title:`${p.name} rejects the proposed move`,body:[`${currentClub.name} and ${buyer.name} agreed ${formatMoney(fee)}, but the player did not agree personal terms.`,`Sporting level, likely role, player personality and the destination all influence whether a move is attractive.`,`No transfer fee has changed hands.`],signoff:'Player Representative',date:currentCareerISO()});saveCareerState();return;}completeLivingUserSale(offer,p,buyer,fee,source);}
+  function resolveLivingIncomingFee(offer,fee,source){const p=careerPlayerById(offer.playerId),buyer=clubById(offer.buyerClubId);if(!p||!buyer||!currentClub||!validateLivingSaleOfferOwnership(offer,p))return false;if(moneyNumber(buyer.budget)<Number(fee||0)||!v25CanAffordWage(buyer,p,Math.max(expectedWage(p),p.wage))){offer.status='WALKED_AWAY';offer.statusCopy=`${buyer.name} withdrew after their available funds or wage allocation changed.`;addCareerInboxMessage({id:`buyer-budget-withdraw-${offer.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Talks collapse: ${p.name}`,preview:`${buyer.name} can no longer fund the agreed level.`,title:`${buyer.name} withdraw from negotiations`,body:[`The buyer's available funds or wage allocation changed before personal terms could begin.`,`No fee has changed hands and ${p.name} remains at the club.`],signoff:'Transfer Office',date:currentCareerISO()});saveCareerState();return false;}offer.currentFee=fee;offer.status='FEE_AGREED';ensurePlayerStoryMeta(p,currentClub);const traits=playerStoryTraits(p),currentLevel=divisionLevel(currentClub),buyerLevel=divisionLevel(buyer),buyerManager=currentClubManager(buyer),sameWorld=clubWorldName(currentClub)===clubWorldName(buyer),sporting=(buyerLevel-currentLevel)*11+(backgroundClubStrength(buyer)-backgroundClubStrength(currentClub))*.55,ambition=(Number(traits.ambition||60)-60)*.16,loyalty=-(Number(traits.loyalty||60)-60)*.12,homebody=!sameWorld&&String(traits.name)==='Homebody'?-18:0,trust=-(Number(p.managerTrust||60)-60)*.12,happiness=playerHappinessBreakdown(p,currentClub).overall<40?8:0,request=p.transferRequested?18:0,managerPull=Number(buyerManager?.reputation||40)>Number(roadToGlory.managerReputation||18)+20?4:0,interest=clamp(65+sporting+ambition+loyalty+homebody+trust+happiness+request+managerPull+(sameWorld?4:0),14,94),roll=hashString(`${worldSeed}-PLAYER-TERMS-${offer.id}-${fee}`)%100;if(roll>interest){offer.status='PLAYER_REJECTED';offer.statusCopy=`${p.name} could not agree personal terms with ${buyer.name}.`;addCareerInboxMessage({id:`player-reject-sale-${offer.id}`,type:'TRANSFERS',sender:'PLAYER REPRESENTATIVE',subject:`Deal collapsed: ${p.name}`,preview:'Personal terms were not agreed.',title:`${p.name} rejects the proposed move`,body:[`${currentClub.name} and ${buyer.name} agreed ${formatMoney(fee)}, but the player did not agree personal terms.`,`Sporting level, likely role, player personality and the destination all influence whether a move is attractive.`,`No transfer fee has changed hands.`],signoff:'Player Representative',date:currentCareerISO()});saveCareerState();return false;}return completeLivingUserSale(offer,p,buyer,fee,source);}
   function buyerWorldSameForPlayer(p,buyer){return buyer?.country===p?.country||clubWorldName(buyer)===clubWorldName(clubById(p?.clubId));}
-  function completeLivingUserSale(offer,p,buyer,fee,source='SALE'){if(p?.v34Precontract)return false;const seller=currentClub,sellerSquad=getSquad(seller),buyerSquad=getSquad(buyer),idx=sellerSquad.findIndex(x=>x.id===p.id);if(idx<0||buyerSquad.length+(careerExpansion?.reservedPlaces(buyer)||0)>=AI_SENIOR_SQUAD_CAP||moneyNumber(buyer.budget)<Number(fee||0)||!v25CanAffordWage(buyer,p,Math.max(expectedWage(p),p.wage)))return false;removePlayerFromLineup(seller,p.id);sellerSquad.splice(idx,1);p.clubId=buyer.id;p.clubName=buyer.name;p.ownerClubId=buyer.id;p.parentClubId=null;p.onLoan=false;p.loanListed=false;p.transferListed=false;p.transferStatus='LISTEN';p.transferRequested=false;p.askingPrice=null;p.joinedSeason=careerSeason;p.morale='Happy';p.careerClubs=Array.from(new Set([...(p.careerClubs||[]),buyer.id]));setLivingPlayerContract(p,buyer,p.age>=31?2:3+(hashString(`${offer.id}-TERM`)%3),Math.max(expectedWage(p),p.wage),'Rotation',currentCareerISO(),'TRANSFER');buyerSquad.push(p);addPlayerToLineup(buyer,p.id,'bench');seller.budget=formatExactMoney(moneyNumber(seller.budget)+fee);buyer.budget=formatExactMoney(Math.max(0,moneyNumber(buyer.budget)-fee));normalizeSquadRoles(seller);normalizeSquadRoles(buyer);const marketState=marketStateFor(p,false),saleContext={listed:!!offer.marketContext?.listed,requested:!!offer.marketContext?.requested,askingPrice:Number(offer.marketContext?.askingPrice||p.askingPrice||0)||null,interestCount:Number(offer.marketContext?.interestCount||marketState?.interest?.length||0)};recordLivingTransfer(p,seller,buyer,fee,{type:'PERMANENT',source:'USER_SELL',marketContext:saleContext});offer.status='COMPLETED';if(marketState){marketState.status='SOLD';marketState.resolvedDate=currentCareerISO();marketState.interest=[];}offer.statusCopy=`Transfer completed for ${formatMoney(fee)}.`;livingSquad.incomingOffers.forEach(o=>{if(o.playerId===p.id&&o.id!==offer.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)){o.status='CLOSED';o.statusCopy='Player transferred elsewhere.';}});addCareerNews({id:`news-living-sale-${offer.id}`,category:'TRANSFERS',title:`${buyer.name.toUpperCase()} SIGN ${p.name.toUpperCase()}`,body:[`${seller.name} and ${buyer.name} agreed a ${formatMoney(fee)} transfer.`,`The player has agreed personal terms and completed the move.`],image:p.avatar,date:currentCareerISO()});addCareerInboxMessage({id:`living-sale-done-${offer.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Transfer complete: ${p.name}`,preview:`${formatMoney(fee)} received from ${buyer.name}.`,title:`${p.name} completes move to ${buyer.name}`,body:[`Final transfer fee: ${formatMoney(fee)}.`,`The fee has been added to the club's transfer budget.`],signoff:'Transfer Office',date:currentCareerISO()});mediaOnTransferResolved(p,buyer,fee,currentCareerISO());if(selectedPlayerId===p.id)selectedPlayerId=getSquad(seller)[0]?.id||null;saveCareerState();return true;}
+  function completeLivingUserSale(offer,p,buyer,fee,source='SALE'){if(p?.v34Precontract)return false;const seller=currentClub;if(!clubCanMarketPlayer(seller,p))return false;const sellerSquad=getSquad(seller),buyerSquad=getSquad(buyer),idx=sellerSquad.findIndex(x=>x.id===p.id);if(idx<0||buyerSquad.length+(careerExpansion?.reservedPlaces(buyer)||0)>=AI_SENIOR_SQUAD_CAP||moneyNumber(buyer.budget)<Number(fee||0)||!v25CanAffordWage(buyer,p,Math.max(expectedWage(p),p.wage)))return false;removePlayerFromLineup(seller,p.id);sellerSquad.splice(idx,1);p.clubId=buyer.id;p.clubName=buyer.name;p.ownerClubId=buyer.id;p.parentClubId=null;p.onLoan=false;p.loanListed=false;p.transferListed=false;p.transferStatus='LISTEN';p.transferRequested=false;p.askingPrice=null;p.joinedSeason=careerSeason;p.morale='Happy';p.careerClubs=Array.from(new Set([...(p.careerClubs||[]),buyer.id]));setLivingPlayerContract(p,buyer,p.age>=31?2:3+(hashString(`${offer.id}-TERM`)%3),Math.max(expectedWage(p),p.wage),'Rotation',currentCareerISO(),'TRANSFER');buyerSquad.push(p);addPlayerToLineup(buyer,p.id,'bench');seller.budget=formatExactMoney(moneyNumber(seller.budget)+fee);buyer.budget=formatExactMoney(Math.max(0,moneyNumber(buyer.budget)-fee));normalizeSquadRoles(seller);normalizeSquadRoles(buyer);const marketState=marketStateFor(p,false),saleContext={listed:!!offer.marketContext?.listed,requested:!!offer.marketContext?.requested,askingPrice:Number(offer.marketContext?.askingPrice||p.askingPrice||0)||null,interestCount:Number(offer.marketContext?.interestCount||marketState?.interest?.length||0)};recordLivingTransfer(p,seller,buyer,fee,{type:'PERMANENT',source:'USER_SELL',marketContext:saleContext});offer.status='COMPLETED';if(marketState){marketState.status='SOLD';marketState.resolvedDate=currentCareerISO();marketState.interest=[];}offer.statusCopy=`Transfer completed for ${formatMoney(fee)}.`;livingSquad.incomingOffers.forEach(o=>{if(o.playerId===p.id&&o.id!==offer.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)){o.status='CLOSED';o.statusCopy='Player transferred elsewhere.';}});addCareerNews({id:`news-living-sale-${offer.id}`,category:'TRANSFERS',title:`${buyer.name.toUpperCase()} SIGN ${p.name.toUpperCase()}`,body:[`${seller.name} and ${buyer.name} agreed a ${formatMoney(fee)} transfer.`,`The player has agreed personal terms and completed the move.`],image:p.avatar,date:currentCareerISO()});addCareerInboxMessage({id:`living-sale-done-${offer.id}`,type:'TRANSFERS',sender:'TRANSFER OFFICE',subject:`Transfer complete: ${p.name}`,preview:`${formatMoney(fee)} received from ${buyer.name}.`,title:`${p.name} completes move to ${buyer.name}`,body:[`Final transfer fee: ${formatMoney(fee)}.`,`The fee has been added to the club's transfer budget.`],signoff:'Transfer Office',date:currentCareerISO()});mediaOnTransferResolved(p,buyer,fee,currentCareerISO());if(selectedPlayerId===p.id)selectedPlayerId=getSquad(seller)[0]?.id||null;saveCareerState();return true;}
   function livingIncomingOffersHTML(){
-    const offers=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED','PLAYER_REJECTED'].includes(o.status)).sort((a,b)=>b.createdDate.localeCompare(a.createdDate));
+    const offers=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED','PLAYER_REJECTED'].includes(o.status)&&clubCanMarketPlayer(currentClub,careerPlayerById(o.playerId))).sort((a,b)=>b.createdDate.localeCompare(a.createdDate));
     if(!offers.length)return '<div class="transfer-empty"><div><strong>NO INCOMING OFFERS</strong><span>When another club bids for one of your players, you can accept, reject or counter from here.</span></div></div>';
     return `<div class="living-offer-list">${offers.map(o=>{const p=careerPlayerById(o.playerId),buyer=clubById(o.buyerClubId);if(!p||!buyer)return '';
       const rejected=o.status==='PLAYER_REJECTED',label=o.status.replace(/_/g,' '),initials=buyer.abbr||buyer.name.split(' ').map(w=>w[0]).slice(0,3).join('');
@@ -11658,13 +12960,13 @@
     }).join('')}</div>`;
   }
   function livingActiveTalksHTML(){const items=[];pendingNegotiations.filter(n=>n.status==='pending').forEach(n=>{const p=transferPlayerById(n.playerId);if(p)items.push({p,status:`Awaiting club response · ${shortDateLabel(n.responseDate)}`});});transferActivity.forEach((a,id)=>{if(['Fee Agreed','Player Talks','Terms Agreed','Counter Offer','Final Offer'].includes(a.status)){const p=transferPlayerById(id);if(p)items.push({p,status:a.status});}});if(!items.length)return'<div class="transfer-empty"><div><strong>NO ACTIVE TALKS</strong><span>Approach a target or negotiate an incoming bid to start live transfer business.</span></div></div>';return`<div class="living-deal-list">${items.slice(0,12).map(x=>`<button type="button" data-transfer-player="${x.p.id}"><span class="transfer-avatar">${avatarHTML(x.p.avatar,x.p.name)}</span><section><small>${escapeHtml(x.p.club?.name||x.p.clubName||'FREE AGENT')}</small><strong>${escapeHtml(x.p.name)}</strong><span>${escapeHtml(x.status)}</span></section></button>`).join('')}</div>`;}
-  function livingOutgoingDealsHTML(){const listed=getSquad(currentClub).filter(p=>p.transferStatus==='TRANSFER_LISTED'||p.transferRequested).map(p=>({p,summary:livingMarketInterestSummary(p),state:marketStateFor(p,true)})),rows=livingSquad.transferHistory.filter(x=>x.fromClubId===currentClub?.id&&x.seasonId===careerTime.seasonId).slice().reverse();const active=listed.length?`<section class="living-outgoing-market"><header><span>ACTIVE PLAYER MARKET</span><strong>${listed.length} AVAILABLE</strong></header>${listed.map(({p,summary,state})=>`<button type="button" class="living-market-row" data-squad-player="${escapeHtml(p.id)}"><div>${avatarHTML(p.avatar,p.name)}</div><span><small>${p.transferRequested?'TRANSFER REQUEST':'TRANSFER LISTED'}</small><strong>${escapeHtml(p.name)}</strong><b>${escapeHtml(summary.label)} · ${escapeHtml(summary.outlook)}</b></span><aside><small>ASKING PRICE</small><strong>${p.askingPrice?formatMoney(p.askingPrice):'OPEN'}</strong><b>${Number(state.exposure||playerMarketExposure(p))>=75?'HIGH EXPOSURE':Number(state.exposure||playerMarketExposure(p))>=48?'ACTIVE MARKET':'PASSIVE MARKET'}</b></aside></button>`).join('')}</section>`:'';const history=rows.length?`<section class="living-outgoing-history"><header><span>COMPLETED SALES</span><strong>${rows.length}</strong></header><div class="living-history-list">${rows.map(r=>{const p=careerPlayerById(r.playerId)||livingSquad.playerHistory[r.playerId],to=clubById(r.toClubId);return`<article><span>${shortDateLabel(r.date)}</span><strong>${escapeHtml(p?.name||r.playerName)}</strong><small>TO ${escapeHtml(to?.name||'UNKNOWN')} · ${formatMoney(r.fee)}</small></article>`;}).join('')}</div></section>`:`<div class="transfer-empty"><div><strong>NO PLAYER SALES THIS SEASON</strong><span>Completed outgoing transfers will be archived here.</span></div></div>`;return`${active}${history}`;}
+  function livingOutgoingDealsHTML(){const listed=getSquad(currentClub).filter(p=>clubCanMarketPlayer(currentClub,p)&&(p.transferStatus==='TRANSFER_LISTED'||p.transferRequested)).map(p=>({p,summary:livingMarketInterestSummary(p),state:marketStateFor(p,true)})),rows=livingSquad.transferHistory.filter(x=>x.fromClubId===currentClub?.id&&x.seasonId===careerTime.seasonId).slice().reverse();const active=listed.length?`<section class="living-outgoing-market"><header><span>ACTIVE PLAYER MARKET</span><strong>${listed.length} AVAILABLE</strong></header>${listed.map(({p,summary,state})=>`<button type="button" class="living-market-row" data-squad-player="${escapeHtml(p.id)}"><div>${avatarHTML(p.avatar,p.name)}</div><span><small>${p.transferRequested?'TRANSFER REQUEST':'TRANSFER LISTED'}</small><strong>${escapeHtml(p.name)}</strong><b>${escapeHtml(summary.label)} · ${escapeHtml(summary.outlook)}</b></span><aside><small>ASKING PRICE</small><strong>${p.askingPrice?formatMoney(p.askingPrice):'OPEN'}</strong><b>${Number(state.exposure||playerMarketExposure(p))>=75?'HIGH EXPOSURE':Number(state.exposure||playerMarketExposure(p))>=48?'ACTIVE MARKET':'PASSIVE MARKET'}</b></aside></button>`).join('')}</section>`:'';const history=rows.length?`<section class="living-outgoing-history"><header><span>COMPLETED SALES</span><strong>${rows.length}</strong></header><div class="living-history-list">${rows.map(r=>{const p=careerPlayerById(r.playerId)||livingSquad.playerHistory[r.playerId],to=clubById(r.toClubId);return`<article><span>${shortDateLabel(r.date)}</span><strong>${escapeHtml(p?.name||r.playerName)}</strong><small>TO ${escapeHtml(to?.name||'UNKNOWN')} · ${formatMoney(r.fee)}</small></article>`;}).join('')}</div></section>`:`<div class="transfer-empty"><div><strong>NO PLAYER SALES THIS SEASON</strong><span>Completed outgoing transfers will be archived here.</span></div></div>`;return`${active}${history}`;}
   function livingCompletedDealsHTML(){const rows=livingSquad.transferHistory.filter(x=>x.seasonId===careerTime.seasonId&&(x.fromClubId===currentClub?.id||x.toClubId===currentClub?.id)).slice().reverse();if(!rows.length)return'<div class="transfer-empty"><div><strong>NO COMPLETED DEALS</strong><span>Your permanent transfer history for this season will appear here.</span></div></div>';return`<div class="living-history-list">${rows.map(r=>{const from=clubById(r.fromClubId),to=clubById(r.toClubId);return`<article><span>${shortDateLabel(r.date)}</span><strong>${escapeHtml(r.playerName||livingSquad.playerHistory[r.playerId]?.name||'PLAYER')}</strong><small>${escapeHtml(from?.name||'FREE AGENT')} → ${escapeHtml(to?.name||'UNKNOWN')} · ${r.fee?formatMoney(r.fee):'FREE'}</small></article>`;}).join('')}</div>`;}
   function livingLoanForPlayer(id){return livingSquad.loanHistory.find(l=>l.playerId===id&&l.status==='ACTIVE')||null;}
   function activeLivingLoansForClub(club){if(!club)return[];return livingSquad.loanHistory.filter(l=>l.status==='ACTIVE'&&(l.parentClubId===club.id||l.loanClubId===club.id));}
   function maybeGenerateLivingSquadLoanOffer(date=currentCareerISO()){if(!currentClub||hashString(`${worldSeed}-LOAN-OFFER-${date}-${currentClub.id}`)%100>8)return null;const candidates=getSquad(currentClub).filter(p=>p.loanListed&&!p.onLoan&&!p.captain&&Number(p.age||99)<=26&&!livingSquad.loanOffers.some(o=>o.playerId===p.id&&o.status==='OPEN'));if(!candidates.length)return null;const p=candidates[hashString(`${date}-${currentClub.id}-LOANP`)%candidates.length],level=divisionLevel(currentClub),clubsFit=clubs.filter(c=>c.id!==currentClub.id&&getSquad(c).length<AI_SENIOR_SQUAD_CAP&&divisionLevel(c)<=Math.min(4,level+1)&&divisionLevel(c)>=Math.max(1,level-2)&&Math.abs(backgroundClubStrength(c)-p.ovr)<=10);if(!clubsFit.length)return null;const loanClub=clubsFit[hashString(`${date}-${p.id}-LOANC`)%clubsFit.length],role=p.ovr>=backgroundClubStrength(loanClub)-1?'Important':'Rotation',offer={id:livingSquadNextId('LOF'),playerId:p.id,parentClubId:currentClub.id,loanClubId:loanClub.id,createdDate:date,expiresDate:addDaysISO(date,5),duration:'SEASON',expectedRole:role,wageContribution:50+(hashString(`${p.id}-${loanClub.id}`)%6)*10,status:'OPEN'};livingSquad.loanOffers.push(offer);addCareerInboxMessage({id:`loan-offer-${offer.id}`,type:'TRANSFERS',sender:loanClub.name.toUpperCase(),subject:`Loan offer: ${p.name}`,preview:`${role} role · ${offer.wageContribution}% wage contribution.`,title:`${loanClub.name} request ${p.name} on loan`,body:[`Loan duration: until the end of the season.`,`Expected role: ${role}.`,`Wage contribution: ${offer.wageContribution}%.`],signoff:`${loanClub.name} Transfer Office`,action:{label:'OPEN TRANSFER HUB',route:'transfers'},date});return offer;}
   function openLivingLoanOffer(id){const offer=livingSquad.loanOffers.find(o=>o.id===id),p=careerPlayerById(offer?.playerId),club=clubById(offer?.loanClubId);if(!offer||!p||!club)return;let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>LOAN OFFER</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}const body=root.querySelector('[data-living-offer-body]');body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${p.ovr} OVR · AGE ${p.age}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub?.name||'Parent club')} → ${escapeHtml(club.name)}</p></section><aside>${badgeHTML(club)}</aside></div><div class="living-negotiation-values"><div><span>DURATION</span><strong>1 SEASON</strong></div><div><span>EXPECTED ROLE</span><strong>${escapeHtml(offer.expectedRole)}</strong></div><div><span>WAGE SHARE</span><strong>${offer.wageContribution}%</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div><div class="living-offer-status"><strong>LOAN MANAGER ASSESSMENT</strong><span>${offer.expectedRole==='Important'?'This should provide strong first-team minutes and meaningful development.':'This is a useful rotation pathway, but minutes are not guaranteed every match.'}</span></div><div class="living-negotiation-actions"><button type="button" data-loan-reject>REJECT</button><button type="button" class="is-primary" data-loan-accept>ACCEPT LOAN</button></div>`;const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;body.querySelector('[data-loan-reject]').onclick=e=>runLockedAction(`LOAN_REJECT:${offer.id}`,e.currentTarget,()=>{if(offer.status!=='OPEN')return false;offer.status='REJECTED';saveCareerState();close();renderTransferHub();return true;},{releaseDelay:300,busyText:'REJECTING…'});body.querySelector('[data-loan-accept]').onclick=e=>runLockedAction(`LOAN_ACCEPT:${offer.id}`,e.currentTarget,()=>{if(offer.status!=='OPEN')return false;const ok=completeLivingLoan(offer,p,club);if(ok!==false){close();renderTransferHub();}return ok;},{releaseDelay:450,busyText:'ACCEPTING…'});root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);}
-  function completeLivingLoan(offer,p,loanClub){if(p?.v34Precontract||p?.onLoan)return false;const parent=clubById(offer.parentClubId),parentSquad=getSquad(parent),dest=getSquad(loanClub),idx=parentSquad.findIndex(x=>x.id===p.id);if(idx<0||dest.length+(careerExpansion?.reservedPlaces(loanClub)||0)>=squadCapForClub(loanClub))return false;removePlayerFromLineup(parent,p.id);parentSquad.splice(idx,1);p.parentClubId=parent.id;p.ownerClubId=parent.id;p.clubId=loanClub.id;p.clubName=loanClub.name;p.onLoan=true;p.loanListed=false;p.transferStatus='LISTEN';p.loanEndDate=`${careerYear+1}-06-30`;dest.push(p);addPlayerToLineup(loanClub,p.id,'bench');offer.status='ACCEPTED';const loan={id:livingSquadNextId('LOAN'),playerId:p.id,parentClubId:parent.id,loanClubId:loanClub.id,startDate:currentCareerISO(),endDate:p.loanEndDate,expectedRole:offer.expectedRole,wageContribution:offer.wageContribution,startOvr:Number(p.ovr||0),lastMonthStarts:0,developmentGrade:'NEW',status:'ACTIVE'};livingSquad.loanHistory.push(loan);recordLivingCareerEvent(p,'LOAN',parent,loanClub,0,currentCareerISO(),{endDate:loan.endDate,role:loan.expectedRole});saveCareerState();renderSquad();renderTransferHub();showToast(`${p.name} loaned to ${loanClub.name}`);return true;}
+  function completeLivingLoan(offer,p,loanClub){if(p?.v34Precontract||p?.onLoan)return false;const parent=clubById(offer.parentClubId);if(!parent||!clubCanMarketPlayer(parent,p))return false;const parentSquad=getSquad(parent),dest=getSquad(loanClub),idx=parentSquad.findIndex(x=>x.id===p.id);if(idx<0||dest.length+(careerExpansion?.reservedPlaces(loanClub)||0)>=squadCapForClub(loanClub))return false;removePlayerFromLineup(parent,p.id);parentSquad.splice(idx,1);p.parentClubId=parent.id;p.ownerClubId=parent.id;p.clubId=loanClub.id;p.clubName=loanClub.name;p.onLoan=true;p.loanListed=false;p.transferListed=false;p.transferRequested=false;p.transferStatus='LISTEN';p.askingPrice=null;p.loanEndDate=`${careerYear+1}-06-30`;dest.push(p);addPlayerToLineup(loanClub,p.id,'bench');offer.status='ACCEPTED';const loan={id:livingSquadNextId('LOAN'),playerId:p.id,parentClubId:parent.id,loanClubId:loanClub.id,startDate:currentCareerISO(),endDate:p.loanEndDate,expectedRole:offer.expectedRole,wageContribution:offer.wageContribution,startOvr:Number(p.ovr||0),lastMonthStarts:0,developmentGrade:'NEW',status:'ACTIVE'};livingSquad.loanHistory.push(loan);livingSquad.incomingOffers.forEach(row=>{if(row.playerId===p.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(row.status)){row.status='CLOSED';row.statusCopy='Permanent transfer talks closed when the loan registration was completed.';}});const marketState=marketStateFor(p,false);if(marketState){marketState.status='ON_LOAN';marketState.interest=[];marketState.listedDate=null;}recordLivingCareerEvent(p,'LOAN',parent,loanClub,0,currentCareerISO(),{endDate:loan.endDate,role:loan.expectedRole});saveCareerState();renderSquad();renderTransferHub();showToast(`${p.name} loaned to ${loanClub.name}`);return true;}
   function processLivingLoanReturns(date=currentCareerISO()){livingSquad.loanHistory.filter(l=>l.status==='ACTIVE'&&l.endDate<=date).forEach(l=>returnLivingLoan(l,date));}
   function ensureUniquePlayerClubRoster(p,target,preferredGroup='reserve'){
     if(!p||!target)return null;
@@ -11708,7 +13010,7 @@
     livingSquad.loanHistory.forEach(loan=>{const previous=latest.get(loan.playerId),stamp=String(loan.returnDate||loan.endDate||loan.startDate||'');const previousStamp=String(previous?.returnDate||previous?.endDate||previous?.startDate||'');if(!previous||stamp>=previousStamp)latest.set(loan.playerId,loan);});
     latest.forEach(loan=>{
       const p=careerPlayerById(loan.playerId),parent=clubById(loan.parentClubId),loanClub=clubById(loan.loanClubId);if(!p||!parent)return;
-      if(loan.status==='ACTIVE'&&loanClub){p.onLoan=true;p.freeAgent=false;p.parentClubId=parent.id;p.ownerClubId=parent.id;p.clubId=loanClub.id;p.clubName=loanClub.name;p.loanEndDate=loan.endDate;ensureUniquePlayerClubRoster(p,loanClub,'bench');return;}
+      if(loan.status==='ACTIVE'&&loanClub){p.onLoan=true;p.freeAgent=false;p.parentClubId=parent.id;p.ownerClubId=parent.id;p.clubId=loanClub.id;p.clubName=loanClub.name;p.loanEndDate=loan.endDate;p.loanListed=false;p.transferListed=false;p.transferRequested=false;p.transferStatus='LISTEN';p.askingPrice=null;livingSquad.incomingOffers.forEach(row=>{if(row.playerId===p.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(row.status)){row.status='CLOSED';row.statusCopy='Permanent transfer talks closed because the player is registered on loan.';}});ensureUniquePlayerClubRoster(p,loanClub,'bench');return;}
       if(loan.status==='RETURNED'){p.onLoan=false;p.freeAgent=false;p.parentClubId=null;p.ownerClubId=parent.id;p.clubId=parent.id;p.clubName=parent.name;p.loanEndDate=null;p.lastLoanReturnDate=loan.returnDate||loan.endDate;const registration=ensureUniquePlayerClubRoster(p,parent,'reserve');p.seniorRegistrationStatus=registration?'REGISTERED':'AWAITING_REGISTRATION';loan.registrationStatus=p.seniorRegistrationStatus;}
     });
   }
@@ -11720,6 +13022,15 @@
   }
   function livingPlayerContractHTML(p,club){
     const status=p.transferStatus||'LISTEN',ask=Math.round(Number(p.askingPrice||livingPlayerMarketValue(p)*1.12)/50000)*50000,summary=livingMarketInterestSummary(p),state=marketStateFor(p,true),renewal=v2075RenewalReadiness(p,club),days=Math.max(0,diffDaysISO(currentCareerISO(),p.contractEndDate||currentCareerISO()));
+    const rights=playerRegistrationRights(club,p);
+    if(!rights.ownsContract){
+      const parent=clubById(rights.ownerClubId),loan=rights.loan;
+      return`<section class="living-profile-panel"><header><span>LOAN REGISTRATION</span><strong>ON LOAN FROM ${escapeHtml(parent?.name||'PARENT CLUB')}</strong><small>UNTIL ${shortDateLabel(loan?.endDate||p.loanEndDate||currentCareerISO())}</small></header><div class="living-growth-facts"><div><span>PARENT CLUB</span><strong>${escapeHtml(parent?.name||'UNKNOWN')}</strong></div><div><span>LOAN ENDS</span><strong>${shortDateLabel(loan?.endDate||p.loanEndDate||currentCareerISO())}</strong></div><div><span>AGREED ROLE</span><strong>${escapeHtml(loan?.expectedRole||p.squadRole||'Rotation')}</strong></div><div><span>WAGE SHARE</span><strong>${Number(loan?.wageContribution||0)}%</strong></div></div><section class="v2075-renewal-state is-steady"><div><span>REGISTRATION RIGHTS</span><strong>PARENT CLUB CONTROLLED</strong></div><p>${escapeHtml(parent?.name||'The parent club')} retain the permanent contract and transfer rights. ${escapeHtml(club?.name||'The loan club')} can select and develop ${escapeHtml(p.name)}, but cannot offer a contract, sell, release, set an asking price or arrange another loan.</p></section><div class="contract-advice"><b>LOAN AGREEMENT</b><span>This page is read-only while the loan is active. Contract and transfer controls return only if the player later joins the club permanently.</span></div></section>`;
+    }
+    if(rights.isLoan){
+      const borrower=clubById(rights.registeredClubId);
+      return`<section class="living-profile-panel"><header><span>CONTRACT & LOAN</span><strong>${escapeHtml(livingContractLabel(p))}</strong><small>${shortDateLabel(p.contractEndDate||currentCareerISO())}</small></header><div class="living-growth-facts"><div><span>WEEKLY WAGE</span><strong>${formatMoney(p.wage)}/w</strong></div><div><span>LOAN CLUB</span><strong>${escapeHtml(borrower?.name||'LOAN CLUB')}</strong></div><div><span>LOAN ENDS</span><strong>${shortDateLabel(rights.loan?.endDate||p.loanEndDate||currentCareerISO())}</strong></div><div><span>CONTRACT DAYS</span><strong>${days}</strong></div></div><section class="v2075-renewal-state is-steady"><div><span>TRANSFER STATUS</span><strong>ACTIVE LOAN</strong></div><p>Permanent market actions are paused while the loan is active. Recall the player before changing availability, setting an asking price, selling or releasing them.</p></section>${clubCanRenewPlayer(club,p)?`<div class="living-contract-actions"><button type="button" class="is-primary" data-open-renewal ${renewal.canNegotiate?'':'disabled'}>${renewal.canNegotiate?'OPEN RENEWAL TALKS':escapeHtml(renewal.label)}</button></div>`:''}</section>`;
+    }
     return`<section class="living-profile-panel"><header><span>CONTRACT & MARKET</span><strong>${escapeHtml(livingContractLabel(p))}</strong><small>${shortDateLabel(p.contractEndDate||currentCareerISO())}</small></header><div class="living-growth-facts"><div><span>WEEKLY WAGE</span><strong>${formatMoney(p.wage)}/w</strong></div><div><span>SQUAD ROLE</span><strong>${escapeHtml(p.squadRole)}</strong></div><div><span>MARKET VALUE</span><strong>${formatMoney(livingPlayerMarketValue(p))}</strong></div><div><span>CONTRACT DAYS</span><strong>${days}</strong></div></div><section class="v2075-renewal-state is-${renewal.tone}"><div><span>RENEWAL POSITION</span><strong>${escapeHtml(renewal.label)}</strong></div><p>${escapeHtml(renewal.copy)}</p></section><div class="living-market-pulse"><div><span>MARKET INTEREST</span><strong>${escapeHtml(summary.label)}</strong><small>${summary.strongest?`Strongest: ${escapeHtml(summary.strongest.name)}`:'No club has reached a serious stage yet.'}</small></div><div><span>MARKET OUTLOOK</span><strong>${escapeHtml(summary.outlook)}</strong><small>${isTransferWindowOpen()?`${escapeHtml(transferMarketWindowPhase(currentCareerISO()))} WINDOW`:'Clubs can monitor before the window opens.'}</small></div><div><span>EXPOSURE</span><strong>${Number(state.exposure||playerMarketExposure(p))>=75?'HIGH':Number(state.exposure||playerMarketExposure(p))>=48?'ACTIVE':'PASSIVE'}</strong><small>Driven by status, value, form and price.</small></div></div><div class="living-contract-actions"><button type="button" class="is-primary" data-open-renewal ${renewal.canNegotiate?'':'disabled'}>${renewal.canNegotiate?'OPEN RENEWAL TALKS':escapeHtml(renewal.label)}</button><button type="button" data-player-market-status="LISTEN" class="${status==='LISTEN'?'is-active':''}">LISTEN TO OFFERS</button><button type="button" data-player-market-status="TRANSFER_LISTED" class="${status==='TRANSFER_LISTED'?'is-active':''}">TRANSFER LIST</button><button type="button" data-player-market-status="NOT_FOR_SALE" class="${status==='NOT_FOR_SALE'?'is-active':''}">NOT FOR SALE</button><button type="button" data-player-market-status="LOAN_LISTED" class="${status==='LOAN_LISTED'?'is-active':''}" ${p.age>27?'disabled':''}>LIST FOR LOAN</button></div><label class="living-asking-price"><span>OPTIONAL ASKING PRICE</span><div><b>£</b><input id="livingAskingPrice" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${ask}"><button type="button" data-set-asking-price>SET</button></div></label><div class="contract-advice"><b>PLAYER STATUS</b><span>${p.transferRequested?'The player has formally asked to leave. This strongly increases market exposure but can slightly reduce selling leverage.':status==='NOT_FOR_SALE'?'Recruitment staff will discourage routine approaches, although existing formal offers remain valid.':status==='LOAN_LISTED'?'The club is actively seeking a development loan.':status==='TRANSFER_LISTED'?'The player is being actively marketed to suitable clubs. Listing increases attention; it does not automatically discount the valuation.':'The club will consider credible approaches without actively advertising the player.'}</span></div><button type="button" class="profile-release-btn" data-release-player="${p.id}">TERMINATE CONTRACT · ${formatMoney(calculateReleaseCost(p))}</button></section>`;
   }
   function livingPlayerCareerHTML(p,club){
@@ -11729,7 +13040,7 @@
 
 
   function livingOwnedLoansCount(club){return club?livingSquad.loanHistory.filter(l=>l.status==='ACTIVE'&&l.parentClubId===club.id).length:0;}
-  function updateLivingTransferHubBadge(){const btn=document.querySelector('#transferSubnav [data-transfer-tab="hub"]');if(!btn)return;const count=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)).length+livingSquad.loanOffers.filter(o=>o.parentClubId===currentClub?.id&&o.status==='OPEN').length;btn.innerHTML=`TRANSFER HUB${count?` <span>${count}</span>`:''}`;}
+  function updateLivingTransferHubBadge(){const btn=document.querySelector('#transferSubnav [data-transfer-tab="hub"]');if(!btn)return;const count=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub?.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&clubCanMarketPlayer(currentClub,careerPlayerById(o.playerId))).length+livingSquad.loanOffers.filter(o=>o.parentClubId===currentClub?.id&&o.status==='OPEN').length;btn.innerHTML=`TRANSFER HUB${count?` <span>${count}</span>`:''}`;}
   function applyLivingDynamicPotentialSeason(p){
     if(!p||p.age>=31)return;ensurePlayerCareerMeta(p);const starts=Number(p.seasonStats?.starts||0),apps=Number(p.seasonStats?.apps||0),morale=moraleIndex(p.morale),form=['Excellent','Good'].includes(p.form)?1:['Poor','Terrible'].includes(p.form)?-1:0,young=p.age<=23,base=Number(p.basePotential||p.potential||p.ovr),deltaNow=Number(p.dynamicPotentialDelta||0),trust=Number(p.managerTrust||60),happy=Number(p.lastHappinessScore||60),loanFactor=p.onLoan?livingLoanDevelopmentFactor(p):0,rng=mulberry32(hashString(`${worldSeed}-DYN-POT-${careerTime.seasonId}-${p.id}`));let shift=0;
     if(apps>=12&&starts>=8&&morale>=3&&form>=0&&trust>=50&&rng()<.45)shift=1;if(young&&apps>=20&&form>0&&happy>=58&&rng()<.31)shift+=1;if(p.onLoan&&loanFactor>=.025&&['Good','Excellent'].includes(p.form)&&rng()<.31)shift=Math.max(shift,1);if(apps<=3&&p.age<=25&&(morale<=1||happy<40)&&rng()<.38)shift=-1;if(trust<28&&apps<=7&&p.age<=25&&rng()<.28)shift=Math.min(shift,-1);p.dynamicPotentialDelta=clamp(deltaNow+shift,-4,5);p.potential=clamp(base+p.dynamicPotentialDelta,Math.max(p.ovr,base-4),94);
@@ -11794,7 +13105,419 @@
   }
 
   v48InstallProfiles();
+  // =================================================================
+  // V104 · Online career bridge
+  //
+  // Everything the shared-career client needs from the game lives behind
+  // this one object. The client never reaches into career internals, and
+  // none of this runs unless an online career is actually attached, so a
+  // single-player career takes exactly the same code path it always has.
+  // =================================================================
+  function v104Core(){return window.VelmoraMultiplayerCore||null;}
+  function v104Active(){return!!(multiplayerSession&&multiplayerSession.careerId);}
+  function v104Status(){return multiplayerSession?.status||null;}
+
+  function v104SyncReservedClubs(clubIds){
+    v104ReservedClubIds.clear();
+    (clubIds||[]).filter(Boolean).forEach(id=>v104ReservedClubIds.add(String(id)));
+    // This device resolves its own fixtures, so its club is never "reserved"
+    // away from it -- only the other human's club is.
+    if(currentClub?.id)v104ReservedClubIds.delete(String(currentClub.id));
+  }
+
+  // Why the calendar will not move. Returns null in a single-player career.
+  function v104ProgressionBlock(){
+    if(!v104Active())return null;
+    const status=v104Status();
+    if(!status)return null;
+    if(status.readOnly)return{reason:'READ_ONLY',
+      message:'Velmora cannot reach the shared career right now, so the date is paused. You can still look around your club.'};
+    const barrier=status.barrier;
+    if(!barrier||!barrier.locked)return null;
+    return{reason:'BARRIER',date:barrier.date,
+      outstanding:barrier.outstanding,
+      message:status.waitingMessage||'Waiting for the other manager to complete their fixture.'};
+  }
+
+  // Whether this device may resolve this fixture right now.
+  function v104MatchGate(fixture){
+    if(!v104Active()||!fixture)return null;
+    const status=v104Status();
+    if(!status)return null;
+    if(status.readOnly)return{allowed:false,
+      message:'Velmora cannot reach the shared career, so this match cannot be saved yet.'};
+    const core=v104Core();
+    const barrier=status.barrier||{};
+    const required=(barrier.participants||[]).filter(row=>String(row.fixture_id)===String(fixture.fixtureId));
+    if(!required.length)return{allowed:true};
+    const h2h=required.some(row=>row.human_vs_human);
+    if(!h2h)return{allowed:true};
+    // Both managers must confirm before a human-versus-human tie resolves,
+    // and only one of them performs the single deterministic resolution.
+    const readiness=core?core.humanFixtureReady({
+      fixtureId:fixture.fixtureId,
+      required:barrier.participants||[],
+      submissions:multiplayerSession.submissions||[]
+    }):{ready:true,waitingOn:[]};
+    if(!readiness.ready){
+      const names=readiness.waitingOn.map(row=>row.manager_name||row.display_name||'the other manager');
+      return{allowed:false,
+        message:`Waiting for ${names.join(' and ')} to confirm their line-up for this fixture.`};
+    }
+    const resolver=core?core.humanFixtureResolver({
+      fixtureId:fixture.fixtureId,
+      required:barrier.participants||[],
+      selfUserId:multiplayerSession.userId
+    }):{isPrimary:true};
+    if(!resolver.isPrimary&&!multiplayerSession.fallbackResolve)
+      return{allowed:false,message:'Both line-ups are locked. Resolving this fixture…'};
+    return{allowed:true};
+  }
+
+  // A local save is also an offer of this manager's club to the shared world.
+  function v104NoteLocalSave(){
+    if(!v104Active())return;
+    try{multiplayerSession.client?.scheduleClubPublish('autosave');}catch(_){}
+  }
+
+  // A completed fixture is submitted once. If another device already stored
+  // a result the server hands that one back and this device keeps it.
+  function v104AfterUserFixture(fixture,mode){
+    if(!v104Active()||!fixture)return;
+    const client=multiplayerSession.client;
+    if(!client)return;
+    const report=fixture.matchday?.report||fixture.matchReport||null;
+    const payload={
+      result:{report,decidedOnPenalties:!!fixture.decidedOnPenalties,
+              decidedAfterExtraTime:!!fixture.decidedAfterExtraTime,
+              penaltiesHome:fixture.penaltiesHome??null,penaltiesAway:fixture.penaltiesAway??null,
+              shootoutWinnerId:fixture.shootoutWinnerId||null,
+              ccShootoutWinnerId:fixture.ccShootoutWinnerId||null,
+              competitionId:fixture.competitionId||null,type:fixture.type||null},
+      date:fixture.date,homeClubId:fixture.homeClubId,awayClubId:fixture.awayClubId,
+      homeScore:Number(fixture.homeScore||0),awayScore:Number(fixture.awayScore||0),
+      mode:String(mode||'QUICK SIM').toUpperCase().replace(/\s+/g,'_')
+    };
+    Promise.resolve()
+      .then(()=>client.submitMatchState(fixture.fixtureId,'COMPLETED',{date:fixture.date}))
+      .then(()=>client.recordMatchResult(fixture.fixtureId,payload))
+      .then(row=>{
+        if(row&&row.first_write===false)v104ReconcileAgainstStoredResult(fixture,row);
+        return client.publishClubState('match');
+      })
+      .then(()=>v104TryResolveBarrier())
+      .catch(()=>{});
+  }
+
+  // If the other device won the race, its result is the one that counts.
+  function v104ReconcileAgainstStoredResult(fixture,row){
+    const home=Number(row.home_score||0),away=Number(row.away_score||0);
+    if(Number(fixture.homeScore)===home&&Number(fixture.awayScore)===away)return;
+    fixture.homeScore=home;fixture.awayScore=away;
+    v202MarkCompetitionDataDirty();
+    showToast('The stored result for this fixture was used.');
+  }
+
+  // Apply an authoritative result that arrived from the shared log. Scores
+  // and the match report are taken as given, never re-rolled, so both
+  // devices end up with identical statistics.
+  function v104ApplyAuthoritativeResult(fixtureId,result={},meta={}){
+    const fixture=fixtureById(fixtureId);
+    if(!fixture||fixture.played)return false;
+    const {home,away}=fixtureClubs(fixture);
+    if(!home||!away)return false;
+    const report=result.report||null;
+    const disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
+    fixture.homeScore=Math.max(0,Number(meta.homeScore??result.homeScore??0));
+    fixture.awayScore=Math.max(0,Number(meta.awayScore??result.awayScore??0));
+    fixture.decidedOnPenalties=!!result.decidedOnPenalties;
+    fixture.decidedAfterExtraTime=!!result.decidedAfterExtraTime;
+    fixture.penaltiesHome=result.penaltiesHome??null;
+    fixture.penaltiesAway=result.penaltiesAway??null;
+    fixture.shootoutWinnerId=result.shootoutWinnerId||null;
+    fixture.ccShootoutWinnerId=result.ccShootoutWinnerId||null;
+    fixture.played=true;
+    fixture.resultMode=meta.mode||'ONLINE';
+    fixture.playedDate=fixture.date;
+    fixture.onlineAuthoritative=true;
+    v202MarkCompetitionDataDirty();
+
+    const events=Array.isArray(report?.disciplineEvents)?report.disciplineEvents:[];
+    disciplineServeFixtureForClub(home,fixture,disciplineServing.home);
+    disciplineServeFixtureForClub(away,fixture,disciplineServing.away);
+    if(events.length)disciplineApplyEvents(fixture,events,home,away);
+    applyBackgroundMatchEffects(home,fixture.homeScore,fixture.awayScore,fixture.fixtureId);
+    applyBackgroundMatchEffects(away,fixture.awayScore,fixture.homeScore,fixture.fixtureId);
+
+    if(fixture.type!=='FRIENDLY'&&report){
+      const lookup=new Map();
+      [...getSquad(home),...getSquad(away)].forEach(player=>lookup.set(String(player.id),player));
+      (report.goalEvents||[]).forEach(event=>{
+        const player=lookup.get(String(event.playerId));
+        const team=event.teamId===home.id?home:away;
+        if(player)v43ApplyGoal(player,team,fixture);
+        if(event.assistPlayerId){
+          const assistant=lookup.get(String(event.assistPlayerId));
+          if(assistant)v43ApplyAssist(assistant,team,fixture,1);
+        }
+      });
+      (report.ratings||[]).forEach(row=>{
+        const player=lookup.get(String(row.playerId));
+        if(!player)return;
+        const team=getSquad(home).some(x=>String(x.id)===String(row.playerId))?home:away;
+        ensurePlayerCareerMeta(player);
+        player.seasonStats.lastRating=Number(row.rating||0);
+        player.seasonStats.ratingSum=Number(player.seasonStats.ratingSum||0)+Number(row.rating||0);
+        player.seasonStats.ratingCount=Number(player.seasonStats.ratingCount||0)+1;
+        v43RecordRatingLine(player,team,fixture,Number(row.rating||0),{known:true});
+      });
+      const potm=report.potmId?lookup.get(String(report.potmId)):null;
+      if(potm){
+        ensurePlayerCareerMeta(potm);
+        potm.seasonStats.potm=Number(potm.seasonStats.potm||0)+1;
+      }
+    }
+    championsCrownAfterFixture(fixture);
+    ensureCupProgression(fixture.date);
+    ensureChampionsCrownProgression(fixture.date);
+    updateSeasonProgression(fixture.date);
+    v96CaptureLiveRecords(fixture);
+    return true;
+  }
+
+  // Move the shared calendar by one resolved barrier. Remaining AI fixtures
+  // are resolved here, exactly once, because the event that triggers this
+  // can only ever be applied once.
+  function v104ApplySharedAdvance(fromDate,toDate){
+    if(!toDate)return false;
+    const target=isoDate(toDate);
+    if(currentCareerISO()>=target)return false;
+    setCareerDate(target);
+    processDailyPlayerUpdates(target);
+    processLivingSquadDay(target);
+    const resolved=simulateWorldFixturesForDate(target,null);
+    processScoutingForDate(target);
+    processCareerEventsForDate(target);
+    processLivingCareerDay(target,resolved);
+    processManagerMarketDay(target);
+    updateSeasonProgression(target);
+    saveCareerState();
+    refreshActiveCareerScreen();
+    return true;
+  }
+
+  // Ask the server to close the barrier. Safe to call from either device and
+  // from every device: only one call can ever be the one that resolves it.
+  function v104TryResolveBarrier(){
+    if(!v104Active())return Promise.resolve(null);
+    const status=v104Status();
+    if(!status?.barrier?.resolvable)return Promise.resolve(null);
+    const date=status.barrier.date;
+    return multiplayerSession.client.resolveBarrier(date,addDaysISO(date,1)).catch(()=>null);
+  }
+
+  // Which human clubs must finish a fixture on this date before the shared
+  // calendar may move. Byes and blank dates simply do not appear.
+  function v104RequiredParticipants(date=currentCareerISO()){
+    const core=v104Core();
+    if(!core||!v104Active())return[];
+    return core.requiredParticipants({fixtures,claims:multiplayerSession.claims||[],date:isoDate(date)});
+  }
+
+  function v104ClubStatePayload(clubId){
+    const id=String(clubId);
+    return{
+      squads:squadCache.get(id)||getSquad(clubById(id))||[],
+      lineups:lineupCache.get(id)||null,
+      clubBudgets:clubById(id)?.budget??null,
+      academies:youthAcademies.get(id)||[],
+      publishedAt:currentCareerISO()
+    };
+  }
+  function v104ApplyClubStatePayload(clubId,payload={}){
+    const id=String(clubId);
+    if(Array.isArray(payload.squads))squadCache.set(id,payload.squads);
+    if(payload.lineups)lineupCache.set(id,payload.lineups);
+    const club=clubById(id);
+    if(club&&payload.clubBudgets!==null&&payload.clubBudgets!==undefined)club.budget=payload.clubBudgets;
+    if(Array.isArray(payload.academies))youthAcademies.set(id,payload.academies);
+    v202MarkCompetitionDataDirty();
+    return true;
+  }
+
+  window.VelmoraMultiplayerBridge={
+    // ---- world snapshots ----
+    buildSnapshot(){
+      const core=v104Core();
+      const data=buildCareerSaveData();
+      const world={...data};
+      if(core)core.PRIVATE_KEYS.forEach(key=>{delete world[key];});
+      return{
+        payload:window.VelmoraSaveCodec.encode(JSON.stringify(world)),
+        checksum:String(hashString(JSON.stringify(world.careerTime||{})+String(world.worldSeed||''))),
+        saveSchema:Number(window.VELMORA_RELEASE?.saveSchema||86),
+        careerDate:currentCareerISO(),
+        seasonId:careerTime?.seasonId||null,
+        worldSeed
+      };
+    },
+    applySnapshot(payload){
+      try{
+        const core=v104Core();
+        const incoming=JSON.parse(window.VelmoraSaveCodec.decode(payload));
+        if(!incoming?.worldSeed)return false;
+        const identity=multiplayerSession?.identity||{};
+        const merged={...incoming};
+        // The world arrives from the shared career; the identity and every
+        // private drawer stay on this device.
+        if(core)core.PRIVATE_KEYS.forEach(key=>{
+          if(Object.prototype.hasOwnProperty.call(identity,key))merged[key]=identity[key];
+        });
+        merged.currentClubId=identity.currentClubId||multiplayerSession?.clubId||null;
+        merged.employmentStatus='employed';
+        if(identity.manager)merged.manager=identity.manager;
+        if(identity.managerName)merged.managerName=identity.managerName;
+        const ok=applyCareerSaveData(merged,activeCareerSlot||1);
+        if(ok)v104SyncReservedClubs(multiplayerSession?.humanClubIds||[]);
+        return ok;
+      }catch(error){
+        console.error?.('[Velmora] online world could not be applied',error);
+        return false;
+      }
+    },
+    // ---- partitions ----
+    buildClubState(clubId){return v104ClubStatePayload(clubId);},
+    applyClubState(clubId,payload){return v104ApplyClubStatePayload(clubId,payload);},
+    // ---- world mutations from the shared log ----
+    applyMatchResult(fixtureId,result,meta){return v104ApplyAuthoritativeResult(fixtureId,result,meta);},
+    advanceSharedDay(fromDate,toDate){return v104ApplySharedAdvance(fromDate,toDate);},
+    applyWorldAction(kind,payload){return window.VELMORA_MP_WORLD_ACTIONS?.[kind]?.(payload)||false;},
+    onManagerConvertedToAi(userId,clubId){
+      if(clubId)v104ReservedClubIds.delete(String(clubId));
+      if(multiplayerSession)multiplayerSession.humanClubIds=
+        (multiplayerSession.humanClubIds||[]).filter(id=>String(id)!==String(clubId));
+      showToast('The other manager’s club is now run by the AI.');
+    },
+    // ---- context the client reports back ----
+    activityRoute(){return activePrimaryScreen||'menu';},
+    currentDate(){return currentCareerISO();},
+    requiredParticipants(date){return v104RequiredParticipants(date);},
+    fixturesOnDate(date){return fixtures.filter(f=>f.date===isoDate(date)&&!f.played);},
+    onRemoteChange(status){
+      if(!multiplayerSession)return;
+      multiplayerSession.status=status;
+      multiplayerSession.submissions=status?.barrier?.participants||[];
+      multiplayerSession.humanClubIds=(status?.members||[]).map(row=>row.club_id).filter(Boolean);
+      v104SyncReservedClubs(multiplayerSession.humanClubIds);
+      window.VelmoraMultiplayerUI?.render(status);
+      // Both clients receive the unlocked state without a manual refresh.
+      if(status&&!status.locked)refreshActiveCareerScreen();
+    }
+  };
+
+  // Session lifecycle, driven by the lobby interface.
+  window.VelmoraMultiplayerGame={
+    begin(session){
+      multiplayerSession={submissions:[],claims:[],humanClubIds:[],...session};
+      v104SyncReservedClubs(multiplayerSession.humanClubIds);
+      return multiplayerSession;
+    },
+    update(patch){
+      if(!multiplayerSession)return null;
+      multiplayerSession={...multiplayerSession,...patch};
+      v104SyncReservedClubs(multiplayerSession.humanClubIds||[]);
+      return multiplayerSession;
+    },
+    end(){multiplayerSession=null;v104ReservedClubIds.clear();},
+    session(){return multiplayerSession;},
+    active:v104Active,
+    progressionBlock:v104ProgressionBlock,
+    requiredParticipants:v104RequiredParticipants,
+    resolveBarrier:v104TryResolveBarrier,
+    captureIdentity(){
+      const core=v104Core();
+      const data=buildCareerSaveData();
+      const identity={};
+      if(core)core.PRIVATE_KEYS.forEach(key=>{
+        if(Object.prototype.hasOwnProperty.call(data,key))identity[key]=data[key];
+      });
+      return identity;
+    },
+    goToCareer(){renderCentral();showScreen('central');},
+    goToMenu(){showScreen('menu');},
+    // The lobby is a blocking overlay like any other, so the game's own
+    // interactivity pass has to run when it opens and closes -- otherwise
+    // the menu stays inert and keyboard focus cannot return to it.
+    syncOverlays(){try{syncPrimaryScreenInteractivity();}catch(_){}},
+    // The online lobby reuses the real manager creator rather than a weaker
+    // copy of it, then comes straight back.
+    openManagerCreator(done){
+      v104CreatorReturn=(profile,name)=>{try{done(profile,name);}catch(_){}};
+      beginManagerCreator(false);
+    },
+    managerProfile(){return deepClone(ensureManagerProfile());},
+    managerDisplayName(){return String(ensureManagerProfile()?.identity?.name||managerName||'Career Manager');},
+    clubDirectory(){
+      return clubs.map(club=>({
+        id:club.id,name:club.name,division:club.division,divisionKey:club.divisionKey,
+        country:club.country,world:clubWorldName(club),accent:club.accent||'#174f9f',
+        badge:club.badge||null,reputation:Number(club.reputation||1),tier:Number(club.tier||4)
+      }));
+    },
+    badgeHTML(clubId){const club=clubById(clubId);return club?fittedShieldBadgeHTML(club):'';},
+    // Starting an online career reuses the ordinary new-career path, so the
+    // world, fixtures and competitions are generated by the same code that
+    // has always generated them.
+    prepareWorld(clubId){
+      const club=clubById(clubId);
+      if(!club)return false;
+      resetCareerWorld();
+      currentClub=club;selectedClub=club;employmentStatus='employed';
+      jobSearchState=normalizeJobSearchState({startingMode:'direct',appointedDate:currentCareerISO(),reputation:18});
+      assignManagerClubBranding(club);
+      initializeCareerLifecycle();
+      return true;
+    },
+    adoptClub(clubId){
+      const club=clubById(clubId);
+      if(!club)return false;
+      currentClub=club;selectedClub=club;employmentStatus='employed';
+      assignManagerClubBranding(club);
+      return true;
+    },
+    reducedMotion(){return mainMenuMotionReduced();},
+    playClickSfx(){try{playMainMenuFocusSfx();}catch(_){}},
+    showToast
+  };
+
   window.VELMORA_MANAGER_DEBUG={
+    v102ChairmenIntegrityForTest:()=>{initializeManagerMarketState();initializeChairmanSystem();const club=currentClub||selectedClub||clubs[0],profile=chairmanForClub(club),relationship=chairmanRelationship(club,chairmanManagerId(club)),audit=window.VelmoraChairmen?.audit(ownershipState,clubs)||{};return{...audit,version:'V102',saveSchema:85,currentClubId:club?.id||null,currentChairmanId:profile?.id||null,currentChairmanName:profile?.name||null,priorityCount:profile?.priorities?.length||0,dimensionCount:Object.keys(profile?.dimensions||{}).length,relationshipState:relationship?.state||null,confidence:Number(relationship?.confidence||0),interviewQuestions:interviewQuestionsForClub(club).length,objectiveCount:buildBoardObjectives(club).length,objectiveReasons:buildBoardObjectives(club).filter(o=>o.reason).length,ownerAffectsAiSecurity:typeof aiManagerSecurityScore==='function',ownerAffectsHiring:typeof window.VelmoraChairmen?.appointmentCompatibility==='function',moneyCreationRemoved:!String(negotiateManagerOffer).includes('promisedBudgetBonus'),persistentSave:true,legacyMigration:true};},
+    v103ClubPulseIntegrityForTest:()=>{const club=currentClub||selectedClub||clubs[0];ensureAudienceClub(club);const snapshots=clubPulseSnapshot(club),audit=window.VelmoraClubPulse?.audit(audienceWorldState)||{};return{...audit,version:'V103',saveSchema:86,clubId:club?.id||null,audienceKeys:snapshots.map(row=>row.key),audienceScores:Object.fromEntries(snapshots.map(row=>[row.key,row.score])),distinctMemoryArrays:new Set(Object.values(audienceWorldState.clubs?.[club.id]?.audiences||{}).map(row=>row.memories)).size===4,pressAudience:snapshots.some(row=>row.key==='press'),dossierRenderer:typeof openClubPulseDossier==='function',decisionMemory:typeof recordDecisionAudienceMemory==='function',pressMemory:typeof recordPressConferenceAudienceMemory==='function',delayedScheduler:typeof window.VelmoraClubPulse?.schedule==='function',dailyResolution:typeof processDelayedAudienceOutcomes==='function',instantVerdictSuppressed:String(recordDecisionAudienceMemory).includes('NO INSTANT VERDICT'),transferResponseDelayReintroduced:calendarEvents.some(event=>event.type==='TRANSFER_RESPONSE'),persistentSave:true,legacyMigration:true};},
+    v102ChairmanStateForTest:()=>deepClone(ownershipState),
+    v102ChairmanBoardHtmlForTest:()=>{renderOfficeBoard();return document.getElementById('officeBoardContent')?.innerHTML||'';},
+    v102ChairmanInterviewForTest:clubId=>deepClone(interviewQuestionsForClub(clubById(clubId)||currentClub||selectedClub||clubs[0])),
+    v102ChairmanNegotiationForTest:(clubId,request='resources')=>{const club=clubById(clubId)||currentClub||selectedClub||clubs[0],profile=chairmanForClub(club);return deepClone(window.VelmoraChairmen?.negotiationDecision(profile,request,{interest:65,leverage:60,finances:70,seed:`QA|${club.id}`}));},
+    v101PeoplePowerIntegrityForTest:()=>{initializeLivingSquadState(true);initializeManagerMarketState();const club=currentClub||selectedClub||clubs[0],social=squadSocialSnapshot(club),memories=mediaWorld.peopleMemories.map(normalizePeopleMemory),players=getSquad(club);return{version:'V101',saveSchema:84,mediaWorldVersion:mediaWorld.version,livingSquadVersion:livingSquad.version,clubLifeVersion:clubLifeState().version,clubId:club?.id||null,players:players.length,hierarchy: social.hierarchy.length,leaders:social.hierarchy.filter(entry=>['CAPTAIN','LEADER','CORE VOICE'].includes(entry.role)).length,cliques:social.cliques.length,cliqueMembers:social.cliques.reduce((total,clique)=>total+clique.members.length,0),cohesion:social.cohesion,tensions:social.tensions.length,displaced:social.displaced.length,peopleMemories:memories.length,playerMemories:memories.filter(memory=>memory.personType==='PLAYER').length,managerMemories:memories.filter(memory=>memory.personType==='MANAGER').length,reporterMemories:memories.filter(memory=>memory.personType==='REPORTER').length,negotiationMemory:typeof managerTransferMemoryContext==='function'&&typeof playerRecruitmentMemoryContext==='function',pressCascade:typeof applyCliquePressReaction==='function',captaincyImpact:typeof applyCaptaincyHierarchyImpact==='function',transferImpact:typeof applySquadArrivalImpact==='function'&&typeof applySquadDepartureImpact==='function',newSpriteDependency:false,saveCompatible:mediaWorld.version>=3&&livingSquad.version>=8&&clubLifeState().version>=3};},
+    v101SquadDynamicsHtmlForTest:()=>{renderSquadDynamics();return document.getElementById('squadDynamicsView')?.innerHTML||'';},
+    v101RecordPeopleMemoryForTest:memory=>deepClone(recordPeopleMemory(memory||{})),
+    v101PeopleMemoriesForTest:(personType,personId,includeExpired=false)=>deepClone(personMemories(personType,personId,{includeExpired})),
+    v101RecruitmentMemoryForTest:playerId=>deepClone(playerRecruitmentMemoryContext(playerId)),
+    v101ManagerTransferMemoryForTest:managerId=>deepClone(managerTransferMemoryContext(managerId)),
+    v101SocialSnapshotForTest:clubId=>{const club=clubById(clubId)||currentClub||selectedClub||clubs[0],social=squadSocialSnapshot(club);return deepClone({clubId:social.clubId,cohesion:social.cohesion,label:social.label,hierarchy:social.hierarchy.map(entry=>({playerId:entry.playerId,role:entry.role,influence:entry.influence})),cliques:social.cliques.map(clique=>({id:clique.id,label:clique.label,memberIds:clique.memberIds,leaderId:clique.leader?.id||null,cohesion:clique.cohesion})),tensions:social.tensions.map(row=>({playerIds:row.players.map(player=>player.id),tension:row.tension})),displaced:social.displaced.map(row=>({playerId:row.player.id,challengerId:row.challenger?.id||null}))});},
+    v96WorldHistoryIntegrityForTest:()=>{initializeCareerCalendar(false);initializeManagerMarketState();careerPreferences=normalizeCareerPreferences(careerPreferences);const seed=v96SeededHistory(),lineage=v96CompetitionLineage(),previous={view:seasonRecordsView,world:seasonRecordsWorld,season:seasonRecordsSeason,metric:seasonRecordsMetric};seasonRecordsView='overview';seasonRecordsWorld='all';seasonRecordsSeason='all';seasonRecordsMetric='goals';const html=seasonRecordsHtml(),players=v96PlayerRecordRows(),preview=makePresentationResult('V96 QA PREVIEW'),tactics=v210ClubTactics(currentClub||selectedClub||clubs[0]);seasonRecordsView=previous.view;seasonRecordsWorld=previous.world;seasonRecordsSeason=previous.season;seasonRecordsMetric=previous.metric;return{version:'V96',views:5,worlds:Object.keys(seed.worlds).length,domesticHolders:Object.values(seed.worlds).reduce((n,w)=>n+['league','national','leagueCup'].filter(key=>!!w[key]?.winner).length,0),sharedCrown:seed.crown.competitionId,foundingSeason:seed.seasonId,foundingSource:seed.source,lineage:lineage.length,playerRows:players.length,playerMetrics:6,tacticalDimensions:Object.keys(tactics).length,tacticalPlans:Object.keys(careerPreferences.tacticalPlans||{}).length,previewGoals:Number(preview.homeScore||0)+Number(preview.awayScore||0),previewEvents:preview.events.length,previewHasStats:!!(preview.previewStats?.home&&preview.previewStats?.away),overviewHasAllWorlds:worldNames.every(world=>html.includes(world)),newSpriteDependency:false};},
+    v96RecordsHtmlForTest:(view='overview',world='all',season='all')=>{const previous={view:seasonRecordsView,world:seasonRecordsWorld,season:seasonRecordsSeason};seasonRecordsView=view;seasonRecordsWorld=world;seasonRecordsSeason=season;const html=seasonRecordsHtml();seasonRecordsView=previous.view;seasonRecordsWorld=previous.world;seasonRecordsSeason=previous.season;return html;},
+    v95PressConferenceIntegrityForTest:()=>{const library=window.VELMORA_PRESS_CONFERENCE_LIBRARY||{},banks=Object.values(library.answerBanks||{}),answers=banks.flat();return{version:library.version||null,categories:Number(library.categories?.length||0),answerBanks:banks.length,authoredAnswers:answers.length,uniqueAnswerLabels:new Set(answers.map(answer=>answer.label)).size,questionRange:deepClone(library.questionRange||[]),answerRange:deepClone(library.answerRange||[]),structuredEffects:answers.filter(answer=>answer.effects&&Object.keys(answer.effects).length).length,oldUniversalWheelRemoved:!library.responseArchetypes,contextEvidence:typeof pressPlayerPack==='function',careerConsequences:typeof applyPressConferenceImpact==='function',newSpriteDependency:false};},
+    v94MediaInteractionsIntegrityForTest:()=>{initializeManagerMarketState();const club=currentClub||selectedClub||clubs[0],opponent=clubs.find(row=>row.id!==club.id&&row.divisionKey===club.divisionKey&&currentClubManager(row))||clubs.find(row=>row.id!==club.id&&currentClubManager(row)),manager=currentClubManager(opponent),world=clubWorldName(club),reporter=mediaJournalistProfile((WORLD_REPORTERS[world]||WORLD_REPORTERS.Velmora)[0],world),event=manager&&opponent?{kind:'MEDIA_RESPONSE',category:'LIVE MEDIA',title:`Before ${club.name} v ${opponent.name}`,rivalManagerId:manager.id,opponentClubId:opponent.id,reporterId:reporter?.id,topic:'MANAGER RIVALRY',choices:[{id:'respectful'},{id:'neutral'},{id:'provocative'}]}:null,scene=event?mediaDecisionScene(event):null,reporterView=event?mediaDecisionReporter(event):null,rivalView=event?mediaDecisionRival(event):null;return{version:'V94',immersive:immersiveDecisionEvent(event),location:scene?.location||null,beats:scene?.beats?.length||0,beatTitles:(scene?.beats||[]).map(beat=>beat.title),choiceCount:event?.choices?.length||0,reporter:{name:reporterView?.name||null,role:reporterView?.role||null,outlet:reporterView?.outlet||null,specialism:reporterView?.specialism||null,hasPortrait:!!reporterView?.avatar},rival:{name:rivalView?.manager?.name||null,club:rivalView?.club?.name||null,mediaStyle:rivalView?.manager?.mediaStyle||null,archetype:rivalView?.manager?.archetype||null},accessibleIdentityContext:true,pressRoomAsset:decisionSceneBackdrop('press-room'),newSpriteDependency:false};},
+    v93DomesticCupsIntegrityForTest:()=>{initializeCareerCalendar(false);const cupFixtures=fixtures.filter(f=>f.type==='CUP'),definitions=worldNames.flatMap(world=>['national','league'].map(kind=>domesticCupDefinition(world,kind))),competitionIds=[...new Set(cupFixtures.map(f=>f.competitionId))],leagueDates=new Set(fixtures.filter(f=>f.type==='LEAGUE').map(f=>f.date));return{version:'V93',worlds:worldNames.length,domesticCompetitions:competitionIds.length,sharedChampionsCrownId:CHAMPIONS_CROWN_ID,names:Object.fromEntries(worldNames.map(world=>[world,{league:(worldMeta[world]?.divisions||[]).find(d=>Number(d.tier)===1)?.name||'',nationalCup:cupNameForWorld(world),leagueCup:leagueCupNameForWorld(world)}])),registered:Object.fromEntries(definitions.map(def=>[def.competitionId,def.registeredClubs])),openingFixtures:Object.fromEntries(definitions.map(def=>[def.competitionId,cupFixtures.filter(f=>f.competitionId===def.competitionId&&Number(f.round||1)===1).length])),crownExemptions:Object.fromEntries(worldNames.map(world=>[world,leagueCupCrownExemptClubIds(world).length])),dateConflicts:definitions.flatMap(def=>def.roundDates.map(date=>({competitionId:def.competitionId,date}))).filter(x=>leagueDates.has(x.date)).length,nationalFormat:'LOWER-TIER OPENING · SINGLE LEG · ET/PENS · NEUTRAL FINAL',leagueCupFormat:'STAGGERED ENTRY · TWO-LEG SEMI-FINALS · ET/PENS · NEUTRAL FINAL',domesticCupQualifiesForCrown:false,uiMounted:typeof seasonCupHtml==='function',newSpriteDependency:false};},
+    v93SimulateDomesticCupsForTest:()=>{initializeCareerCalendar(false);let guard=0;while(guard++<100){const pending=fixtures.filter(f=>f.type==='CUP'&&!f.played).sort((a,b)=>a.date.localeCompare(b.date)||a.fixtureId.localeCompare(b.fixtureId));if(!pending.length){ensureCupProgression(currentCareerISO());if(!fixtures.some(f=>f.type==='CUP'&&!f.played))break;continue;}const date=pending[0].date;pending.filter(f=>f.date===date).forEach(simulateBackgroundFixture);ensureCupProgression(date);}const cups=fixtures.filter(f=>f.type==='CUP'),ids=[...new Set(cups.map(f=>f.competitionId))];return{guard,competitions:ids.map(id=>{const list=cups.filter(f=>f.competitionId===id),maxRound=Math.max(...list.map(f=>Number(f.round||1))),finals=list.filter(f=>Number(f.round||1)===maxRound);return{id,kind:list[0]?.cupKind,matches:list.length,played:list.filter(f=>f.played).length,rounds:maxRound,semiFinalFixtures:list.filter(f=>f.cupStage==='SEMI_FINALS').length,twoLeggedSemiFixtures:list.filter(f=>f.cupStage==='SEMI_FINALS'&&f.cupTwoLegged).length,finals:finals.length,neutralFinals:finals.filter(f=>f.neutralVenue).length,winnerId:knockoutFixtureWinnerId(finals[0])};}),snapshots:cupSeasonSnapshots().length};},
+    v93DomesticCupsHtmlForTest:(world='Velmora',kind='national')=>{seasonCupWorld=worldMeta[world]?world:'Velmora';seasonCupKind=kind==='league'?'league':'national';return seasonCupHtml();},
+    v92SeasonBoardIntegrityForTest:()=>{initializeManagerMarketState();const season=seasonTableHtml();renderOfficeBoard();const board=document.getElementById('officeBoardContent')?.innerHTML||'';return{version:'V92',seasonMetrics:(season.match(/class="vm-table-metric/g)||[]).length,seasonRows:(season.match(/class="live-table-row/g)||[]).length,seasonRowForms:(season.match(/class="vm-table-form"/g)||[]).length,drawsColumn:season.includes('title="Draws">D'),formColumn:season.includes('role="columnheader">FORM'),boardDashboard:board.includes('board-expectations-dashboard'),boardKpis:board.includes('board-kpi-ribbon')?4:0,boardSignals:(board.match(/<section class="is-(?:good|warn|risk)">/g)||[]).length,boardCheckpoint:board.includes('board-checkpoint-card'),liveBoardCopy:!board.includes('Results are not yet being simulated')};},
+    v92SeasonTableHtmlForTest:()=>seasonTableHtml(),
+    v92BoardHtmlForTest:()=>{initializeManagerMarketState();renderOfficeBoard();return document.getElementById('officeBoardContent')?.innerHTML||'';},
+    v91ManagerCareerIntegrityForTest:()=>{initializeManagerMarketState();return{version:'V91',signals:managerCareerSignals().length,targetClubs:managerCareerTargetClubs().length,reputation:deepClone(managerCareerNextRepMilestone()),worldPulse:managerWorldPulseItems().length,noVacancyIntelligence:/MARKET INTELLIGENCE|NO ROLES MATCH/.test(managerCareerNoVacancyHTML()),jobOfferNegotiation:typeof negotiateManagerOffer==='function',contractDiscussion:typeof openManagerContractDiscussion==='function',careerTimeline:typeof managerCareerSpellsHTML==='function',managerArtworkReused:true,newSpriteDependency:false};},
+    v91ManagerCareerHtmlForTest:()=>{renderOfficeManager();return document.getElementById('officeManagerContent')?.innerHTML||'';},
+    v91NegotiateJobOfferForTest:(offerId,request='salary')=>deepClone(negotiateManagerOffer(offerId,request)),
+    v91NegotiateContractForTest:offerId=>deepClone(negotiateManagerContractOffer(offerId)),
     v46MatchdayLivingIntegrityForTest:()=>{const club=currentClub||selectedClub||clubs[0],types=['training','academy','medical','stadium'],fixture=userFixtureOnDate(currentCareerISO())||nextUserFixture(currentCareerISO(),true);return{version:'V46.1',saveSchema:82,matchChoices:['WATCH MATCH','QUICK SIM'],simMatchRemoved:!document.getElementById('matchSim'),quickSimPath:typeof simulateUserFixture==='function',watchMatchPath:typeof watchCurrentUserFixture==='function',lineupReadiness:fixture?prepareFixtureLineupsForMatchday(fixture,{repairUser:false,notify:false}).ready:null,facilityTypes:types,facilityLevels:Object.fromEntries(types.map(type=>[type,Array.from({length:5},(_,i)=>deepClone(v46FacilityArtProfile(club,type,i+1)))])),managerSceneRenderer:typeof v44ShowManagerScene==='function',trainingObservation:typeof v46ObserveTrainingSession==='function',bigMatchPresentation:typeof v46MaybeShowMajorMatchdayScene==='function',first24Manager:typeof showManagerFirst24Hours==='function'};},
     v46FacilityProfileForTest:(clubId,type,level)=>deepClone(v46FacilityArtProfile(clubById(clubId)||currentClub,type,level)),
     v46ObserveTrainingForTest:()=>v46ObserveTrainingSession(),
@@ -11825,6 +13548,7 @@
     careerMemoryEnvironmentForTest:id=>deepClone(careerMemoryEnvironmentState(clubById(id)||currentClub)),
     migrateLegacyCareerMemoryForTest:()=>deepClone(migrateLegacyCareerMemory()),
     v41ClubLifeIntegrityForTest:()=>{livingSquad=normalizeLivingSquadState(livingSquad);const messages=buildOfficeMessages(),priorities=messages.reduce((out,m)=>{const key=notificationPriorityForMessage(m);out[key]=(out[key]||0)+1;return out;},{});return{version:'V41',saveCompatible:livingSquad.version>=4,frequency:livingSquad.clubLife.frequency,sceneTemplates:CLUB_LIFE_SCENE_LIBRARY.length,interactiveTemplates:CLUB_LIFE_SCENE_LIBRARY.filter(x=>x.interactive).length,passiveTemplates:CLUB_LIFE_SCENE_LIBRARY.filter(x=>!x.interactive).length,personalityProfiles:PLAYER_STORY_PERSONALITIES.length,responseTones:['SUPPORTIVE','PLAYFUL','FOCUSED'],priorities,centralHubCards:document.querySelectorAll('.central-week-card').length,routineGroupMounted:!!document.querySelector('.office-routine-toggle'),importantBlockingPreserved:typeof pendingDecisionEvent==='function',promisesPreserved:typeof activePromiseForPlayer==='function'};},
+    v90ClubhouseEventsIntegrityForTest:()=>{const club=currentClub||selectedClub||clubs[0],squad=getSquad(club),sample=squad.length>=2?buildTrainingClashDecision(squad[0],squad[1],currentCareerISO()):null,profileEntries=Object.values(CLUB_LIFE_INTERACTION_LIBRARY);return{version:'V90',incidentVariants:DRESSING_ROOM_INCIDENT_LIBRARY.length,distinctIncidentTitles:new Set(DRESSING_ROOM_INCIDENT_LIBRARY.map(row=>row.title)).size,immersiveKinds:IMMERSIVE_DECISION_KINDS.size,sampleChoices:sample?.choices?.length||0,sampleBeats:sample?.scene?.beats?.length||0,sampleBackdrop:sample?.scene?.backdrop||null,clubLifeInteractionProfiles:profileEntries.length,uniqueClubLifeChoiceLabels:new Set(profileEntries.flatMap(profile=>profile.choices.map(row=>row[0]))).size,sceneLocations:new Set([...DRESSING_ROOM_INCIDENT_LIBRARY.map(row=>row.location),...profileEntries.map(row=>row.location)]).size,delayedFollowUps:typeof processDressingRoomIncidentFollowUps==='function',fullBodySpriteReuse:typeof avatarHTML==='function',legacyDecisionFallback:typeof decisionOutcomeFallback==='function'};},
     simulateClubLifeForTest:(weeks=156,frequency='STANDARD')=>deepClone(simulateClubLifeForTest(weeks,frequency)),
     screenArchitectureIntegrityForTest:()=>{const active=Object.entries(screens).filter(([,node])=>node?.classList.contains('is-active')).map(([key])=>key),overlay=currentBlockingOverlay();return{activePrimary:activePrimaryScreen,activeScreens:active,activeCount:active.length,previousPrimary:previousPrimaryScreen,blockingOverlay:overlay?.id||overlay?.className||null,hiddenInteractive:Object.entries(screens).filter(([key,node])=>key!==activePrimaryScreen&&node&&!node.inert).map(([key])=>key),legacyHitnavCount:document.querySelectorAll('.art-top-hitnav,.art-utility-hitnav,.art-bottom-hitnav,.central-hitbox').length,actionLocks:[...v201ActionLocks],lastResultFixtureId:lastPresentationResult?.fixture?.fixtureId||null,lastResultSaved:!!lastPresentationResult?.saved};},
     performanceIntegrityForTest:()=>({
@@ -11857,7 +13581,7 @@
     setManagerProfile:value=>{managerProfile=normalizeManagerProfile(value);return deepClone(managerProfile);},
     copyPreset:(source,target)=>{const p=ensureManagerProfile();p.wardrobePresets[target]=deepClone(p.wardrobePresets[source]);return deepClone(p.wardrobePresets);},
     randomizeForTest:(group='all',profileId='complete_random',seed='VELMORA-TEST',locks=[])=>randomizeManagerGroup(group,{profileId,seed,locks,silent:true}),
-    saveCareerStateForTest:()=>saveCareerState(),loadCareerStateForTest:()=>loadCareerState(),
+    saveCareerStateForTest:()=>saveCareerState(),saveCareerStateDurableForTest:()=>saveCareerStateDurable(),confirmCareerSaveForTest:()=>confirmCareerSave(),loadCareerStateForTest:()=>loadCareerState(),
     assignClubForTest:club=>{currentClub=club;selectedClub=club;employmentStatus='employed';jobSearchState=normalizeJobSearchState({startingMode:'direct',appointedDate:currentCareerISO(),reputation:18});const before=managerCurrentPreset(ensureManagerProfile()).outfitId;assignManagerClubBranding(club);return{before,after:managerCurrentPreset(ensureManagerProfile()).outfitId,branding:deepClone(ensureManagerProfile().clubBranding)};},
     startFirstWeekForTest:(club,source='direct')=>{currentClub=club;selectedClub=club;employmentStatus='employed';jobSearchState=normalizeJobSearchState({startingMode:source==='offer'?'unemployed':'direct',appointedDate:currentCareerISO(),reputation:18});assignManagerClubBranding(club);initializeCareerLifecycle();startFirstWeek(club,source);return{state:deepClone(firstWeekState),preferences:deepClone(careerPreferences),report:firstWeekSquadReport(club),targets:firstWeekRecommendedTargets().map(p=>p.id)};},
     getFirstWeekState:()=>deepClone(firstWeekState),getCareerPreferences:()=>deepClone(careerPreferences),
@@ -11954,7 +13678,11 @@
     const modal=$('#negotiationModal'),host=$('#negotiationContent');if(!modal||!host)return;
     host.innerHTML=`<header class="negotiation-header"><div><div class="eyebrow">TRANSFER NEGOTIATION</div><h3 id="negotiationTitle">AGREE A PACKAGE</h3><p>Agree club and player terms, then review before committing.</p></div></header><div id="v35NegotiationTerms"></div>`;
     v35DealTypeControl(p,kind);careerExpansion?.embed(host.querySelector('#v35NegotiationTerms'),'deals',p.id,kind);
-    modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();
+    modal.dataset.v35DealKind=kind;modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();
+    // Alternative deal structures are part of the negotiation, not a separate
+    // spreadsheet screen. Keep the active cast and room behind the compact desk.
+    const agentStage=kind==='PRECONTRACT'||kind==='RELEASE'||p.freeAgent,session=agentStage?contractNegotiationSession(p,'SIGNING',true):clubNegotiationSession(p,true);
+    v72StageNegotiation(p,agentStage?'agent':'boardroom',session,'idle');
   }
   function v35MountClauseFields(host,p,session,prefix,locked,renewal){
     if(!host)return;
@@ -11983,8 +13711,9 @@
       legacyScouts:recruitmentScoutProfilesLegacy,assignments:()=>[...scoutingAssignments.values()],squad:getSquad,academy:getAcademy,generateYouth:generateYouthProspect,makeStats,
       player:id=>careerPlayerById(id)||getFreeAgents().find(p=>p.id===id),freeAgents:getFreeAgents,transferPool:()=>[...getTransferPool(),...getFreeAgents()],sales:()=>livingSquad.incomingOffers,sell:completeLivingUserSale,fixtures:()=>fixtures,loans:()=>livingSquad.loanHistory,
       inbox:addCareerInboxMessage,save:saveCareerState,toast:showToast,value:livingPlayerMarketValue,interest:transferInterestFor,windowOpen:isTransferWindowOpen,nextWindow:nextTransferWindowStart,
-      canWage:v25CanAffordWage,weeklyWages:v25ClubWeeklyWages,wageBudget:c=>v25ClubFinance(c).wageBudget,expectedWage,squadCap:squadCapForClub,ownedLoans:livingOwnedLoansCount,
+      canWage:v25CanAffordWage,weeklyWages:v25ClubWeeklyWages,wageBudget:c=>v25ClubFinance(c).wageBudget,expectedWage:p=>expectedWage(p,currentClub||selectedClub),availableBudget:availableTransferBudget,squadCap:squadCapForClub,ownedLoans:livingOwnedLoansCount,
       evaluateClub:evaluateClubTransferOffer,setContract:setLivingPlayerContract,removeLineup:removePlayerFromLineup,addLineup:addPlayerToLineup,recordTransfer:recordLivingTransfer,memory:recordCareerMemory,facilityCompleted:v44OnFacilityCompleted,facilityVisual:v44FacilityVisualHTML,
+      onLegacyStaffHired:onRetiredPlayerStaffHired,onLegacyStaffExpired:onRetiredPlayerStaffExpired,
       loan:completeLivingLoan,finishRecruitment:id=>{transferShortlist.delete(id);scoutingAssignments.delete(id);transferActivity.set(id,{status:'Completed'});},
       navigate:(tab,id)=>{if(tab==='saves'){openCareerSaveMenu('continue');return;}if(tab==='deals'){const p=transferPlayerById(id);if(p)v35OpenDeal(p,'TRANSFER');return;}if(tab==='academy'){v35AcademyView='recruitment';squadView='youth';goCareerScreen('squad');return;}officeActiveTab=tab==='staff'?'staff':'finances';if(tab==='facilities')v35FinanceView='facilities';goCareerScreen('office');},
       refresh:(view,action)=>{const budget=$('#transferBudgetValue');if(budget&&currentClub)budget.textContent=formatMoney(moneyNumber(currentClub.budget));if(view==='saves')renderCareerSaveMenu();if(['confirm-deal','confirm-sale','buy-option'].includes(action)){closeNegotiation();document.querySelectorAll('.living-transfer-overlay').forEach(el=>{el.classList.remove('is-open');el.setAttribute('aria-hidden','true');});setTransferTab('hub');renderTransfers();syncPrimaryScreenInteractivity();}},
@@ -11995,6 +13724,7 @@
   }
 
   installArtNavigation();
+  installMainMenuExperience();
   initCountries();
   initClubSelectFilterLabels();
   // Optional preview deep-link used for standalone QA: ?screen=transfers&club=NYR
@@ -12002,19 +13732,69 @@
     const params=new URLSearchParams(location.search);
     const preview=params.get('screen');
     const clubKey=params.get('club');
-    if(preview && ['central','squad','transfers','office','season','matchday','results'].includes(preview)){
+    if(preview && ['central','squad','transfers','office','manager-career','season','matchday','results','negotiation','clubhouse-event','media-event','press-conference'].includes(preview)){
       currentClub=clubs.find(c=>c.abbr===clubKey||c.id===clubKey||c.name===clubKey)||selectedClub||clubs[0];
       selectedClub=currentClub;
+      employmentStatus='employed';
       managerProfile=normalizeManagerProfile(managerProfile||createDefaultManagerProfile());
       assignManagerClubBranding(currentClub);
       initializeCareerLifecycle();
+      preSeasonExperience=normalizeV2080PreSeasonExperience(preSeasonExperience);
+      preSeasonExperience.autoOpened=true;
+      preSeasonExperience.briefingCompleted=true;
+      const previewPacing=v2073PacingState();
+      if(previewPacing.pendingMoment?.key&&!previewPacing.seenMomentKeys.includes(previewPacing.pendingMoment.key))previewPacing.seenMomentKeys.push(previewPacing.pendingMoment.key);
+      previewPacing.pendingMoment=null;
       if(preview==='central'){renderCentral();showScreen('central');}
       if(preview==='squad'){renderSquad();showScreen('squad');}
       if(preview==='transfers'){renderTransfers();showScreen('transfers');}
-      if(preview==='office'){renderOffice();showScreen('office');}
-      if(preview==='season'){renderSeason();showScreen('season');}
+      if(preview==='office'){const previewOfficeTab=params.get('tab');if(['inbox','board','finances','contracts','staff','manager'].includes(previewOfficeTab))officeActiveTab=previewOfficeTab;renderOffice();showScreen('office');}
+      if(preview==='manager-career'){
+        officeActiveTab='manager';managerCareerView=['career','vacancies','interest','contract'].includes(params.get('view'))?params.get('view'):'career';renderOffice();showScreen('office');
+        const previewScene=params.get('scene'),previewClub=clubs.find(c=>c.id!==currentClub.id);
+        if(previewScene&&previewClub){const vacancy=managerVacancyForClub(previewClub.id)||openManagerVacancy(previewClub,'Preview board review',managerMarket.clubManagers[previewClub.id],currentCareerISO());
+          if(previewScene==='offer'){const offer=createManagerJobOffer(vacancy,null,'PREVIEW');if(offer)openManagerJobOffer(offer.id);}
+          if(previewScene==='interview'){const app={id:'PREVIEW-MANAGER-APP',vacancyId:vacancy.id,clubId:previewClub.id,submittedDate:currentCareerISO(),status:'INTERVIEW',source:'APPROACH'},interview={id:'PREVIEW-MANAGER-INT',applicationId:app.id,vacancyId:vacancy.id,clubId:previewClub.id,status:'READY',answers:[],score:0,invitedDate:currentCareerISO(),source:'APPROACH'};managerMarket.applications.push(app);managerMarket.interviews.push(interview);openManagerInterview(app.id);}
+          if(previewScene==='contract'){const offer={id:'PREVIEW-MANAGER-CONTRACT',type:'CONTRACT',clubId:currentClub.id,receivedDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),14),contractYears:2,weeklySalary:Math.round(jobSalaryForClub(currentClub,currentCareerISO())*1.12/100)*100,status:'OPEN'};managerMarket.offers.push(offer);openManagerContractDiscussion(offer.id);}
+        }
+      }
+      if(preview==='season'){const previewSeasonTab=params.get('tab');if(['table','fixtures','calendar','cup','champions-crown','stats','records'].includes(previewSeasonTab))seasonActiveTab=previewSeasonTab;if(seasonActiveTab==='cup'){const previewWorld=params.get('world');seasonCupWorld=worldMeta[previewWorld]?previewWorld:clubWorldName(currentClub);seasonCupKind=params.get('cup')==='league'?'league':'national';}renderSeason();showScreen('season');}
       if(preview==='matchday'){renderMatchday();showScreen('matchday');}
+      if(preview==='press-conference'){
+        renderMatchday();showScreen('matchday');const previewFixture=nextUserFixture(currentCareerISO(),true)||fixtures.find(fixture=>[fixture.homeClubId,fixture.awayClubId].includes(currentClub.id));
+        if(previewFixture){delete pressConferenceState().fixtureSessions[`${previewFixture.fixtureId}::pre`];const previewSystem=ensurePressConferenceSystem();previewSystem?.open('pre',previewFixture,()=>{},'RETURN TO MATCHDAY');if(params.get('phase')!=='intro')document.querySelector('[data-pc-attend]')?.click();if(params.get('phase')==='response')document.querySelector('[data-pc-answer]')?.click();}
+      }
       if(preview==='results'){lastPresentationResult=makePresentationResult('RESULTS PREVIEW');renderResults();showScreen('results');}
+      if(preview==='clubhouse-event'){
+        renderCentral();showScreen('central');
+        const previewSquad=getSquad(currentClub),previewLead=previewSquad.find(player=>player.captain)||previewSquad[0],previewOther=previewSquad.find(player=>player.id!==previewLead?.id)||previewSquad[1],previewEvent=buildTrainingClashDecision(previewLead,previewOther,params.get('date')||currentCareerISO()),queuedPreview=previewEvent?(queueDecisionEvent(previewEvent)||previewEvent):null;
+        if(queuedPreview){showCareerDecisionOverlay(queuedPreview);if(params.get('phase')==='choices')openCareerDecisionChoices($('#careerDecisionBody'),queuedPreview);}
+      }
+      if(preview==='media-event'){
+        renderCentral();showScreen('central');
+        const previewOpponent=clubs.find(club=>club.id!==currentClub.id&&club.divisionKey===currentClub.divisionKey&&currentClubManager(club))||clubs.find(club=>club.id!==currentClub.id&&currentClubManager(club)),previewManager=currentClubManager(previewOpponent),previewWorld=clubWorldName(currentClub),previewReporter=mediaJournalistProfile((WORLD_REPORTERS[previewWorld]||WORLD_REPORTERS.Velmora)[0],previewWorld),previewRivalry=previewManager?(managerMarket.rivalries[previewManager.id]||(managerMarket.rivalries[previewManager.id]={meetings:3,wins:1,draws:1,losses:1,lastDate:currentCareerISO(),heat:58,respect:54})):null;
+        if(previewRivalry){previewRivalry.meetings=Math.max(3,Number(previewRivalry.meetings||0));previewRivalry.heat=Math.max(58,Number(previewRivalry.heat||0));}
+        const previewEvent=previewManager&&previewOpponent?{id:`PREVIEW-MEDIA-${previewManager.id}`,kind:'MEDIA_RESPONSE',category:'LIVE MEDIA',cooldownKey:`PREVIEW-MEDIA-${previewManager.id}`,title:`Before ${currentClub.name} v ${previewOpponent.name}`,body:`${previewReporter?.name||'A reporter'} wants your response to the growing managerial storyline.`,question:`${previewManager.name} has become part of the buildup to this fixture. Do you respect the threat ${previewOpponent.name} pose, or believe ${currentClub.name} should be setting the terms?`,rivalManagerId:previewManager.id,opponentClubId:previewOpponent.id,reporterId:previewReporter?.id||null,topic:'MANAGER RIVALRY',choices:[{id:'respectful',tone:'RESPECTFUL',intent:'CALM THE STORY',risk:`${previewManager.name.toUpperCase()} · RESPECT`,label:`“${previewManager.name.toUpperCase()} DESERVES RESPECT”`,copy:`Acknowledge ${previewManager.name} and bring the answer back to the contest.`},{id:'neutral',tone:'MEASURED',intent:'CONTROL THE LINE',risk:'LIMIT THE HEADLINE',label:'“THIS IS ABOUT THE MATCH”',copy:'Refuse the personal angle and give away nothing about your approach.'},{id:'provocative',tone:'BOLD',intent:'SEIZE THE STORY',risk:'RIVALRY HEAT',label:'“THEY SHOULD WORRY ABOUT US”',copy:`Put the pressure onto ${previewOpponent.name} and give the room a headline.`}]}:null,queuedPreview=previewEvent?(queueDecisionEvent(previewEvent)||previewEvent):null;
+        if(queuedPreview){showCareerDecisionOverlay(queuedPreview);if(params.get('phase')==='choices')openCareerDecisionChoices($('#careerDecisionBody'),queuedPreview);}
+      }
+      if(preview==='negotiation'){
+        renderTransfers();showScreen('transfers');
+        const stage=params.get('stage')==='club'?'club':'agent',status=['idle','counter','accepted','rejected','walked'].includes(params.get('state'))?params.get('state'):'idle',seller=clubs.find(club=>club.id!==currentClub.id&&getSquad(club).length),source=seller?getSquad(seller)[0]:null;
+        if(source&&seller){
+          const player={...source,club:seller,clubId:seller.id},modal=$('#negotiationModal');
+          if(stage==='club'){
+            const session=clubNegotiationSession(player,true),amount=Math.max(250000,Math.round(Number(player.value||1000000)/50000)*50000),response=status==='idle'?null:{status,title:status==='accepted'?`${seller.name} accept ${formatMoney(amount)}.`:status==='counter'?`${seller.name} return with a revised figure.`:status==='walked'?'The club have ended negotiations.':'The proposal has been rejected.',copy:'Visual regression preview for the live club negotiation state.'};
+            if(status==='accepted'){session.state='AGREED';session.agreedFee=amount;transferActivity.set(player.id,{status:'Fee Agreed',offer:amount});}
+            renderNegotiation(player,amount,response);
+          }else{
+            const session=contractNegotiationSession(player,'SIGNING',true),response=status==='idle'?null:{status,title:status==='accepted'?`${player.name} accepts the contract.`:status==='counter'?`${player.name}'s representatives suggest revised terms.`:status==='walked'?'The representatives have ended talks.':'The proposed terms have been rejected.',copy:'Visual regression preview for the live personal-terms state.'};
+            if(status==='accepted'){session.state='AGREED';session.acceptedPackage={wage:expectedWage(player),bonus:15000,role:suggestedRole(player),years:4,releaseClause:0};}
+            renderContractNegotiation(player,Math.max(250000,Math.round(Number(player.value||1000000)/50000)*50000),response);
+          }
+          modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();
+        }
+      }
+      document.documentElement.dataset.vmPreviewReady='true';
     }
   }catch(_){}
   window.v210QuidditchEngineIntegrityForTest=()=>({version:'V21.0',engineLoader:typeof ensureVelmoraQuidditchEngineLoaded==='function',riderPool:playerSpriteCatalog.ids.length,spriteRevision:playerSpriteCatalog.revision,stadiumSelection:'FIXTURE_HOME_CLUB',mappedStadiums:Object.keys(window.VELMORA_STADIUMS?.byClubId||{}).length});

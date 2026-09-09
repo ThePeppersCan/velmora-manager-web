@@ -2,6 +2,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {runtime}=require('./career_test_runtime.cjs');
+// The release cache key is read from release-meta.js so a version bump
+// never has to be chased through the test suite by hand.
+const RELEASE_CACHE_KEY=require('../release-meta.js').cacheKey;
 
 const {context,q,d}=runtime();
 const clubs=context.VELMORA_CLUBS;
@@ -73,8 +76,8 @@ assert(css.includes('repeat(2,minmax(12cqw,1fr))'));
 assert(css.includes('.v46-facility-prop'));
 assert(css.includes('.v46-stadium-module'));
 assert(css.includes('.v46-first24-manager'));
-assert(index.includes('v46-1-matchday-stability'));
-assert(bootstrap.includes('v68-release-candidate'));
+assert(index.includes(`aaa-career-pass.css?v=${RELEASE_CACHE_KEY}`));
+assert(bootstrap.includes('window.VELMORA_RELEASE?.cacheKey'));
 
 for(const file of [
   'assets/career/training-ground.png',

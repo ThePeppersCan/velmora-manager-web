@@ -32,7 +32,7 @@ assert(quiet.interactive<standard.interactive);
 assert(standard.interactive<lively.interactive);
 assert(quiet.quietWeeks>standard.quietWeeks);
 assert(standard.quietWeeks>0);
-assert(standard.conversationsPerWeek>=.7&&standard.conversationsPerWeek<=.9,`Standard conversation rate ${standard.conversationsPerWeek}`);
+assert(standard.conversationsPerWeek>=.18&&standard.conversationsPerWeek<=.42,`Standard conversation rate ${standard.conversationsPerWeek}`);
 
 q.state().livingSquad.clubLife.frequency='QUIET';
 assert(q.saveCareerState());
@@ -55,7 +55,7 @@ console.log(JSON.stringify({
   measurements:{quiet,standard,lively,integrity},
   checks:[
     'three-season frequency simulation preserves natural quiet weeks',
-    'Standard targets roughly one optional conversation per in-game week',
+    'Standard reserves interactive scenes for roughly one meaningful moment every three to five in-game weeks',
     'scene, player and pair cooldowns prevent rapid repeats',
     'club-life scenes do not manufacture negative management tasks',
     'relationship continuity develops across later scenes',

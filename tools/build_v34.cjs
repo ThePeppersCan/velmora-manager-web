@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const cp=require('node:child_process');
 const {runtimeFiles,assetDirectories}=require('./release_manifest.cjs');
+const release=require('../release-meta.js');
 
 const root=path.resolve(__dirname,'..');
 const output=path.join(root,'dist');
@@ -21,4 +22,4 @@ for(const dir of assetDirectories){
   if(fs.existsSync(source))fs.cpSync(source,path.join(output,dir),{recursive:true});
 }
 
-console.log(`Static V68 release build complete. ${fs.existsSync(path.join(root,'assets'))?'Local assets included.':'The supplied project omits assets; apply the update to your asset-complete game for full presentation.'}`);
+console.log(`Static ${release.label} ${release.channel.toLowerCase()} build complete. ${fs.existsSync(path.join(root,'assets'))?'Local assets included.':'The supplied project omits assets; apply the update to your asset-complete game for full presentation.'}`);

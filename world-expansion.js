@@ -9,6 +9,8 @@
     "accent": "#1bb5b6",
     "strength": 100,
     "cup": "Velmora Cup",
+    "leagueCup": "Velmora League Shield",
+    "cupFinalVenue": "Highspire National Arena",
     "worldPitch": "The original sporting world and the richest league ecosystem.",
     "divisions": [
       {
@@ -38,6 +40,8 @@
     "accent": "#c77b2b",
     "strength": 94,
     "cup": "The Founders' Hammer",
+    "leagueCup": "Ironworks Trophy",
+    "cupFinalVenue": "The Grand Foundry",
     "worldPitch": "Industrial mountain realm with packed fortress arenas and elite academies.",
     "divisions": [
       {
@@ -77,6 +81,8 @@
     "accent": "#c8a43d",
     "strength": 92,
     "cup": "Cup of Towers",
+    "leagueCup": "Silver Laurel Cup",
+    "cupFinalVenue": "Palazzo delle Torri",
     "worldPitch": "Sunlit city-state realm full of old clubs, tactical rivalries and theatrical matchdays.",
     "divisions": [
       {
@@ -116,6 +122,8 @@
     "accent": "#6aa7ff",
     "strength": 88,
     "cup": "Moon Gate Cup",
+    "leagueCup": "Rising Lantern Cup",
+    "cupFinalVenue": "Moon Gate National Arena",
     "worldPitch": "Dense island realm with lantern cities, cliff arenas and technical broomplay.",
     "divisions": [
       {

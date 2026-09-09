@@ -1,0 +1,334 @@
+/* ============================================================
+   V90 — Clubhouse Stories
+   Scene-led player interactions using the existing full-body
+   sprite library and career environment artwork.
+   ============================================================ */
+body.v20-ui .career-decision-overlay:has(.career-decision-card.is-immersive){
+  padding:0;
+  background:#02080d;
+  backdrop-filter:none;
+}
+body.v20-ui .career-decision-card.is-immersive{
+  width:min(100vw,calc(100svh * 16 / 9));
+  height:min(100svh,calc(100vw * 9 / 16));
+  max-width:100vw;
+  max-height:100svh;
+  aspect-ratio:16/9;
+  padding:0;
+  overflow:hidden;
+  border:0;
+  background:#07121a;
+  box-shadow:0 36px 110px rgba(0,0,0,.72);
+  container-type:size;
+  container-name:clubhouse-story;
+}
+body.v20-ui .career-decision-card.is-immersive::before{display:none}
+body.v20-ui .career-decision-card.is-immersive .career-decision-later{
+  z-index:30;
+  top:2.1cqh;
+  right:2.1cqw;
+  min-width:8.6cqw;
+  height:3.5cqh;
+  padding:0 1cqw;
+  border:1px solid rgba(255,255,255,.34);
+  border-radius:.25cqw;
+  background:rgba(3,12,18,.72);
+  color:#d8e5e9;
+  box-shadow:0 .55cqw 1.3cqw rgba(0,0,0,.25);
+  backdrop-filter:blur(10px);
+  font:900 .59cqw/1 Arial,sans-serif;
+  letter-spacing:.12em;
+}
+.career-event-world{
+  --career-event-accent:#55c5c7;
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  color:#fff;
+  background:#08141d var(--career-event-backdrop) center/cover no-repeat;
+  isolation:isolate;
+}
+.career-event-world::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    linear-gradient(180deg,rgba(1,7,11,.68) 0%,rgba(2,9,14,.08) 22%,rgba(2,8,13,.08) 54%,rgba(1,6,10,.88) 100%),
+    linear-gradient(90deg,rgba(1,7,11,.42),transparent 31%,transparent 69%,rgba(1,7,11,.42));
+}
+.career-event-world::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 42%,transparent 0 33%,rgba(1,5,8,.28) 76%,rgba(0,3,5,.68) 100%);
+  mix-blend-mode:multiply;
+}
+.career-event-world[data-location="training-ground"]{--career-event-accent:#e7bd57}
+.career-event-world[data-location="manager-office"]{--career-event-accent:#7bb8ef}
+.career-event-world[data-location="medical-room"]{--career-event-accent:#72d6ad}
+.career-event-world[data-location="press-room"]{--career-event-accent:#65d0cf}
+.career-event-topline{
+  position:absolute;
+  z-index:12;
+  top:2.15cqh;
+  left:2.1cqw;
+  display:flex;
+  align-items:center;
+  gap:1.15cqw;
+  max-width:72cqw;
+}
+.career-event-clubmark{
+  width:3.4cqw;
+  height:3.4cqw;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:.28cqw;
+  background:rgba(3,12,18,.72);
+  box-shadow:0 .5cqw 1.5cqw rgba(0,0,0,.3);
+  backdrop-filter:blur(9px);
+}
+.career-event-clubmark img{width:82%;height:82%;object-fit:contain}
+.career-event-heading{display:grid;gap:.34cqh;text-shadow:0 2px 10px rgba(0,0,0,.82)}
+.career-event-heading span{color:var(--career-event-accent);font:900 .62cqw/1 Arial,sans-serif;letter-spacing:.2em}
+.career-event-heading strong{font:900 1.42cqw/1 Arial,sans-serif;letter-spacing:-.025em;text-transform:uppercase}
+.career-event-heading small{color:#d1dce0;font:800 .6cqw/1 Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.career-event-pressure{
+  position:absolute;
+  z-index:12;
+  top:7.1cqh;
+  right:2.1cqw;
+  width:13.2cqw;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:.55cqw;
+  color:#d5e2e6;
+  font:900 .54cqw/1 Arial,sans-serif;
+  letter-spacing:.11em;
+}
+.career-event-pressure i{height:.42cqh;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.18)}
+.career-event-pressure i::after{content:"";display:block;width:calc(var(--event-pressure,50) * 1%);height:100%;background:linear-gradient(90deg,#5fc4bd,#e5bd58,#e36d61)}
+.career-event-cast{position:absolute;z-index:4;inset:10cqh 3cqw 21cqh;pointer-events:none}
+.career-event-character{
+  position:absolute;
+  bottom:-7cqh;
+  width:25cqw;
+  height:65cqh;
+  display:grid;
+  place-items:end center;
+  opacity:.82;
+  transform:scale(.94);
+  transform-origin:center bottom;
+  filter:saturate(.82) brightness(.79);
+  transition:filter .28s ease,opacity .28s ease,transform .28s ease;
+}
+.career-event-character.is-primary{left:7cqw}
+.career-event-character.is-secondary{right:7cqw}
+.career-event-character.is-single{left:50%;translate:-50% 0}
+.career-event-character.is-speaking{opacity:1;transform:scale(1);filter:saturate(1.03) brightness(1.04) drop-shadow(0 1.3cqw 1.2cqw rgba(0,0,0,.48))}
+.career-event-character.is-listening{opacity:.66;filter:saturate(.65) brightness(.68)}
+.career-event-portrait{width:100%;height:100%;display:grid;place-items:end center;overflow:hidden}
+.career-event-portrait img.smart-avatar{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center bottom!important;filter:drop-shadow(0 .7cqw .7cqw rgba(0,0,0,.55))}
+.career-event-nameplate{
+  position:absolute;
+  left:50%;
+  bottom:5.8cqh;
+  translate:-50% 0;
+  min-width:11cqw;
+  padding:.65cqh .7cqw;
+  border-top:.24cqh solid var(--career-event-accent);
+  background:rgba(3,11,17,.86);
+  box-shadow:0 .45cqw 1.3cqw rgba(0,0,0,.42);
+  text-align:center;
+  backdrop-filter:blur(7px);
+}
+.career-event-nameplate strong{display:block;font:900 .72cqw/1 Arial,sans-serif;text-transform:uppercase}
+.career-event-nameplate span{display:block;margin-top:.34cqh;color:#a9bac2;font:800 .5cqw/1 Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase}
+.career-event-world.is-media::before{
+  background:
+    linear-gradient(180deg,rgba(1,7,11,.75) 0%,rgba(2,9,14,.03) 25%,rgba(2,8,13,.12) 58%,rgba(1,6,10,.91) 100%),
+    linear-gradient(90deg,rgba(1,7,11,.58),transparent 37%,transparent 63%,rgba(1,7,11,.58));
+}
+.career-event-world.is-media .career-event-cast{pointer-events:auto}
+.career-event-world.is-media .career-event-character{bottom:-2cqh;width:23cqw;height:57cqh}
+.career-event-world.is-media .career-event-character.is-primary{left:8.5cqw}
+.career-event-world.is-media .career-event-character.is-secondary{right:8.5cqw}
+.career-event-person .career-event-portrait{border-radius:1.1cqw 1.1cqw 0 0}
+.career-event-person .career-event-reporter-image{
+  width:82%;
+  height:82%;
+  object-fit:cover;
+  object-position:center top;
+  border:1px solid rgba(255,255,255,.24);
+  border-bottom:0;
+  border-radius:1.1cqw 1.1cqw 0 0;
+  box-shadow:0 1.2cqw 2.3cqw rgba(0,0,0,.55);
+  filter:saturate(.86) brightness(.84);
+}
+.career-event-person.is-speaking .career-event-reporter-image{filter:saturate(1.05) brightness(1.04)}
+.career-event-person .manager-paperdoll{width:100%;height:100%;display:grid;place-items:end center}
+.career-event-person .manager-composite-canvas{width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 .8cqw .8cqw rgba(0,0,0,.55))}
+.career-event-rival-badge{width:11cqw;height:11cqw;display:grid;place-items:center;margin:auto auto 10cqh;padding:1cqw;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(3,11,17,.8)}
+.career-event-rival-badge img{width:100%;height:100%;object-fit:contain}
+.career-event-identity{pointer-events:auto;cursor:help;outline:none}
+.career-event-identity small{display:block;margin-top:.45cqh;color:var(--career-event-accent);font:900 .42cqw/1 Arial,sans-serif;letter-spacing:.12em}
+.career-event-identity::after{
+  content:attr(data-person-context);
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + .75cqh);
+  translate:-50% .5cqh;
+  width:17.5cqw;
+  padding:.9cqh .85cqw;
+  border:1px solid color-mix(in srgb,var(--career-event-accent),transparent 45%);
+  border-radius:.3cqw;
+  background:rgba(2,12,19,.96);
+  box-shadow:0 .8cqw 2cqw rgba(0,0,0,.55);
+  color:#dce7ea;
+  font:700 .52cqw/1.42 Arial,sans-serif;
+  letter-spacing:0;
+  text-align:left;
+  text-transform:none;
+  opacity:0;
+  visibility:hidden;
+  transform:scale(.97);
+  transition:opacity .16s ease,translate .16s ease,transform .16s ease,visibility .16s;
+}
+.career-event-identity:hover::after,.career-event-identity:focus::after,.career-event-identity:focus-visible::after{opacity:1;visibility:visible;translate:-50% 0;transform:scale(1)}
+.career-event-identity:focus-visible{box-shadow:0 0 0 .18cqw rgba(101,208,207,.34),0 .45cqw 1.3cqw rgba(0,0,0,.42)}
+.career-event-world.is-media .career-event-story blockquote{max-width:72cqw}
+.career-event-story{
+  position:absolute;
+  z-index:16;
+  left:3.1cqw;
+  right:3.1cqw;
+  bottom:2.8cqh;
+  min-height:18.1cqh;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 11.5cqw;
+  gap:1.35cqw;
+  padding:1.55cqh 1.45cqw;
+  border:1px solid rgba(255,255,255,.22);
+  border-left:.28cqw solid var(--career-event-accent);
+  border-radius:.35cqw;
+  background:linear-gradient(112deg,rgba(3,14,22,.97),rgba(7,24,34,.94));
+  box-shadow:0 1.4cqw 3cqw rgba(0,0,0,.52);
+  backdrop-filter:blur(14px);
+}
+.career-event-story-copy{display:grid;align-content:center;min-width:0}
+.career-event-story-meta{display:flex;align-items:center;gap:.7cqw;margin-bottom:.72cqh;color:#94aab4;font:900 .52cqw/1 Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.career-event-story-meta b{color:var(--career-event-accent)}
+.career-event-story h2{margin:0;color:#fff;font:900 1.08cqw/1.05 Arial,sans-serif;text-transform:uppercase}
+.career-event-story blockquote{margin:.82cqh 0 0;max-width:69cqw;color:#e3ebee;font:700 .78cqw/1.42 Arial,sans-serif}
+.career-event-story-actions{display:grid;align-content:end;gap:.7cqh}
+.career-event-story-actions small{color:#91a7b0;font:800 .5cqw/1.2 Arial,sans-serif;letter-spacing:.08em;text-align:right}
+.career-event-story-actions button,
+.career-event-outcome button{
+  min-height:5cqh;
+  border:1px solid color-mix(in srgb,var(--career-event-accent),#fff 22%);
+  border-radius:.28cqw;
+  background:var(--career-event-accent);
+  color:#031017;
+  cursor:pointer;
+  font:900 .64cqw/1 Arial,sans-serif;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.career-event-choice-tray{
+  position:absolute;
+  z-index:18;
+  inset:auto 2.7cqw 2.6cqh;
+  padding:1.45cqh 1.25cqw 1.3cqh;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:.4cqw;
+  background:linear-gradient(132deg,rgba(3,13,20,.985),rgba(8,28,39,.975));
+  box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.62);
+  backdrop-filter:blur(16px);
+}
+.career-event-choice-tray[hidden],.career-event-story[hidden],.career-event-outcome[hidden]{display:none!important}
+.career-event-choice-tray>header{display:flex;align-items:end;justify-content:space-between;gap:2cqw;margin:0 .2cqw 1.1cqh}
+.career-event-choice-tray>header span{display:block;color:var(--career-event-accent);font:900 .54cqw/1 Arial,sans-serif;letter-spacing:.17em}
+.career-event-choice-tray>header h2{margin:.45cqh 0 0;font:900 1.05cqw/1 Arial,sans-serif;text-transform:uppercase}
+.career-event-choice-tray>header p{max-width:35cqw;margin:0;color:#aebfc6;font:700 .58cqw/1.35 Arial,sans-serif;text-align:right}
+.career-event-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.72cqw;margin:0}
+.career-event-choices[data-choice-count="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.career-event-choices button{
+  position:relative;
+  min-height:14.5cqh;
+  display:grid;
+  align-content:start;
+  padding:1.15cqh .9cqw;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:.28cqw;
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  cursor:pointer;
+  text-align:left;
+  transition:transform .18s ease,border-color .18s ease,background .18s ease;
+}
+.career-event-choices button::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.2cqw;background:var(--choice-accent,var(--career-event-accent))}
+.career-event-choices button:hover,.career-event-choices button:focus-visible{transform:translateY(-.45cqh);border-color:var(--choice-accent,var(--career-event-accent));background:rgba(49,150,164,.15);outline:none}
+.career-event-choice-top{display:flex!important;align-items:center;justify-content:space-between;gap:.5cqw;margin:0!important;color:#8fa7b1!important;font:900 .47cqw/1 Arial,sans-serif!important;letter-spacing:.11em!important;text-transform:uppercase}
+.career-event-choice-top b{color:var(--choice-accent,var(--career-event-accent));font:inherit}
+.career-event-choice-top span{display:inline!important;margin:0!important;color:inherit!important;font:inherit!important}
+.career-event-choices strong{display:block;margin-top:1.05cqh;font:900 .68cqw/1.15 Arial,sans-serif;letter-spacing:.035em;text-transform:uppercase}
+.career-event-choices span:last-child{display:block;margin-top:.7cqh;color:#b8c8ce;font:650 .55cqw/1.35 Arial,sans-serif}
+.career-event-outcome{
+  position:absolute;
+  z-index:20;
+  left:50%;
+  top:50%;
+  translate:-50% -50%;
+  width:min(54cqw,760px);
+  padding:2.8cqh 2.1cqw 2.25cqh;
+  border:1px solid rgba(255,255,255,.25);
+  border-top:.35cqh solid var(--career-event-accent);
+  border-radius:.45cqw;
+  background:linear-gradient(145deg,rgba(3,14,22,.985),rgba(9,31,42,.98));
+  box-shadow:0 2cqw 5cqw rgba(0,0,0,.7);
+  backdrop-filter:blur(18px);
+  text-align:center;
+}
+.career-event-outcome>span{color:var(--career-event-accent);font:900 .56cqw/1 Arial,sans-serif;letter-spacing:.19em}
+.career-event-outcome h2{margin:.8cqh 0 0;font:900 1.65cqw/1 Arial,sans-serif;text-transform:uppercase}
+.career-event-outcome p{max-width:43cqw;margin:1.25cqh auto 0;color:#d2dee2;font:700 .68cqw/1.45 Arial,sans-serif}
+.career-event-consequences{display:flex;justify-content:center;flex-wrap:wrap;gap:.55cqw;margin:1.6cqh 0}
+.career-event-consequences span{padding:.7cqh .7cqw;border:1px solid rgba(255,255,255,.16);border-radius:999px;background:rgba(255,255,255,.055);color:#c8d6db;font:900 .5cqw/1 Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase}
+.career-event-outcome button{width:14cqw}
+body:has(.career-decision-card.is-immersive) .career-music-mini{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+
+@container clubhouse-story (max-width:900px){
+  .career-event-character{width:29cqw}
+  .career-event-character.is-primary{left:3cqw}
+  .career-event-character.is-secondary{right:3cqw}
+  .career-event-nameplate{min-width:14cqw}
+  .career-event-heading strong{font-size:1.7cqw}
+  .career-event-story blockquote{font-size:.95cqw}
+  .career-event-choices strong{font-size:.83cqw}
+  .career-event-choices span:last-child{font-size:.68cqw}
+}
+@media (orientation:portrait) and (max-width:760px){
+  body.v20-ui .career-decision-card.is-immersive{width:100vw;height:100svh;max-height:none;aspect-ratio:auto;overflow-y:auto;container-type:inline-size}
+  .career-event-world{position:relative;min-height:100svh;background-position:center top}
+  .career-event-topline{top:18px;left:16px;right:112px;max-width:none}
+  .career-event-clubmark{width:44px;height:44px}
+  .career-event-heading span{font-size:8px}.career-event-heading strong{font-size:16px}.career-event-heading small{font-size:8px}
+  .career-event-pressure{top:76px;left:17px;right:auto;width:170px;font-size:8px}
+  .career-event-cast{inset:112px 0 270px}
+  .career-event-character{width:48vw;height:54vh;bottom:-10px}
+  .career-event-character.is-primary{left:0}.career-event-character.is-secondary{right:0}
+  .career-event-nameplate{bottom:12px;min-width:120px;padding:7px}.career-event-nameplate strong{font-size:9px}.career-event-nameplate span{font-size:7px}
+  .career-event-world.is-media .career-event-character{width:48vw;height:48vh;bottom:0}
+  .career-event-world.is-media .career-event-character.is-primary{left:0}.career-event-world.is-media .career-event-character.is-secondary{right:0}
+  .career-event-person .career-event-reporter-image{width:92%;height:76%}
+  .career-event-identity small{font-size:6px}.career-event-identity::after{width:min(220px,76vw);padding:10px;font-size:9px;bottom:calc(100% + 8px)}
+  .career-event-story{left:12px;right:12px;bottom:12px;min-height:230px;grid-template-columns:1fr;padding:16px;border-left-width:4px}
+  .career-event-story-meta{font-size:8px}.career-event-story h2{font-size:15px}.career-event-story blockquote{font-size:13px}.career-event-story-actions{grid-template-columns:1fr auto;align-items:center}.career-event-story-actions small{font-size:8px;text-align:left}.career-event-story-actions button{min-width:120px;height:42px;font-size:9px}
+  .career-event-choice-tray{position:relative;inset:auto;margin:47vh 10px 10px;padding:14px 12px}.career-event-choice-tray>header{display:grid}.career-event-choice-tray>header span{font-size:8px}.career-event-choice-tray>header h2{font-size:16px}.career-event-choice-tray>header p{max-width:none;font-size:10px;text-align:left}.career-event-choices{grid-template-columns:1fr}.career-event-choices button{min-height:92px;padding:12px}.career-event-choice-top{font-size:8px!important}.career-event-choices strong{font-size:11px}.career-event-choices span:last-child{font-size:10px}
+  .career-event-outcome{width:calc(100vw - 28px);padding:24px 18px}.career-event-outcome>span{font-size:8px}.career-event-outcome h2{font-size:22px}.career-event-outcome p{max-width:none;font-size:12px}.career-event-consequences span{font-size:8px}.career-event-outcome button{width:160px;height:44px;font-size:9px}
+}

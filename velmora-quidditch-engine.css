@@ -4374,16 +4374,21 @@ img[src*="world-cup-flags-transparent"]{
   background:linear-gradient(90deg,#e2ad51 0 33%,#4ec6ca 33% 66%,#76aeca 66% 100%);
 }
 #wcWorldCupBroadcast #wcgFulltime .wcg-v30-report-scroll{
-  flex:1 1 auto;
+  flex:1 1 0;
+  height:0;
   min-height:0;
-  overflow-y:auto;
-  overflow-x:hidden;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(113,169,191,.72) transparent;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  touch-action:pan-y!important;
+  pointer-events:auto!important;
+  scrollbar-gutter:stable!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:rgba(113,169,191,.72) transparent!important;
+  -webkit-overflow-scrolling:touch;
   padding:clamp(20px,2.2vw,32px) clamp(20px,2.6vw,38px) 36px;
 }
+#wcWorldCupBroadcast #wcgFulltime .wcg-v30-report-scroll:focus-visible{outline:2px solid rgba(92,201,203,.7)!important;outline-offset:-4px!important}
 #wcWorldCupBroadcast #wcgFulltime .wcg-v30-report-scroll::-webkit-scrollbar{width:10px}
 #wcWorldCupBroadcast #wcgFulltime .wcg-v30-report-scroll::-webkit-scrollbar-thumb{background:rgba(113,169,191,.68);border:3px solid transparent;border-radius:999px;background-clip:padding-box}
 #wcWorldCupBroadcast #wcgFulltime .wcg-v30-report-scroll::-webkit-scrollbar-track{background:transparent}

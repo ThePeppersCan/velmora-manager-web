@@ -52,7 +52,7 @@
     const d=bridge.data(id);if(!d)return false;
     if(!dialog){
       returnFocus=document.activeElement;source=bridge.source();matchPause=bridge.pause?.()||null;
-      dialog=document.createElement('section');dialog.id='v48PlayerProfile';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','Player profile');
+      dialog=document.createElement('section');dialog.id='v48PlayerProfile';dialog.className='is-open';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-hidden','false');dialog.setAttribute('aria-label','Player profile');
       inertRecords=Array.from(document.body.children).filter(n=>!['SCRIPT','STYLE','LINK'].includes(n.tagName)).map(n=>[n,n.inert]);
       for(const [n]of inertRecords)n.inert=true;
       document.body.appendChild(dialog);document.body.classList.add('v48-profile-open');
@@ -88,7 +88,7 @@
     const walker=document.createTreeWalker(document.body,4),nodes=[];
     while(walker.nextNode()){
       const text=walker.currentNode,el=text.parentElement;
-      if(!el||el.closest('script,style,textarea,input,select,option,svg,canvas,a,[contenteditable],.v48-name,.v48-traits,#v48PlayerProfile,#wcgOverlay,#pressConferenceOverlay,[aria-hidden="true"],[hidden]'))continue;
+      if(!el||el.closest('script,style,textarea,input,select,option,svg,canvas,a,[contenteditable],.v48-name,.v48-traits,#v48PlayerProfile,#wcgOverlay,#pressConferenceOverlay,.career-decision-card.is-immersive,[aria-hidden="true"],[hidden]'))continue;
       if(!text.nodeValue?.trim()||text.nodeValue.length>15000)continue;
       nameRegex.lastIndex=0;if(nameRegex.test(text.nodeValue))nodes.push(text);
     }
