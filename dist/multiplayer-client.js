@@ -476,10 +476,15 @@
       if(!careerId)return null;
       const sync=await rpc('velmora_mp_sync',{p_career_id:careerId,p_since_seq:lastSeq});
       applySyncMetadata(sync);
-      if(Array.isArray(sync.events)&&sync.events.length){await pullEvents(careerId);return snapshotStatus();}
-      results=await selectRows(T.results,q=>q.eq('career_id',careerId));
-      emit({});
-      bridge.onRemoteChange?.(snapshotStatus());
+      if(Array.isArray(sync.events)&&sync.events.length)await pullEvents(careerId);
+      else{
+        results=await selectRows(T.results,q=>q.eq('career_id',careerId));
+        emit({});
+        bridge.onRemoteChange?.(snapshotStatus());
+      }
+      // A successful poll proves the connection is back. Wake any writes
+      // that were safely coalesced while the network was unavailable.
+      if(queue.length&&!queueRunning)await runQueue();
       return snapshotStatus();
     }
 
@@ -519,6 +524,9 @@
           p_career_id:career.career_id,p_status:'ONLINE',
           p_activity:core.activityLabel(label),p_client_id:options.clientId||null
         });
+        // Presence is the second recovery heartbeat. Whichever successful
+        // request notices the restored network first drains the retry queue.
+        if(queue.length&&!queueRunning)await runQueue();
       }catch(error){
         if(!core.isStaleError(error))emit({});
       }

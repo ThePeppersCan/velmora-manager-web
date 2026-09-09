@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.2.0',
-    label:'V104.2',
-    channel:'EXPECTED GOALS',
-    cacheKey:'v104-2-expected-goals-20260909',
+    version:'104.3.0',
+    label:'V104.3',
+    channel:'ONLINE CAREER FIX',
+    cacheKey:'v104-3-enter-online-20260909',
     saveSchema:86
   });
 });
