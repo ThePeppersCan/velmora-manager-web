@@ -207,7 +207,7 @@ git push origin main
 ```
 
 Cloudflare Pages serves `dist/`. The V104 cache key
-(`v104-online-career-20260909`) is on every asset reference, so returning
+(`v104-2-expected-goals-20260909`) is on every asset reference, so returning
 players get the new build without a hard refresh.
 
 Order matters in one place only: **run the SQL before the deploy reaches
