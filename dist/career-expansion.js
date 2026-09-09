@@ -203,7 +203,12 @@
       if(a.weeklyWages(c)+reservedWages(c)+wage-(swap?.wage||0)>Math.max(a.wageBudget(c),a.weeklyWages(c)))return fail('The agreement exceeds the available wage allocation, including future commitments.');
       if(t.addOnAmount>Math.max(50_000,a.value(p)*.35))return fail('Conditional add-ons cannot exceed 35% of the player’s current market value.');
       const cashPlan=transferCashPlan(t),cost=cashPlan.upfront+(kind==='LOAN_BUY'?0:t.bonus),committed=t.fee+(kind==='LOAN_BUY'?0:t.bonus);if(transferAvailableBudget(c)<committed)return fail('The club cannot cover the guaranteed fee, signing bonus and existing transfer commitments.');
-      if(kind!=='LOAN_BUY'&&t.wage<a.expectedWage(p)*.85)return fail('The agent wants at least '+a.format(Math.ceil(a.expectedWage(p)*.85))+' per week.');
+      if(kind!=='LOAN_BUY'&&t.wage<a.expectedWage(p)*.85){
+        const known=Math.round(Number(a.knowledge?.(p)??100))>=95||a.scouted?.(p);
+        return fail(known
+          ?'The agent wants at least '+a.format(Math.ceil(a.expectedWage(p)*.85))+' per week.'
+          :'The agent says the offer is well short of what the player expects. Scout him properly to learn the figure.');
+      }
       if(t.releaseClause>0&&t.releaseClause<a.value(p)*.6)return fail('The board will not approve a release clause below 60% of market value.');
       return {ok:true,p,owner,terms:t,kind,swap,cost,committed,cashPlan};
     }
@@ -215,7 +220,21 @@
         result=a.evaluateClub({...p,club:owner},packageCredit);
         if(result.outcome!=='accepted')return {ok:false,message:result.title+' '+(result.counter?'The guaranteed fee must improve toward '+a.format(Math.max(0,Math.ceil(result.counter-nonCashCredit)))+'. ':'')+(result.copy||'')};
       }
-      if(kind==='LOAN_BUY'&&t.fee<a.value(p)*.04)return fail('The club requests a loan fee of at least '+a.format(Math.ceil(a.value(p)*.04))+'.');
+      if(kind==='LOAN_BUY'){
+        if(t.fee<a.value(p)*.04)return fail('The club requests a loan fee of at least '+a.format(Math.ceil(a.value(p)*.04))+'.');
+        // The owner applies the same bars an AI club must clear to borrow from you.
+        const gate=a.loanEligibility?.(p,owner,a.club());
+        if(gate&&!gate.ok)return fail(gate.message);
+        // A player at or above your squad's level is loaned out to play, not to sit.
+        if(gate?.ok&&gate.gap>=0&&['Reserve','Prospect'].includes(t.role))
+          return fail(owner.name+' will only agree the loan if '+p.name+' is promised a Rotation role or better.');
+        // The buy option is a real negotiation: the owner can refuse or counter.
+        if(t.optionFee>0){
+          const optionCall=a.evaluateClub({...p,club:owner},t.optionFee);
+          if(optionCall.outcome!=='accepted')
+            return fail(optionCall.title+' '+(optionCall.counter?'The permanent option must reach '+a.format(Math.ceil(optionCall.counter))+'. ':'')+(optionCall.copy||''));
+        }
+      }
       const offer={id:id('AGREEMENT'),buyerId:a.club().id,sellerId:owner?.id||null,playerId:p.id,kind,terms:t,status:'AGREED',expires:a.addDays(a.date(),3),created:a.date()};state().offers=state().offers||[];state().offers=state().offers.filter(x=>x.status==='AGREED'&&x.expires>=a.date()).slice(-30);state().offers.push(offer);
       return {ok:true,message:'Terms agreed. Review the full package and confirm to commit.',offer};
     }
@@ -489,18 +508,35 @@
       if(section==='loans')return`<h3 class="v34-section">LOAN BUY OPTIONS</h3>${loans.map(l=>`<article class="v34-card"><h3>${esc(a.player(l.playerId)?.name)}</h3><p>Option ${cash(l.buyOption.fee)} · expires ${l.endDate} · signing bonus ${cash(l.buyOption.terms.bonus)}</p>${button('buy-option','EXERCISE OPTION',l.id)}</article>`).join('')||empty('No active buy options.')}`;
       return`<h3 class="v34-section">AGREED PACKAGES</h3><div class="v34-grid">${offers.map(o=>`<article class="v34-card"><small>${esc(o.kind.replace('_',' '))} · EXPIRES ${o.expires}</small><h3>${esc(a.player(o.playerId)?.name)}</h3><p>Guaranteed fee ${cash(o.terms.fee)} · ${esc(structuredTermsText(o.terms))}</p><p>Bonus ${cash(o.terms.bonus)} · wage ${cash(o.terms.wage)} / week · ${o.terms.years} years · ${esc(o.terms.role)}</p><p>Sell-on ${o.terms.sellOn}%${o.terms.releaseClause?' · release clause '+cash(o.terms.releaseClause):' · no release clause'}${o.terms.swapId?' · exchange '+esc(a.player(o.terms.swapId)?.name):''}${o.kind==='LOAN_BUY'?' · option '+cash(o.terms.optionFee)+' · wage share '+o.terms.wageShare+'%':''}</p>${!a.windowOpen()&&['TRANSFER','RELEASE'].includes(o.kind)?`<p>Joins ${a.nextWindow()}. Guaranteed funds and the bonus are set aside now; salary starts on arrival.</p>`:''}${button('confirm-deal','REVIEW & COMPLETE',o.id)}</article>`).join('')||empty('Accepted negotiations appear here before you commit.')}</div>${transferCommitmentsHTML(c)}`;
     }
+    // V104.1: the deal form used to pre-fill the player's true market value and
+    // exact wage demand, which handed you a precise ability readout for someone
+    // you had never scouted. Both figures are now estimates whose band narrows
+    // as your knowledge of the player grows, matching how OVR already behaves.
+    function scoutedEstimate(p,exact,salt){
+      const truth=Math.max(0,Math.round(Number(exact)||0));
+      const know=Math.round(Number(a.knowledge?.(p)??100));
+      if(know>=95||a.scouted?.(p))return{value:truth,exact:true,band:0};
+      const band=Math.min(50,Math.max(5,Math.round((100-know)*.55)));
+      const drift=((a.rng(`VALUATION|${salt}|${p.id}`)()*2)-1)*(band/100)*.55;
+      const guess=Math.max(0,truth*(1+drift));
+      const step=guess>=5e6?250000:guess>=1e6?50000:guess>=1e5?10000:guess>=1e4?1000:100;
+      return{value:Math.max(step,Math.round(guess/step)*step),exact:false,band};
+    }
+
     function dealsHTML(){
       const found=target(selectedTarget),p=found?.p;if(!p)return empty('This player is no longer available. Return to Transfers to select a player.');
       const kinds=[['TRANSFER','Transfer with sell-on'],...(p.releaseClause?[['RELEASE','Activate release clause · '+a.format(p.releaseClause)]]:[]),['SWAP','Player exchange + cash'],['PRECONTRACT','Pre-contract'],['LOAN_BUY','Loan with buy option']];
       if(!kinds.some(([key])=>key===dealKind))dealKind='TRANSFER';
       const kind=dealKind,loan=kind==='LOAN_BUY',pre=kind==='PRECONTRACT',release=kind==='RELEASE',value=a.value(p);
-      return `<div class="v35-deal-heading"><small>${esc(found.owner?.name||'FREE AGENT')} · ${p.age} · ${esc(p.role)}</small><h3>${esc(p.name)}</h3><p>${p.releaseClause?'Existing release clause: '+cash(p.releaseClause)+' · ':''}Contract ends ${esc(p.contractEndDate||'unattached')}</p></div>${!a.windowOpen()&&['TRANSFER','RELEASE'].includes(kind)?`<p class="v40-arrival-note">Agree now · joins ${a.nextWindow()}. The player stays at their current club until then.</p>`:''}<form data-v34-form="deal" class="v34-form"><input type="hidden" name="playerId" value="${esc(p.id)}"><input type="hidden" name="kind" value="${kind}">
-      ${release?`<input type="hidden" name="fee" value="${p.releaseClause}"><p class="v35-term-note">Pay ${cash(p.releaseClause)} to bypass the selling club’s fee negotiations. The player must still agree personal terms.</p>`:pre?'<input type="hidden" name="fee" value="0"><p class="v35-term-note">Available to players aged 23+ with six months or less remaining. Joins after the existing contract expires.</p>':field('fee',loan?'Loan fee':'Cash offer',loan?Math.round(value*.05):value)}
+      const feeEstimate=scoutedEstimate(p,value,'FEE'),wageEstimate=scoutedEstimate(p,a.expectedWage(p),'WAGE');
+      const estimateNote=feeEstimate.exact?'':`<p class="v35-term-note">Your scouts value ${esc(p.name)} at around ${cash(feeEstimate.value)} (±${feeEstimate.band}%) on about ${cash(wageEstimate.value)} a week. Scout him further to sharpen both figures before you commit.</p>`;
+      return `<div class="v35-deal-heading"><small>${esc(found.owner?.name||'FREE AGENT')} · ${p.age} · ${esc(p.role)}</small><h3>${esc(p.name)}</h3><p>${p.releaseClause?'Existing release clause: '+cash(p.releaseClause)+' · ':''}Contract ends ${esc(p.contractEndDate||'unattached')}</p></div>${estimateNote}${!a.windowOpen()&&['TRANSFER','RELEASE'].includes(kind)?`<p class="v40-arrival-note">Agree now · joins ${a.nextWindow()}. The player stays at their current club until then.</p>`:''}<form data-v34-form="deal" class="v34-form"><input type="hidden" name="playerId" value="${esc(p.id)}"><input type="hidden" name="kind" value="${kind}">
+      ${release?`<input type="hidden" name="fee" value="${p.releaseClause}"><p class="v35-term-note">Pay ${cash(p.releaseClause)} to bypass the selling club’s fee negotiations. The player must still agree personal terms.</p>`:pre?'<input type="hidden" name="fee" value="0"><p class="v35-term-note">Available to players aged 23+ with six months or less remaining. Joins after the existing contract expires.</p>':field('fee',loan?'Loan fee':'Cash offer',loan?Math.round(feeEstimate.value*.05):feeEstimate.value)}
       ${kind==='SWAP'?select('swapId','Player offered in exchange',option('','Choose a player')+a.squad(a.club()).filter(x=>!x.captain&&!x.onLoan&&!x.v34Precontract).map(x=>option(x.id,x.name+' · '+a.format(a.value(x)))).join('')):''}
       ${!loan&&!release&&!pre?`<div class="v35-form-section">GUARANTEED FEE STRUCTURE</div>${select('installments','Payment schedule',[[1,'100% upfront'],[2,'70% now · 30% in six months'],[3,'55% now · two later instalments']].map(([n,label])=>option(n,label,n===1)).join(''))}<div class="v35-form-section">CONDITIONAL ADD-ON</div>${select('addOnType','Trigger',[['NONE','No conditional add-on'],['APPEARANCES','Pay after 15 appearances'],['TEAM_WINS','Pay after 10 league wins']].map(([key,label])=>option(key,label,key==='NONE')).join(''))}${field('addOnAmount','Conditional amount',0)}`:''}
-      ${loan?field('optionFee','Optional permanent fee',value)+field('wageShare','Loan wage contribution (%)',100,'number','min="0" max="100"'):''}
+      ${loan?field('optionFee','Optional permanent fee',feeEstimate.value)+field('wageShare','Loan wage contribution (%)',100,'number','min="0" max="100"'):''}
       <div class="v35-form-section">${loan?'PERSONAL TERMS IF THE OPTION IS EXERCISED':'PERSONAL TERMS'}</div>
-      ${field('wage','Weekly wage',a.expectedWage(p))}${field('bonus',loan?'Bonus on permanent signing':'Signing bonus',0)}${select('years','Contract length',[1,2,3,4,5].map(n=>option(n,n+' years',n===3)).join(''))}${select('role','Squad role',['Crucial','Important','Rotation','Prospect','Reserve'].map(r=>option(r,r,r==='Rotation')).join(''))}
+      ${field('wage','Weekly wage',wageEstimate.value)}${field('bonus',loan?'Bonus on permanent signing':'Signing bonus',0)}${select('years','Contract length',[1,2,3,4,5].map(n=>option(n,n+' years',n===3)).join(''))}${select('role','Squad role',['Crucial','Important','Rotation','Prospect','Reserve'].map(r=>option(r,r,r==='Rotation')).join(''))}
       ${!release&&!pre?field('sellOn','Seller’s share of next transfer (%)',0,'number','min="0" max="30"'):''}
       <label class="v34-check v35-form-section"><input type="checkbox" data-v35-clause-toggle>Add a release clause to the new contract (optional)</label><label hidden>Release clause amount<input name="releaseClause" value="0" disabled inputmode="decimal" placeholder="e.g. 1.5m"></label>
       <button>PROPOSE TERMS</button></form><p class="v35-term-note">${loan?'The loan fee is paid now; the buy option is voluntary. The permanent fee and bonus are only due when exercised.':release||pre?'A new contract has no release clause unless you choose to negotiate one.':'Deferred guaranteed money is valued slightly below cash now. Conditional add-ons pay automatically when their real career milestone is reached.'}</p>${agreementsHTML('active')}`;
@@ -515,7 +551,10 @@
     function initUI(){document.addEventListener('click',event=>{const b=event.target.closest?.('[data-v34-open]');if(b){event.preventDefault();open(b.dataset.v34Open,b.dataset.player||null);}});}
     return {state,department,market,addLegacyCandidate,hire,fire,trainStaff,scouts,freeScouts,personnelForRole,sendScout,cancelMission,signProspect,declineProspect,academyCap,youthCompetition,youthTable,setYouthTeam,quoteUpgrade,upgrade,sponsorOffers,signSponsor,developmentFactor,recoveryBonus,daily,staffQuality,
       reservedPlaces,reservedWages,reservedTransferPayments,transferCashPlan,structuredOfferCredit,processTransferPayments,scheduleTransfer,proposeDeal,confirmDeal,exerciseOption,processPrecontracts,negotiateClause,onTransfer,restoreCustom,createClub,quoteSale,confirmSale,
-      open,close,initUI,render,embed,bindHost,slotActions,seedClauses,validateClause,setClause,staffHTML,academyHTML,facilitiesHTML,dealsHTML,createHTML,savesHTML};
+      open,close,initUI,render,embed,bindHost,slotActions,seedClauses,validateClause,setClause,staffHTML,academyHTML,facilitiesHTML,dealsHTML,createHTML,savesHTML,
+      // Selecting a target without the surrounding navigation, so the deal
+      // form can be rendered and inspected on its own.
+      setDealTarget(playerId,kind='TRANSFER'){selectedTarget=playerId||null;dealKind=kind;return selectedTarget;}};
   }
   root.VelmoraCareerExpansion={create};
   if(typeof module==='object'&&module.exports)module.exports={create};
