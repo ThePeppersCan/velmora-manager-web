@@ -1029,10 +1029,10 @@
     },100);
   }
 
-  function blankTeamStats(){return {shots:0,onTarget:0,missedChances:0,passes:0,completed:0,interceptions:0,rebounds:0,fouls:0,yellowCards:0,redCards:0,penalties:0,var:0,possession:0,turnovers:0,counterattacks:0,presses:0,tacklesAttempted:0,tacklesWon:0}}
+  function blankTeamStats(){return {shots:0,onTarget:0,xg:0,missedChances:0,passes:0,completed:0,interceptions:0,rebounds:0,fouls:0,yellowCards:0,redCards:0,penalties:0,var:0,possession:0,turnovers:0,counterattacks:0,presses:0,tacklesAttempted:0,tacklesWon:0}}
   function resetStats(){
     state.teamStats={belros:blankTeamStats(),zafran:blankTeamStats()};
-    state.playerStats=Object.fromEntries(allPlayers.map(p=>[p.id,{goals:0,assists:0,shots:0,onTarget:0,missedChances:0,possession:0,tacklesAttempted:0,tacklesWon:0,interceptions:0,fouls:0,yellowCards:0,redCards:0,passes:0,completed:0,saves:0,rebounds:0}]));
+    state.playerStats=Object.fromEntries(allPlayers.map(p=>[p.id,{goals:0,assists:0,shots:0,onTarget:0,xg:0,missedChances:0,possession:0,tacklesAttempted:0,tacklesWon:0,interceptions:0,fouls:0,yellowCards:0,redCards:0,passes:0,completed:0,saves:0,rebounds:0}]));
   }
 
 
@@ -3956,6 +3956,25 @@ function triggerBigMoment(kind='hattrick'){
     return true;
   }
 
+  // xG: the probability this shot becomes a goal for an AVERAGE shooter.
+  // Position, defensive pressure, defender quality and motion all count; the
+  // shooter's own finishing, composure and form deliberately do not, so that
+  // goals measured against xG still reveal who finishes well. .86 is the
+  // neutral skill point every formula below is written around.
+  const XG_NEUTRAL_SKILL=.86;
+  function neutralShotXg(opts){
+    const {penalty,careerMode,zone,defence,coverage,pressurePenalty,distancePenalty,motionPenalty}=opts;
+    if(penalty){
+      const quality=careerMode?.77:(.58+.16*XG_NEUTRAL_SKILL+.08*XG_NEUTRAL_SKILL);
+      return clamp(quality,careerMode?.50:.61,careerMode?.87:.82);
+    }
+    const quality=careerMode
+      ?.095-.30*(defence-XG_NEUTRAL_SKILL)*coverage
+      :(.065*XG_NEUTRAL_SKILL+.040*XG_NEUTRAL_SKILL);
+    return clamp(.155+zone*.14+quality-pressurePenalty-distancePenalty-motionPenalty,
+      careerMode?.09:.145,careerMode?.50:.415);
+  }
+
   function chooseShotOutcome(shooter,penalty=false){
     const a=v48LiveAttributes(shooter,{progress:state.zone||.15}),speed=Math.hypot(shooter.vx,shooter.vy),defenders=teamEntities(other(shooter.team)),pressure=Math.min(...defenders.map(d=>dist2(shooter,d)));
     const shooting=state.careerMode?executionSkill(a,'shooting'):.90,composure=state.careerMode?executionSkill(a,'composure'):.91;
@@ -3966,6 +3985,7 @@ function triggerBigMoment(kind='hattrick'){
     const pressurePenalty=clamp((.16-pressure)*.72,0,.10),distancePenalty=clamp((.82-attackProgress)*.125,0,.045),motionPenalty=clamp(speed-.13,0,.08)*.22;
     if(penalty){
       // Same formula for both teams: skill creates probability, never certainty.
+      state.lastShotXg=neutralShotXg({penalty:true,careerMode:state.careerMode});
       const quality=(state.careerMode?.77+.70*(shooting-.86)+.22*(composure-.86):.58+.16*shooting+.08*composure)+(shooter.form||0)*.55+fairNoise(.018),r=state.simRand();
       return r<clamp(quality,state.careerMode?.50:.61,state.careerMode?.87:.82)?'goal':r<(state.careerMode?.90:.88)?'save':r<(state.careerMode?.96:.95)?'post':'miss';
     }
@@ -3975,6 +3995,8 @@ function triggerBigMoment(kind='hattrick'){
     const quality=(state.careerMode?.095+.50*(shooting-.86)+.18*(composure-.86)-.30*(defence-.86)*coverage:.065*shooting+.040*composure)+(shooter.form||0)*.10+fairNoise(.014);
     // V2 four-and-a-half-minute format: a very small symmetric finishing bump so the longer
     // standard rotation produces a little more scoring without becoming goal-heavy.
+    state.lastShotXg=neutralShotXg({penalty:false,careerMode:state.careerMode,zone:Number(state.zone)||.15,
+      defence,coverage,pressurePenalty,distancePenalty,motionPenalty});
     const goalP=clamp(.155+state.zone*.14+roleBoost+quality-pressurePenalty-distancePenalty-motionPenalty,state.careerMode?.09:.145,state.careerMode?.50:.415),saveP=clamp(.267+pressurePenalty*.55,.230,.345),postP=.13,r=state.simRand();
     // Same formula and RNG for both teams: no favourites, rubber-banding or scripted goals.
     return r<goalP?'goal':r<goalP+saveP?'save':r<goalP+saveP+postP?'post':'miss';
@@ -4012,7 +4034,11 @@ function triggerBigMoment(kind='hattrick'){
     }
     const team=opts.team||shooter.team,opp=other(team);if(!penalty){setFlowPhase(FLOW_PHASES.SHOT_SEQUENCE,'shot');noteFlowMajor('shot')}
     state.teamStats[team].shots++;state.playerStats[shooter.player.id].shots++;
+    state.lastShotXg=0;
     const hoop=hoops[team][Math.floor(state.simRand()*3)],outcome=chooseShotOutcome(shooter,penalty);
+    const shotXg=Math.max(0,Number(state.lastShotXg)||0);
+    state.teamStats[team].xg=Number(state.teamStats[team].xg||0)+shotXg;
+    state.playerStats[shooter.player.id].xg=Number(state.playerStats[shooter.player.id].xg||0)+shotXg;
     let target={x:hoop.x,y:hoop.y};
     if(outcome==='goal'||outcome==='save'){target={x:hoop.x+(state.simRand()-.5)*.010,y:hoop.y+(state.simRand()-.5)*.015}}
     else if(outcome==='post'){const side=state.simRand()<.5?-1:1;target={x:hoop.x+side*.013,y:hoop.y+(state.simRand()-.5)*.023}}
