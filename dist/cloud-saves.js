@@ -222,7 +222,9 @@
       return true;
     }
     const ready=initialise().catch(error=>{handleSyncError(error);return false;});
-    return{ready,status,subscribe,flush,syncNow,restorePrevious,hasCloudBackup,destroy(){unsubscribeCommits?.();for(const timer of timers.values())clearTimeout(timer);timers.clear();listeners.clear();},_rows:rows,_reconcile:reconcile};
+    // V104: the online career reuses this signed-in connection instead of
+    // asking a player to sign in a second time.
+    return{ready,status,subscribe,flush,syncNow,restorePrevious,hasCloudBackup,client:()=>client,user:()=>user,destroy(){unsubscribeCommits?.();for(const timer of timers.values())clearTimeout(timer);timers.clear();listeners.clear();},_rows:rows,_reconcile:reconcile};
   }
   return{create,SUPABASE_URL,SUPABASE_KEY,TABLE,BUCKET,PREFIX,SLOT_COUNT};
 });

@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'103.0.3',
-    label:'V103.3',
-    channel:'LOAN OWNERSHIP HOTFIX',
-    cacheKey:'v103-3-loan-ownership-20260909',
+    version:'104.0.0',
+    label:'V104',
+    channel:'ONLINE CAREER',
+    cacheKey:'v104-online-career-20260909',
     saveSchema:86
   });
 });

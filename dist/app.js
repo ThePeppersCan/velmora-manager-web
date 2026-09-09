@@ -4,6 +4,10 @@
   const clubs = window.VELMORA_CLUBS || [];
   const careerStore = window.VelmoraCareerStore || localStorage;
   let careerExpansion = null;
+  // V104 online career. Empty and inert for every single-player career.
+  let multiplayerSession=null;
+  let v104CreatorReturn=null;
+  const v104ReservedClubIds=new Set();
   let v35FinanceView='overview',v35AcademyView='prospects';
   const v34OriginalClubs = new Map(clubs.map(c=>[c.id,JSON.parse(JSON.stringify(c))]));
   const clubByIdCache = new Map(clubs.map(c=>[c.id,c]));
@@ -1841,7 +1845,15 @@
       else if(event.key==='ArrowUp'){event.preventDefault();selectOption(mainMenuSelectedIndex-1,{focus:true});}
       else if(event.key==='Home'){event.preventDefault();selectOption(0,{focus:true});}
       else if(event.key==='End'){event.preventDefault();selectOption(options.length-1,{focus:true});}
-      else if(!options.includes(document.activeElement)){event.preventDefault();options[mainMenuSelectedIndex]?.click();}
+      else if(!options.includes(document.activeElement)){
+        // Enter belongs to whatever the player has actually focused. Only
+        // fall back to the highlighted menu row when nothing else is.
+        const active=document.activeElement;
+        const focusedControl=active&&active!==document.body&&typeof active.closest==='function'
+          &&active.closest('button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+        if(focusedControl)return;
+        event.preventDefault();options[mainMenuSelectedIndex]?.click();
+      }
     });
     root.addEventListener('pointermove',event=>{
       if(mainMenuMotionReduced())return;
@@ -2396,7 +2408,10 @@
     managerCreatorStage=0;managerAppearanceCategory='skin';managerWardrobeCategory='outfit';managerRandomLocks.clear();(managerProfile.randomizationLocks||[]).forEach(x=>managerRandomLocks.add(x));renderManagerCreator();showScreen('managerCreator');
   }
   function openManagerCreatorStage(stage){const next=clamp(Number(stage)||0,0,3);if(next===3&&!managerPersonalValid(true))return;managerCreatorStage=next;renderManagerCreator();}
-  function handleManagerContinue(){if(managerCreatorStage===0&&!managerPersonalValid(true))return;if(managerCreatorStage<3){managerCreatorStage++;renderManagerCreator();return;}if(!managerPersonalValid(true))return;managerConfirmed=true;managerName=String(managerProfile.identity.name||'CAREER MANAGER').trim();employmentStatus='setup';saveManagerDraft();try{localStorage.removeItem(MANAGER_DRAFT_KEY);}catch(_){}renderCareerStart();showScreen('careerStart');showToast(`${managerName} is registered · choose how to begin`);}
+  function handleManagerContinue(){if(managerCreatorStage===0&&!managerPersonalValid(true))return;if(managerCreatorStage<3){managerCreatorStage++;renderManagerCreator();return;}if(!managerPersonalValid(true))return;managerConfirmed=true;managerName=String(managerProfile.identity.name||'CAREER MANAGER').trim();employmentStatus='setup';saveManagerDraft();try{localStorage.removeItem(MANAGER_DRAFT_KEY);}catch(_){}
+    // V104: an online career borrows the same creator and returns to its lobby.
+    if(v104CreatorReturn){const done=v104CreatorReturn;v104CreatorReturn=null;done(ensureManagerProfile(),managerName);return;}
+    renderCareerStart();showScreen('careerStart');showToast(`${managerName} is registered · choose how to begin`);}
 
   function assignManagerClubBranding(club){
     const p=ensureManagerProfile();if(!club){p.clubBranding={clubId:null,primary:null,secondary:null,accent:null,badgePath:null,initials:null,overlayId:'team_overlay_00'};return;}
@@ -3727,6 +3742,9 @@
     const resolved=[];
     fixtures.filter(f=>!f.played&&f.date===date).forEach(f=>{
       if(excludeClubId&&(f.homeClubId===excludeClubId||f.awayClubId===excludeClubId))return;
+      // V104: in an online career every human club is reserved for its own
+      // manager, not just this device's club.
+      if(v104ReservedClubIds.size&&(v104ReservedClubIds.has(f.homeClubId)||v104ReservedClubIds.has(f.awayClubId)))return;
       simulateBackgroundFixture(f);if(f.played)resolved.push(f);
     });
     ensureCupProgression(date);
@@ -4308,6 +4326,9 @@
 
   function advanceCareerDay(options={}){
     initializeCareerCalendar(false);
+    // V104: the shared barrier outranks every local reason to advance.
+    const onlineBarrier=v104ProgressionBlock();
+    if(onlineBarrier)return {advanced:false,blocked:true,reason:'ONLINE_BARRIER',online:onlineBarrier,events:[]};
     if(roadToGlory.seasonReview?.pending){if(!options.silent)renderSeasonReviewOverlay();return {advanced:false,blocked:true,reason:'SEASON_REVIEW',events:[]};}
     const decision=pendingDecisionEvent();
     if(decision)return {advanced:false,blocked:true,reason:'DECISION',decision,events:[]};
@@ -7862,14 +7883,10 @@
     const switcher=root.querySelector('[data-career-save-mode]');if(switcher)switcher.textContent=careerSaveMenuMode==='new'?'VIEW SAVES':'NEW CAREER';renderCareerSaveMenu();root.classList.add('is-open');root.setAttribute('aria-hidden','false');syncPrimaryScreenInteractivity();
   }
 
-  function saveCareerState(){
-    if(!careerHasStarted())return false;
-    clearTimeout(squadSaveTimer);squadSaveTimer=0;
-    const started=v202Now(),previousSavedAt=careerRuntime.lastSavedAt;
-    try{
-      evaluateManagerCareerRewards();v25RecordClubFinances();careerRuntime.lastSavedAt=new Date().toISOString();
-      careerNewsStories=careerNewsStories.map(story=>story?.editorialVersion===V33_NEWS_VERSION&&story?.articleSnapshot?story:v33NewsEnrichStory(story));
-      const data={
+  // V104: the save payload is built separately from the act of writing it,
+  // so an online career can publish the same structure without a slot write.
+  function buildCareerSaveData(){
+    return {
         version:window.VELMORA_RELEASE?.saveSchema||86,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
         careerTime:{...careerTime},fixtures,calendarEvents,transferWindows,careerInboxMessages,careerNewsStories,pendingNegotiations,processedCalendarEvents:[...processedCalendarEvents],selectedCalendarDate,seasonCalendarCursor,
         careerDecisionEvents,playerPromises,careerEventCooldowns,aiTransferHistory,developmentSnapshots,careerRuntime,unexpectedEvents,preSeasonExperience,cupRuntime,roadToGlory,managerMarket,ownershipState,audienceWorldState,championsCrown,livingSquad,mediaWorld,negotiationEngine,
@@ -7885,9 +7902,19 @@
         transferActivity:[...transferActivity.entries()],scoutingAssignments:[...scoutingAssignments.entries()],
         recruitmentIntel:[...recruitmentIntel.entries()],recruitmentWorldKnowledge,
         officeReadMessages:[...officeReadMessages],managerName,manager:ensureManagerProfile()
-      };
+    };
+  }
+
+  function saveCareerState(){
+    if(!careerHasStarted())return false;
+    clearTimeout(squadSaveTimer);squadSaveTimer=0;
+    const started=v202Now(),previousSavedAt=careerRuntime.lastSavedAt;
+    try{
+      evaluateManagerCareerRewards();v25RecordClubFinances();careerRuntime.lastSavedAt=new Date().toISOString();
+      careerNewsStories=careerNewsStories.map(story=>story?.editorialVersion===V33_NEWS_VERSION&&story?.articleSnapshot?story:v33NewsEnrichStory(story));
+      const data=buildCareerSaveData();
       const json=JSON.stringify(data),encoded=window.VelmoraSaveCodec.encode(json),slot=commitPendingCareerSlot(),slotKey=careerSlotKey(slot);if(!slotKey)throw new Error('No active career save slot');careerStore.setItem(slotKey,encoded);const elapsed=v202Now()-started;v202Performance.saveCount++;v202Performance.saveBytes=encoded.length;v202Performance.saveTotalMs+=elapsed;v202Performance.saveMaxMs=Math.max(v202Performance.saveMaxMs,elapsed);
-      squadSavePending=false;return true;
+      squadSavePending=false;v104NoteLocalSave();return true;
     }catch(error){careerRuntime.lastSavedAt=previousSavedAt;v202Performance.saveFailures++;v25ShowSaveFailure(error);return false;}
   }
 
@@ -7910,9 +7937,16 @@
 
   function loadCareerState(slot=activeCareerSlot||1){
     if(squadSavePending&&!flushSquadSave())return false;
+    ensureCareerSaveMigration();const slotKey=careerSlotKey(slot);if(!slotKey)return false;
+    const raw=careerStore.getItem(slotKey);if(!raw)return false;
+    const d=decodeCareerRaw(raw);if(!d?.worldSeed)return false;
+    return applyCareerSaveData(d,slot);
+  }
+
+  // V104: applying a decoded career is separate from reading a save slot,
+  // so an online world snapshot can be restored through the same path.
+  function applyCareerSaveData(d,slot=activeCareerSlot||1){
     try{
-      ensureCareerSaveMigration();const slotKey=careerSlotKey(slot);if(!slotKey)return false;const raw=careerStore.getItem(slotKey);if(!raw)return false;
-      const d=decodeCareerRaw(raw);if(!d?.worldSeed)return false;
       const nextEmploymentStatus=d.employmentStatus||(d.currentClubId?'employed':'setup');if(nextEmploymentStatus!=='employed'&&nextEmploymentStatus!=='unemployed')return false;
       resetCareerWorld();
       Object.entries(d.careerRuntime?.expansion?.customClubs||{}).forEach(([id,identity])=>{const club=clubById(id);if(club)Object.assign(club,identity);});
@@ -10805,7 +10839,9 @@
     });
   }
   function simulateUserFixture(fixture,mode='QUICK SIM',liveEngineResult=null){
-    if(!fixture||fixture.played)return null;const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
+    if(!fixture||fixture.played)return null;
+    const onlineGate=v104MatchGate(fixture);
+    if(onlineGate&&!onlineGate.allowed){showToast(onlineGate.message);return null;}const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
     v37CaptureSelectionEligibility(fixture,home,away);
     const rng=mulberry32(hashString(`${worldSeed}-USER-MATCH-${fixture.fixtureId}`)),disciplineEvents=liveEngineResult?(Array.isArray(liveEngineResult.disciplineEvents)?liveEngineResult.disciplineEvents:[]):disciplineSimulatedEvents(fixture,home,away);
     fixture.decidedOnPenalties=false;fixture.decidedAfterExtraTime=false;fixture.penaltiesHome=null;fixture.penaltiesAway=null;fixture.shootoutWinnerId=null;fixture.ccShootoutWinnerId=null;
@@ -10845,7 +10881,7 @@
     const genericTitle=resultCode==='W'?`${currentClub.name.toUpperCase()} TAKE THE POINTS`:resultCode==='L'?`${opponent.name.toUpperCase()} DEFEAT ${currentClub.name.toUpperCase()}`:`${currentClub.name.toUpperCase()} HELD BY ${opponent.name.toUpperCase()}`;
     const storyBody=[`${home.name} ${fixture.homeScore}–${fixture.awayScore} ${away.name}${fixture.decidedOnPenalties?` (${fixture.penaltiesHome}–${fixture.penaltiesAway} pens)`:''}.`,resultMoment?.copy||null,postRow?`${currentClub.name} are now ${ordinal(postRow.pos)} with ${postRow.pts} points.`:isFriendly?'The result is non-competitive and is used for readiness, form and squad assessment only.':(continentalLine||'The knockout campaign moves on from another decisive night.')].filter(Boolean);
     addCareerNews({id:`news-match-${fixture.fixtureId}`,category:newsCategory,title:resultMoment?.newsTitle||(isFriendly?`${currentClub.name.toUpperCase()} CONTINUE PRE-SEASON PREPARATIONS`:genericTitle),body:storyBody,image:potm?.avatar,date:fixture.date});
-    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);generateContextualCareerDecision(fixture.date);v96CaptureLiveRecords(fixture);}saveCareerState();
+    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);generateContextualCareerDecision(fixture.date);v96CaptureLiveRecords(fixture);}saveCareerState();v104AfterUserFixture(fixture,mode);
     return{saved:true,mode,fixture,home,away,homeScore:fixture.homeScore,awayScore:fixture.awayScore,potm,homeSquad:matchdayParticipants(home,fixture),awaySquad:matchdayParticipants(away,fixture),ratings,events:scorers,prePosition:preRow?.pos||null,postPosition:postRow?.pos||null,prePoints:preRow?.pts||0,postPoints:postRow?.pts||0,resultCode,opponent,occasion,resultMoment};
   }
   function playCurrentUserFixture(mode='QUICK SIM'){
@@ -13069,6 +13105,391 @@
   }
 
   v48InstallProfiles();
+  // =================================================================
+  // V104 · Online career bridge
+  //
+  // Everything the shared-career client needs from the game lives behind
+  // this one object. The client never reaches into career internals, and
+  // none of this runs unless an online career is actually attached, so a
+  // single-player career takes exactly the same code path it always has.
+  // =================================================================
+  function v104Core(){return window.VelmoraMultiplayerCore||null;}
+  function v104Active(){return!!(multiplayerSession&&multiplayerSession.careerId);}
+  function v104Status(){return multiplayerSession?.status||null;}
+
+  function v104SyncReservedClubs(clubIds){
+    v104ReservedClubIds.clear();
+    (clubIds||[]).filter(Boolean).forEach(id=>v104ReservedClubIds.add(String(id)));
+    // This device resolves its own fixtures, so its club is never "reserved"
+    // away from it -- only the other human's club is.
+    if(currentClub?.id)v104ReservedClubIds.delete(String(currentClub.id));
+  }
+
+  // Why the calendar will not move. Returns null in a single-player career.
+  function v104ProgressionBlock(){
+    if(!v104Active())return null;
+    const status=v104Status();
+    if(!status)return null;
+    if(status.readOnly)return{reason:'READ_ONLY',
+      message:'Velmora cannot reach the shared career right now, so the date is paused. You can still look around your club.'};
+    const barrier=status.barrier;
+    if(!barrier||!barrier.locked)return null;
+    return{reason:'BARRIER',date:barrier.date,
+      outstanding:barrier.outstanding,
+      message:status.waitingMessage||'Waiting for the other manager to complete their fixture.'};
+  }
+
+  // Whether this device may resolve this fixture right now.
+  function v104MatchGate(fixture){
+    if(!v104Active()||!fixture)return null;
+    const status=v104Status();
+    if(!status)return null;
+    if(status.readOnly)return{allowed:false,
+      message:'Velmora cannot reach the shared career, so this match cannot be saved yet.'};
+    const core=v104Core();
+    const barrier=status.barrier||{};
+    const required=(barrier.participants||[]).filter(row=>String(row.fixture_id)===String(fixture.fixtureId));
+    if(!required.length)return{allowed:true};
+    const h2h=required.some(row=>row.human_vs_human);
+    if(!h2h)return{allowed:true};
+    // Both managers must confirm before a human-versus-human tie resolves,
+    // and only one of them performs the single deterministic resolution.
+    const readiness=core?core.humanFixtureReady({
+      fixtureId:fixture.fixtureId,
+      required:barrier.participants||[],
+      submissions:multiplayerSession.submissions||[]
+    }):{ready:true,waitingOn:[]};
+    if(!readiness.ready){
+      const names=readiness.waitingOn.map(row=>row.manager_name||row.display_name||'the other manager');
+      return{allowed:false,
+        message:`Waiting for ${names.join(' and ')} to confirm their line-up for this fixture.`};
+    }
+    const resolver=core?core.humanFixtureResolver({
+      fixtureId:fixture.fixtureId,
+      required:barrier.participants||[],
+      selfUserId:multiplayerSession.userId
+    }):{isPrimary:true};
+    if(!resolver.isPrimary&&!multiplayerSession.fallbackResolve)
+      return{allowed:false,message:'Both line-ups are locked. Resolving this fixture…'};
+    return{allowed:true};
+  }
+
+  // A local save is also an offer of this manager's club to the shared world.
+  function v104NoteLocalSave(){
+    if(!v104Active())return;
+    try{multiplayerSession.client?.scheduleClubPublish('autosave');}catch(_){}
+  }
+
+  // A completed fixture is submitted once. If another device already stored
+  // a result the server hands that one back and this device keeps it.
+  function v104AfterUserFixture(fixture,mode){
+    if(!v104Active()||!fixture)return;
+    const client=multiplayerSession.client;
+    if(!client)return;
+    const report=fixture.matchday?.report||fixture.matchReport||null;
+    const payload={
+      result:{report,decidedOnPenalties:!!fixture.decidedOnPenalties,
+              decidedAfterExtraTime:!!fixture.decidedAfterExtraTime,
+              penaltiesHome:fixture.penaltiesHome??null,penaltiesAway:fixture.penaltiesAway??null,
+              shootoutWinnerId:fixture.shootoutWinnerId||null,
+              ccShootoutWinnerId:fixture.ccShootoutWinnerId||null,
+              competitionId:fixture.competitionId||null,type:fixture.type||null},
+      date:fixture.date,homeClubId:fixture.homeClubId,awayClubId:fixture.awayClubId,
+      homeScore:Number(fixture.homeScore||0),awayScore:Number(fixture.awayScore||0),
+      mode:String(mode||'QUICK SIM').toUpperCase().replace(/\s+/g,'_')
+    };
+    Promise.resolve()
+      .then(()=>client.submitMatchState(fixture.fixtureId,'COMPLETED',{date:fixture.date}))
+      .then(()=>client.recordMatchResult(fixture.fixtureId,payload))
+      .then(row=>{
+        if(row&&row.first_write===false)v104ReconcileAgainstStoredResult(fixture,row);
+        return client.publishClubState('match');
+      })
+      .then(()=>v104TryResolveBarrier())
+      .catch(()=>{});
+  }
+
+  // If the other device won the race, its result is the one that counts.
+  function v104ReconcileAgainstStoredResult(fixture,row){
+    const home=Number(row.home_score||0),away=Number(row.away_score||0);
+    if(Number(fixture.homeScore)===home&&Number(fixture.awayScore)===away)return;
+    fixture.homeScore=home;fixture.awayScore=away;
+    v202MarkCompetitionDataDirty();
+    showToast('The stored result for this fixture was used.');
+  }
+
+  // Apply an authoritative result that arrived from the shared log. Scores
+  // and the match report are taken as given, never re-rolled, so both
+  // devices end up with identical statistics.
+  function v104ApplyAuthoritativeResult(fixtureId,result={},meta={}){
+    const fixture=fixtureById(fixtureId);
+    if(!fixture||fixture.played)return false;
+    const {home,away}=fixtureClubs(fixture);
+    if(!home||!away)return false;
+    const report=result.report||null;
+    const disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
+    fixture.homeScore=Math.max(0,Number(meta.homeScore??result.homeScore??0));
+    fixture.awayScore=Math.max(0,Number(meta.awayScore??result.awayScore??0));
+    fixture.decidedOnPenalties=!!result.decidedOnPenalties;
+    fixture.decidedAfterExtraTime=!!result.decidedAfterExtraTime;
+    fixture.penaltiesHome=result.penaltiesHome??null;
+    fixture.penaltiesAway=result.penaltiesAway??null;
+    fixture.shootoutWinnerId=result.shootoutWinnerId||null;
+    fixture.ccShootoutWinnerId=result.ccShootoutWinnerId||null;
+    fixture.played=true;
+    fixture.resultMode=meta.mode||'ONLINE';
+    fixture.playedDate=fixture.date;
+    fixture.onlineAuthoritative=true;
+    v202MarkCompetitionDataDirty();
+
+    const events=Array.isArray(report?.disciplineEvents)?report.disciplineEvents:[];
+    disciplineServeFixtureForClub(home,fixture,disciplineServing.home);
+    disciplineServeFixtureForClub(away,fixture,disciplineServing.away);
+    if(events.length)disciplineApplyEvents(fixture,events,home,away);
+    applyBackgroundMatchEffects(home,fixture.homeScore,fixture.awayScore,fixture.fixtureId);
+    applyBackgroundMatchEffects(away,fixture.awayScore,fixture.homeScore,fixture.fixtureId);
+
+    if(fixture.type!=='FRIENDLY'&&report){
+      const lookup=new Map();
+      [...getSquad(home),...getSquad(away)].forEach(player=>lookup.set(String(player.id),player));
+      (report.goalEvents||[]).forEach(event=>{
+        const player=lookup.get(String(event.playerId));
+        const team=event.teamId===home.id?home:away;
+        if(player)v43ApplyGoal(player,team,fixture);
+        if(event.assistPlayerId){
+          const assistant=lookup.get(String(event.assistPlayerId));
+          if(assistant)v43ApplyAssist(assistant,team,fixture,1);
+        }
+      });
+      (report.ratings||[]).forEach(row=>{
+        const player=lookup.get(String(row.playerId));
+        if(!player)return;
+        const team=getSquad(home).some(x=>String(x.id)===String(row.playerId))?home:away;
+        ensurePlayerCareerMeta(player);
+        player.seasonStats.lastRating=Number(row.rating||0);
+        player.seasonStats.ratingSum=Number(player.seasonStats.ratingSum||0)+Number(row.rating||0);
+        player.seasonStats.ratingCount=Number(player.seasonStats.ratingCount||0)+1;
+        v43RecordRatingLine(player,team,fixture,Number(row.rating||0),{known:true});
+      });
+      const potm=report.potmId?lookup.get(String(report.potmId)):null;
+      if(potm){
+        ensurePlayerCareerMeta(potm);
+        potm.seasonStats.potm=Number(potm.seasonStats.potm||0)+1;
+      }
+    }
+    championsCrownAfterFixture(fixture);
+    ensureCupProgression(fixture.date);
+    ensureChampionsCrownProgression(fixture.date);
+    updateSeasonProgression(fixture.date);
+    v96CaptureLiveRecords(fixture);
+    return true;
+  }
+
+  // Move the shared calendar by one resolved barrier. Remaining AI fixtures
+  // are resolved here, exactly once, because the event that triggers this
+  // can only ever be applied once.
+  function v104ApplySharedAdvance(fromDate,toDate){
+    if(!toDate)return false;
+    const target=isoDate(toDate);
+    if(currentCareerISO()>=target)return false;
+    setCareerDate(target);
+    processDailyPlayerUpdates(target);
+    processLivingSquadDay(target);
+    const resolved=simulateWorldFixturesForDate(target,null);
+    processScoutingForDate(target);
+    processCareerEventsForDate(target);
+    processLivingCareerDay(target,resolved);
+    processManagerMarketDay(target);
+    updateSeasonProgression(target);
+    saveCareerState();
+    refreshActiveCareerScreen();
+    return true;
+  }
+
+  // Ask the server to close the barrier. Safe to call from either device and
+  // from every device: only one call can ever be the one that resolves it.
+  function v104TryResolveBarrier(){
+    if(!v104Active())return Promise.resolve(null);
+    const status=v104Status();
+    if(!status?.barrier?.resolvable)return Promise.resolve(null);
+    const date=status.barrier.date;
+    return multiplayerSession.client.resolveBarrier(date,addDaysISO(date,1)).catch(()=>null);
+  }
+
+  // Which human clubs must finish a fixture on this date before the shared
+  // calendar may move. Byes and blank dates simply do not appear.
+  function v104RequiredParticipants(date=currentCareerISO()){
+    const core=v104Core();
+    if(!core||!v104Active())return[];
+    return core.requiredParticipants({fixtures,claims:multiplayerSession.claims||[],date:isoDate(date)});
+  }
+
+  function v104ClubStatePayload(clubId){
+    const id=String(clubId);
+    return{
+      squads:squadCache.get(id)||getSquad(clubById(id))||[],
+      lineups:lineupCache.get(id)||null,
+      clubBudgets:clubById(id)?.budget??null,
+      academies:youthAcademies.get(id)||[],
+      publishedAt:currentCareerISO()
+    };
+  }
+  function v104ApplyClubStatePayload(clubId,payload={}){
+    const id=String(clubId);
+    if(Array.isArray(payload.squads))squadCache.set(id,payload.squads);
+    if(payload.lineups)lineupCache.set(id,payload.lineups);
+    const club=clubById(id);
+    if(club&&payload.clubBudgets!==null&&payload.clubBudgets!==undefined)club.budget=payload.clubBudgets;
+    if(Array.isArray(payload.academies))youthAcademies.set(id,payload.academies);
+    v202MarkCompetitionDataDirty();
+    return true;
+  }
+
+  window.VelmoraMultiplayerBridge={
+    // ---- world snapshots ----
+    buildSnapshot(){
+      const core=v104Core();
+      const data=buildCareerSaveData();
+      const world={...data};
+      if(core)core.PRIVATE_KEYS.forEach(key=>{delete world[key];});
+      return{
+        payload:window.VelmoraSaveCodec.encode(JSON.stringify(world)),
+        checksum:String(hashString(JSON.stringify(world.careerTime||{})+String(world.worldSeed||''))),
+        saveSchema:Number(window.VELMORA_RELEASE?.saveSchema||86),
+        careerDate:currentCareerISO(),
+        seasonId:careerTime?.seasonId||null,
+        worldSeed
+      };
+    },
+    applySnapshot(payload){
+      try{
+        const core=v104Core();
+        const incoming=JSON.parse(window.VelmoraSaveCodec.decode(payload));
+        if(!incoming?.worldSeed)return false;
+        const identity=multiplayerSession?.identity||{};
+        const merged={...incoming};
+        // The world arrives from the shared career; the identity and every
+        // private drawer stay on this device.
+        if(core)core.PRIVATE_KEYS.forEach(key=>{
+          if(Object.prototype.hasOwnProperty.call(identity,key))merged[key]=identity[key];
+        });
+        merged.currentClubId=identity.currentClubId||multiplayerSession?.clubId||null;
+        merged.employmentStatus='employed';
+        if(identity.manager)merged.manager=identity.manager;
+        if(identity.managerName)merged.managerName=identity.managerName;
+        const ok=applyCareerSaveData(merged,activeCareerSlot||1);
+        if(ok)v104SyncReservedClubs(multiplayerSession?.humanClubIds||[]);
+        return ok;
+      }catch(error){
+        console.error?.('[Velmora] online world could not be applied',error);
+        return false;
+      }
+    },
+    // ---- partitions ----
+    buildClubState(clubId){return v104ClubStatePayload(clubId);},
+    applyClubState(clubId,payload){return v104ApplyClubStatePayload(clubId,payload);},
+    // ---- world mutations from the shared log ----
+    applyMatchResult(fixtureId,result,meta){return v104ApplyAuthoritativeResult(fixtureId,result,meta);},
+    advanceSharedDay(fromDate,toDate){return v104ApplySharedAdvance(fromDate,toDate);},
+    applyWorldAction(kind,payload){return window.VELMORA_MP_WORLD_ACTIONS?.[kind]?.(payload)||false;},
+    onManagerConvertedToAi(userId,clubId){
+      if(clubId)v104ReservedClubIds.delete(String(clubId));
+      if(multiplayerSession)multiplayerSession.humanClubIds=
+        (multiplayerSession.humanClubIds||[]).filter(id=>String(id)!==String(clubId));
+      showToast('The other manager’s club is now run by the AI.');
+    },
+    // ---- context the client reports back ----
+    activityRoute(){return activePrimaryScreen||'menu';},
+    currentDate(){return currentCareerISO();},
+    requiredParticipants(date){return v104RequiredParticipants(date);},
+    fixturesOnDate(date){return fixtures.filter(f=>f.date===isoDate(date)&&!f.played);},
+    onRemoteChange(status){
+      if(!multiplayerSession)return;
+      multiplayerSession.status=status;
+      multiplayerSession.submissions=status?.barrier?.participants||[];
+      multiplayerSession.humanClubIds=(status?.members||[]).map(row=>row.club_id).filter(Boolean);
+      v104SyncReservedClubs(multiplayerSession.humanClubIds);
+      window.VelmoraMultiplayerUI?.render(status);
+      // Both clients receive the unlocked state without a manual refresh.
+      if(status&&!status.locked)refreshActiveCareerScreen();
+    }
+  };
+
+  // Session lifecycle, driven by the lobby interface.
+  window.VelmoraMultiplayerGame={
+    begin(session){
+      multiplayerSession={submissions:[],claims:[],humanClubIds:[],...session};
+      v104SyncReservedClubs(multiplayerSession.humanClubIds);
+      return multiplayerSession;
+    },
+    update(patch){
+      if(!multiplayerSession)return null;
+      multiplayerSession={...multiplayerSession,...patch};
+      v104SyncReservedClubs(multiplayerSession.humanClubIds||[]);
+      return multiplayerSession;
+    },
+    end(){multiplayerSession=null;v104ReservedClubIds.clear();},
+    session(){return multiplayerSession;},
+    active:v104Active,
+    progressionBlock:v104ProgressionBlock,
+    requiredParticipants:v104RequiredParticipants,
+    resolveBarrier:v104TryResolveBarrier,
+    captureIdentity(){
+      const core=v104Core();
+      const data=buildCareerSaveData();
+      const identity={};
+      if(core)core.PRIVATE_KEYS.forEach(key=>{
+        if(Object.prototype.hasOwnProperty.call(data,key))identity[key]=data[key];
+      });
+      return identity;
+    },
+    goToCareer(){renderCentral();showScreen('central');},
+    goToMenu(){showScreen('menu');},
+    // The lobby is a blocking overlay like any other, so the game's own
+    // interactivity pass has to run when it opens and closes -- otherwise
+    // the menu stays inert and keyboard focus cannot return to it.
+    syncOverlays(){try{syncPrimaryScreenInteractivity();}catch(_){}},
+    // The online lobby reuses the real manager creator rather than a weaker
+    // copy of it, then comes straight back.
+    openManagerCreator(done){
+      v104CreatorReturn=(profile,name)=>{try{done(profile,name);}catch(_){}};
+      beginManagerCreator(false);
+    },
+    managerProfile(){return deepClone(ensureManagerProfile());},
+    managerDisplayName(){return String(ensureManagerProfile()?.identity?.name||managerName||'Career Manager');},
+    clubDirectory(){
+      return clubs.map(club=>({
+        id:club.id,name:club.name,division:club.division,divisionKey:club.divisionKey,
+        country:club.country,world:clubWorldName(club),accent:club.accent||'#174f9f',
+        badge:club.badge||null,reputation:Number(club.reputation||1),tier:Number(club.tier||4)
+      }));
+    },
+    badgeHTML(clubId){const club=clubById(clubId);return club?fittedShieldBadgeHTML(club):'';},
+    // Starting an online career reuses the ordinary new-career path, so the
+    // world, fixtures and competitions are generated by the same code that
+    // has always generated them.
+    prepareWorld(clubId){
+      const club=clubById(clubId);
+      if(!club)return false;
+      resetCareerWorld();
+      currentClub=club;selectedClub=club;employmentStatus='employed';
+      jobSearchState=normalizeJobSearchState({startingMode:'direct',appointedDate:currentCareerISO(),reputation:18});
+      assignManagerClubBranding(club);
+      initializeCareerLifecycle();
+      return true;
+    },
+    adoptClub(clubId){
+      const club=clubById(clubId);
+      if(!club)return false;
+      currentClub=club;selectedClub=club;employmentStatus='employed';
+      assignManagerClubBranding(club);
+      return true;
+    },
+    reducedMotion(){return mainMenuMotionReduced();},
+    playClickSfx(){try{playMainMenuFocusSfx();}catch(_){}},
+    showToast
+  };
+
   window.VELMORA_MANAGER_DEBUG={
     v102ChairmenIntegrityForTest:()=>{initializeManagerMarketState();initializeChairmanSystem();const club=currentClub||selectedClub||clubs[0],profile=chairmanForClub(club),relationship=chairmanRelationship(club,chairmanManagerId(club)),audit=window.VelmoraChairmen?.audit(ownershipState,clubs)||{};return{...audit,version:'V102',saveSchema:85,currentClubId:club?.id||null,currentChairmanId:profile?.id||null,currentChairmanName:profile?.name||null,priorityCount:profile?.priorities?.length||0,dimensionCount:Object.keys(profile?.dimensions||{}).length,relationshipState:relationship?.state||null,confidence:Number(relationship?.confidence||0),interviewQuestions:interviewQuestionsForClub(club).length,objectiveCount:buildBoardObjectives(club).length,objectiveReasons:buildBoardObjectives(club).filter(o=>o.reason).length,ownerAffectsAiSecurity:typeof aiManagerSecurityScore==='function',ownerAffectsHiring:typeof window.VelmoraChairmen?.appointmentCompatibility==='function',moneyCreationRemoved:!String(negotiateManagerOffer).includes('promisedBudgetBonus'),persistentSave:true,legacyMigration:true};},
     v103ClubPulseIntegrityForTest:()=>{const club=currentClub||selectedClub||clubs[0];ensureAudienceClub(club);const snapshots=clubPulseSnapshot(club),audit=window.VelmoraClubPulse?.audit(audienceWorldState)||{};return{...audit,version:'V103',saveSchema:86,clubId:club?.id||null,audienceKeys:snapshots.map(row=>row.key),audienceScores:Object.fromEntries(snapshots.map(row=>[row.key,row.score])),distinctMemoryArrays:new Set(Object.values(audienceWorldState.clubs?.[club.id]?.audiences||{}).map(row=>row.memories)).size===4,pressAudience:snapshots.some(row=>row.key==='press'),dossierRenderer:typeof openClubPulseDossier==='function',decisionMemory:typeof recordDecisionAudienceMemory==='function',pressMemory:typeof recordPressConferenceAudienceMemory==='function',delayedScheduler:typeof window.VelmoraClubPulse?.schedule==='function',dailyResolution:typeof processDelayedAudienceOutcomes==='function',instantVerdictSuppressed:String(recordDecisionAudienceMemory).includes('NO INSTANT VERDICT'),transferResponseDelayReintroduced:calendarEvents.some(event=>event.type==='TRANSFER_RESPONSE'),persistentSave:true,legacyMigration:true};},
