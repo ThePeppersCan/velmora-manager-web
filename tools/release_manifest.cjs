@@ -10,7 +10,6 @@ const runtimeFiles=[
   'clubhouse-events.css','manager-career.css','season-board-polish.css','domestic-cups.css','world-history-records.css',
   'personnel-identity.js','personnel-identity.css',
   'multiplayer-core.js','multiplayer-client.js','multiplayer-ui.js','multiplayer.css',
-  'supabase-velmora-manager-multiplayer.sql',
   'main-menu.css',
   'matchday-cobalt.css','matchday-preview-redesign.css','press-conference.css',
   'results-cinematic.css','league-table-cinematic.css','press-conference-data.js',
