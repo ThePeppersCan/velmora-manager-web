@@ -152,13 +152,17 @@ assert.ok(matchday,'this club has a next fixture');
 const required=online.requiredParticipants(matchday.date);
 assert.ok(required.some(row=>row.fixture_id===matchday.fixtureId&&row.user_id==='u1'),
   'this manager is required for their own fixture');
-for(const row of required){
+const fixtureRequirements=required.filter(row=>row.requirement!=='DAY_ADVANCE');
+const advanceRequirements=required.filter(row=>row.requirement==='DAY_ADVANCE');
+for(const row of fixtureRequirements){
   const fixture=q.state().fixtures.find(f=>f.fixtureId===row.fixture_id);
   assert.equal(fixture.played,false,'every required fixture is genuinely unplayed');
   assert.equal(fixture.date,matchday.date,'and genuinely on that date');
 }
+assert.equal(advanceRequirements.length,2,'both managers must also confirm Advance for the date');
 const blank=online.requiredParticipants('2027-06-30');
-assert.equal(blank.length,0,'a date with no human fixture requires nobody');
+assert.equal(blank.length,2,'an ordinary date still requires both managers to confirm Advance');
+assert.equal(blank.every(row=>row.requirement==='DAY_ADVANCE'),true);
 
 // ---------------------------------------------------------------
 // An authoritative result is applied, never re-rolled

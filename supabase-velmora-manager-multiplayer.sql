@@ -988,10 +988,11 @@ end;
 $$;
 
 -- =====================================================================
--- 17. Matchday barrier
---     A barrier names every human-controlled club with an unplayed
---     fixture on that date. A club with a bye, a postponement or no
---     fixture is simply never listed, so it cannot block anybody.
+-- 17. Shared-day barrier
+--     A barrier names every human-controlled club with an unplayed fixture
+--     on that date and may also carry one DAY_ADVANCE confirmation per active
+--     manager. Byes and blank dates have no fixture requirement, but the
+--     deliberate Advance handshake still applies.
 -- =====================================================================
 create or replace function public.velmora_mp_open_barrier(
   p_career_id uuid,
@@ -1239,8 +1240,8 @@ begin
                               'resolution_seq', v_barrier.resolution_seq, 'first_resolver', false);
   end if;
 
-  -- Every required human fixture must carry an authoritative result, and a
-  -- manager who has since been converted to AI no longer counts.
+  -- Every required human fixture or shared Advance gate must carry its one
+  -- authoritative result. A manager converted to AI no longer counts.
   for v_row in select * from jsonb_array_elements(v_barrier.required) loop
     if exists (select 1 from public.velmora_multiplayer_members m
                 where m.career_id = p_career_id

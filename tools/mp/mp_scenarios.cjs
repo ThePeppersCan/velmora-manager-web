@@ -113,6 +113,31 @@ async function run(backend,report){
   });
 
   // ---------------------------------------------------------------
+  await check('both managers confirming before an ordinary day advances',async()=>{
+    const date='2026-08-01',next='2026-08-02';
+    const claims=await backend.rawSelect(alexId,'velmora_multiplayer_club_claims',{career_id:careerId});
+    const required=core.requiredParticipants({fixtures:alex.bridge._world().fixtures,claims,date,requireAdvance:true});
+    assert.equal(required.length,2,'a blank date still carries both Advance confirmations');
+    assert.equal(required.every(row=>row.requirement==='DAY_ADVANCE'),true);
+    await alex.client.openBarrier(date,required);
+    const gateId=core.dayAdvanceId(date);
+    await alex.client.submitMatchState(gateId,'READY',{date});
+    await sam.client.refreshLobby();
+    assert.equal(sam.client.status().dayAdvance.ready,false,'one click is not enough');
+    const early=await alex.client.resolveBarrier(date,next);
+    assert.equal(early.status,'OPEN','the server also refuses an early advance');
+
+    await sam.client.submitMatchState(gateId,'READY',{date});
+    await alex.client.refreshLobby();
+    assert.equal(alex.client.status().dayAdvance.ready,true,'both confirmations complete the handshake');
+    await sam.client.recordMatchResult(gateId,{date,result:{kind:'DAY_ADVANCE_CONFIRMATION'},mode:'DAY_ADVANCE'});
+    const resolved=await sam.client.resolveBarrier(date,next);
+    assert.equal(resolved.status,'RESOLVED');
+    await alex.client.pullEvents();
+    assert.equal(alex.bridge._world().date,next,'the shared date moves only after both clicks');
+  });
+
+  // ---------------------------------------------------------------
   await check('two managers changing separate club data without overwriting each other',async()=>{
     alex.bridge._world().clubState[ALEX_CLUB]={squads:['alex-1'],marker:'ALEX'};
     sam.bridge._world().clubState[SAM_CLUB]={squads:['sam-1'],marker:'SAM'};
@@ -210,8 +235,8 @@ async function run(backend,report){
 
     const refused=await alex.client.resolveBarrier(MATCHDAY,'2026-08-09');
     assert.equal(refused.status,'OPEN','the barrier refuses to resolve early');
-    assert.equal(alex.bridge._world().date,'2026-08-01','and the shared date has not moved');
-    assert.equal(sam.bridge._world().date,'2026-08-01');
+    assert.equal(alex.bridge._world().date,'2026-08-02','and the shared date has not moved again');
+    assert.equal(sam.bridge._world().date,'2026-08-02');
   });
 
   await check('duplicate match submission is idempotent',async()=>{
@@ -271,7 +296,8 @@ async function run(backend,report){
 
     const advances=await backend.rawSelect(alexId,'velmora_multiplayer_events',
       {career_id:careerId,kind:'DAY_ADVANCE'});
-    assert.equal(advances.length,1,'and exactly one advance event exists');
+    assert.equal(advances.filter(row=>row.payload?.from_date===MATCHDAY).length,1,
+      'and exactly one advance event exists for this date');
   });
 
   await check('AI fixtures resolve exactly once and both worlds agree',async()=>{
@@ -279,8 +305,8 @@ async function run(backend,report){
     await sam.client.pullEvents();
     assert.equal(alex.bridge._world().date,'2026-08-09','the shared date moved for the first device');
     assert.equal(sam.bridge._world().date,'2026-08-09','and for the second');
-    assert.equal(alex.bridge._world().counters.advance,1,'applied once here');
-    assert.equal(sam.bridge._world().counters.advance,1,'and once there');
+    assert.equal(alex.bridge._world().counters.advance,2,'each of the two resolved dates applied once here');
+    assert.equal(sam.bridge._world().counters.advance,2,'and once each there');
     assert.equal(alex.bridge._world().counters.aiResolved.F3,1,'the AI fixture resolved once');
     assert.equal(sam.bridge._world().counters.aiResolved.F3,1);
 
@@ -291,7 +317,7 @@ async function run(backend,report){
 
     // A pull that arrives again must not advance a second time.
     await alex.client.pullEvents();
-    assert.equal(alex.bridge._world().counters.advance,1,'a repeated pull changes nothing');
+    assert.equal(alex.bridge._world().counters.advance,2,'a repeated pull changes nothing');
   });
 
   // ---------------------------------------------------------------
@@ -460,7 +486,7 @@ async function run(backend,report){
     assert.equal(reconnected.bridge._world().clubState[ALEX_CLUB].marker,'WHILE-AWAY',
       'and catches up on everything missed');
     assert.equal(reconnected.bridge._world().date,'2026-08-09','including the shared date');
-    assert.equal(reconnected.bridge._world().counters.advance<=1,true,
+    assert.equal(reconnected.bridge._world().counters.advance<=2,true,
       'without replaying the advance a second time');
     sam=reconnected;
   });

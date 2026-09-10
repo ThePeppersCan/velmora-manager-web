@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.8.0',
-    label:'V104.8',
-    channel:'MATCH BALANCE',
-    cacheKey:'v104-8-match-balance-20260910',
+    version:'104.9.0',
+    label:'V104.9',
+    channel:'SHARED PROGRESSION',
+    cacheKey:'v104-9-shared-progression-20260910',
     saveSchema:86
   });
 });

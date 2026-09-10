@@ -4353,13 +4353,18 @@
 
   function advanceCareerDay(options={}){
     initializeCareerCalendar(false);
-    // V104: the shared barrier outranks every local reason to advance.
+    const blockingFixture=userFixtureOnDate(currentCareerISO());
+    if(v104Active()&&blockingFixture){
+      return {advanced:false,blocked:true,reason:'MATCHDAY',fixture:blockingFixture,events:eventsOnDate(currentCareerISO())};
+    }
+    // Matchday belongs to the local manager even while the shared calendar is
+    // locked. Only progression waits; menus and the manager's own fixture do
+    // not. This also prevents a manager being named as their own blocker.
     const onlineBarrier=v104ProgressionBlock();
     if(onlineBarrier)return {advanced:false,blocked:true,reason:'ONLINE_BARRIER',online:onlineBarrier,events:[]};
     if(roadToGlory.seasonReview?.pending){if(!options.silent)renderSeasonReviewOverlay();return {advanced:false,blocked:true,reason:'SEASON_REVIEW',events:[]};}
     const decision=pendingDecisionEvent();
     if(decision)return {advanced:false,blocked:true,reason:'DECISION',decision,events:[]};
-    const blockingFixture=userFixtureOnDate(currentCareerISO());
     if(blockingFixture){
       return {advanced:false,blocked:true,reason:'MATCHDAY',fixture:blockingFixture,events:eventsOnDate(currentCareerISO())};
     }
@@ -12416,7 +12421,15 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const key=`MATCH:${fixture.fixtureId}`;
     return runLockedAction(key,button,()=>{
       matchdayActionBusy=true;
-      const launch=()=>launchMatchdayMode(fixture,mode);
+      const launch=()=>{
+        if(v104HumanVsHumanFixture(fixture)){
+          Promise.resolve(v104PrepareHumanFixture(fixture,mode)).then(started=>{
+            if(!started){matchdayActionBusy=false;if(screens.matchday?.classList.contains('is-active'))renderMatchday();}
+          }).catch(()=>{matchdayActionBusy=false;showToast('This online match could not be prepared. Reconnect and try again.');});
+          return;
+        }
+        launchMatchdayMode(fixture,mode);
+      };
       const opened=openFixturePressConference('pre',fixture,launch,mode==='WATCH'?'CONTINUE TO LIVE MATCH':'CONTINUE TO QUICK SIM');
       if(opened)matchdayActionBusy=false;
       return true;
@@ -13472,10 +13485,31 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(status.readOnly)return{reason:'READ_ONLY',
       message:'Velmora cannot reach the shared career right now, so the date is paused. You can still look around your club.'};
     const barrier=status.barrier;
-    if(!barrier||!barrier.locked)return null;
+    // A future/stale barrier must never block the date currently rendered on
+    // this device. The transport reconciles to the authoritative shared date;
+    // until then, the unrelated fixture is ignored.
+    const barrierOpen=barrier?.open===true||barrier?.locked===true;
+    if(!barrier||barrier.date!==currentCareerISO()||!barrierOpen)return null;
+    // Every manager gets one meaningful Advance click per date. The first
+    // click confirms this manager; subsequent clicks remain blocked while the
+    // other manager (or a fixture) is outstanding.
+    const day=status.dayAdvance;
+    if(day&&day.date===currentCareerISO()){
+      const mine=(day.participants||[]).find(row=>String(row.user_id)===String(multiplayerSession?.userId||''));
+      if(mine&&!mine.confirmed)return null;
+      if(!day.complete)return{reason:'BARRIER',date:barrier.date,
+        outstanding:barrier.outstanding,
+        message:status.waitingMessage||'Waiting for the other manager to confirm Advance.'};
+    }
+    if(!barrier.locked)return null;
     return{reason:'BARRIER',date:barrier.date,
       outstanding:barrier.outstanding,
       message:status.waitingMessage||'Waiting for the other manager to complete their fixture.'};
+  }
+
+  function v104HumanVsHumanFixture(fixture){
+    if(!fixture||!v104Active())return false;
+    return!!(v104HumanMemberForClub(clubById(fixture.homeClubId))&&v104HumanMemberForClub(clubById(fixture.awayClubId)));
   }
 
   // Whether this device may resolve this fixture right now.
@@ -13487,6 +13521,8 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       message:'Velmora cannot reach the shared career, so this match cannot be saved yet.'};
     const core=v104Core();
     const barrier=status.barrier||{};
+    if(barrier.date&&barrier.date!==fixture.date)return{allowed:false,
+      message:'Synchronising this matchday with the shared calendar…'};
     const required=(barrier.participants||[]).filter(row=>String(row.fixture_id)===String(fixture.fixtureId));
     if(!required.length)return{allowed:true};
     const h2h=required.some(row=>row.human_vs_human);
@@ -13511,6 +13547,39 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!resolver.isPrimary&&!multiplayerSession.fallbackResolve)
       return{allowed:false,message:'Both line-ups are locked. Resolving this fixture…'};
     return{allowed:true};
+  }
+
+  function v104MaybeLaunchPendingHumanFixture(){
+    const pending=multiplayerSession?.pendingHumanFixture;
+    if(!pending||pending.launching)return false;
+    const fixture=fixtureById(pending.fixtureId);
+    if(!fixture||fixture.played||fixture.date!==currentCareerISO()){
+      multiplayerSession.pendingHumanFixture=null;
+      return false;
+    }
+    const gate=v104MatchGate(fixture);
+    if(!gate?.allowed)return false;
+    pending.launching=true;
+    multiplayerSession.pendingHumanFixture=null;
+    launchMatchdayMode(fixture,pending.mode);
+    return true;
+  }
+
+  async function v104PrepareHumanFixture(fixture,mode){
+    if(!v104HumanVsHumanFixture(fixture))return false;
+    const client=multiplayerSession?.client;
+    if(!client?.submitMatchState){showToast('This online match could not be prepared. Reconnect and try again.');return false;}
+    multiplayerSession.pendingHumanFixture={fixtureId:fixture.fixtureId,mode,launching:false};
+    await v104EnsureBarrier(fixture.date);
+    await client.submitMatchState(fixture.fixtureId,'READY',{
+      date:fixture.date,
+      lineup:{starters:activeStarters(currentClub).map(player=>player.id)},
+      tactics:deepClone(careerPreferences.tactics||{})
+    });
+    if(v104MaybeLaunchPendingHumanFixture())return true;
+    const gate=v104MatchGate(fixture);
+    showToast(gate?.message||'Line-up confirmed. Waiting for the other manager.');
+    return false;
   }
 
   // A local save is also an offer of this manager's club to the shared world.
@@ -13627,7 +13696,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   // Move the shared calendar by one resolved barrier. Remaining AI fixtures
   // are resolved here, exactly once, because the event that triggers this
   // can only ever be applied once.
-  function v104ApplySharedAdvance(fromDate,toDate){
+  function v104ApplySharedAdvance(fromDate,toDate,options={}){
     if(!toDate)return false;
     const target=isoDate(toDate);
     if(currentCareerISO()>=target)return false;
@@ -13640,13 +13709,30 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     processLivingCareerDay(target,resolved);
     processManagerMarketDay(target);
     updateSeasonProgression(target);
-    saveCareerState();
-    refreshActiveCareerScreen();
+    if(options.save!==false)saveCareerState();
+    if(options.refresh!==false)refreshActiveCareerScreen();
     // The next day's barrier exists before anyone reaches it, so a fixture
     // belonging to the other manager blocks the calendar on the first click
     // rather than the second.
-    v104EnsureBarrier(target);
+    if(options.prepareBarrier!==false)v104EnsureBarrier(target);
     return true;
+  }
+
+  // The career row is the authoritative date. Normally ordered DAY_ADVANCE
+  // events move the device one day at a time; this is the recovery path for a
+  // compacted or interrupted older snapshot whose payload stopped earlier.
+  function v104SyncSharedDate(targetDate){
+    if(!v104Active()||!targetDate)return false;
+    const target=isoDate(targetDate);
+    let changed=false,guard=0;
+    while(currentCareerISO()<target&&guard++<3700){
+      const from=currentCareerISO(),to=addDaysISO(from,1);
+      if(!v104ApplySharedAdvance(from,to,{save:false,refresh:false,prepareBarrier:false}))break;
+      changed=true;
+    }
+    if(changed){saveCareerState();refreshActiveCareerScreen();}
+    if(currentCareerISO()===target)v104EnsureBarrier(target);
+    return changed;
   }
 
   // Ask the server to close the barrier. Safe to call from either device and
@@ -13654,9 +13740,12 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function v104TryResolveBarrier(){
     if(!v104Active())return Promise.resolve(null);
     const status=v104Status();
-    if(!status?.barrier?.resolvable)return Promise.resolve(null);
-    const date=status.barrier.date;
-    return multiplayerSession.client.resolveBarrier(date,addDaysISO(date,1)).catch(()=>null);
+    // Existing careers may already have today's barrier from an older build,
+    // before DAY_ADVANCE requirements were stored inside it. Keep those
+    // barriers locked behind the same two-click handshake as newly opened
+    // ones, then let the common finalizer handle both formats.
+    if(!status?.dayAdvance?.ready)return Promise.resolve(null);
+    return v104FinalizeSharedAdvanceIfReady(status).catch(()=>null);
   }
 
   // Open the shared barrier for a date. The server keeps exactly one row per
@@ -13675,6 +13764,14 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     let request;
     try{request=Promise.resolve(client.openBarrier(iso,v104RequiredParticipants(iso))).catch(()=>null);}
     catch(_){request=Promise.resolve(null);}
+    // A successful open is permanent for this date, but a failed network
+    // attempt is not. Evict failures so the reconnect poll or the manager's
+    // next click can repair the barrier instead of reusing a cached null.
+    request=request.then(row=>{
+      if(!row&&multiplayerSession?.barrierOpens?.get(iso)===request)
+        multiplayerSession.barrierOpens.delete(iso);
+      return row;
+    });
     if(multiplayerSession.barrierOpens.size>90)multiplayerSession.barrierOpens.clear();
     multiplayerSession.barrierOpens.set(iso,request);
     return request;
@@ -13688,20 +13785,52 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function v104RequestSharedAdvance(){
     if(!v104Active())return Promise.resolve(null);
     const client=multiplayerSession.client;
-    if(!client||!client.resolveBarrier)return Promise.resolve(null);
+    if(!client||!client.resolveBarrier||!client.submitMatchState)return Promise.resolve(null);
     const from=currentCareerISO();
     const to=addDaysISO(from,1);
+    const core=v104Core(),gateId=core?.dayAdvanceId(from)||`DAY-ADVANCE:${from}`;
     return v104EnsureBarrier(from)
-      .then(()=>client.resolveBarrier(from,to))
+      .then(()=>client.submitMatchState(gateId,'READY',{date:from}))
+      .then(()=>v104FinalizeSharedAdvanceIfReady(client.status?.()||v104Status()))
       .catch(()=>null);
   }
 
-  // Which human clubs must finish a fixture on this date before the shared
-  // calendar may move. Byes and blank dates simply do not appear.
+  function v104FinalizeSharedAdvanceIfReady(status=v104Status()){
+    if(!v104Active()||!status?.dayAdvance?.ready)return Promise.resolve({status:'WAITING'});
+    const client=multiplayerSession?.client,date=status.dayAdvance.date;
+    if(!client||date!==currentCareerISO()||status?.barrier?.date!==date)return Promise.resolve({status:'WAITING'});
+    if(!multiplayerSession.advanceFinalizers)multiplayerSession.advanceFinalizers=new Map();
+    const cached=multiplayerSession.advanceFinalizers.get(date);if(cached)return cached;
+    if(multiplayerSession.advanceFinalizers.size>90)multiplayerSession.advanceFinalizers.clear();
+    const gateId=status.dayAdvance.fixtureId;
+    const gateRequired=(status.barrier.participants||[]).some(row=>
+      row.requirement==='DAY_ADVANCE'&&String(row.fixture_id)===gateId);
+    const finish=gateRequired&&!status.dayAdvance.complete
+      ?Promise.resolve(client.recordMatchResult?.(gateId,{
+          result:{kind:'DAY_ADVANCE_CONFIRMATION',date},date,
+          homeClubId:null,awayClubId:null,homeScore:0,awayScore:0,mode:'DAY_ADVANCE'
+        })).then(()=>client.resolveBarrier(date,addDaysISO(date,1)))
+      :Promise.resolve(client.resolveBarrier(date,addDaysISO(date,1)));
+    // Keep a completed finalizer cached for idempotency. An OPEN/null reply
+    // means the network or another prerequisite interrupted this attempt, so
+    // it must be retryable when the next authoritative status arrives.
+    const tracked=finish.then(row=>{
+      if(!row||row.status!=='RESOLVED')multiplayerSession?.advanceFinalizers?.delete(date);
+      return row;
+    },error=>{
+      multiplayerSession?.advanceFinalizers?.delete(date);
+      throw error;
+    });
+    multiplayerSession.advanceFinalizers.set(date,tracked);
+    return tracked;
+  }
+
+  // Which human fixtures must finish, plus one explicit Advance confirmation
+  // per active manager, before this shared date may move.
   function v104RequiredParticipants(date=currentCareerISO()){
     const core=v104Core();
     if(!core||!v104Active())return[];
-    return core.requiredParticipants({fixtures,claims:multiplayerSession.claims||[],date:isoDate(date)});
+    return core.requiredParticipants({fixtures,claims:multiplayerSession.claims||[],date:isoDate(date),requireAdvance:true});
   }
 
   function v104ClubStatePayload(clubId){
@@ -13899,6 +14028,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     // ---- world mutations from the shared log ----
     applyMatchResult(fixtureId,result,meta){return v104ApplyAuthoritativeResult(fixtureId,result,meta);},
     advanceSharedDay(fromDate,toDate){return v104ApplySharedAdvance(fromDate,toDate);},
+    syncSharedDate(targetDate){return v104SyncSharedDate(targetDate);},
     applyWorldAction(kind,payload,subjectKey,event){return v104ApplyWorldAction(kind,payload,subjectKey,event);},
     onManagerConvertedToAi(userId,clubId){
       if(clubId)v104ReservedClubIds.delete(String(clubId));
@@ -13925,6 +14055,11 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       // A career that has never opened a barrier for today cannot block or
       // advance, so every status refresh repairs that before anything else.
       if(status&&(!status.barrier||status.barrier.date!==currentCareerISO()))v104EnsureBarrier();
+      if(status?.dayAdvance?.ready&&status.barrier?.date===currentCareerISO())v104FinalizeSharedAdvanceIfReady(status);
+      // The manager who confirmed first stays armed. When the second human
+      // line-up arrives, the elected device starts the fixture automatically
+      // instead of leaving both players behind disabled controls.
+      if(multiplayerSession.pendingHumanFixture)window.setTimeout(v104MaybeLaunchPendingHumanFixture,0);
       // Both clients receive the unlocked state without a manual refresh.
       if(status&&!status.locked)refreshActiveCareerScreen();
     }

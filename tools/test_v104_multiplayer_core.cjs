@@ -100,15 +100,30 @@ assert.equal(new Set(derby.map(row=>row.fixture_id)).size,1,'for the one shared 
 // A club with no fixture at all is never listed.
 assert.deepEqual(core.requiredParticipants({fixtures,claims,date:'2026-09-01'}),[],
   'a blank date requires nobody');
+const daily=core.requiredParticipants({fixtures,claims,date:'2026-09-01',requireAdvance:true});
+assert.equal(daily.length,2,'both managers are required when the shared day itself is advanced');
+assert.equal(daily.every(row=>row.requirement==='DAY_ADVANCE'),true);
+assert.equal(new Set(daily.map(row=>row.fixture_id)).size,1,'both confirmations seal one daily gate');
 
 // ---- barrier state ---------------------------------------------------
 const now=Date.parse('2026-08-08T12:00:00Z');
 const members=[
-  {user_id:'u1',display_name:'Alex',manager_name:'Alex Vance',club_name:'Aurelia',
+  {user_id:'u1',club_id:'aurelia',display_name:'Alex',manager_name:'Alex Vance',club_name:'Aurelia',
    status:'ACTIVE',presence_status:'ONLINE',presence_at:new Date(now-5000).toISOString()},
-  {user_id:'u2',display_name:'Sam',manager_name:'Sam Rhodes',club_name:'Blackglass',
+  {user_id:'u2',club_id:'blackglass',display_name:'Sam',manager_name:'Sam Rhodes',club_name:'Blackglass',
    status:'ACTIVE',presence_status:'ONLINE',presence_at:new Date(now-5000).toISOString()}
 ];
+const dayId=core.dayAdvanceId('2026-08-08');
+let day=core.dayAdvanceState({date:'2026-08-08',members,submissions:[],results:[]});
+assert.equal(day.ready,false);
+day=core.dayAdvanceState({date:'2026-08-08',members,
+  submissions:[{fixture_id:dayId,user_id:'u1',state:'READY'}],results:[]});
+assert.equal(day.ready,false,'one manager cannot advance both calendars');
+assert.deepEqual(day.waitingOn.map(row=>row.user_id),['u2']);
+day=core.dayAdvanceState({date:'2026-08-08',members,
+  submissions:[{fixture_id:dayId,user_id:'u1',state:'READY'},{fixture_id:dayId,user_id:'u2',state:'READY'}],results:[]});
+assert.equal(day.ready,true,'both Advance confirmations complete the handshake');
+assert.match(core.waitingMessage({open:true,locked:true,outstanding:[]},day),/Both managers have confirmed Advance/);
 const barrier={career_date:'2026-08-08',status:'OPEN',required};
 
 let state=core.barrierState({barrier,members,submissions:[],results:[],now});

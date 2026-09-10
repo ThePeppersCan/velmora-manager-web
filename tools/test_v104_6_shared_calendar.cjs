@@ -27,16 +27,37 @@ assert.notEqual(q.state().careerTime.currentDate,soloFrom);
 // A recording stand-in for the transport. Only the two calls that move the
 // shared calendar matter here; everything else is the real game.
 // ---------------------------------------------------------------
-const calls={opened:[],resolved:[]};
+const claims=[{user_id:'u1',club_id:mine.id},{user_id:'u2',club_id:theirs.id}];
+const members=[
+  {...claims[0],status:'ACTIVE',manager_name:'Alex',club_name:mine.name},
+  {...claims[1],status:'ACTIVE',manager_name:'Sam',club_name:theirs.name}
+];
+const core=win.VelmoraMultiplayerCore;
+const calls={opened:[],submitted:[],recorded:[],resolved:[]};
+let barrier=null,submissions=[],results=[];
+function liveStatus(){
+  const bar=core.barrierState({barrier,members,submissions,results});
+  const date=bar.date||q.state().careerTime.currentDate;
+  const dayAdvance=core.dayAdvanceState({date,members,submissions,results});
+  return{readOnly:false,members,barrier:bar,dayAdvance,
+    waitingMessage:core.waitingMessage(bar,dayAdvance),locked:bar.locked,resolvable:bar.resolvable};
+}
+function sync(){const status=liveStatus();online.update({status,submissions:status.barrier.participants});return status;}
 const client={
-  openBarrier(date,required){calls.opened.push({date,required});return Promise.resolve({career_date:date,status:'OPEN',required});},
-  resolveBarrier(date,nextDate){calls.resolved.push({date,nextDate});return Promise.resolve({status:'RESOLVED',next_date:nextDate});},
+  status:()=>liveStatus(),
+  openBarrier(date,required){calls.opened.push({date,required});barrier={career_date:date,status:'OPEN',required};sync();return Promise.resolve(barrier);},
+  submitMatchState(fixtureId,state,{date}={}){calls.submitted.push({userId:'u1',fixtureId,state,date});submissions=submissions.filter(row=>!(row.user_id==='u1'&&row.fixture_id===fixtureId));submissions.push({user_id:'u1',club_id:mine.id,fixture_id:fixtureId,state,career_date:date});sync();return Promise.resolve({fixture_id:fixtureId,state});},
+  recordMatchResult(fixtureId,payload){calls.recorded.push({fixtureId,payload});results.push({fixture_id:fixtureId});sync();return Promise.resolve({fixture_id:fixtureId,first_write:true});},
+  resolveBarrier(date,nextDate){
+    const state=core.barrierState({barrier,members,submissions,results});
+    if(state.locked)return Promise.resolve({status:'OPEN',outstanding:state.outstanding});
+    calls.resolved.push({date,nextDate});barrier.status='RESOLVED';sync();return Promise.resolve({status:'RESOLVED',next_date:nextDate});
+  },
   scheduleClubPublish(){},schedulePrivatePublish(){}
 };
-const claims=[{user_id:'u1',club_id:mine.id},{user_id:'u2',club_id:theirs.id}];
 online.begin({
   careerId:'shared-calendar',clubId:mine.id,userId:'u1',
-  humanClubIds:[mine.id,theirs.id],claims,members:claims,
+  humanClubIds:[mine.id,theirs.id],claims,members,
   identity:online.captureIdentity(),client,
   status:{readOnly:false,barrier:null}
 });
@@ -67,8 +88,19 @@ assert.equal(step.reason,'ONLINE_SYNC');
 assert.equal(q.state().careerTime.currentDate,from,'the local date waits for the shared world');
 assert.equal(calls.opened.length,1,'the barrier for today is opened');
 assert.equal(calls.opened[0].date,from);
+assert.equal(calls.submitted.length,1,'the first manager confirms Advance');
+assert.equal(calls.resolved.length,0,'one confirmation cannot move the shared date');
+
+// The other manager confirms the same date. The first connected client may
+// now seal the daily gate and request the one shared advance.
+const gateId=core.dayAdvanceId(from);
+submissions.push({user_id:'u2',club_id:theirs.id,fixture_id:gateId,state:'READY',career_date:from});
+const readyStatus=sync();
+win.VelmoraMultiplayerBridge.onRemoteChange(readyStatus);
+await settle();await settle();
+assert.equal(calls.recorded.filter(row=>row.fixtureId===gateId).length,1,'the daily gate is sealed once both managers confirm');
 assert.deepEqual(calls.resolved,[{date:from,nextDate:q.addDaysISO(from,1)}],
-  'and the shared advance is requested exactly once');
+  'and only then is the shared advance requested');
 
 // Asking again while the request is in flight must not open a second barrier
 // for the same date -- one row, one winner.
