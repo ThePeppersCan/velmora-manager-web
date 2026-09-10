@@ -1676,9 +1676,33 @@ function ensureBigMomentStyles(){
     if(state.phase==='halftime')return true;
     return ['first','second'].includes(state.phase)&&!state.ball.flight&&!state.pendingPass&&!state.special&&!state.delay&&!state.celebration&&!state.replay&&!state.replayIntro&&!state.replayOutro&&!state.kickoffReceiver&&state.carrier?.player.id!==outId;
   }
+  // Who is wearing the armband right now. The career player object is never
+  // mutated by a match: leadership during play is match state.
+  function matchdayArmbandHolder(team){
+    const m=state.management;if(!m)return null;
+    if(m.captains&&m.captains[team])return m.captains[team];
+    const holder=teamEntities(team).find(e=>e.player&&e.player.captain);
+    return holder?holder.player.id:null;
+  }
+  // A captain leaving the pitch hands the armband on rather than taking it
+  // with him. Seniority first, then standing in the squad.
+  function matchdayHandArmband(team,leavingId,minute){
+    const m=state.management;if(!m)return null;
+    const candidates=teamEntities(team).filter(e=>e.player&&e.player.id!==leavingId);
+    if(!candidates.length)return null;
+    const rank=e=>{const pl=e.player||{};return Number(pl.leadership||0)*3+Number(pl.influence||0)*2+Number(pl.ovr||0)+Number(pl.age||20)*0.5;};
+    const next=candidates.slice().sort((a,b)=>rank(b)-rank(a))[0];
+    if(!m.captains)m.captains={};
+    m.captains[team]=next.player.id;
+    if(!m.captaincy)m.captaincy=[];
+    m.captaincy.push({team:team==='belros'?'home':'away',minute:Math.round(minute),
+      fromId:leavingId,toId:next.player.id,toName:next.player.name});
+    return next.player;
+  }
   function matchdayApplySub(change){
     const m=state.management,out=m?.players[change.outId],incoming=m?.players[change.inId],old=entityById(change.outId),p=byId[change.inId];
     if(!m||!old||!p||!out?.active||incoming?.used||incoming?.team!==out.team)return false;
+    const losingArmband=matchdayArmbandHolder(out.team)===change.outId;
     const replacement=state.makeMatchEntity(p,out.team,old.x,teamEntities(out.team).indexOf(old));
     Object.assign(replacement,{x:old.x,y:old.y,tx:old.tx,ty:old.ty,desiredTx:old.tx,desiredTy:old.ty});
     state.entities[state.entities.indexOf(old)]=replacement;roster[out.team][roster[out.team].findIndex(a=>a.id===change.outId)]=p;
@@ -1689,6 +1713,15 @@ function ensureBigMomentStyles(){
     const ev={team:out.team==='belros'?'home':'away',outId:change.outId,inId:change.inId,outName:old.player.name,inName:p.name,minute:Math.round(matchdayMinute()),reason:change.reason||'Manager decision'};m.events.push(ev);
     recordEvent('substitution',{team:out.team,player:p.name,out:old.player.name},1.5);
     if(!state.headless&&!m.autoFinish){showBanner(`${p.name} ON · ${old.player.name} OFF`,'',3);renderV2PlayerTags();refreshFixtureUi()}
+    if(losingArmband){
+      const heir=matchdayHandArmband(out.team,change.outId,matchdayMinute());
+      if(heir){
+        recordEvent('captaincy',{team:out.team,player:heir.name,out:old.player.name},1.2);
+        if(!state.headless&&!m.autoFinish)showBanner(`${heir.name} TAKES THE ARMBAND`,'',2.5);
+        m.message=`${p.name} has replaced ${old.player.name}. ${heir.name} takes the armband.`;
+        return true;
+      }
+    }
     m.message=`${p.name} has replaced ${old.player.name}.`;return true;
   }
   function matchdayRequestSub(outId,inId,team=state.management?.team,reason='Manager decision'){
@@ -1727,7 +1760,7 @@ function ensureBigMomentStyles(){
   }
   function matchdayReport(){
     const m=state.management;if(!m)return null;
-    return {version:2,participation:Object.fromEntries(Object.entries(m.players).map(([id,r])=>[id,{team:r.team==='belros'?'home':'away',started:r.started,minutes:Number((r.seconds/MATCH_SECONDS*90).toFixed(4)),energy:Number(r.energy.toFixed(2)),fitnessCost:Number((r.load/4).toFixed(2)),entered:r.entered,left:r.left,sentOff:!!r.sentOff}])),substitutions:m.events.map(e=>({...e})),tacticalChanges:m.tacticEvents.map(e=>({...e})),finalTactics:{home:{...m.tactics.belros},away:{...m.tactics.zafran}}};
+    return {version:2,participation:Object.fromEntries(Object.entries(m.players).map(([id,r])=>[id,{team:r.team==='belros'?'home':'away',started:r.started,minutes:Number((r.seconds/MATCH_SECONDS*90).toFixed(4)),energy:Number(r.energy.toFixed(2)),fitnessCost:Number((r.load/4).toFixed(2)),entered:r.entered,left:r.left,sentOff:!!r.sentOff}])),substitutions:m.events.map(e=>({...e})),captaincy:(m.captaincy||[]).map(e=>({...e})),tacticalChanges:m.tacticEvents.map(e=>({...e})),finalTactics:{home:{...m.tactics.belros},away:{...m.tactics.zafran}}};
   }
   function matchdayShow(){
     const m=state.management;if(!m||!state.open||!['intro','first','second','halftime'].includes(state.phase))return;
@@ -4852,7 +4885,14 @@ function triggerBigMoment(kind='hattrick'){
     const pred=$('wcgFullPrediction');
     if(pred){pred.textContent=state.careerMode?'WATCH MATCH · LIVE ENGINE RESULT':(state.prediction.rewardMessage||'PREDICTION RESULT CALCULATING…');pred.hidden=state.careerMode;}
     const reportScroll=$('wcgFulltime')?.querySelector('.wcg-v30-report-scroll'),reportPanel=$('wcgFulltime')?.querySelector('.wcg-v2-fulltime-panel');
-    if(reportScroll)reportScroll.scrollTop=0;if(reportPanel)reportPanel.scrollTop=0;
+    // The full-time phase repaints this panel every frame. Resetting the
+    // scroll position on every repaint made the report impossible to read
+    // past the fold, so it is reset once per match report instead.
+    if(state.fulltimeReportShown!==data){
+      state.fulltimeReportShown=data;
+      if(reportScroll)reportScroll.scrollTop=0;
+      if(reportPanel)reportPanel.scrollTop=0;
+    }
   }
 
   function finishMatch(fromShootout=false){
@@ -4868,7 +4908,7 @@ function triggerBigMoment(kind='hattrick'){
     if(fromShootout&&so)say(`${teamMeta[winner].name} win the penalty shootout ${so.score.belros}-${so.score.zafran}.`,{priority:10,intensity:'excited',force:true,kind:'fulltime'});
     else say(formatLine('fulltime'),commentaryOpts('fulltime'));
     showBanner(fromShootout?'SHOOTOUT COMPLETE':'FULL TIME','',2.4);
-    const mvp=playerOfPeriod(null);state.fulltimeData={fromShootout,draw,winner,so:fromShootout?so:null,mvp};if(state.headless||state.careerMode)populateFulltimePanel(state.fulltimeData);else void resolvePredictionReward().finally(()=>populateFulltimePanel(state.fulltimeData));
+    const mvp=playerOfPeriod(null);state.fulltimeReportShown=null;state.fulltimeData={fromShootout,draw,winner,so:fromShootout?so:null,mvp};if(state.headless||state.careerMode)populateFulltimePanel(state.fulltimeData);else void resolvePredictionReward().finally(()=>populateFulltimePanel(state.fulltimeData));
     if(draw){
       for(const e of state.entities){e.tx=safeX(e.team==='belros'?.38:.62);e.ty=safeY(.40+teamEntities(e.team).indexOf(e)*.11);setPlayerAnim(e,'FULLTIME',2.4,ANIM_PRIORITY.FULLTIME,{draw:true})}
     }else{

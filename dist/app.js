@@ -987,7 +987,8 @@
       participation[String(p.id)]={team,started:!!r.started,minutes:number(r.minutes,0,90),fitnessCost:number(r.fitnessCost,0,25),energy:number(r.energy,0,100),entered:r.entered==null?null:number(r.entered,0,90),left:r.left==null?null:number(r.left,0,90),sentOff:!!r.sentOff};
     }
     const substitutions=(Array.isArray(raw.substitutions)?raw.substitutions:[]).filter(e=>participation[e.outId]?.team===e.team&&participation[e.inId]?.team===e.team).slice(0,6).map(e=>({...e}));
-    return {version:1,participation,substitutions,tacticalChanges:(Array.isArray(raw.tacticalChanges)?raw.tacticalChanges:[]).slice(-60),finalTactics:raw.finalTactics||null};
+    const captaincy=(Array.isArray(raw.captaincy)?raw.captaincy:[]).slice(0,6).map(e=>({...e}));
+    return {version:1,participation,substitutions,captaincy,tacticalChanges:(Array.isArray(raw.tacticalChanges)?raw.tacticalChanges:[]).slice(-60),finalTactics:raw.finalTactics||null};
   }
   function recordMatchParticipation(club,fixture,resultForClub){
     if(!club||!fixture)return;
@@ -3216,8 +3217,31 @@
   function firstWeekCaptainCandidates(){
     const squad=getSquad(currentClub);const current=squad.find(p=>p.captain);const rows=[...squad].sort((a,b)=>b.ovr-a.ovr||b.age-a.age).slice(0,4);if(current&&!rows.some(p=>p.id===current.id))rows.unshift(current);return rows.slice(0,4);
   }
+  // Naming a captain is an ordinary squad decision, not something that can
+  // only happen during the first week. One implementation, so the hierarchy,
+  // the club memory and the dressing-room reaction are identical wherever it
+  // is done from.
+  function applyClubCaptain(id,options={}){
+    const club=currentClub;if(!club)return false;
+    const squad=getSquad(club),picked=squad.find(p=>String(p.id)===String(id));if(!picked)return false;
+    const previous=squad.find(p=>p.captain);
+    if(previous&&String(previous.id)===String(picked.id))return false;
+    squadSocialSnapshot(club);
+    squad.forEach(p=>p.captain=String(p.id)===String(picked.id));
+    careerPreferences.captainId=picked.id;
+    applyCaptaincyHierarchyImpact(previous,picked,club);
+    recordCareerMemory({type:'CAPTAIN_NAMED',clubId:club.id,playerId:picked.id,date:currentCareerISO(),
+      importance:picked.storyFlags?.academyGraduate?'MAJOR':'NOTABLE',
+      metadata:{previousCaptainId:previous?.id||null,academyGraduate:!!picked.storyFlags?.academyGraduate}});
+    if(options.scene!==false)v44ShowManagerScene({key:`CAPTAIN-${club.id}-${picked.id}-${currentCareerISO()}`,type:'CAPTAINCY',eyebrow:'DRESSING ROOM',title:`${picked.name} will lead the club`,copy:picked.storyFlags?.academyGraduate?'An academy graduate is now carrying the captaincy into the next stage of the club\u2019s story.':'The manager and captain have set the leadership tone for the season.',club,player:picked,playerLabel:'CLUB CAPTAIN'});
+    saveCareerState();
+    if(options.toast!==false)showToast(`${picked.name} named club captain`);
+    return true;
+  }
   function setFirstWeekCaptain(id){
-    const squad=getSquad(currentClub),picked=squad.find(p=>p.id===id);if(!picked)return;const previous=squad.find(p=>p.captain);squadSocialSnapshot(currentClub);squad.forEach(p=>p.captain=p.id===id);careerPreferences.captainId=id;if(previous?.id!==picked.id){applyCaptaincyHierarchyImpact(previous,picked,currentClub);recordCareerMemory({type:'CAPTAIN_NAMED',clubId:currentClub.id,playerId:picked.id,date:currentCareerISO(),importance:picked.storyFlags?.academyGraduate?'MAJOR':'NOTABLE',metadata:{previousCaptainId:previous?.id||null,academyGraduate:!!picked.storyFlags?.academyGraduate}});v44ShowManagerScene({key:`CAPTAIN-${currentClub.id}-${picked.id}-${currentCareerISO()}`,type:'CAPTAINCY',eyebrow:'DRESSING ROOM',title:`${picked.name} will lead the club`,copy:picked.storyFlags?.academyGraduate?'An academy graduate is now carrying the captaincy into the next stage of the club’s story.':'The manager and captain have set the leadership tone for the season.',club:currentClub,player:picked,playerLabel:'CLUB CAPTAIN'});}saveCareerState();renderFirstWeek();showToast(`${picked.name} named club captain`);
+    const squad=getSquad(currentClub),picked=squad.find(p=>String(p.id)===String(id));if(!picked)return;
+    if(!applyClubCaptain(id)){careerPreferences.captainId=picked.id;squad.forEach(p=>p.captain=String(p.id)===String(picked.id));saveCareerState();}
+    renderFirstWeek();
   }
   function applyRecommendedFirstWeekLineup(){
     const club=currentClub,squad=[...getSquad(club)].sort((a,b)=>Number(!!a.injured)-Number(!!b.injured)||b.fitness-a.fitness||b.ovr-a.ovr);const lineup=blankLineup();
@@ -4339,6 +4363,14 @@
     if(blockingFixture){
       return {advanced:false,blocked:true,reason:'MATCHDAY',fixture:blockingFixture,events:eventsOnDate(currentCareerISO())};
     }
+    // V104.6: an online career's date belongs to the shared world, not to this
+    // device. Ask for the advance and apply it when the log says so, so both
+    // managers move together instead of drifting apart.
+    if(v104Active()&&multiplayerSession?.client){
+      v104RequestSharedAdvance();
+      return {advanced:false,blocked:true,reason:'ONLINE_SYNC',
+        online:{reason:'SYNCING',message:'Moving the shared calendar…'},events:[]};
+    }
     const nextDate=addDaysISO(currentCareerISO(),1);
     setCareerDate(nextDate);
     processDailyPlayerUpdates(nextDate);
@@ -4571,6 +4603,10 @@
         panel.classList.add('has-advanced');
         if(result.reason==='DECISION'&&result.decision){
           showCareerDecisionOverlay(result.decision);showToast('Career decision required');
+        }else if(result.reason==='ONLINE_SYNC'){
+          showToast('Moving the shared calendar…');
+        }else if(result.reason==='ONLINE_BARRIER'){
+          showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
         }else if(result.blocked&&result.reason==='MATCHDAY'){
           const {home,away}=fixtureClubs(result.fixture);
           showToast(`Matchday · ${home?.name||''} v ${away?.name||''}`);
@@ -4604,6 +4640,8 @@
       if(result?.reason==='DECISION'&&result.decision){showCareerDecisionOverlay(result.decision);showToast(`${advanced} day${advanced===1?'':'s'} advanced · decision required`);}
       else if(result?.reason==='MATCHDAY'&&result.fixture){const {home,away}=fixtureClubs(result.fixture);showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${home?.name||''} v ${away?.name||''}`);}
       else if(result?.important)showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${result.important.title}`);
+      else if(result?.reason==='ONLINE_SYNC')showToast('Moving the shared calendar…');
+      else if(result?.reason==='ONLINE_BARRIER')showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
       else showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${shortDateLabel(currentCareerISO())}`);
       setTimeout(()=>panel.classList.remove('has-advanced'),420);centralAdvanceToEventBusy=false;setCareerNavigationLocked(false,'central');};
     const step=()=>{
@@ -8638,14 +8676,38 @@
     const badge=$('#tacticsIdentityBadge');if(badge)badge.innerHTML=`<span class="tactics-club-crest">${badgeHTML(club)}</span><span><small>${escapeHtml(club.name)}</small><strong>${escapeHtml(label)}</strong></span>`;
   }
 
+  // One way in to a club's page from anywhere a club is named. The Season
+  // screen already owns the real club profile, so this reuses it rather than
+  // inventing a second, thinner version of the same page.
+  function openClubProfile(clubId,options={}){
+    const club=clubById(clubId);
+    if(!club){showToast('That club has no dossier in this world.');return false;}
+    seasonBrowseWorld=clubWorldName(club);
+    seasonBrowseDivisionKey=club.divisionKey||null;
+    seasonSelectedPlayerId=null;seasonSelectedManagerId=null;seasonSelectedFixtureId=null;
+    seasonSelectedClubId=club.id;
+    seasonClubProfileTab=options.tab||'overview';
+    seasonActiveTab='table';
+    goCareerScreen('season');
+    return true;
+  }
+
   function renderSquadOverview(){
     const club=currentClub||selectedClub,squad=getSquad(club),starters=activeStarters(club),next=nextUserFixture(),captain=squad.find(p=>p.captain);
     const unavailable=p=>Number(p.injuryDaysRemaining||0)>0||disciplineActiveSuspensions(p).length>0||p.onLoan;
     const ready=starters.length===STARTER_SLOTS&&starters.every(p=>!unavailable(p)),concerns=squad.filter(unavailable),atmosphere=squadAtmosphereSnapshot(club);
     const opponent=next?clubById(next.homeClubId===club.id?next.awayClubId:next.homeClubId):null;
+    // Anyone in the squad who is actually available to lead. A loanee or a
+    // long-term absentee cannot carry the armband.
+    const captainChoices=squad.filter(p=>!p.onLoan&&Number(p.injuryDaysRemaining||0)<=0)
+      .sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0));
     const mount=$('#squadOverviewView');if(!mount)return;
-    mount.innerHTML=`<section class="sq-overview-hero"><div><span>CLUB PREPARATION · ${escapeHtml(club.name.toUpperCase())}</span><h3>${ready?'READY TO MAKE YOUR MARK.':'YOUR TEAM NEEDS YOU.'}</h3><p>${ready?'Your starting three are available. Fine-tune the match plan, manage workloads and prepare the next generation.':'Review player availability and fill your starting three before the next match.'}</p><button type="button" data-overview-go="senior">MANAGE YOUR SQUAD →</button></div><aside><span>NEXT FIXTURE</span><strong>${opponent?escapeHtml(opponent.name):'Awaiting fixtures'}</strong><p>${next?escapeHtml(shortDateLabel(next.date))+' · '+(next.homeClubId===club.id?'Home fixture':'Away fixture'):'Your next opponent will appear here when the schedule is confirmed.'}</p></aside></section><div class="sq-overview-metrics"><article><span>STARTING THREE</span><strong>${starters.filter(p=>!unavailable(p)).length} / 3</strong><small>Available for selection</small></article><article><span>DRESSING ROOM</span><strong>${escapeHtml(atmosphere.label)}</strong><small>${atmosphere.socialLabel||'SETTLED'} · ${Number(atmosphere.cohesion||60)} cohesion</small></article><article><span>CLUB CAPTAIN</span><strong>${escapeHtml(captain?.name||'Unassigned')}</strong><small>${escapeHtml(captain?.role||'Review leadership')}</small></article><article><span>AVAILABILITY</span><strong>${concerns.length} unavailable</strong><small>${concerns.length?concerns.map(p=>escapeHtml(p.name)).join(', '):'No injuries, suspensions or loan absences'}</small></article></div><div class="sq-overview-actions"><button type="button" data-overview-go="dynamics">SQUAD DYNAMICS →</button><button type="button" data-overview-go="tactics">TACTICAL PLAN →</button><button type="button" data-overview-go="training">TRAINING & READINESS →</button><button type="button" data-overview-go="youth">YOUTH PATHWAY →</button></div>`;
+    mount.innerHTML=`<section class="sq-overview-hero"><div><span>CLUB PREPARATION · ${escapeHtml(club.name.toUpperCase())}</span><h3>${ready?'READY TO MAKE YOUR MARK.':'YOUR TEAM NEEDS YOU.'}</h3><p>${ready?'Your starting three are available. Fine-tune the match plan, manage workloads and prepare the next generation.':'Review player availability and fill your starting three before the next match.'}</p><button type="button" data-overview-go="senior">MANAGE YOUR SQUAD →</button></div><aside><span>NEXT FIXTURE</span><strong>${opponent?escapeHtml(opponent.name):'Awaiting fixtures'}</strong><p>${next?escapeHtml(shortDateLabel(next.date))+' · '+(next.homeClubId===club.id?'Home fixture':'Away fixture'):'Your next opponent will appear here when the schedule is confirmed.'}</p></aside></section><div class="sq-overview-metrics"><article><span>STARTING THREE</span><strong>${starters.filter(p=>!unavailable(p)).length} / 3</strong><small>Available for selection</small></article><article><span>DRESSING ROOM</span><strong>${escapeHtml(atmosphere.label)}</strong><small>${atmosphere.socialLabel||'SETTLED'} · ${Number(atmosphere.cohesion||60)} cohesion</small></article><article class="sq-captain-tile"><span>CLUB CAPTAIN</span><strong>${escapeHtml(captain?.name||'Unassigned')}</strong><label class="sq-captain-pick"><span class="sq-captain-pick-label">CHANGE CAPTAIN</span><select data-squad-captain aria-label="Club captain">${captainChoices.map(p=>`<option value="${escapeHtml(String(p.id))}" ${p.captain?'selected':''}>${escapeHtml(p.name)} · ${Number(p.ovr||0)} OVR</option>`).join('')}</select></label></article><article><span>AVAILABILITY</span><strong>${concerns.length} unavailable</strong><small>${concerns.length?concerns.map(p=>escapeHtml(p.name)).join(', '):'No injuries, suspensions or loan absences'}</small></article></div><div class="sq-overview-actions"><button type="button" data-overview-go="dynamics">SQUAD DYNAMICS →</button><button type="button" data-overview-go="tactics">TACTICAL PLAN →</button><button type="button" data-overview-go="training">TRAINING & READINESS →</button><button type="button" data-overview-go="youth">YOUTH PATHWAY →</button></div>`;
     mount.querySelectorAll('[data-overview-go]').forEach(button=>button.addEventListener('click',()=>setSquadView(button.dataset.overviewGo)));
+    const captainSelect=mount.querySelector('[data-squad-captain]');
+    if(captainSelect)captainSelect.addEventListener('change',()=>{
+      if(applyClubCaptain(captainSelect.value))renderSquad();else renderSquadOverview();
+    });
   }
 
   function squadDynamicsPlayerButton(player,meta=''){
@@ -9627,7 +9689,7 @@
     const view=el.dataset.v39Tab||'overview';
     el.innerHTML=`<div class="v39-profile-scroll" tabindex="0" aria-label="Player profile details">
       <header class="v39-dossier-cover"><div class="v39-dossier-status"><span>${escapeHtml(status)}</span><span>${escapeHtml(stage.confidence)} confidence</span></div>
-        <div class="v39-dossier-feature"><div class="v39-dossier-identity"><span class="v39-profile-role">${escapeHtml(p.role)}</span><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.country)} · Age ${Number(p.age)}</p><div class="v39-profile-club">${club?badgeHTML(club):'<span>◇</span>'}<span>${club?escapeHtml(club.name):'Free agent'}<small>${escapeHtml(playerWorld(p))}</small></span></div></div><div class="v39-dossier-portrait">${avatarHTML(p.avatar,p.name)}<span class="v39-dossier-rating"><strong>${escapeHtml(oi.text)}</strong><small>${oi.kind==='exact'?'OVR':oi.kind==='range'?'EST. OVR':'UNSCOUTED'}</small></span></div></div>
+        <div class="v39-dossier-feature"><div class="v39-dossier-identity"><span class="v39-profile-role">${escapeHtml(p.role)}</span><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.country)} · Age ${Number(p.age)}</p>${club?`<button type="button" class="v39-profile-club v39-profile-club-link" data-open-club="${escapeHtml(String(club.id))}" aria-label="Open the ${escapeHtml(club.name)} club profile">${badgeHTML(club)}<span>${escapeHtml(club.name)}<small>${escapeHtml(playerWorld(p))}</small></span></button>`:`<div class="v39-profile-club"><span>◇</span><span>Free agent<small>${escapeHtml(playerWorld(p))}</small></span></div>`}</div><div class="v39-dossier-portrait">${avatarHTML(p.avatar,p.name)}<span class="v39-dossier-rating"><strong>${escapeHtml(oi.text)}</strong><small>${oi.kind==='exact'?'OVR':oi.kind==='range'?'EST. OVR':'UNSCOUTED'}</small></span></div></div>
         <div class="v39-profile-tags"><span>${escapeHtml(market)}</span>${profile!=='PROFILE UNKNOWN'?`<span>${escapeHtml(profile)}</span>`:''}</div>
       </header>
       ${v48TraitHTML(livePlayer,club,true)}<button type="button" class="v48-open-profile" data-v48-player="${escapeHtml(p.id)}">OPEN FULL PROFILE ↗</button><div class="v39-profile-price"><div><span>Estimated value</span><strong>${escapeHtml(vi.text)}</strong></div><div class="v36-release-clause ${clauseAmount?'has-clause':''}"><span>Release clause</span><strong>${clauseAmount?formatExactMoney(clauseAmount):'No release clause'}</strong><small>${p.freeAgent?'Free agent · negotiate personal terms':clauseAmount?'Personal terms still required':'Agree a fee with the club'}</small></div></div>
@@ -9645,7 +9707,7 @@
         ${!scouted?'<p class="v39-intel-note">Early reports can be wrong. More scouting brings a clearer view of the player.</p>':''}
       </section>
       <section class="v39-profile-pane" data-v39-profile-pane="contract" ${view!=='contract'?'hidden':''}>
-        <section class="dossier-section"><div class="dossier-section-title"><span>The deal at a glance</span></div><div class="recruitment-profile-grid"><div><span>Contract remaining</span><strong>${p.freeAgent?'UNATTACHED':effectiveKnowledge(p)>=58?`${p.contractYears} YR${p.contractYears===1?'':'S'}`:'UNKNOWN'}</strong></div><div><span>Weekly wage</span><strong>${effectiveKnowledge(p)>=78||scouted?`${formatMoney(p.wage)}/w`:'UNKNOWN'}</strong></div><div><span>Club stance</span><strong>${escapeHtml(stance)}</strong></div><div><span>Player interest</span><strong>${escapeHtml(interest)}</strong></div><div><span>Other interest</span><strong>${escapeHtml(otherClubInterestFor(p).label)}</strong></div><div><span>Availability</span><strong>${escapeHtml(market)}</strong></div></div></section>
+        <section class="dossier-section"><div class="dossier-section-title"><span>The deal at a glance</span></div><div class="recruitment-profile-grid"><div><span>Contract remaining</span><strong>${p.freeAgent?'UNATTACHED':effectiveKnowledge(p)>=58?`${p.contractYears} YR${p.contractYears===1?'':'S'}`:'UNKNOWN'}</strong></div><div><span>Weekly wage</span><strong>${p.freeAgent?'NO CLUB WAGE':effectiveKnowledge(p)>=78||scouted?`${formatMoney(p.wage)}/w`:'UNKNOWN'}</strong></div><div><span>Club stance</span><strong>${escapeHtml(stance)}</strong></div><div><span>Player interest</span><strong>${escapeHtml(interest)}</strong></div><div><span>Other interest</span><strong>${escapeHtml(otherClubInterestFor(p).label)}</strong></div><div><span>Availability</span><strong>${escapeHtml(market)}</strong></div></div></section>
         <p class="v39-intel-note">${p.freeAgent?'There is no club fee. Agree the player’s personal terms to complete a signing.':clauseAmount?'The release clause fixes the club fee. The player still has to agree to the move.':'Open talks with the club to discuss a transfer, loan or another available arrangement.'}</p>
       </section>
     </div><div class="dossier-actions v39-profile-actions">
@@ -9655,6 +9717,9 @@
       </div>`;
     el.querySelectorAll('[data-v39-profile]').forEach(button=>{button.onclick=()=>{el.dataset.v39Tab=button.dataset.v39Profile;el.querySelectorAll('[data-v39-profile]').forEach(b=>{const active=b===button;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});el.querySelectorAll('[data-v39-profile-pane]').forEach(panel=>panel.hidden=panel.dataset.v39ProfilePane!==el.dataset.v39Tab);};});
     const scroller=el.querySelector('.v39-profile-scroll');if(scroller)scroller.scrollTop=previousScroll;
+    el.querySelectorAll('[data-open-club]').forEach(button=>button.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();openClubProfile(button.dataset.openClub);
+    }));
     $('#toggleShortlist')?.addEventListener('click',()=>toggleTransferShortlist(p.id));
     const scoutButton=$('#scoutTransferPlayer');
     if(careerExpansion&&scoutButton){const list=careerExpansion.freeScouts(currentClub);scoutButton.insertAdjacentHTML?.('beforebegin',`<label class="v34-scout-choice">ASSIGN SCOUT<select id="v34SeniorScout">${list.map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} · ${s.quality} quality</option>`).join('')}</select></label>`);}
@@ -9708,6 +9773,8 @@
     recruitmentAdvanceBusy=true;
     const result=advanceCareerDay();
     if(result.blocked&&result.reason==='MATCHDAY')showToast('Matchday reached · open Matchday before advancing');
+    else if(result.reason==='ONLINE_SYNC')showToast('Moving the shared calendar…');
+    else if(result.reason==='ONLINE_BARRIER')showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
     else if(result.important)showToast(result.important.title||'Important career event');
     else if(result.advanced)showToast(`Career advanced · ${shortDateLabel(currentCareerISO())}`);
     setTimeout(()=>{recruitmentAdvanceBusy=false;},260);
@@ -9932,11 +9999,23 @@
 
   function playerMarketWage(p,club=clubById(p?.clubId)||currentClub||selectedClub){
     const ovr=Number(p?.ovr||50),base=Math.max(600,Math.round(Math.pow(Math.max(1,ovr-45),2)*12/100)*100),levelFactor=club?clamp(.76+divisionLevel(club)*.075+Number(club.reputation||1)*.025,.84,1.18):1,role=suggestedRole(p),squad=club?getSquad(club).filter(x=>x.id!==p?.id):[],wages=squad.map(x=>Number(x.wage||0)).filter(Boolean).sort((a,b)=>a-b),top=wages.at(-1)||base,ladderFloor=top*({Crucial:.72,Important:.50,Rotation:.30,Prospect:.16,Reserve:.12}[role]||.3),potentialGap=Math.max(0,Number(p?.potential||ovr)-ovr),potentialPremium=Number(p?.age||27)<=23?1+Math.min(.12,potentialGap*.008):1;
-    return Math.max(600,Math.round(Math.max(base*levelFactor*potentialPremium,ladderFloor)/100)*100);
+    // A player already at the club is priced by the ladder he is part of.
+    // A player joining one is not: dropping to a weaker squad is a step down,
+    // and he asks to be paid for it. Without this a low wage ladder made every
+    // demand small, which is exactly how a poor club signed anyone it liked.
+    const alreadyHere=club?getSquad(club).some(x=>String(x.id)===String(p?.id)):false;
+    const squadStandard=squad.length?squad.reduce((total,x)=>total+Number(x.ovr||0),0)/squad.length:ovr;
+    const standingGap=alreadyHere?0:Math.max(0,ovr-squadStandard);
+    const stepDownPremium=clamp(1+Math.max(0,standingGap-3)*.075,1,2.2);
+    // He also expects to become the best-paid player in that dressing room.
+    const topEarnerFloor=standingGap>=5?top*1.25:0;
+    return Math.max(600,Math.round(Math.max(base*levelFactor*potentialPremium*stepDownPremium,ladderFloor,topEarnerFloor)/100)*100);
   }
 
   function expectedWage(p,club=clubById(p?.clubId)||currentClub||selectedClub){
-    const current=Math.max(0,Number(p?.wage||0)),market=playerMarketWage(p,club),currentProtection=p?.freeAgent ? .94 : 1.035,ageFactor=Number(p?.age||27)>=34 ? .94 : Number(p?.age||27)<=21 ? 1.025 : 1;
+    // A free agent is paid nothing today, but he does not forget his last
+    // salary, so it still anchors what he will accept.
+    const current=Math.max(0,Number(p?.wage||0),p?.freeAgent?Number(p?.lastWage||0)*.97:0),market=playerMarketWage(p,club),currentProtection=p?.freeAgent ? .94 : 1.035,ageFactor=Number(p?.age||27)>=34 ? .94 : Number(p?.age||27)<=21 ? 1.025 : 1;
     return Math.max(600,Math.round(Math.max(current*currentProtection,market*ageFactor)/100)*100);
   }
 
@@ -9959,7 +10038,7 @@
       <div class="negotiation-body">
         <aside class="negotiation-player"><div class="transfer-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="dossier-ovr ${visibleOvrInfo(p).kind!=='exact'?'is-estimate':''}" style="justify-content:center"><strong>${visibleOvrInfo(p).text}</strong><small>${visibleOvrInfo(p).kind==='range'?'OVR EST.':visibleOvrInfo(p).kind==='unknown'?'OVR · UNKNOWN':'OVR'}</small></div><h4>${escapeHtml(p.name)}</h4><p>${p.role} · AGE ${p.age}<br>${escapeHtml(p.country)}</p><div class="negotiation-club-lockup">${club?badgeHTML(club):''}<span>${club?escapeHtml(club.name):'YOUR CLUB'}</span></div></aside>
         <section class="negotiation-talks contract-talks">
-          <div class="negotiation-values"><div><span>${p.freeAgent?'TRANSFER FEE':'AGREED FEE'}</span><strong>${p.freeAgent?'FREE':formatMoney(agreedFee)}</strong></div><div><span>CURRENT WAGE</span><strong>${formatMoney(p.wage)}/w</strong></div><div><span>TALKS STATUS</span><strong>${escapeHtml(playerTalkStatus)}</strong></div></div>
+          <div class="negotiation-values"><div><span>${p.freeAgent?'TRANSFER FEE':'AGREED FEE'}</span><strong>${p.freeAgent?'FREE':formatMoney(agreedFee)}</strong></div><div><span>CURRENT WAGE</span><strong>${p.freeAgent?'UNATTACHED':`${formatMoney(p.wage)}/w`}</strong></div><div><span>TALKS STATUS</span><strong>${escapeHtml(playerTalkStatus)}</strong></div></div>
           <div class="contract-grid">
             <label><span>SQUAD ROLE</span><select id="contractRole" ${termsLocked?'disabled':''}><option${currentRole==='Crucial'?' selected':''}>Crucial</option><option${currentRole==='Important'?' selected':''}>Important</option><option${currentRole==='Rotation'?' selected':''}>Rotation</option><option${currentRole==='Prospect'?' selected':''}>Prospect</option><option${currentRole==='Reserve'?' selected':''}>Reserve</option></select></label>
             <label><span>CONTRACT LENGTH</span><select id="contractYears" ${termsLocked?'disabled':''}><option value="1"${currentYears===1?' selected':''}>1 Year</option><option value="2"${currentYears===2?' selected':''}>2 Years</option><option value="3"${currentYears===3?' selected':''}>3 Years</option><option value="4"${currentYears===4?' selected':''}>4 Years</option><option value="5"${currentYears===5?' selected':''}>5 Years</option></select></label>
@@ -11352,7 +11431,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const r=lastPresentationResult||makePresentationResult('RESULTS PREVIEW'),saved=!!r.saved,resultScreen=$('#screenResults'),occasion=r.occasion||(saved?matchOccasionProfile(r.fixture,currentClub):null);resultScreen?.classList.toggle('is-champions-crown',!!(saved&&r.fixture?.type==='CHAMPIONS_CROWN'));if(resultScreen){resultScreen.classList.remove('occasion-standard','occasion-major','occasion-marquee','occasion-showpiece');if(occasion)resultScreen.classList.add(`occasion-${String(occasion.tier||'STANDARD').toLowerCase()}`);const arenaId=String(r.home?.id||'').toLowerCase().replace(/[^a-z0-9-]/g,''),arenaAsset=arenaId?`assets/quidditch-engine/arenas/clubs/${arenaId}.webp`:'assets/ui-v2/results.webp';resultScreen.style.setProperty('--results-arena',`url("${arenaAsset}")`);resultScreen.style.setProperty('--results-home-accent',r.home?.accent||'#c8f51b');resultScreen.style.setProperty('--results-away-accent',r.away?.accent||'#376de5');resultScreen.dataset.resultTone=r.resultCode||'D';resultScreen.dataset.competitionType=r.fixture?.type||'PREVIEW';}$('#resultsCompetition').textContent=saved?`${r.fixture.competitionName} · ${occasion?.primaryLabel?occasion.primaryLabel+' · ':r.fixture.type==='CHAMPIONS_CROWN'?championsCrownStageLabel(r.fixture.ccStage)+' · ':''}${r.mode} · ${shortDateLabel(r.fixture.date)}`:`${r.mode} · PRESENTATION PREVIEW`;setBadge($('#resultsHomeBadge'),r.home);setBadge($('#resultsAwayBadge'),r.away);const homeTeamNode=$('.results-team-home'),awayTeamNode=$('.results-team-away');if(homeTeamNode)homeTeamNode.dataset.score=String(r.homeScore);if(awayTeamNode)awayTeamNode.dataset.score=String(r.awayScore);$('#resultsHomeName').textContent=r.home.name;$('#resultsAwayName').textContent=r.away.name;$('#resultsScore').innerHTML=`<strong>${r.homeScore}</strong><span>–</span><strong>${r.awayScore}</strong>${r.fixture?.decidedOnPenalties?`<small>PENS ${r.fixture.penaltiesHome}–${r.fixture.penaltiesAway}</small>`:''}`;
     $('#resultsStats').innerHTML=v24ResultStatsHTML(r);
     const goalEvents=v96ResultGoalEvents(r),cardEvents=(r.fixture?.discipline?.events||[]).map(e=>{const team=e.team==='home'?r.home:r.away,p=careerPlayerById(e.playerId),card=e.card==='SECOND_YELLOW'?'SECOND YELLOW / RED':e.card==='RED'?'RED CARD':'YELLOW CARD',isRed=e.card==='RED'||e.card==='SECOND_YELLOW',reason=isRed?disciplineReasonLabel(e.reason):team?.name||'';return{minute:Number(e.minute||1),label:e.playerName||p?.name||'Player',detail:`${card} · ${reason}`,sort:1,kind:'card',tone:isRed?'red':'yellow',second:e.card==='SECOND_YELLOW'};}),ev=[...goalEvents,...cardEvents].sort((a,b)=>a.minute-b.minute||a.sort-b.sort);$('#resultsEvents').innerHTML=`<h3>MATCH EVENTS</h3>${ev.length?ev.map(e=>`<div class="${e.kind==='card'?'is-discipline-event':''}"><span>${e.minute}'</span><strong>${e.kind==='card'?`${e.second?'<i class="discipline-card discipline-card-yellow"></i>':''}<i class="discipline-card discipline-card-${e.tone}"></i>`:''}${escapeHtml(e.label)}</strong><small>${escapeHtml(e.detail)}</small></div>`).join(''):`<div><span>FT</span><strong>NO GOALS</strong><small>SCORELESS CONTEST</small></div>`}`;
-    if(r.fixture?.matchday){const log=r.fixture.matchday.substitutions||[],tactics=r.fixture.matchday.tacticalChanges||[];$('#resultsEvents').insertAdjacentHTML('beforeend',`<h3 style="margin-top:18px">MANAGER DECISIONS</h3>${log.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.inName||'Substitute')} ON · ${escapeHtml(e.outName||'Player')} OFF</span></div>`).join('')}${tactics.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.team==='home'?r.home.name:r.away.name)} · ${escapeHtml(e.defensive)} / ${escapeHtml(e.attacking)} / ${escapeHtml(e.mentality)} · ${escapeHtml(e.width||'Balanced')} width / ${escapeHtml(e.tempo||'Balanced')} tempo / ${escapeHtml(e.freedom||'Balanced')} freedom</span></div>`).join('')}${!log.length&&!tactics.length?'<p>Both teams kept their opening selection and instructions.</p>':''}`);}
+    if(r.fixture?.matchday){const log=r.fixture.matchday.substitutions||[],tactics=r.fixture.matchday.tacticalChanges||[],armbands=r.fixture.matchday.captaincy||[];$('#resultsEvents').insertAdjacentHTML('beforeend',`<h3 style="margin-top:18px">MANAGER DECISIONS</h3>${log.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.inName||'Substitute')} ON · ${escapeHtml(e.outName||'Player')} OFF</span></div>`).join('')}${armbands.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.toName||'A teammate')} takes the armband · ${escapeHtml(e.team==='home'?r.home.name:r.away.name)}</span></div>`).join('')}${tactics.map(e=>`<div><b>${Number(e.minute)}′</b><span>${escapeHtml(e.team==='home'?r.home.name:r.away.name)} · ${escapeHtml(e.defensive)} / ${escapeHtml(e.attacking)} / ${escapeHtml(e.mentality)} · ${escapeHtml(e.width||'Balanced')} width / ${escapeHtml(e.tempo||'Balanced')} tempo / ${escapeHtml(e.freedom||'Balanced')} freedom</span></div>`).join('')}${!log.length&&!tactics.length&&!armbands.length?'<p>Both teams kept their opening selection and instructions.</p>':''}`);}
     const ratings=r.ratings?.length?r.ratings:[...r.homeSquad,...r.awaySquad].map((p,i)=>({player:p,rating:Number((6.5+((p.ovr+i)%25)/10).toFixed(1))}));
     const reportRatings=(r.fixture?.matchday?.report||r.fixture?.matchReport)?.ratings||[];
     const playerMatchXg=id=>Number(reportRatings.find(row=>String(row.playerId)===String(id))?.xg||0);
@@ -12869,7 +12948,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!p.freeAgent&&!p.contractEndDate){const spread=1+(hashString(`${worldSeed}-CONTRACT-MIG-${p.id}`)%5),years=clamp(Number(p.contractYears||spread),1,5);p.contractStartDate=p.contractStartDate||`${careerYear}-08-01`;p.contractEndDate=contractExpiryForYears(p.contractStartDate,years);p.contractStatus='ACTIVE';}
     if(!p.freeAgent)syncLivingContractYears(p,currentCareerISO());livingPlayerHistoryRecord(p);ensurePlayerStoryMeta(p,club);return p;
   }
-  function initializeLivingSquadState(fromLoad=false){livingSquad=normalizeLivingSquadState(livingSquad);clubs.forEach(c=>getSquad(c).forEach(p=>ensureLivingPlayerMeta(p,c)));getFreeAgents().forEach(p=>{p.freeAgent=true;p.contractStatus='FREE_AGENT';p.contractYears=0;ensureLivingPlayerMeta(p,null);});getAcademy(currentClub||clubs[0]);livingSquad.incomingOffers.forEach(o=>{if(!o.expiresDate)o.expiresDate=addDaysISO(o.createdDate||currentCareerISO(),4);});repairLivingLoans();migrateLegacyCareerMemory();v43MigrateLegacyStatistics();v49MigrateTraitState();if(currentClub)squadSocialSnapshot(currentClub);return livingSquad;}
+  function initializeLivingSquadState(fromLoad=false){livingSquad=normalizeLivingSquadState(livingSquad);clubs.forEach(c=>getSquad(c).forEach(p=>ensureLivingPlayerMeta(p,c)));getFreeAgents().forEach(p=>{p.freeAgent=true;p.contractStatus='FREE_AGENT';p.contractYears=0;if(Number(p.wage||0)>0){p.lastWage=Math.max(Number(p.lastWage||0),Number(p.wage||0));p.wage=0;}ensureLivingPlayerMeta(p,null);});getAcademy(currentClub||clubs[0]);livingSquad.incomingOffers.forEach(o=>{if(!o.expiresDate)o.expiresDate=addDaysISO(o.createdDate||currentCareerISO(),4);});repairLivingLoans();migrateLegacyCareerMemory();v43MigrateLegacyStatistics();v49MigrateTraitState();if(currentClub)squadSocialSnapshot(currentClub);return livingSquad;}
   function recordLivingCareerEvent(p,type,fromClub=null,toClub=null,fee=0,date=currentCareerISO(),extra={}){const h=livingPlayerHistoryRecord(p);if(!h)return null;const evt={id:livingSquadNextId('PCE'),date:isoDate(date),seasonId:careerTime.seasonId,type,fromClubId:fromClub?.id||null,toClubId:toClub?.id||null,fee:Number(fee||0),...extra};h.careerEvents.push(evt);h.careerEvents=h.careerEvents.slice(-80);h.peakOvr=Math.max(Number(h.peakOvr||0),Number(p.ovr||0));return evt;}
   function recordLivingTransfer(p,fromClub,toClub,fee=0,options={}){
     if(!p||!toClub)return null;livingSquad=normalizeLivingSquadState(livingSquad);const departureImpact=fromClub?applySquadDepartureImpact(p,fromClub,currentCareerISO()):null;careerExpansion?.onTransfer(p,fromClub,toClub,fee);
@@ -12991,7 +13070,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function maybeLivingTransferRequest(p,club,date){if(!p||p.transferRequested||p.captain||p.onLoan||Number(p.age||0)<19)return null;ensurePlayerStoryMeta(p,club);const sat=livingRoleSatisfaction(p,club),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p);p.playingTimeSatisfaction=Math.round(Number(p.playingTimeSatisfaction||70)*.72+sat*.28);const ambitious=Number(p.ovr||0)>backgroundClubStrength(club)+7&&divisionLevel(club)<=2&&Number(traits.ambition||60)>=70,unhappy=moraleIndex(p.morale)<=1||h.overall<36,trustBroken=Number(p.managerTrust||60)<30,trigger=p.playingTimeSatisfaction<26||unhappy||ambitious||trustBroken;if(!trigger||!eventCooldownReady(`MOVE-${p.id}`,date,100))return null;const threshold=clamp(10+(100-Number(traits.loyalty||60))*.18+(100-Number(traits.patience||60))*.12+(h.overall<32?10:0)+(ambitious?7:0),10,38),roll=hashString(`${worldSeed}-MOVE-REQUEST-${date}-${p.id}`)%100;if(roll>threshold)return null;setEventCooldown(`MOVE-${p.id}`,date);p.transferRequested=true;recordPlayerStory(p,'TRANSFER_REQUEST',date,{reason:ambitious?'AMBITION':trustBroken?'TRUST':'HAPPINESS'});if(Number(p.playerReputation||0)>=45||['Crucial','Important'].includes(p.squadRole))addCareerNews({id:`player-future-${p.id}-${date}`,category:'PLAYER FUTURE',world:clubWorldName(club),clubId:club.id,relatedClubIds:[club.id],title:`${p.name.toUpperCase()} FUTURE IN DOUBT AT ${club.name.toUpperCase()}`,body:[`${p.name} has asked for clarity over the next stage of their career.`,ambitious?'The player believes the time may be right to test themselves at a higher level.':'The situation follows a period of frustration around role, form or the relationship with the manager.'],image:p.avatar,date});return queueDecisionEvent({id:`DEC-MOVE-${p.id}-${date}`,kind:'TRANSFER_REQUEST',category:'PLAYER FUTURE',playerId:p.id,cooldownKey:`MOVE-${p.id}`,title:'I want to discuss my future',body:ambitious?'I feel ready to test myself at a higher level and I want the club to consider serious offers.':trustBroken?'I do not think the relationship between us is working. I need to think seriously about a move.':'I am not happy with how my situation is developing and I think a move may be best.',choices:[{id:'convince',label:'CONVINCE TO STAY',copy:'Explain the project and ask the player to remain.'},{id:'role-talk',label:'PROMISE A ROLE',copy:'Offer an immediate playing-time pathway.'},{id:'accept-request',label:'ACCEPT REQUEST',copy:'Place the player on the transfer list.'}]});}
   function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processDressingRoomIncidentFollowUps(date);processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
   function processLivingSquadMonthly(date=currentCareerISO()){if(livingSquad.lastMonthlyProcess===date.slice(0,7))return;livingSquad.lastMonthlyProcess=date.slice(0,7);processLivingLoanMonth(date);clubs.forEach(club=>{getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);p.playerReputation=Math.round(Number(p.playerReputation||50)*.65+livingPlayerReputationScore(p,club)*.35);});if(!v104HumanControlledClub(club))livingAiSquadPlan(club,date);});recordMonthlyAwards(date);}
-  function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(!v104HumanControlledClub(club)){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,currentCareerISO());if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
+  function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(!v104HumanControlledClub(club)){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.lastWage=Math.max(Number(p.lastWage||0),Number(p.wage||0));p.wage=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,currentCareerISO());if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
   function recordLivingInjuryState(p,date){if(!p)return;const active=Number(p.injuryDaysRemaining||0)>0;if(active){const last=p.injuryHistory.at(-1);if(!last||last.endDate){p.injuryHistory.push({startDate:date,endDate:null,type:p.injury||'Injury',initialDays:Number(p.injuryDaysRemaining||0)});p.injuryHistory=p.injuryHistory.slice(-10);}}else{const last=p.injuryHistory.at(-1);if(last&&!last.endDate)last.endDate=date;}}
   function livingAiSquadPlan(club,date){
     if(!club||v104HumanControlledClub(club))return;
@@ -13031,9 +13110,19 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     idealFee=Math.max(50_000,idealFee);const targetRatio=({TESTING:.88,HARDLINE:.91,PRAGMATIC:.94,AGGRESSIVE:.96,DEALMAKER:.93,DESPERATE:.98}[style]||.94),targetFee=Math.max(idealFee,Math.min(maxFee,negotiationMoney(maxFee*targetRatio)));
     return{market,maxFee,targetFee,idealFee,ceilingMultiplier,exceptional,exceptionalChance,exceptionalPremium,agePremium,contractPremium,potentialPremium};
   }
+  // A signing needs time at his new club before rivals start circling. Ninety
+  // days, unless the player himself has asked to leave -- a manager should not
+  // be fielding a bid for someone who arrived a fortnight ago.
+  const NEW_SIGNING_SETTLING_DAYS=90;
+  function playerIsUnsettledNewSigning(p,date=currentCareerISO()){
+    if(!p||p.transferRequested||p.transferStatus==='TRANSFER_LISTED')return false;
+    const start=p.contractStartDate;
+    if(!start)return false;
+    return diffDaysISO(start,isoDate(date))<NEW_SIGNING_SETTLING_DAYS;
+  }
   function maybeGenerateLivingSquadIncomingOffer(date=currentCareerISO()){
     if(!currentClub||!isTransferWindowOpen(date))return null;processOutgoingTransferMarket(date);const active=livingSquad.incomingOffers.filter(o=>o.sellerClubId===currentClub.id&&['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status));if(active.length>=5)return null;
-    const eligible=getSquad(currentClub).filter(p=>!p.captain&&clubCanMarketPlayer(currentClub,p)&&p.transferStatus!=='NOT_FOR_SALE'&&Number(p.age||0)>=18&&incomingLivingOffersForPlayer(p.id).length<2).map(p=>{const state=updatePlayerMarketInterest(p,date),summary=livingMarketInterestSummary(p),status=p.transferRequested?'TRANSFER_REQUESTED':p.transferStatus||'LISTEN',stage=Math.max(-1,...state.interest.map(i=>marketStageRank(i.stage))),weight=(status==='TRANSFER_REQUESTED'?68:status==='TRANSFER_LISTED'?54:14)+Number(state.exposure||0)*.4+Math.max(0,stage)*12+summary.serious*10;return{p,state,summary,status,stage,weight};}).filter(x=>x.state.interest.length||x.status!=='LISTEN');
+    const eligible=getSquad(currentClub).filter(p=>!p.captain&&clubCanMarketPlayer(currentClub,p)&&p.transferStatus!=='NOT_FOR_SALE'&&Number(p.age||0)>=18&&!playerIsUnsettledNewSigning(p,date)&&incomingLivingOffersForPlayer(p.id).length<2).map(p=>{const state=updatePlayerMarketInterest(p,date),summary=livingMarketInterestSummary(p),status=p.transferRequested?'TRANSFER_REQUESTED':p.transferStatus||'LISTEN',stage=Math.max(-1,...state.interest.map(i=>marketStageRank(i.stage))),weight=(status==='TRANSFER_REQUESTED'?68:status==='TRANSFER_LISTED'?54:14)+Number(state.exposure||0)*.4+Math.max(0,stage)*12+summary.serious*10;return{p,state,summary,status,stage,weight};}).filter(x=>x.state.interest.length||x.status!=='LISTEN');
     if(!eligible.length)return null;const total=eligible.reduce((sum,x)=>sum+Math.max(1,x.weight),0),pickRoll=(hashString(`${worldSeed}-V2065-OFFER-PICK-${date}-${currentClub.id}`)%10000)/10000*total;let acc=0,chosen=eligible[0];for(const x of eligible){acc+=Math.max(1,x.weight);if(pickRoll<=acc){chosen=x;break;}}
     const {p,state,summary,status}=chosen,phase=transferMarketWindowPhase(date),offerGate=status==='TRANSFER_REQUESTED'?42:status==='TRANSFER_LISTED'?30:10,stageBoost=chosen.stage>=3?20:chosen.stage>=2?10:0,phaseBoost=phase==='DEADLINE'?16:phase==='LATE'?8:0;if((hashString(`${worldSeed}-V2065-INCOMING-GATE-${date}-${p.id}`)%100)>=clamp(offerGate+stageBoost+phaseBoost,8,78))return null;
     let threads=state.interest.filter(i=>marketStageRank(i.stage)>=2&&!incomingLivingOffersForPlayer(p.id).some(o=>o.buyerClubId===i.clubId));if(!threads.length)threads=state.interest.filter(i=>!incomingLivingOffersForPlayer(p.id).some(o=>o.buyerClubId===i.clubId));if(!threads.length){const fallbacks=plausibleMarketBuyers(p,date,5);if(!fallbacks.length)return null;threads=fallbacks.map(x=>({clubId:x.club.id,stage:'INTERESTED',score:x.score,since:date,lastUpdate:date}));}
@@ -13487,6 +13576,10 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     updateSeasonProgression(target);
     saveCareerState();
     refreshActiveCareerScreen();
+    // The next day's barrier exists before anyone reaches it, so a fixture
+    // belonging to the other manager blocks the calendar on the first click
+    // rather than the second.
+    v104EnsureBarrier(target);
     return true;
   }
 
@@ -13498,6 +13591,43 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!status?.barrier?.resolvable)return Promise.resolve(null);
     const date=status.barrier.date;
     return multiplayerSession.client.resolveBarrier(date,addDaysISO(date,1)).catch(()=>null);
+  }
+
+  // Open the shared barrier for a date. The server keeps exactly one row per
+  // date, so both devices agree on what has to happen before the calendar can
+  // move. Opening one for an ordinary day with no human fixture is deliberate:
+  // that empty barrier is what lets either device move the shared date by
+  // exactly one day, exactly once.
+  function v104EnsureBarrier(date=currentCareerISO()){
+    if(!v104Active())return Promise.resolve(null);
+    const client=multiplayerSession.client;
+    if(!client||!client.openBarrier)return Promise.resolve(null);
+    const iso=isoDate(date);
+    if(!multiplayerSession.barrierOpens)multiplayerSession.barrierOpens=new Map();
+    const cached=multiplayerSession.barrierOpens.get(iso);
+    if(cached)return cached;
+    let request;
+    try{request=Promise.resolve(client.openBarrier(iso,v104RequiredParticipants(iso))).catch(()=>null);}
+    catch(_){request=Promise.resolve(null);}
+    if(multiplayerSession.barrierOpens.size>90)multiplayerSession.barrierOpens.clear();
+    multiplayerSession.barrierOpens.set(iso,request);
+    return request;
+  }
+
+  // Move the shared calendar. In an online career the date never moves
+  // locally: this asks the server, and every device -- this one included --
+  // moves when the DAY_ADVANCE event comes back down the ordered log. That is
+  // what keeps two managers on the same date without either overwriting the
+  // other.
+  function v104RequestSharedAdvance(){
+    if(!v104Active())return Promise.resolve(null);
+    const client=multiplayerSession.client;
+    if(!client||!client.resolveBarrier)return Promise.resolve(null);
+    const from=currentCareerISO();
+    const to=addDaysISO(from,1);
+    return v104EnsureBarrier(from)
+      .then(()=>client.resolveBarrier(from,to))
+      .catch(()=>null);
   }
 
   // Which human clubs must finish a fixture on this date before the shared
@@ -13726,6 +13856,9 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       multiplayerSession.humanClubIds=(status?.members||[]).map(row=>row.club_id).filter(Boolean);
       v104SyncReservedClubs(multiplayerSession.humanClubIds);
       window.VelmoraMultiplayerUI?.render(status);
+      // A career that has never opened a barrier for today cannot block or
+      // advance, so every status refresh repairs that before anything else.
+      if(status&&(!status.barrier||status.barrier.date!==currentCareerISO()))v104EnsureBarrier();
       // Both clients receive the unlocked state without a manual refresh.
       if(status&&!status.locked)refreshActiveCareerScreen();
     }
