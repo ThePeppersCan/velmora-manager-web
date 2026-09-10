@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.6.0',
-    label:'V104.6',
-    channel:'SHARED CALENDAR',
-    cacheKey:'v104-6-shared-calendar-20260909',
+    version:'104.7.0',
+    label:'V104.7',
+    channel:'CLUB LINKS',
+    cacheKey:'v104-7-club-links-20260910',
     saveSchema:86
   });
 });
