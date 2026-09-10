@@ -100,6 +100,17 @@ the match). `applyMatchResult` writes those values through the existing effect
 functions rather than re-simulating, so both devices record identical
 statistics rather than merely identical scorelines.
 
+**The shared date is asked for, never taken.** V104.6 corrected the fault
+that made the first release feel unsynchronised. The barrier machinery was
+complete, but nothing in the game ever opened a barrier, so no date was ever
+locked and the shared date never moved: two managers advanced their own
+calendars privately and drifted apart. Now every ordinary advance opens the
+barrier for the current date and asks the server to close it, and this
+device's own calendar moves only when the resulting `DAY_ADVANCE` event comes
+back down the ordered log — the same path both devices use. A date with an
+unplayed human fixture is therefore locked on both clients, and an ordinary
+day still costs one click.
+
 **Nothing depends on the host being online.** The host owns invitations,
 starting and archiving. Progression does not: any active member may resolve a
 completed barrier, and an absent host can be replaced after a grace period.
@@ -147,6 +158,9 @@ world lives in its own tables and never touches
 | `tools/mp/mp_pg.cjs` | Supabase-shaped client over `psql`. |
 | `tools/mp/mp_fake_game.cjs` | Minimal world implementing the bridge contract. |
 | `tools/mp/supabase_local_harness.sql` | Local-only `auth` schema + roles. Never run against Supabase. |
+| `tools/test_v104_5_multiplayer_integrity.cjs` | Manager and chairman identity, and human-to-human transfer control. |
+| `tools/test_v104_6_shared_calendar.cjs` | The game itself opens and resolves the shared barrier. |
+| `tools/test_v104_6_squad_and_market.cjs` | Captaincy, free-agent wages and the new-signing settling period. |
 | `tests/online-career.spec.cjs` | Layout, keyboard and reduced-motion checks. |
 
 ### Changed
@@ -207,7 +221,7 @@ git push origin main
 ```
 
 Cloudflare Pages serves `dist/`. The V104 cache key
-(`v104-2-expected-goals-20260909`) is on every asset reference, so returning
+(`v104-6-shared-calendar-20260909`) is on every asset reference, so returning
 players get the new build without a hard refresh.
 
 Order matters in one place only: **run the SQL before the deploy reaches

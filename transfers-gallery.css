@@ -242,3 +242,11 @@ body.v20-ui #screenTransfers .transfer-allocation-meta small {display:inline!imp
   body.v20-ui #screenTransfers .transfer-heading {align-items:flex-start!important}
   body.v20-ui #screenTransfers .transfer-budget-block {width:100%!important;max-width:none!important;grid-template-columns:140px minmax(0,1fr)!important;padding:8px 0!important;border-left:0!important}
 }
+
+/* V104.6 · The club on a player dossier is a way in to that club, not a label.
+   It reuses the existing .v39-profile-club box exactly, so the layout, the
+   crest size and every child rule stay where they were. */
+button.v39-profile-club-link{appearance:none;-webkit-appearance:none;background:none;border:0;
+  padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+button.v39-profile-club-link:hover span{text-decoration:underline}
+button.v39-profile-club-link:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:6px}

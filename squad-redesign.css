@@ -518,3 +518,14 @@ body.v20-ui #screenSquad .player-card.v51-card .squad-slot-status {color:#88c6ff
 body.v20-ui #screenSquad .player-card.v51-card.is-reserve .squad-slot-status {color:#c3b4e3!important}
 body.v20-ui #screenSquad .player-profile .profile-overall {display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:5px!important;width:42px!important;min-width:0!important;max-width:100%!important;inset:auto!important;transform:none!important;padding:0!important;margin:0!important}
 body.v20-ui #screenSquad .player-profile .profile-overall small {display:block!important;margin:0!important}
+
+/* V104.6 · Naming a captain from the squad screen, not only in the first week. */
+.sq-overview-metrics .sq-captain-tile{display:flex;flex-direction:column;gap:8px}
+.sq-captain-pick{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+.sq-captain-pick-label{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;opacity:.62}
+.sq-captain-pick select{width:100%;max-width:100%;padding:7px 9px;border-radius:8px;font:inherit;font-size:.78rem;
+  color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);cursor:pointer}
+.sq-captain-pick select:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media (prefers-color-scheme:light){
+  .sq-captain-pick select{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.18)}
+}

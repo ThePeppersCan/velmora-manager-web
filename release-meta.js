@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.5.0',
-    label:'V104.5',
-    channel:'MULTIPLAYER INTEGRITY',
-    cacheKey:'v104-5-multiplayer-integrity-20260909',
+    version:'104.6.0',
+    label:'V104.6',
+    channel:'SHARED CALENDAR',
+    cacheKey:'v104-6-shared-calendar-20260909',
     saveSchema:86
   });
 });
