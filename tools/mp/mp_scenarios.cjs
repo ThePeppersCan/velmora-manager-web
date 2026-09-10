@@ -435,6 +435,59 @@ async function run(backend,report){
     assert.equal(after.length,1,'and still only one transfer exists');
   });
 
+  // ---------------------------------------------------------------
+  // A manager-to-manager transfer is carried entirely by three world-action
+  // kinds. Each one must reach the other device's bridge: a kind the transport
+  // does not route is dropped in silence, which reads in game as an offer that
+  // was sent and never arrived.
+  await check('manager-to-manager transfer events reach the other device',async()=>{
+    const kinds=['HUMAN_TRANSFER_OFFER','HUMAN_TRANSFER_RESPONSE','HUMAN_TRANSFER_COMPLETE'];
+    const before={
+      alex:alex.bridge._worldActions().length,
+      sam:sam.bridge._worldActions().length
+    };
+    const offerPayload={
+      offerId:'HTO-ROUTING',playerId:'player-routing',playerName:'Routing Test',
+      buyerClubId:ALEX_CLUB,sellerClubId:SAM_CLUB,fee:750000
+    };
+
+    const offer=await alex.client.claimWorldAction({kind:'HUMAN_TRANSFER_OFFER',
+      subjectKey:'HUMAN_TRANSFER_OFFER:HTO-ROUTING',payload:offerPayload,
+      idempotencyKey:'human-offer:HTO-ROUTING',clubId:ALEX_CLUB});
+    assert.equal(offer.claimed,true,'the buying manager can submit an offer');
+
+    const response=await sam.client.claimWorldAction({kind:'HUMAN_TRANSFER_RESPONSE',
+      subjectKey:'HUMAN_TRANSFER_RESPONSE:HTO-ROUTING',
+      payload:{...offerPayload,status:'ACCEPTED'},
+      idempotencyKey:'human-response:HTO-ROUTING:ACCEPTED',clubId:SAM_CLUB});
+    assert.equal(response.claimed,true,'the selling manager can answer it');
+
+    const complete=await alex.client.claimWorldAction({kind:'HUMAN_TRANSFER_COMPLETE',
+      subjectKey:'PLAYER:player-routing:2026-summer',
+      payload:{...offerPayload,transferId:'ONLINE-ROUTING',wage:12000,years:3},
+      idempotencyKey:'online-transfer:ONLINE-ROUTING',clubId:ALEX_CLUB});
+    assert.equal(complete.claimed,true,'and the buying manager can complete it');
+
+    await alex.client.pullEvents();
+    await sam.client.pullEvents();
+
+    for(const who of ['alex','sam']){
+      const session=who==='alex'?alex:sam;
+      const seen=session.bridge._worldActions().slice(before[who]).map(row=>row.kind);
+      for(const kind of kinds)
+        assert.ok(seen.includes(kind),
+          `${who} received ${kind} (the transport must route it, not drop it)`);
+    }
+
+    // The bridge decides who may act on a transfer from the event's actor, so
+    // an event that arrives without one is unusable even when it is routed.
+    const delivered=sam.bridge._worldActions().slice(before.sam)
+      .find(row=>row.kind==='HUMAN_TRANSFER_OFFER');
+    assert.equal(delivered.actorUserId,alexId,
+      'the offer names the manager who made it');
+    assert.equal(delivered.payload.fee,750000,'and carries the fee intact');
+  });
+
   await check('repeated prize money and inbox events cannot double-apply',async()=>{
     const prize=core.subjectKeys.prize('rsl','2026-27');
     const first=await alex.client.claimWorldAction({kind:'WORLD_ACTION',subjectKey:prize,

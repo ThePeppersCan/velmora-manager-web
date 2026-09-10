@@ -41,10 +41,15 @@ function createBridge({clubId=null,identity={}}={}){
   let world=makeWorld();
   let session={clubId,identity};
   const log=[];
+  // Every world action this device actually received. A routing bug in the
+  // transport shows up here as an absence, which a stub returning true cannot
+  // detect.
+  const worldActions=[];
 
   const bridge={
     _world:()=>world,
     _log:()=>log,
+    _worldActions:()=>worldActions,
     _reset(next){world=next||makeWorld();},
     _setClub(id){session.clubId=id;},
     // Mirrors what the real game does: the manager's own device resolves the
@@ -114,7 +119,10 @@ function createBridge({clubId=null,identity={}}={}){
     captureIdentity(){return session.identity;},
     onRemoteChange(){},
     onManagerConvertedToAi(){},
-    applyWorldAction(){return true;}
+    applyWorldAction(kind,payload,subjectKey,event){
+      worldActions.push({kind,payload,subjectKey,actorUserId:event&&event.actor_user_id});
+      return true;
+    }
   };
   function isHuman(id){return id==='aurelia'||id==='blackglass';}
   return bridge;

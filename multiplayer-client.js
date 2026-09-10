@@ -452,8 +452,14 @@
           bridge.onManagerConvertedToAi?.(event.payload?.user_id,event.payload?.club_id);
           break;
         }
+        // Every contested world mutation is routed by kind. A kind that reaches
+        // the default branch is discarded in silence, so a new world action is
+        // only real once it is named here as well as in the bridge.
         case'WORLD_ACTION':
-        case'TRANSFER':{
+        case'TRANSFER':
+        case'HUMAN_TRANSFER_OFFER':
+        case'HUMAN_TRANSFER_RESPONSE':
+        case'HUMAN_TRANSFER_COMPLETE':{
           bridge.applyWorldAction?.(event.kind,event.payload||{},event.subject_key,event);
           break;
         }

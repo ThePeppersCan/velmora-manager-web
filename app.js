@@ -13965,14 +13965,24 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!buyer||!buyerMember||!sellerMember||buyer.id===seller.id)return{ok:false,message:'The online manager seats could not be verified.'};
     if(status?.readOnly)return{ok:false,message:'Reconnect to the online career before submitting an offer.'};
     const amount=negotiationMoney(fee),attempt=v104HumanTransferOffers().filter(row=>row.playerId===p.id&&row.buyerClubId===buyer.id).length+1;
-    const offerId=`HTO-${Math.abs(hashString(`${multiplayerSession.careerId}|${buyer.id}|${seller.id}|${p.id}|${currentCareerISO()}|${attempt}|${amount}`)).toString(36).toUpperCase()}`;
+    // The subject key must be unique for the life of the career. Seeding it on
+    // fee and date alone lets a repeat bid after a rejection collide with the
+    // offer it is replacing, which the server rejects as VELMORA_SUBJECT_TAKEN.
+    const sequence=v104HumanTransferOffers().length+1;
+    const offerId=`HTO-${Math.abs(hashString(`${multiplayerSession.careerId}|${buyer.id}|${seller.id}|${p.id}|${currentCareerISO()}|${attempt}|${sequence}|${amount}`)).toString(36).toUpperCase()}`;
     const payload={offerId,playerId:p.id,playerName:p.name,buyerClubId:buyer.id,sellerClubId:seller.id,
       buyerUserId:buyerMember.user_id,sellerUserId:sellerMember.user_id,fee:amount,
       createdDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),7)};
     const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_OFFER',
       subjectKey:`HUMAN_TRANSFER_OFFER:${offerId}`,payload,idempotencyKey:`human-offer:${offerId}`,clubId:buyer.id});
     if(!result?.claimed)return{ok:false,message:result?.message||'The offer could not be submitted.'};
-    return{ok:true,offer:v104HumanOfferForPlayer(p.id,buyer.id)};
+    // claimWorldAction pulls its own event back before returning, so the offer
+    // must exist locally by now. If it does not, the shared log accepted the
+    // claim but this device failed to apply it: say so rather than reporting a
+    // success the other manager will never see.
+    const stored=v104HumanOfferForPlayer(p.id,buyer.id);
+    if(!stored)return{ok:false,message:'The offer was not confirmed by the shared career. Reconnect and try again.'};
+    return{ok:true,offer:stored};
   }
   async function v104RespondHumanTransferOffer(offer,decision){
     const status=String(decision||'').toUpperCase();
