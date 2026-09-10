@@ -458,6 +458,7 @@
         case'WORLD_ACTION':
         case'TRANSFER':
         case'HUMAN_TRANSFER_OFFER':
+        case'HUMAN_TRANSFER_COUNTER':
         case'HUMAN_TRANSFER_RESPONSE':
         case'HUMAN_TRANSFER_COMPLETE':{
           bridge.applyWorldAction?.(event.kind,event.payload||{},event.subject_key,event);

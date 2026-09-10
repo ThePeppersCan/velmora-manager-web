@@ -152,7 +152,12 @@
     if(!actor||!buyer||!seller||buyer.user_id===seller.user_id)return false;
     if(kind==='HUMAN_TRANSFER_OFFER'||kind==='HUMAN_TRANSFER_COMPLETE')
       return String(buyer.user_id)===actor;
-    if(kind==='HUMAN_TRANSFER_RESPONSE')return String(seller.user_id)===actor;
+    // A counter or a decision can come from either side: once the seller has
+    // countered, the buyer is the one who has to answer. Whose turn it
+    // actually is depends on the offer, so it is enforced where that state
+    // lives; this only settles that the actor is a party to the deal.
+    if(kind==='HUMAN_TRANSFER_COUNTER'||kind==='HUMAN_TRANSFER_RESPONSE')
+      return String(seller.user_id)===actor||String(buyer.user_id)===actor;
     return false;
   }
 

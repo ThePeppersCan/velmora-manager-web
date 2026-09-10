@@ -68,6 +68,7 @@
     "stress:multiplayer": "node tools/stress_v104_multiplayer.cjs",
     "test:visual": "playwright test",
     "test:player-pathways": "node tools/test_v105_player_pathways.cjs",
+    "test:online-deals": "node tools/test_v105_1_online_deal_terms.cjs",
     "visual:update": "playwright test --update-snapshots"
   },
   "devDependencies": {

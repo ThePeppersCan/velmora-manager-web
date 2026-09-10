@@ -553,6 +553,10 @@
     return {state,department,market,addLegacyCandidate,hire,fire,trainStaff,scouts,freeScouts,personnelForRole,sendScout,cancelMission,signProspect,declineProspect,academyCap,youthCompetition,youthTable,setYouthTeam,quoteUpgrade,upgrade,sponsorOffers,signSponsor,developmentFactor,recoveryBonus,daily,staffQuality,
       reservedPlaces,reservedWages,reservedTransferPayments,transferCashPlan,structuredOfferCredit,processTransferPayments,scheduleTransfer,proposeDeal,confirmDeal,exerciseOption,processPrecontracts,negotiateClause,onTransfer,restoreCustom,createClub,quoteSale,confirmSale,
       open,close,initUI,render,embed,bindHost,slotActions,seedClauses,validateClause,setClause,staffHTML,academyHTML,facilitiesHTML,dealsHTML,createHTML,savesHTML,
+      // The deal-term contract, shared so an online career can validate the
+      // same package before it is put in front of the other manager. One
+      // definition of a legal deal, whoever is being negotiated with.
+      dealTerms:normalTerms,dealTermsValid:termsValid,createTransferObligations,
       // Selecting a target without the surrounding navigation, so the deal
       // form can be rendered and inspected on its own.
       setDealTarget(playerId,kind='TRANSFER'){selectedTarget=playerId||null;dealKind=kind;return selectedTarget;}};

@@ -13730,3 +13730,16 @@ body.v20-ui #officeBoardPane .office-objective-card:is(.is-pending,.is-not-start
 body.v20-ui .central-task-empty .central-quiet-actions{width:min(100%,14cqw);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.32cqw;margin-top:.36cqw}
 body.v20-ui .central-task-empty .central-quiet-actions button{min-width:0;height:1.75cqw;padding:0 .3cqw;border:1px solid #cad8e5;border-radius:.3cqw;background:#fff;color:#315b82;font:900 .27cqw/1 Arial,sans-serif;letter-spacing:.035em;cursor:pointer}
 body.v20-ui .central-task-empty .central-quiet-actions button:hover{border-color:#7fa7cc;background:#f2f7fc}
+
+/* V105.1 - online manager deal terms.
+   A shared negotiation now carries a sell-on clause and can go back and
+   forth, so the offer builder needs a second field and the response panel
+   needs a state for "their revised package". */
+body.v20-ui .offer-builder>label.offer-secondary-label{margin-top:.7cqw}
+body.v20-ui .offer-control.offer-control-compact{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+body.v20-ui .offer-control.offer-control-compact input{text-align:center}
+body.v20-ui .offer-control.offer-control-compact b{color:#89a7b2;font:800 .38cqw/1.2 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+body.v20-ui .offer-builder-note{display:block;margin-top:.6cqw;color:#6f8e9b;font:600 .34cqw/1.5 Arial,sans-serif;letter-spacing:.02em}
+body.v20-ui .negotiation-round{display:block;margin-top:.45cqw;color:#d4bc7b;font:800 .34cqw/1 Arial,sans-serif;letter-spacing:.14em}
+body.v20-ui .negotiation-response.is-counter{border-color:rgba(216,182,101,.5);background:linear-gradient(180deg,rgba(216,182,101,.12),rgba(8,37,50,.9))}
+body.v20-ui .negotiation-response.is-counter>span{color:#e8c97c}

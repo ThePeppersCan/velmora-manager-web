@@ -488,6 +488,82 @@ async function run(backend,report){
     assert.equal(delivered.payload.fee,750000,'and carries the fee intact');
   });
 
+  // ---------------------------------------------------------------
+  // A deal is a conversation, not a single yes/no. The counter kind has to
+  // route like the other three, and every hop has to name the manager who
+  // made it so the receiving device can tell whose turn it is.
+  await check('a countered deal routes every hop to both devices',async()=>{
+    const before={
+      alex:alex.bridge._worldActions().length,
+      sam:sam.bridge._worldActions().length
+    };
+    const base={
+      offerId:'HTO-COUNTER',playerId:'player-counter',playerName:'Counter Test',
+      buyerClubId:ALEX_CLUB,sellerClubId:SAM_CLUB
+    };
+
+    const opening=await alex.client.claimWorldAction({kind:'HUMAN_TRANSFER_OFFER',
+      subjectKey:'HUMAN_TRANSFER_OFFER:HTO-COUNTER',
+      payload:{...base,fee:500000,terms:{fee:500000,sellOn:0,years:3,role:'Rotation'}},
+      idempotencyKey:'human-offer:HTO-COUNTER',clubId:ALEX_CLUB});
+    assert.equal(opening.claimed,true,'the buyer opens with a package');
+
+    // The seller wants more money and a slice of the next sale.
+    const counter=await sam.client.claimWorldAction({kind:'HUMAN_TRANSFER_COUNTER',
+      subjectKey:'HUMAN_TRANSFER_COUNTER:HTO-COUNTER:R1',
+      payload:{...base,fee:750000,terms:{fee:750000,sellOn:15,years:3,role:'Rotation'},
+        actorSide:'SELLER',round:1},
+      idempotencyKey:'human-counter:HTO-COUNTER:1',clubId:SAM_CLUB});
+    assert.equal(counter.claimed,true,'the seller can counter rather than only accept or reject');
+
+    // And the buyer, not the seller, is the one who answers a counter.
+    const accept=await alex.client.claimWorldAction({kind:'HUMAN_TRANSFER_RESPONSE',
+      subjectKey:'HUMAN_TRANSFER_RESPONSE:HTO-COUNTER',
+      payload:{...base,fee:750000,terms:{fee:750000,sellOn:15,years:3,role:'Rotation'},
+        actorSide:'BUYER',status:'ACCEPTED'},
+      idempotencyKey:'human-response:HTO-COUNTER:ACCEPTED',clubId:ALEX_CLUB});
+    assert.equal(accept.claimed,true,'the buying manager can accept the seller\'s counter');
+
+    await alex.client.pullEvents();
+    await sam.client.pullEvents();
+
+    for(const who of ['alex','sam']){
+      const session=who==='alex'?alex:sam;
+      const seen=session.bridge._worldActions().slice(before[who]);
+      const kinds=seen.map(row=>row.kind);
+      assert.ok(kinds.includes('HUMAN_TRANSFER_COUNTER'),
+        `${who} received the counter (the transport must route it, not drop it)`);
+
+      const delivered=seen.find(row=>row.kind==='HUMAN_TRANSFER_COUNTER');
+      assert.equal(delivered.actorUserId,samId,'the counter names the seller who made it');
+      assert.equal(delivered.payload.actorSide,'SELLER','and says which side it came from');
+      assert.equal(delivered.payload.terms.sellOn,15,'the sell-on survives the hop');
+
+      const answer=seen.find(row=>row.kind==='HUMAN_TRANSFER_RESPONSE');
+      assert.equal(answer.actorUserId,alexId,'the answer to a counter comes from the buyer');
+      assert.equal(answer.payload.terms.sellOn,15,
+        'and carries the agreed sell-on, so completion cannot quietly drop it');
+    }
+  });
+
+  // A round number is part of the subject key, so the same round cannot be
+  // written twice even if two devices race or one retries.
+  await check('the same counter round cannot be claimed twice',async()=>{
+    const payload={offerId:'HTO-ROUNDS',playerId:'player-rounds',buyerClubId:ALEX_CLUB,
+      sellerClubId:SAM_CLUB,fee:900000,terms:{fee:900000,sellOn:5,years:3,role:'Rotation'},
+      actorSide:'SELLER',round:1};
+    const first=await sam.client.claimWorldAction({kind:'HUMAN_TRANSFER_COUNTER',
+      subjectKey:'HUMAN_TRANSFER_COUNTER:HTO-ROUNDS:R1',payload,
+      idempotencyKey:'human-counter:HTO-ROUNDS:1',clubId:SAM_CLUB});
+    const duplicate=await alex.client.claimWorldAction({kind:'HUMAN_TRANSFER_COUNTER',
+      subjectKey:'HUMAN_TRANSFER_COUNTER:HTO-ROUNDS:R1',
+      payload:{...payload,fee:100000,actorSide:'BUYER'},
+      idempotencyKey:'human-counter:HTO-ROUNDS:1-other',clubId:ALEX_CLUB});
+    assert.equal(first.claimed,true,'the first counter for a round is recorded');
+    assert.equal(duplicate.claimed,false,'a second counter for the same round is refused');
+    assert.equal(duplicate.reason,'TAKEN');
+  });
+
   await check('repeated prize money and inbox events cannot double-apply',async()=>{
     const prize=core.subjectKeys.prize('rsl','2026-27');
     const first=await alex.client.claimWorldAction({kind:'WORLD_ACTION',subjectKey:prize,
