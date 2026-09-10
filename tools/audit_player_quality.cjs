@@ -34,7 +34,13 @@ if(require.main===module)(async()=>{
  // actual score-generating function. Friendlies bypass season-stat bookkeeping.
  const squads={},home={id:'H'},away={id:'A'};let currentFixture;
  Object.assign(ctx,{worldSeed:'QUALITY-AUDIT',currentClub:home,clubs:[home,away],getSquad:c=>squads[c.id],activeStarters:c=>squads[c.id],aiTacticalCohesionModifier:()=>0,moraleIndex:()=>2,prepareAiLineupForFixture:()=>{},fixtureClubs:()=>({home,away}),v44DeployedRoleFor:p=>p.role,v44RoleSuitabilityModifier:()=>1,v44FixtureClubStrength:c=>squads[c.id].reduce((sum,p)=>sum+Number(p.ovr||60),0)/squads[c.id].length,resolveChampionsCrownDecider:()=>{},v202MarkCompetitionDataDirty:()=>{},applyBackgroundMatchEffects:()=>{},ensurePlayerCareerMeta:()=>{},championsCrownAfterFixture:()=>{}});
- for(const name of ['v24PlayerStat','v24TeamProfile','v24ExpectedGoals','v24ScorerWeight','matchMoraleModifier','matchFitnessModifier','backgroundClubStrength','v44FixtureClubStrength','backgroundGoals','v23TeamSharpness','weightedScorer','simulateBackgroundFixture'])if(source.includes('  function '+name+'('))vm.runInContext(fn(name),ctx);
+ // This audit isolates player quality, so the tactical layer is held neutral
+ // exactly as aiTacticalCohesionModifier is. Home advantage is read from the
+ // app rather than copied, so the two can never drift apart.
+ const homeEdge=Number((source.match(/V1048_HOME_EDGE\s*=\s*([0-9.]+)/)||[])[1]);
+ assert.ok(Number.isFinite(homeEdge),'the app declares its home advantage');
+ Object.assign(ctx,{V1048_HOME_EDGE:homeEdge,v210ClubTactics:()=>({}),v1048TacticalModifier:()=>0});
+ for(const name of ['v24PlayerStat','v24TeamProfile','v24ExpectedGoals','v24ScorerWeight','matchMoraleModifier','matchFitnessModifier','matchFormModifier','backgroundClubStrength','v44FixtureClubStrength','backgroundGoals','v23TeamSharpness','weightedScorer','simulateBackgroundFixture'])if(source.includes('  function '+name+'('))vm.runInContext(fn(name),ctx);
  Object.assign(ctx,{v37CaptureSelectionEligibility:()=>{},disciplineServingSnapshot:()=>[],disciplineSimulatedEvents:()=>[],disciplineRedImpact:()=>0,disciplineServeFixtureForClub:()=>{},disciplineApplyEvents:()=>{}});
  const sims=[];
  for(const settings of [{name:'OVR 75 v 75 control',strong:75,weak:75},{name:'OVR 80 v 70',strong:80,weak:70},{name:'OVR 90 v 55',strong:90,weak:55},{name:'Same OVR 75; all attributes 90 v 50',strong:75,weak:75,stats:true}]){

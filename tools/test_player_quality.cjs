@@ -62,7 +62,7 @@ const plain=value=>JSON.parse(JSON.stringify(value));
  assert(s.management.players.H1.energy>s.management.players.H0.energy+2,'Stamina preserves energy at equal workload');await r.engine.close();
  // Each advertised stat must affect the expected score, independently of OVR.
  const home={id:'H'},away={id:'A'},squads={H:[0,1,2].map(i=>player('H',i,75)),A:[0,1,2].map(i=>player('A',i,75))};
- Object.assign(ctx,{activeStarters:c=>squads[c.id],backgroundClubStrength:()=>75,v44FixtureClubStrength:()=>75,v44DeployedRoleFor:p=>p.role,v44RoleSuitabilityModifier:()=>1,matchMoraleModifier:()=>0,matchFitnessModifier:()=>0,v23TeamSharpness:()=>0,currentClub:home,userTacticalModifier:()=>0});
+ Object.assign(ctx,{activeStarters:c=>squads[c.id],backgroundClubStrength:()=>75,v44FixtureClubStrength:()=>75,v44DeployedRoleFor:p=>p.role,v44RoleSuitabilityModifier:()=>1,matchMoraleModifier:()=>0,matchFitnessModifier:()=>0,matchFormModifier:()=>0,v23TeamSharpness:()=>0,currentClub:home,userTacticalModifier:()=>0,v210ClubTactics:()=>({}),v1048TacticalModifier:()=>0,V1048_HOME_EDGE:0});
  for(const name of ['v24PlayerStat','v24TeamProfile','v24ExpectedGoals','v24ScorerWeight','weightedScorer'])vm.runInContext(fn(name),ctx);
  const baseline=plain(ctx.v24ExpectedGoals(home,away));
  for(const stat of ['PAC','PAS','SHO','HAN','DEF','STA']){

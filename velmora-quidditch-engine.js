@@ -732,7 +732,14 @@
     if(opts.careerMode&&(!directHome||!directAway||[...directHome,...directAway].some(p=>p.unavailable)))throw new Error('Each club needs three available career starters.');
     if(directHome&&directAway){
       roster={belros:directHome,zafran:directAway};
+      // V104.8: the live match reads the same squad quality the career model
+      // reads. Without this a ten-point ability gap was worth almost nothing on
+      // the pitch while being decisive in a simulated fixture, so watching your
+      // matches quietly threw away the squad you had built.
+      const mean=list=>list.reduce((sum,p)=>sum+Number(p.careerMeta?.ovr||70),0)/Math.max(1,list.length);
+      careerQualityEdge=clamp((mean(directHome)-mean(directAway))*CAREER_QUALITY_EDGE,-CAREER_QUALITY_CAP,CAREER_QUALITY_CAP);
     }else{
+      careerQualityEdge=0;
       const requestedHome=Array.isArray(opts.homePlayers)&&opts.homePlayers.length===3?opts.homePlayers:fallback.home;
       const requestedAway=Array.isArray(opts.awayPlayers)&&opts.awayPlayers.length===3?opts.awayPlayers:fallback.away;
       const valid=id=>!!V2_PLAYERS[id],homeIds=requestedHome.filter(valid),awayIds=requestedAway.filter(valid);
@@ -3995,6 +4002,30 @@ function triggerBigMoment(kind='hattrick'){
   // goals measured against xG still reveal who finishes well. .86 is the
   // neutral skill point every formula below is written around.
   const XG_NEUTRAL_SKILL=.86;
+  // V104.8 · career calibration.
+  //
+  // A watched match used to average about five goals while the rest of the
+  // world averaged two and a half, so watching a fixture changed what it was
+  // worth. Finishing is scaled to bring the live match onto the same scale as
+  // the career simulation. It is a scale, not a cap, so goalless draws, tight
+  // wins and the occasional rout all still happen -- only the average moves.
+  //
+  // The engine also had no home advantage of any kind. The home side now
+  // carries the same edge a simulated fixture gives it.
+  const CAREER_FINISH_SCALE=0.38, CAREER_HOME_EDGE=0.05;
+  // Per point of average OVR difference between the two starting threes, and the
+  // most that difference may ever be worth. The cap has to clear the gaps this
+  // world actually produces: tier one averages about 77 OVR and tier four about
+  // 57, and the best club is 31 points clear of the worst. A cap that saturated
+  // at 15 points made a cup tie across three divisions feel like a close match.
+  const CAREER_QUALITY_EDGE=0.040, CAREER_QUALITY_CAP=0.82;
+  let careerQualityEdge=0;
+  function careerFinishScale(team){
+    if(!state.careerMode)return 1;
+    const home=team==='belros';
+    const quality=1+(home?careerQualityEdge:-careerQualityEdge);
+    return CAREER_FINISH_SCALE*(home?1+CAREER_HOME_EDGE:1-CAREER_HOME_EDGE)*clamp(quality,.18,1.82);
+  }
   function neutralShotXg(opts){
     const {penalty,careerMode,zone,defence,coverage,pressurePenalty,distancePenalty,motionPenalty}=opts;
     if(penalty){
@@ -4004,8 +4035,9 @@ function triggerBigMoment(kind='hattrick'){
     const quality=careerMode
       ?.095-.30*(defence-XG_NEUTRAL_SKILL)*coverage
       :(.065*XG_NEUTRAL_SKILL+.040*XG_NEUTRAL_SKILL);
-    return clamp(.155+zone*.14+quality-pressurePenalty-distancePenalty-motionPenalty,
-      careerMode?.09:.145,careerMode?.50:.415);
+    const raw=.155+zone*.14+quality-pressurePenalty-distancePenalty-motionPenalty;
+    const scale=careerMode?(opts.team?careerFinishScale(opts.team):CAREER_FINISH_SCALE):1;
+    return clamp(raw*scale,careerMode?.09*CAREER_FINISH_SCALE:.145,careerMode?.50*CAREER_FINISH_SCALE:.415);
   }
 
   function chooseShotOutcome(shooter,penalty=false){
@@ -4029,8 +4061,9 @@ function triggerBigMoment(kind='hattrick'){
     // V2 four-and-a-half-minute format: a very small symmetric finishing bump so the longer
     // standard rotation produces a little more scoring without becoming goal-heavy.
     state.lastShotXg=neutralShotXg({penalty:false,careerMode:state.careerMode,zone:Number(state.zone)||.15,
-      defence,coverage,pressurePenalty,distancePenalty,motionPenalty});
-    const goalP=clamp(.155+state.zone*.14+roleBoost+quality-pressurePenalty-distancePenalty-motionPenalty,state.careerMode?.09:.145,state.careerMode?.50:.415),saveP=clamp(.267+pressurePenalty*.55,.230,.345),postP=.13,r=state.simRand();
+      defence,coverage,pressurePenalty,distancePenalty,motionPenalty,team:shooter.team});
+    const rawGoalP=.155+state.zone*.14+roleBoost+quality-pressurePenalty-distancePenalty-motionPenalty;
+    const goalP=clamp(rawGoalP*careerFinishScale(shooter.team),state.careerMode?.09*CAREER_FINISH_SCALE:.145,state.careerMode?.50*CAREER_FINISH_SCALE:.415),saveP=clamp(.267+pressurePenalty*.55,.230,.345),postP=.13,r=state.simRand();
     // Same formula and RNG for both teams: no favourites, rubber-banding or scripted goals.
     return r<goalP?'goal':r<goalP+saveP?'save':r<goalP+saveP+postP?'post':'miss';
   }
@@ -4453,7 +4486,11 @@ function triggerBigMoment(kind='hattrick'){
     const {team,opp,shooter,hoop,penalty,shootout}=info;const keeper=info.keeper||rolePlayer(opp,'defender');let outcome=info.outcome;
     // A selected save is not granted until the defender has physically reached the save zone.
     // If they are late, the simulation resolves from what is actually visible on screen.
-    if(outcome==='save'&&keeper&&dist2(keeper,info.target)>.068){const recovery=executionSkill(keeper.attributes,'reaction');outcome=state.simRand()<clamp(.76-(recovery-.86)*.32,.66,.80)?'goal':'post';info.outcome=outcome;}
+    // A save the model chose but the keeper cannot physically reach is resolved
+    // from what is on screen. In a career match that rescue is scaled by the same
+    // finishing calibration as an ordinary shot, otherwise it quietly becomes the
+    // largest source of goals and the live score drifts away from the league.
+    if(outcome==='save'&&keeper&&dist2(keeper,info.target)>.068){const recovery=executionSkill(keeper.attributes,'reaction');const late=clamp(.76-(recovery-.86)*.32,.66,.80)*careerFinishScale(team);outcome=state.simRand()<late?'goal':'post';info.outcome=outcome;}
     const shooterStats=state.playerStats[shooter.player.id];
     if(outcome==='goal'||outcome==='save'){state.teamStats[team].onTarget++;shooterStats.onTarget++}
     if(outcome!=='goal'){state.teamStats[team].missedChances++;shooterStats.missedChances++}

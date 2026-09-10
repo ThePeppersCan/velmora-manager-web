@@ -50,6 +50,12 @@ ctx.v23SetTrainingPlayer('p','recovery');assert.equal(squads.H[0].training.mode,
 const low=ctx.v210PlayerAttributes(player({sharpness:20})),high=ctx.v210PlayerAttributes(player({sharpness:90}));assert(high.passing>low.passing);assert(high.shooting>low.shooting);assert(high.decision>low.decision);assert.equal(high.speed,low.speed);assert.equal(high.stamina,low.stamina);assert(ctx.v210PlayerAttributes(player({morale:'Happy'})).passing>ctx.v210PlayerAttributes(player({morale:'Unhappy'})).passing);
 checks.push('actual career daily hooks, medical countdown idempotence, preference normalization and round trips, owned-player controls, live technical attributes and career morale vocabulary');
 // No hidden development or lineup mutation from a forecast or schedule choice.
-assert(!app.includes('Training remains intentionally lightweight'));assert(app.includes('matchFitnessModifier(home)+v23TeamSharpness(home)'));assert(app.includes('v24ExpectedGoals(home,away,false,fixture)'));assert(app.includes('v24ExpectedGoals(home,away,true,fixture)'));
+assert(!app.includes('Training remains intentionally lightweight'));// Sharpness must reach the match model on both routes. Checked by presence
+// rather than by an exact expression, so adding another modifier beside it
+// does not read as sharpness being dropped.
+const expectedGoalsBody=app.slice(app.indexOf('function v24ExpectedGoals'),app.indexOf('function v24ScorerWeight'));
+for(const term of ['matchFitnessModifier(home)','matchFitnessModifier(away)','v23TeamSharpness(home)','v23TeamSharpness(away)','matchMoraleModifier(home)','matchFormModifier(home)'])
+  assert(expectedGoalsBody.includes(term),`the match model still reads ${term}`);
+assert(app.includes('v24ExpectedGoals(home,away,false,fixture)'));assert(app.includes('v24ExpectedGoals(home,away,true,fixture)'));
 checks.push('both user and background simulation routes include sharpness');
 console.log(JSON.stringify({status:'PASS',checks},null,2));
