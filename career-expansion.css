@@ -659,3 +659,10 @@ body #screenTransfers .living-transfer-hub-nav button b,.living-transfer-hub-nav
 .v40-arrival-note strong{display:block}
 body #screenTransfers .v40-arrival-label{grid-column:1/-1;font:700 12px/1.5 Arial,sans-serif;color:#1b6263;text-align:center}
 @media(max-width:900px){body #screenTransfers .living-transfer-hub-nav{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* V104.7 · A club named anywhere is a way in to that club. No box, no metrics
+   of its own, so nothing in any layout moves because a name became a link. */
+.vm-club-link{cursor:pointer;text-decoration:underline;text-decoration-color:transparent;
+  text-decoration-thickness:1px;text-underline-offset:2px;transition:text-decoration-color .14s ease}
+.vm-club-link:hover,.vm-club-link:focus-visible{text-decoration-color:currentColor}
+.vm-club-link:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:3px}
