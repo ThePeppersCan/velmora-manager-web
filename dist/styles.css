@@ -1472,12 +1472,6 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
   .filter-btn{font-size:.46cqw!important;padding:0 .3cqw!important}
 }
 
-@media (max-width: 1280px){
-  .select-layout{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;overflow:auto!important}
-  .club-browser{grid-column:1!important;grid-row:1!important}
-  .club-preview{grid-column:1!important;grid-row:2!important}
-}
-
 /* ===== V2 polish pass: cutoffs, readability, shield fit, stage masking ===== */
 
 /* Club selection: ensure all five division tabs fit cleanly and mask the art beneath. */
@@ -10645,7 +10639,8 @@ body.v20-ui .career-music-mini:hover,
   .career-music-copy strong{font-size:10px}
   #careerMusicNext{width:30px;height:30px;font-size:15px}
 }
-body:has(#negotiationModal.is-open) .career-music-mini{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body:has(#negotiationModal.is-open) .career-music-mini,
+body:has(#screenManagerCreator.is-active) .career-music-mini{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 
 /* =========================================================
    V20.7.3.3 — OFFICE & INBOX WORLD IDENTITY PASS
@@ -13714,3 +13709,24 @@ html[data-vm-reduced-motion="true"] *::after{animation-duration:.001ms!important
   .app-root{display:block;width:100%;height:auto;min-height:100svh;padding:0;overflow:visible}
   .game-frame{width:100%;height:100svh;min-height:100svh;max-width:none;max-height:none;aspect-ratio:auto;overflow:auto;container-type:inline-size}
 }
+
+/* V105 · Attribute tracks use the playable 40–94 range and mark 65 as the senior benchmark. */
+.profile-stat>div{position:relative}
+.profile-stat>div::after{content:"";position:absolute;z-index:2;left:46%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.72);box-shadow:0 0 0 1px rgba(10,28,44,.22);pointer-events:none}
+.profile-stat.is-developing i{background:linear-gradient(90deg,#a95d35,#d98a45)!important}
+.profile-stat.is-solid i{background:linear-gradient(90deg,#276da8,#419ed0)!important}
+.profile-stat.is-strong i{background:linear-gradient(90deg,#177e7b,#40bbb0)!important}
+.profile-stat.is-elite i{background:linear-gradient(90deg,#a87b20,#e0bd55)!important}
+
+/* V105 · Compact career screens retain their authored side-by-side composition. */
+.fw-training-choices{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+
+body.v20-ui #officeBoardPane .office-objective-card:is(.is-pending,.is-not-started) .office-objective-progress>div{
+  background:repeating-linear-gradient(135deg,#edf2f6 0,#edf2f6 7px,#e3eaf0 7px,#e3eaf0 14px)!important
+}
+body.v20-ui #officeBoardPane .office-objective-card:is(.is-pending,.is-not-started) .office-objective-progress i{display:none!important}
+body.v20-ui #officeBoardPane .office-objective-card:is(.is-pending,.is-not-started) .office-objective-progress strong{color:#718495!important;letter-spacing:.04em}
+
+body.v20-ui .central-task-empty .central-quiet-actions{width:min(100%,14cqw);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.32cqw;margin-top:.36cqw}
+body.v20-ui .central-task-empty .central-quiet-actions button{min-width:0;height:1.75cqw;padding:0 .3cqw;border:1px solid #cad8e5;border-radius:.3cqw;background:#fff;color:#315b82;font:900 .27cqw/1 Arial,sans-serif;letter-spacing:.035em;cursor:pointer}
+body.v20-ui .central-task-empty .central-quiet-actions button:hover{border-color:#7fa7cc;background:#f2f7fc}

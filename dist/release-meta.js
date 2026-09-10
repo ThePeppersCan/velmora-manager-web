@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'104.9.0',
-    label:'V104.9',
-    channel:'SHARED PROGRESSION',
-    cacheKey:'v104-9-shared-progression-20260910',
+    version:'105.0.0',
+    label:'V105',
+    channel:'PLAYER PATHWAYS',
+    cacheKey:'v105-player-pathways-20260910',
     saveSchema:86
   });
 });
