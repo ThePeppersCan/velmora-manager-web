@@ -10864,14 +10864,63 @@
   function matchDaysUntil(fixture){return fixture?Math.max(0,diffDaysISO(currentCareerISO(),fixture.date)):0;}
   function matchMoraleModifier(club){const squad=activeStarters(club);if(!squad.length)return 0;if(typeof performanceRules!=='undefined'&&performanceRules)return squad.reduce((sum,p)=>sum+performanceRules.moraleModifier(p.morale)*100,0)/squad.length;return (squad.reduce((a,p)=>a+moraleIndex(p.morale),0)/squad.length-2)*.6;}
   function matchFitnessModifier(club){const s=activeStarters(club);if(!s.length)return 0;const avg=s.reduce((a,p)=>a+clamp(Number.isFinite(Number(p.fitness??82))?Number(p.fitness??82):82,0,100),0)/s.length;return (avg-82)/12;}
+  // V104.8: one tactical model, used by both sides of every fixture.
+  //
+  // A plan is judged on two things: whether it meets the opposition's plan, and
+  // whether it is internally coherent. Matching the assistant's advice is no
+  // longer a separate reward -- the assistant recommends the counter, so taking
+  // its advice earns the counter on its own merit.
+  //
+  // Attacking approach against the opponent's defensive approach. Positive is
+  // good for the attacking side.
+  // How much of a base expected goal the home side is given. 0.16 produced a
+  // 60/40 points split; this is the softened figure the live engine also uses.
+  const V1048_HOME_EDGE=0.11;
+  const V1048_TACTIC_COUNTERS=Object.freeze({
+    'Possession':{'Press':-0.90,'Drop Back':0.60,'Balanced':0.05},
+    'Direct':{'Press':0.85,'Drop Back':-0.70,'Balanced':0},
+    'Fast Break':{'Press':1.00,'Drop Back':-0.90,'Balanced':0.10},
+    'Balanced':{'Press':0,'Drop Back':0,'Balanced':0}
+  });
+  // Does the plan agree with itself? An urgent tempo with patient possession is
+  // two instructions pulling in opposite directions, and the players show it.
+  function v1048TacticalCoherence(t){
+    let mod=0;
+    if(t.width==='Wide'&&['Direct','Fast Break'].includes(t.attacking))mod+=.35;
+    if(t.width==='Compact'&&t.defensive==='Drop Back')mod+=.35;
+    if(t.tempo==='Patient'&&t.attacking==='Possession')mod+=.40;
+    if(t.tempo==='Urgent'&&['Direct','Fast Break'].includes(t.attacking))mod+=.38;
+    if(t.freedom==='Fluid'&&t.mentality==='Attacking')mod+=.30;
+    if(t.freedom==='Structured'&&t.mentality==='Defensive')mod+=.30;
+    if(t.mentality==='Attacking')mod+=.15;
+    if(t.mentality==='Defensive')mod-=.10;
+    if(t.tempo==='Urgent'&&t.attacking==='Possession')mod-=.35;
+    if(t.freedom==='Fluid'&&t.defensive==='Drop Back')mod-=.30;
+    if(t.width==='Wide'&&t.defensive==='Press')mod-=.25;
+    return mod;
+  }
+  // One dial for how much the tactical plan is worth overall. At 1.3 the best
+  // plan against a given opponent is worth about two and a half OVR of squad
+  // quality more than the worst -- enough to win matches, not enough to make
+  // the squad irrelevant.
+  const V1048_TACTIC_WEIGHT=1.3;
+  function v1048TacticalModifier(mine,theirs){
+    const me=v96NormalizeTactics(mine||{}),them=v96NormalizeTactics(theirs||{});
+    const counter=(V1048_TACTIC_COUNTERS[me.attacking]||{})[them.defensive]||0;
+    return clamp((counter+v1048TacticalCoherence(me))*V1048_TACTIC_WEIGHT,-3.4,3.4);
+  }
+  // Kept for the tactical screen, which reports the value of the current plan
+  // against a specific opponent.
   function userTacticalModifier(opponent){
-    const rec=matchStaffRecommendation(opponent),t=careerPreferences.tactics||{};let mod=0;
-    if(t.attacking===rec.attacking)mod+=.45;if(t.defensive===rec.defensive)mod+=.35;
-    if(t.mentality==='Attacking')mod+=.12;if(t.mentality==='Defensive')mod-=.04;
-    if(t.width==='Wide'&&['Direct','Fast Break'].includes(t.attacking))mod+=.12;if(t.width==='Compact'&&t.defensive==='Drop Back')mod+=.12;
-    if(t.tempo==='Patient'&&t.attacking==='Possession')mod+=.14;if(t.tempo==='Urgent'&&['Direct','Fast Break'].includes(t.attacking))mod+=.13;
-    if(t.freedom==='Fluid'&&t.mentality==='Attacking')mod+=.1;if(t.freedom==='Structured'&&t.mentality==='Defensive')mod+=.1;
-    if(t.tempo==='Urgent'&&t.attacking==='Possession')mod-=.08;if(t.freedom==='Fluid'&&t.defensive==='Drop Back')mod-=.07;return mod;
+    return v1048TacticalModifier(careerPreferences.tactics,opponentTacticalProfile(opponent));
+  }
+  // Form is on every player card, so it has to mean something. Weighted to sit
+  // alongside morale rather than above it.
+  function matchFormModifier(club){
+    const squad=activeStarters(club);
+    if(!squad.length)return 0;
+    const value={'Excellent':1.0,'Good':0.5,'New Signing':0.2,'Average':0,'Poor':-0.6,'Terrible':-1.2};
+    return squad.reduce((sum,p)=>sum+(value[p.form]||0),0)/squad.length;
   }
   // V24: six attributes contribute to attack/defence; OVR remains the overall anchor.
   function v24PlayerStat(player,key){const value=player?.stats?.[key],fallback=Number.isFinite(Number(player?.ovr))?Number(player.ovr):60;v49EnsureTraits(player);return clamp((value!=null&&Number.isFinite(Number(value))?Number(value):fallback)+(window.VelmoraTraits?.stat(player,key)||0),0,99);}
@@ -10890,12 +10939,20 @@
     const leadership=((window.VelmoraTraits?.aura(players,false)||0)*.65+(window.VelmoraTraits?.aura(players,true)||0)*.35)*55;
     return{attackDelta:attack/players.length+leadership,defenceDelta:defence/players.length+leadership};
   }
+  // The tactical plan applies to every fixture, not only the ones this device is
+  // watching, so an AI-versus-AI result and a Quick Sim are produced by the same
+  // model. The `userTactics` argument is kept for older call sites and ignored.
   function v24ExpectedGoals(home,away,userTactics=false,fixture=null){
     const hp=v24TeamProfile(home,fixture),ap=v24TeamProfile(away,fixture);
-    let hs=v44FixtureClubStrength(home,fixture)+matchMoraleModifier(home)+matchFitnessModifier(home)+v23TeamSharpness(home),as=v44FixtureClubStrength(away,fixture)+matchMoraleModifier(away)+matchFitnessModifier(away)+v23TeamSharpness(away);
-    if(userTactics&&home.id===currentClub?.id)hs+=userTacticalModifier(away);
-    if(userTactics&&away.id===currentClub?.id)as+=userTacticalModifier(home);
-    const neutral=!!fixture?.neutralVenue,homeBase=neutral?1.34:1.5,awayBase=neutral?1.34:1.18;
+    let hs=v44FixtureClubStrength(home,fixture)+matchMoraleModifier(home)+matchFitnessModifier(home)+matchFormModifier(home)+v23TeamSharpness(home),as=v44FixtureClubStrength(away,fixture)+matchMoraleModifier(away)+matchFitnessModifier(away)+matchFormModifier(away)+v23TeamSharpness(away);
+    const homeTactics=v210ClubTactics(home),awayTactics=v210ClubTactics(away);
+    hs+=v1048TacticalModifier(homeTactics,awayTactics);
+    as+=v1048TacticalModifier(awayTactics,homeTactics);
+    // Home advantage, applied once, here. V104.8 softened it from a 60/40 share
+    // of the points to roughly 56/44, and the live engine now uses the same
+    // figure so a watched match is worth what a simulated one is worth.
+    const neutral=!!fixture?.neutralVenue,edge=neutral?0:V1048_HOME_EDGE;
+    const homeBase=1.34+edge,awayBase=1.34-edge;
     return {home:clamp(homeBase+(hs+hp.attackDelta-as-ap.defenceDelta)/18,.30,3.2),away:clamp(awayBase+(as+ap.attackDelta-hs-hp.defenceDelta)/18,.30,3.2)};
   }
   function v24ScorerWeight(player,role=player?.role){
