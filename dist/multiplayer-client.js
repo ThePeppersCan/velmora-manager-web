@@ -88,6 +88,9 @@
     // ---------------------------------------------------------------
     function snapshotStatus(){
       const bar=core.barrierState({barrier,members,submissions,results,now:now()});
+      const sharedDate=bar.date||career?.career_date||bridge.currentDate?.()||null;
+      const dayAdvance=core.dayAdvanceState({date:sharedDate,members,submissions,results});
+      const calendarLocked=bar.locked||!!(bar.open&&!dayAdvance.complete);
       return{
         ...state,
         pending:queue.length,
@@ -100,9 +103,10 @@
         members:members.map(publicMember),
         others:members.filter(row=>row.user_id!==user?.id).map(publicMember),
         barrier:bar,
-        waitingMessage:core.waitingMessage(bar),
-        locked:bar.locked,
-        resolvable:bar.resolvable
+        dayAdvance,
+        waitingMessage:core.waitingMessage(bar,dayAdvance),
+        locked:calendarLocked,
+        resolvable:bar.resolvable&&(dayAdvance.ready||dayAdvance.complete)
       };
     }
     // Only broad, non-confidential fields ever leave this function.
@@ -406,6 +410,7 @@
           if(events.length<500)break;
         }
         results=await selectRows(T.results,q=>q.eq('career_id',careerId));
+        reconcileStoredWorld();
         emit({revision:career?.revision||lastSeq,lastSyncedAt:new Date(now()).toISOString()});
         bridge.onRemoteChange?.(snapshotStatus());
       }finally{
@@ -458,6 +463,18 @@
       eventsSinceSnapshot++;
     }
 
+    // A compacted snapshot and its revision should describe the same moment,
+    // but a stale writer or an interrupted older build can leave the payload
+    // behind the server's authoritative rows. Re-applying stored results and
+    // the shared date is idempotent and repairs that split-brain on attach.
+    function reconcileStoredWorld(){
+      (results||[]).forEach(row=>bridge.applyMatchResult?.(String(row.fixture_id),row.result||{}, {
+        homeScore:Number(row.home_score||0),awayScore:Number(row.away_score||0),
+        mode:row.resolution_mode||'ONLINE'
+      }));
+      if(career?.career_date)bridge.syncSharedDate?.(career.career_date);
+    }
+
     // ---------------------------------------------------------------
     // Realtime
     // ---------------------------------------------------------------
@@ -501,6 +518,7 @@
       if(Array.isArray(sync.events)&&sync.events.length)await pullEvents(careerId);
       else{
         results=await selectRows(T.results,q=>q.eq('career_id',careerId));
+        reconcileStoredWorld();
         emit({});
         bridge.onRemoteChange?.(snapshotStatus());
       }

@@ -182,10 +182,32 @@
   // Matchday barrier
   // ---------------------------------------------------------------
 
-  // A human club only becomes a required participant when it genuinely has
-  // an unplayed fixture on the date. Byes, postponements and blank dates
-  // are absent from the list, so they can never block progression.
-  function requiredParticipants({fixtures=[],claims=[],date}={}){
+  // Fixture requirements include only genuine unplayed matches. The optional
+  // DAY_ADVANCE requirements are separate: one deliberate confirmation per
+  // active manager, including on byes and otherwise blank dates.
+  const DAY_ADVANCE_PREFIX='DAY-ADVANCE:';
+  function dayAdvanceId(date){return`${DAY_ADVANCE_PREFIX}${String(date||'')}`;}
+
+  function dayAdvanceParticipants({claims=[],date}={}){
+    const fixtureId=dayAdvanceId(date),seen=new Set(),required=[];
+    (claims||[]).forEach(claim=>{
+      if(!claim?.club_id||!claim?.user_id||claim.status==='AI_CONTROLLED'||claim.status==='LEFT'||claim.status==='REMOVED')return;
+      const userId=String(claim.user_id);
+      if(seen.has(userId))return;
+      seen.add(userId);
+      required.push({
+        user_id:claim.user_id,
+        club_id:String(claim.club_id),
+        fixture_id:fixtureId,
+        opponent_club_id:null,
+        human_vs_human:false,
+        requirement:'DAY_ADVANCE'
+      });
+    });
+    return required.sort((a,b)=>String(a.user_id).localeCompare(String(b.user_id)));
+  }
+
+  function requiredParticipants({fixtures=[],claims=[],date,requireAdvance=false}={}){
     const byClub=new Map();
     (claims||[]).forEach(claim=>{
       if(claim&&claim.club_id&&claim.user_id)byClub.set(String(claim.club_id),claim);
@@ -211,7 +233,32 @@
           });
         });
     });
-    return required.sort((a,b)=>String(a.fixture_id).localeCompare(String(b.fixture_id)));
+    required.sort((a,b)=>String(a.fixture_id).localeCompare(String(b.fixture_id)));
+    return requireAdvance?[...required,...dayAdvanceParticipants({claims,date})]:required;
+  }
+
+  function dayAdvanceState({date,members=[],submissions=[],results=[]}={}){
+    const fixtureId=dayAdvanceId(date);
+    const active=(members||[]).filter(member=>member?.club_id&&
+      member.status!=='AI_CONTROLLED'&&member.status!=='LEFT'&&member.status!=='REMOVED');
+    const submissionByUser=new Map((submissions||[])
+      .filter(row=>String(row.fixture_id)===fixtureId)
+      .map(row=>[String(row.user_id),row]));
+    const complete=(results||[]).some(row=>String(row.fixture_id)===fixtureId);
+    const participants=active.map(member=>{
+      const submission=submissionByUser.get(String(member.user_id));
+      const confirmed=complete||!!(submission&&['READY','PLAYING','COMPLETED'].includes(submission.state));
+      return{
+        user_id:member.user_id,club_id:member.club_id,
+        display_name:member.display_name||'Manager',
+        manager_name:member.manager_name||member.display_name||'Manager',
+        club_name:member.club_name||member.club_id,
+        fixture_id:fixtureId,requirement:'DAY_ADVANCE',confirmed,
+        state:complete?'COMPLETED':confirmed?'READY':'PREPARING'
+      };
+    });
+    const waitingOn=participants.filter(row=>!row.confirmed);
+    return{date,fixtureId,participants,waitingOn,ready:participants.length>0&&!waitingOn.length,complete};
   }
 
   const PARTICIPANT_STATES=Object.freeze(['PREPARING','READY','PLAYING','COMPLETED','DISCONNECTED']);
@@ -398,8 +445,17 @@
   }
 
   // The single sentence shown when progression is blocked.
-  function waitingMessage(state){
-    if(!state||!state.locked)return null;
+  function waitingMessage(state,dayAdvance=null){
+    if(!state)return null;
+    if(state.open&&dayAdvance&&!dayAdvance.complete){
+      if(dayAdvance.waitingOn.length){
+        const labels=dayAdvance.waitingOn.map(row=>`${row.manager_name||row.display_name||'the other manager'} at ${row.club_name||row.club_id}`);
+        const who=labels.length===1?labels[0]:`${labels.slice(0,-1).join(', ')} and ${labels[labels.length-1]}`;
+        return`Waiting for ${who} to confirm Advance. You may continue managing your club.`;
+      }
+      if(dayAdvance.ready)return'Both managers have confirmed Advance. Moving the shared calendar…';
+    }
+    if(!state.locked)return null;
     const names=state.outstanding.map(row=>{
       const manager=row.manager_name||row.display_name||'the other manager';
       return`${manager} at ${row.club_name||row.club_id}`;
@@ -419,6 +475,7 @@
     idempotencyKey,subjectKeys,
     humanMemberForClub,humanManagerId,humanTransferActorAllowed,
     simulationSeed,assertDeterministicSeed,
+    dayAdvanceId,dayAdvanceParticipants,dayAdvanceState,
     requiredParticipants,barrierState,humanFixtureReady,humanFixtureResolver,
     isStale,conflictPlan,
     parseVersion,versionCompatibility,saveSchemaCompatibility,

@@ -706,13 +706,15 @@
         `<div><dt>PROGRESSION</dt><dd>${locked?'LOCKED':'OPEN'}</dd></div>`+
       '</dl>'+
       (others2.length?'<ul class="mp-people" role="list">'+others2.map(person=>{
-        const seat=(barrier.participants||[]).find(row=>row.user_id===person.user_id);
+        const seats=(barrier.participants||[]).filter(row=>row.user_id===person.user_id);
+        const seat=seats.find(row=>row.requirement!=='DAY_ADVANCE')||seats[0];
         const state=seat?seat.state:null;
         const label=person.status==='AI_CONTROLLED'?'AI CONTROLLED'
           :state==='COMPLETED'?'MATCH COMPLETE'
           :state==='PLAYING'?'PLAYING MATCH'
-          :state==='READY'?'READY TO PLAY'
+          :state==='READY'?(seat?.requirement==='DAY_ADVANCE'?'READY TO ADVANCE':'READY TO PLAY')
           :state==='DISCONNECTED'?'DISCONNECTED'
+          :seat?.requirement==='DAY_ADVANCE'?'WAITING TO ADVANCE'
           :person.online?esc(person.activity):'OFFLINE';
         return'<li>'+
           `<span class="mp-dot ${person.online?'is-good':'is-idle'}"></span>`+
