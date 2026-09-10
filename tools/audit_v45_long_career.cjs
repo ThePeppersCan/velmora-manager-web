@@ -65,16 +65,19 @@ function markdown(report){
     hardFailures.push(...evaluation.hard.map(x=>`SMOKE: ${x}`));warnings.push(...evaluation.warnings.map(x=>`SMOKE: ${x}`));
     seasonRows.push({index:0,label:'collector-smoke',snapshot,evaluation,deltas:{transfers:snapshot.transfers.currentSeasonCount,dismissals:snapshot.managers.currentSeasonDismissals,caretakers:snapshot.managers.currentSeasonCaretakers}});
   }else{
+    const auditedSeasonIds=new Set();
     for(let i=1;i<=seasons;i++){
       const t0=Date.now();process.stderr.write(`[V45 audit] season ${i}/${seasons} · ${q.currentCareerISO()} · simulating real world...\n`);
       const sim=d.simulateRoadToGlorySeasonForTest();
       if(!sim.ok)throw new Error(`Season ${i} did not reach review: ${JSON.stringify(sim)}`);
       q.saveCareerState();
       const snapshot=d.v45LongCareerTelemetryForTest(),evaluation=evaluate(snapshot,i);
+      if(auditedSeasonIds.has(snapshot.seasonId))throw new Error(`Season ${i} repeated completed season ${snapshot.seasonId}`);
+      auditedSeasonIds.add(snapshot.seasonId);
       const row={index:i,seasonId:snapshot.seasonId,durationSeconds:Number(((Date.now()-t0)/1000).toFixed(1)),snapshot,evaluation,deltas:{transfers:snapshot.transfers.currentSeasonCount,dismissals:snapshot.managers.currentSeasonDismissals,caretakers:snapshot.managers.currentSeasonCaretakers,retirements:delta(previous,snapshot,'population.retirements'),promotions:snapshot.movement.currentSeasonPromotions,relegations:snapshot.movement.currentSeasonRelegations,saveCharacters:delta(previous,snapshot,'save.characters')}};
       seasonRows.push(row);hardFailures.push(...evaluation.hard.map(x=>`Season ${i}: ${x}`));warnings.push(...evaluation.warnings.map(x=>`Season ${i}: ${x}`));
-      const rollover=d.completeSeasonRolloverForTest();if(!rollover)throw new Error(`Season ${i} rollover failed`);q.saveCareerState();previous=d.v45LongCareerTelemetryForTest();
-      process.stderr.write(`[V45 audit] season ${i} complete · ${row.durationSeconds}s · ${evaluation.hard.length} hard / ${evaluation.warnings.length} warnings\n`);
+      const rollover=d.completeSeasonRolloverForTest();if(!rollover)throw new Error(`Season ${i} rollover failed`);if(rollover.seasonId===snapshot.seasonId)throw new Error(`Season ${i} rollover did not advance beyond ${snapshot.seasonId}`);q.saveCareerState();previous=d.v45LongCareerTelemetryForTest();
+      process.stderr.write(`[V45 audit] season ${i} complete · ${row.durationSeconds}s · ${evaluation.hard.length} hard / ${evaluation.warnings.length} warnings${evaluation.hard.length?` · HARD: ${evaluation.hard.join('; ')}`:''}${evaluation.warnings.length?` · WARN: ${evaluation.warnings.join('; ')}`:''}\n`);
     }
   }
   const report={version:'V45',mode:smoke?'SMOKE / ONE WORLD DATE':'FULL AUTHORITATIVE 288-CLUB',requestedSeasons:smoke?0:seasons,completedSeasons:smoke?0:seasonRows.length,startedAt,finishedAt:new Date().toISOString(),hardFailures,warnings,seasons:seasonRows,final:d.v45LongCareerTelemetryForTest()};

@@ -1,0 +1,1578 @@
+{
+  "version": "V45",
+  "mode": "FULL AUTHORITATIVE 288-CLUB",
+  "requestedSeasons": 12,
+  "completedSeasons": 12,
+  "startedAt": "2026-09-10T18:01:03.272Z",
+  "finishedAt": "2026-09-10T18:59:48.048Z",
+  "hardFailures": [],
+  "warnings": [],
+  "seasons": [
+    {
+      "index": 1,
+      "seasonId": "2026-27",
+      "durationSeconds": 118,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2026-27",
+        "date": "2027-05-09",
+        "careerSeason": 1,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5508,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.764,
+          "homeWinShare": 0.418,
+          "awayWinShare": 0.331,
+          "drawShare": 0.251
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 20,
+          "maxPoints": 75,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 0,
+          "cumulativeRelegations": 0
+        },
+        "championsCrown": {
+          "completedSeasons": 0,
+          "uniqueWinners": 0,
+          "winners": []
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 7086,
+          "medianWage": 6042,
+          "averageClubBudget": 9873819,
+          "medianClubBudget": 7100000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 2304,
+          "freeAgents": 48,
+          "retirements": 0,
+          "leftProfessionalGame": 0,
+          "academyProspects": 584,
+          "averageAge": 25.34,
+          "ageP10": 19,
+          "ageP90": 31,
+          "ovrP10": 56,
+          "ovrMedian": 66,
+          "ovrP90": 78,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 8,
+          "median": 8,
+          "max": 8,
+          "average": 8
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 5880443
+        },
+        "statistics": {
+          "rows": 4645,
+          "queryMs": 1,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4509516
+      }
+    },
+    {
+      "index": 2,
+      "seasonId": "2027-28",
+      "durationSeconds": 219.7,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2027-28",
+        "date": "2028-05-09",
+        "careerSeason": 2,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.761,
+          "homeWinShare": 0.433,
+          "awayWinShare": 0.331,
+          "drawShare": 0.236
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 17,
+          "maxPoints": 80,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 24,
+          "cumulativeRelegations": 36
+        },
+        "championsCrown": {
+          "completedSeasons": 1,
+          "uniqueWinners": 1,
+          "winners": [
+            "saint-ciro"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 5638,
+          "medianWage": 4608,
+          "averageClubBudget": 10402986,
+          "medianClubBudget": 6950000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3164,
+          "freeAgents": 211,
+          "retirements": 0,
+          "leftProfessionalGame": 0,
+          "academyProspects": 107,
+          "averageAge": 23.68,
+          "ageP10": 17,
+          "ageP90": 31,
+          "ovrP10": 52,
+          "ovrMedian": 64,
+          "ovrP90": 76,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 7,
+          "median": 11,
+          "max": 11,
+          "average": 10.99
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 8515575
+        },
+        "statistics": {
+          "rows": 9098,
+          "queryMs": 5,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4173292
+      }
+    },
+    {
+      "index": 3,
+      "seasonId": "2028-29",
+      "durationSeconds": 228.2,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2028-29",
+        "date": "2029-05-09",
+        "careerSeason": 3,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.728,
+          "homeWinShare": 0.42,
+          "awayWinShare": 0.335,
+          "drawShare": 0.245
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 19,
+          "maxPoints": 81,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 48,
+          "cumulativeRelegations": 72
+        },
+        "championsCrown": {
+          "completedSeasons": 2,
+          "uniqueWinners": 2,
+          "winners": [
+            "saint-ciro",
+            "marenza"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 5479,
+          "medianWage": 4388,
+          "averageClubBudget": 10992396,
+          "medianClubBudget": 7550000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 11,
+          "leftProfessionalGame": 15,
+          "academyProspects": 778,
+          "averageAge": 24.27,
+          "ageP10": 18,
+          "ageP90": 32,
+          "ovrP10": 51,
+          "ovrMedian": 63,
+          "ovrP90": 76,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 9871795
+        },
+        "statistics": {
+          "rows": 13365,
+          "queryMs": 5,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3799424
+      }
+    },
+    {
+      "index": 4,
+      "seasonId": "2029-30",
+      "durationSeconds": 233.9,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2029-30",
+        "date": "2030-05-09",
+        "careerSeason": 4,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.737,
+          "homeWinShare": 0.43,
+          "awayWinShare": 0.321,
+          "drawShare": 0.25
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 14,
+          "maxPoints": 86,
+          "medianPoints": 47
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 72,
+          "cumulativeRelegations": 108
+        },
+        "championsCrown": {
+          "completedSeasons": 3,
+          "uniqueWinners": 3,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 5330,
+          "medianWage": 4218,
+          "averageClubBudget": 11584722,
+          "medianClubBudget": 7510000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 33,
+          "leftProfessionalGame": 186,
+          "academyProspects": 904,
+          "averageAge": 24.62,
+          "ageP10": 19,
+          "ageP90": 32,
+          "ovrP10": 50,
+          "ovrMedian": 64,
+          "ovrP90": 76,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 10988663
+        },
+        "statistics": {
+          "rows": 17486,
+          "queryMs": 8,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3796976
+      }
+    },
+    {
+      "index": 5,
+      "seasonId": "2030-31",
+      "durationSeconds": 295.8,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2030-31",
+        "date": "2031-05-09",
+        "careerSeason": 5,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.729,
+          "homeWinShare": 0.426,
+          "awayWinShare": 0.338,
+          "drawShare": 0.236
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 21,
+          "maxPoints": 79,
+          "medianPoints": 48
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 96,
+          "cumulativeRelegations": 144
+        },
+        "championsCrown": {
+          "completedSeasons": 4,
+          "uniqueWinners": 4,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 5114,
+          "medianWage": 3872,
+          "averageClubBudget": 12197882,
+          "medianClubBudget": 7660000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 73,
+          "leftProfessionalGame": 1498,
+          "academyProspects": 51,
+          "averageAge": 23.63,
+          "ageP10": 17,
+          "ageP90": 32,
+          "ovrP10": 50,
+          "ovrMedian": 64,
+          "ovrP90": 75,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 12229603
+        },
+        "statistics": {
+          "rows": 21550,
+          "queryMs": 9,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4206276
+      }
+    },
+    {
+      "index": 6,
+      "seasonId": "2031-32",
+      "durationSeconds": 306.3,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2031-32",
+        "date": "2032-05-09",
+        "careerSeason": 6,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.69,
+          "homeWinShare": 0.424,
+          "awayWinShare": 0.331,
+          "drawShare": 0.245
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 15,
+          "maxPoints": 74,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 120,
+          "cumulativeRelegations": 180
+        },
+        "championsCrown": {
+          "completedSeasons": 5,
+          "uniqueWinners": 5,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4788,
+          "medianWage": 3528,
+          "averageClubBudget": 12892083,
+          "medianClubBudget": 8100000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 106,
+          "leftProfessionalGame": 1911,
+          "academyProspects": 588,
+          "averageAge": 23.34,
+          "ageP10": 18,
+          "ageP90": 32,
+          "ovrP10": 49,
+          "ovrMedian": 63,
+          "ovrP90": 75,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 13340399
+        },
+        "statistics": {
+          "rows": 25435,
+          "queryMs": 12,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3848576
+      }
+    },
+    {
+      "index": 7,
+      "seasonId": "2032-33",
+      "durationSeconds": 314.9,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2032-33",
+        "date": "2033-05-09",
+        "careerSeason": 7,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.675,
+          "homeWinShare": 0.432,
+          "awayWinShare": 0.326,
+          "drawShare": 0.242
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 18,
+          "maxPoints": 79,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 144,
+          "cumulativeRelegations": 216
+        },
+        "championsCrown": {
+          "completedSeasons": 6,
+          "uniqueWinners": 6,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4630,
+          "medianWage": 3300,
+          "averageClubBudget": 13552708,
+          "medianClubBudget": 7980000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 152,
+          "leftProfessionalGame": 2154,
+          "academyProspects": 763,
+          "averageAge": 23.59,
+          "ageP10": 18,
+          "ageP90": 32,
+          "ovrP10": 49,
+          "ovrMedian": 63,
+          "ovrP90": 75,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 14331131
+        },
+        "statistics": {
+          "rows": 29310,
+          "queryMs": 13,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3778080
+      }
+    },
+    {
+      "index": 8,
+      "seasonId": "2033-34",
+      "durationSeconds": 314.7,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2033-34",
+        "date": "2034-05-09",
+        "careerSeason": 8,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.689,
+          "homeWinShare": 0.423,
+          "awayWinShare": 0.33,
+          "drawShare": 0.247
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 12,
+          "maxPoints": 81,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 168,
+          "cumulativeRelegations": 252
+        },
+        "championsCrown": {
+          "completedSeasons": 7,
+          "uniqueWinners": 6,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck",
+            "ezuraya-1-kaishin-crown"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4457,
+          "medianWage": 3200,
+          "averageClubBudget": 14243889,
+          "medianClubBudget": 8110000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 197,
+          "leftProfessionalGame": 3426,
+          "academyProspects": 55,
+          "averageAge": 22.77,
+          "ageP10": 17,
+          "ageP90": 32,
+          "ovrP10": 49,
+          "ovrMedian": 62,
+          "ovrP90": 75,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 15430183
+        },
+        "statistics": {
+          "rows": 33290,
+          "queryMs": 17,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4208112
+      }
+    },
+    {
+      "index": 9,
+      "seasonId": "2034-35",
+      "durationSeconds": 321.1,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2034-35",
+        "date": "2035-05-09",
+        "careerSeason": 9,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.638,
+          "homeWinShare": 0.415,
+          "awayWinShare": 0.332,
+          "drawShare": 0.253
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 15,
+          "maxPoints": 79,
+          "medianPoints": 47
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 192,
+          "cumulativeRelegations": 288
+        },
+        "championsCrown": {
+          "completedSeasons": 8,
+          "uniqueWinners": 7,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck",
+            "ezuraya-1-kaishin-crown",
+            "kharova-1-eisenwald"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4274,
+          "medianWage": 2888,
+          "averageClubBudget": 14939826,
+          "medianClubBudget": 8460000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 259,
+          "leftProfessionalGame": 3904,
+          "academyProspects": 520,
+          "averageAge": 22.69,
+          "ageP10": 17,
+          "ageP90": 32,
+          "ovrP10": 49,
+          "ovrMedian": 62,
+          "ovrP90": 74,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 16493183
+        },
+        "statistics": {
+          "rows": 37246,
+          "queryMs": 18,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3921332
+      }
+    },
+    {
+      "index": 10,
+      "seasonId": "2035-36",
+      "durationSeconds": 329.3,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2035-36",
+        "date": "2036-05-09",
+        "careerSeason": 10,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.628,
+          "homeWinShare": 0.42,
+          "awayWinShare": 0.333,
+          "drawShare": 0.247
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 12,
+          "maxPoints": 82,
+          "medianPoints": 46
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 216,
+          "cumulativeRelegations": 324
+        },
+        "championsCrown": {
+          "completedSeasons": 9,
+          "uniqueWinners": 7,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck",
+            "ezuraya-1-kaishin-crown",
+            "kharova-1-eisenwald",
+            "aurelia"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4142,
+          "medianWage": 2888,
+          "averageClubBudget": 15669618,
+          "medianClubBudget": 8400000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 309,
+          "leftProfessionalGame": 4196,
+          "academyProspects": 695,
+          "averageAge": 22.9,
+          "ageP10": 18,
+          "ageP90": 32,
+          "ovrP10": 48,
+          "ovrMedian": 61,
+          "ovrP90": 74,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 17456243
+        },
+        "statistics": {
+          "rows": 41208,
+          "queryMs": 56,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 3868344
+      }
+    },
+    {
+      "index": 11,
+      "seasonId": "2036-37",
+      "durationSeconds": 346.1,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2036-37",
+        "date": "2037-05-09",
+        "careerSeason": 11,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.604,
+          "homeWinShare": 0.419,
+          "awayWinShare": 0.328,
+          "drawShare": 0.252
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 15,
+          "maxPoints": 73,
+          "medianPoints": 47
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 240,
+          "cumulativeRelegations": 360
+        },
+        "championsCrown": {
+          "completedSeasons": 10,
+          "uniqueWinners": 7,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck",
+            "ezuraya-1-kaishin-crown",
+            "kharova-1-eisenwald",
+            "aurelia",
+            "aurelia"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 4105,
+          "medianWage": 2600,
+          "averageClubBudget": 16500069,
+          "medianClubBudget": 9150000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 355,
+          "leftProfessionalGame": 5395,
+          "academyProspects": 95,
+          "averageAge": 22.34,
+          "ageP10": 17,
+          "ageP90": 32,
+          "ovrP10": 48,
+          "ovrMedian": 61,
+          "ovrP90": 74,
+          "ovrMax": 85,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 18628635
+        },
+        "statistics": {
+          "rows": 45398,
+          "queryMs": 28,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4279252
+      }
+    },
+    {
+      "index": 12,
+      "seasonId": "2037-38",
+      "durationSeconds": 308.4,
+      "snapshot": {
+        "version": "V45",
+        "seasonId": "2037-38",
+        "date": "2038-05-09",
+        "careerSeason": 12,
+        "world": {
+          "clubs": 288,
+          "divisions": 16,
+          "allDivisions18": true
+        },
+        "matches": {
+          "played": 5569,
+          "league": 4896,
+          "goalsPerLeagueMatch": 2.633,
+          "homeWinShare": 0.413,
+          "awayWinShare": 0.327,
+          "drawShare": 0.259
+        },
+        "tables": {
+          "rows": 288,
+          "minPoints": 14,
+          "maxPoints": 80,
+          "medianPoints": 47
+        },
+        "movement": {
+          "currentSeasonPromotions": 36,
+          "currentSeasonRelegations": 36,
+          "cumulativePromotions": 264,
+          "cumulativeRelegations": 396
+        },
+        "championsCrown": {
+          "completedSeasons": 11,
+          "uniqueWinners": 8,
+          "winners": [
+            "saint-ciro",
+            "marenza",
+            "ezuraya-1-kaishin-crown",
+            "blackglass",
+            "aurelia",
+            "kharova-1-kesselbruck",
+            "ezuraya-1-kaishin-crown",
+            "kharova-1-eisenwald",
+            "aurelia",
+            "aurelia",
+            "ezuraya-1-hoshin-bay"
+          ]
+        },
+        "transfers": {
+          "currentSeasonCount": 0,
+          "retainedHistoryCount": 0,
+          "feeSamples": 0,
+          "averageFee": 0,
+          "medianFee": 0,
+          "maxFee": 0
+        },
+        "economy": {
+          "averageWage": 3957,
+          "medianWage": 2592,
+          "averageClubBudget": 17336528,
+          "medianClubBudget": 9190000,
+          "badBudgets": 0
+        },
+        "population": {
+          "activePlayers": 3163,
+          "freeAgents": 360,
+          "retirements": 413,
+          "leftProfessionalGame": 5910,
+          "academyProspects": 477,
+          "averageAge": 22.35,
+          "ageP10": 17,
+          "ageP90": 32,
+          "ovrP10": 48,
+          "ovrMedian": 61,
+          "ovrP90": 73,
+          "ovrMax": 84,
+          "badPlayers": 0
+        },
+        "squads": {
+          "min": 6,
+          "median": 11,
+          "max": 11,
+          "average": 10.98
+        },
+        "managers": {
+          "currentSeasonDismissals": 0,
+          "currentSeasonCaretakers": 0,
+          "currentSeasonPermanentAppointments": 0,
+          "cumulativeDismissals": 0,
+          "cumulativeCaretakerAppointments": 0,
+          "cumulativePermanentAppointments": 0,
+          "openVacancies": 0,
+          "activeCaretakers": 0
+        },
+        "save": {
+          "slot": 1,
+          "characters": 19699727
+        },
+        "statistics": {
+          "rows": 49596,
+          "queryMs": 24,
+          "duplicates": 0
+        },
+        "integrity": {
+          "badBudgets": 0,
+          "badPlayers": 0,
+          "duplicateStatistics": 0,
+          "duplicateActivePlayers": 0
+        }
+      },
+      "evaluation": {
+        "hard": [],
+        "warnings": []
+      },
+      "deltas": {
+        "transfers": 0,
+        "dismissals": 0,
+        "caretakers": 0,
+        "retirements": 0,
+        "promotions": 36,
+        "relegations": 36,
+        "saveCharacters": 4046404
+      }
+    }
+  ],
+  "final": {
+    "version": "V45",
+    "seasonId": "2038-39",
+    "date": "2038-08-01",
+    "careerSeason": 13,
+    "world": {
+      "clubs": 288,
+      "divisions": 16,
+      "allDivisions18": true
+    },
+    "matches": {
+      "played": 0,
+      "league": 0,
+      "goalsPerLeagueMatch": 0,
+      "homeWinShare": 0,
+      "awayWinShare": 0,
+      "drawShare": 0
+    },
+    "tables": {
+      "rows": 288,
+      "minPoints": 0,
+      "maxPoints": 0,
+      "medianPoints": 0
+    },
+    "movement": {
+      "currentSeasonPromotions": 0,
+      "currentSeasonRelegations": 0,
+      "cumulativePromotions": 288,
+      "cumulativeRelegations": 432
+    },
+    "championsCrown": {
+      "completedSeasons": 11,
+      "uniqueWinners": 8,
+      "winners": [
+        "saint-ciro",
+        "marenza",
+        "ezuraya-1-kaishin-crown",
+        "blackglass",
+        "aurelia",
+        "kharova-1-kesselbruck",
+        "ezuraya-1-kaishin-crown",
+        "kharova-1-eisenwald",
+        "aurelia",
+        "aurelia",
+        "ezuraya-1-hoshin-bay"
+      ]
+    },
+    "transfers": {
+      "currentSeasonCount": 0,
+      "retainedHistoryCount": 0,
+      "feeSamples": 0,
+      "averageFee": 0,
+      "medianFee": 0,
+      "maxFee": 0
+    },
+    "economy": {
+      "averageWage": 3887,
+      "medianWage": 2312,
+      "averageClubBudget": 17859375,
+      "medianClubBudget": 8920000,
+      "badBudgets": 0
+    },
+    "population": {
+      "activePlayers": 3163,
+      "freeAgents": 360,
+      "retirements": 463,
+      "leftProfessionalGame": 6214,
+      "academyProspects": 665,
+      "averageAge": 22.62,
+      "ageP10": 18,
+      "ageP90": 32,
+      "ovrP10": 48,
+      "ovrMedian": 61,
+      "ovrP90": 73,
+      "ovrMax": 84,
+      "badPlayers": 0
+    },
+    "squads": {
+      "min": 6,
+      "median": 11,
+      "max": 11,
+      "average": 10.98
+    },
+    "managers": {
+      "currentSeasonDismissals": 0,
+      "currentSeasonCaretakers": 0,
+      "currentSeasonPermanentAppointments": 0,
+      "cumulativeDismissals": 0,
+      "cumulativeCaretakerAppointments": 0,
+      "cumulativePermanentAppointments": 0,
+      "openVacancies": 0,
+      "activeCaretakers": 0
+    },
+    "save": {
+      "slot": 1,
+      "characters": 16768287
+    },
+    "statistics": {
+      "rows": 49596,
+      "queryMs": 25,
+      "duplicates": 0
+    },
+    "integrity": {
+      "badBudgets": 0,
+      "badPlayers": 0,
+      "duplicateStatistics": 0,
+      "duplicateActivePlayers": 0
+    }
+  }
+}

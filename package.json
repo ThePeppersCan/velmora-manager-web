@@ -1,8 +1,8 @@
 {
   "name": "velmora-manager",
-  "version": "104.9.0",
+  "version": "105.0.0",
   "private": true,
-  "description": "Velmora Manager V104 Online Career",
+  "description": "Velmora Manager V105 Player Pathways",
   "scripts": {
     "build": "node tools/build_v34.cjs",
     "test": "node tools/run_release_suite.cjs",
@@ -67,6 +67,7 @@
     "test:multiplayer-progression": "node tools/test_v104_9_multiplayer_progression.cjs",
     "stress:multiplayer": "node tools/stress_v104_multiplayer.cjs",
     "test:visual": "playwright test",
+    "test:player-pathways": "node tools/test_v105_player_pathways.cjs",
     "visual:update": "playwright test --update-snapshots"
   },
   "devDependencies": {

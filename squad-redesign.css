@@ -529,3 +529,11 @@ body.v20-ui #screenSquad .player-profile .profile-overall small {display:block!i
 @media (prefers-color-scheme:light){
   .sq-captain-pick select{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.18)}
 }
+
+/* V105 · Scannable attribute bands with a visible 65 OVR reference point. */
+body.v20-ui #screenSquad .v66-profile-attributes>div>i{position:relative!important}
+body.v20-ui #screenSquad .v66-profile-attributes>div>i::after{content:"";position:absolute;z-index:2;left:46%;top:-2px;bottom:-2px;width:1px;background:rgba(238,247,240,.72);box-shadow:0 0 0 1px rgba(6,24,15,.28);pointer-events:none}
+body.v20-ui #screenSquad .v66-profile-attributes>.v66-attribute.is-developing>i>em{background:linear-gradient(90deg,#a95d35,#d98a45)!important}
+body.v20-ui #screenSquad .v66-profile-attributes>.v66-attribute.is-solid>i>em{background:linear-gradient(90deg,#276da8,#419ed0)!important}
+body.v20-ui #screenSquad .v66-profile-attributes>.v66-attribute.is-strong>i>em{background:linear-gradient(90deg,#28864a,#55c775)!important}
+body.v20-ui #screenSquad .v66-profile-attributes>.v66-attribute.is-elite>i>em{background:linear-gradient(90deg,#a87b20,#e0bd55)!important}

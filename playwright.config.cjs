@@ -4,10 +4,10 @@ const {defineConfig}=require('@playwright/test');
 
 const browserCandidates=[
   process.env.VELMORA_BROWSER_EXECUTABLE,
+  'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 ].filter(Boolean);
 const executablePath=browserCandidates.find(candidate=>fs.existsSync(candidate));
 

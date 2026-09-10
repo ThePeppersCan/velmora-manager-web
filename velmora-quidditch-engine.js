@@ -4918,7 +4918,7 @@ function triggerBigMoment(kind='hattrick'){
 
     const ms=state.playerStats[mvp.id]||{},mvpTeam=matchdayTeamPlayers('belros').some(p=>p.id===mvp.id)?'belros':'zafran';
     const mvpPoss=Math.round((ms.possession||0)/Math.max(.001,state.teamStats[mvpTeam]?.possession||0)*100),mvpEl=$('wcgMvp');
-    if(mvpEl)mvpEl.innerHTML=`<div class="wcg-v30-mvp-portrait">${mvp.standing?`<img src="${mvp.standing}" alt="">`:''}</div><div><span>PLAYER OF THE MATCH</span><strong>${mvp.name}</strong><small>${ms.goals||0} goals · ${ms.shots||0} shots · ${ms.tacklesWon||0} tackles · ${mvpPoss}% possession</small></div>`;
+    if(mvpEl){const goals=ms.goals||0,shots=ms.shots||0,tackles=ms.tacklesWon||0;mvpEl.innerHTML=`<div class="wcg-v30-mvp-portrait">${mvp.standing?`<img src="${mvp.standing}" alt="">`:''}</div><div><span>PLAYER OF THE MATCH</span><strong>${mvp.name}</strong><small>${goals} goal${goals===1?'':'s'} · ${shots} shot${shots===1?'':'s'} · ${tackles} tackle${tackles===1?'':'s'} · ${mvpPoss}% possession</small></div>`;}
     const pred=$('wcgFullPrediction');
     if(pred){pred.textContent=state.careerMode?'WATCH MATCH · LIVE ENGINE RESULT':(state.prediction.rewardMessage||'PREDICTION RESULT CALCULATING…');pred.hidden=state.careerMode;}
     const reportScroll=$('wcgFulltime')?.querySelector('.wcg-v30-report-scroll'),reportPanel=$('wcgFulltime')?.querySelector('.wcg-v2-fulltime-panel');
