@@ -1,6 +1,6 @@
 {
   "name": "velmora-manager",
-  "version": "105.0.0",
+  "version": "105.2.0",
   "private": true,
   "description": "Velmora Manager V105 Player Pathways",
   "scripts": {
@@ -69,6 +69,7 @@
     "test:visual": "playwright test",
     "test:player-pathways": "node tools/test_v105_player_pathways.cjs",
     "test:online-deals": "node tools/test_v105_1_online_deal_terms.cjs",
+    "test:copy-and-celebration": "node tools/test_v105_2_copy_and_celebration.cjs",
     "visual:update": "playwright test --update-snapshots"
   },
   "devDependencies": {
