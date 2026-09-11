@@ -9988,15 +9988,61 @@
   }
 
   function v104RenderHumanTransferNegotiation(p,initial=null){
-    const offer=v104HumanOfferForPlayer(p.id,currentClub?.id),budget=availableTransferBudget(currentClub),vi=valueEstimateInfo(p),base=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08)),amount=Math.max(0,Number(initial??offer?.currentFee??Math.round(base*.9/50_000)*50_000)),status=offer?.status||'DRAFT',waiting=status==='OPEN',agreed=status==='FEE_AGREED',rejected=status==='REJECTED',content=$('#negotiationContent'),sellerManager=v104HumanManagerForClub(p.club);
-    content.innerHTML=`<header class="negotiation-header"><div><div class="eyebrow">ONLINE MANAGER NEGOTIATION</div><h3 id="negotiationTitle">TRANSFER OFFER</h3><p>${escapeHtml(sellerManager?.name||'The other manager')} controls ${escapeHtml(p.club.name)}. Only they can approve this fee.</p>${transferArrivalNote(p)}</div><div class="negotiation-step">HUMAN DECISION</div></header><div class="negotiation-body"><aside class="negotiation-player"><div class="transfer-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="dossier-ovr ${visibleOvrInfo(p).kind!=='exact'?'is-estimate':''}" style="justify-content:center"><strong>${escapeHtml(visibleOvrInfo(p).text)}</strong><small>OVR${visibleOvrInfo(p).kind==='range'?' EST.':''}</small></div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.role)} · AGE ${Number(p.age||0)}<br>${escapeHtml(p.country)}</p><div class="negotiation-club-lockup">${badgeHTML(p.club)}<span>${escapeHtml(p.club.name)}</span></div></aside><section class="negotiation-talks"><div class="negotiation-values"><div><span>YOUR ESTIMATE</span><strong>${escapeHtml(vi.text)}</strong></div><div><span>SELLING MANAGER</span><strong>${escapeHtml(sellerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>AVAILABLE BUDGET</span><strong>${formatMoney(budget)}</strong></div></div><div class="offer-builder ${waiting||agreed?'is-locked':''}"><label for="offerAmount">${agreed?'AGREED TRANSFER FEE':waiting?'SUBMITTED OFFER':'YOUR TRANSFER FEE'}</label><div class="offer-control"><button type="button" id="offerMinus" ${waiting||agreed?'disabled':''}>−</button><input id="offerAmount" inputmode="text" autocomplete="off" spellcheck="false" value="${amount}" ${waiting||agreed?'readonly':''}><button type="button" id="offerPlus" ${waiting||agreed?'disabled':''}>+</button></div></div><div id="negotiationResponse" class="negotiation-response ${waiting?'is-pending':agreed?'is-accepted':rejected?'is-rejected':''}"><span>${waiting?'AWAITING MANAGER':agreed?'OFFER ACCEPTED':rejected?'OFFER REJECTED':'DIRECT MANAGER OFFER'}</span><strong>${waiting?`${sellerManager?.name||'The selling manager'} must respond before talks can continue.`:agreed?`${p.club.name} approved ${formatMoney(offer.currentFee)}.`:rejected?'The selling manager declined the previous proposal.':'Submit a fee directly to the other manager.'}</strong><small>${waiting?'The player remains registered to the selling club. Nothing can complete while approval is pending.':agreed?'You may now negotiate personal terms with the player.':rejected?'You can return with a new offer. The game will never negotiate on their behalf.':'This bypasses all AI valuation logic. The decision belongs entirely to the human manager.'}</small></div><div class="negotiation-actions"><button type="button" id="walkAwayOffer">BACK</button><button type="button" id="submitTransferOffer" class="submit-offer" ${waiting?'disabled':''}>${waiting?'AWAITING RESPONSE':agreed?'PROCEED TO PLAYER TALKS':rejected?'SUBMIT NEW OFFER':'SUBMIT TO MANAGER'}</button></div></section></div>`;
-    const input=$('#offerAmount'),normalize=()=>Math.max(0,moneyNumber(input?.value)),update=value=>{if(!waiting&&!agreed)input.value=String(Math.max(0,Math.round(Number(value||0)/1000)*1000));};
-    $('#offerMinus')?.addEventListener('click',()=>update(normalize()-250_000));$('#offerPlus')?.addEventListener('click',()=>update(normalize()+250_000));$('#walkAwayOffer')?.addEventListener('click',closeNegotiation);
-    $('#submitTransferOffer')?.addEventListener('click',event=>runLockedAction(`HUMAN_BUY:${p.id}:${status}`,event.currentTarget,async()=>{
+    const offer=v104HumanOfferForPlayer(p.id,currentClub?.id),budget=availableTransferBudget(currentClub),vi=valueEstimateInfo(p),base=vi.mid||Math.max(250_000,Math.min(1_000_000,budget*.08));
+    const terms=v104NormaliseDealTerms({...(offer?.terms||{}),fee:Number(initial??offer?.currentFee??Math.round(base*.9/50_000)*50_000)});
+    const amount=Math.max(0,Number(terms.fee||0)),sellOn=Number(terms.sellOn||0);
+    const status=offer?.status||'DRAFT',agreed=status==='FEE_AGREED',rejected=status==='REJECTED';
+    const open=status==='OPEN',myTurn=open&&v104OfferIsMyTurn(offer),waiting=open&&!myTurn;
+    const countered=myTurn&&Number(offer?.round||0)>0,locked=waiting||agreed;
+    const content=$('#negotiationContent'),sellerManager=v104HumanManagerForClub(p.club);
+    const headline=agreed?'PACKAGE AGREED':waiting?'AWAITING MANAGER':countered?'THEIR REVISED PACKAGE':rejected?'PACKAGE REJECTED':'DIRECT MANAGER OFFER';
+    const detail=agreed?`${p.club.name} approved ${v104TermsSummaryLine(offer.terms)}.`
+      :waiting?`${sellerManager?.name||'The selling manager'} must respond before talks can continue.`
+      :countered?`${sellerManager?.name||'The selling manager'} want ${v104TermsSummaryLine(offer.terms)}.`
+      :rejected?'The selling manager declined the previous package.'
+      :'Submit a package directly to the other manager.';
+    const note=agreed?'You may now negotiate personal terms with the player.'
+      :waiting?'The player remains registered to the selling club. Nothing can complete while approval is pending.'
+      :countered?'Accept their package, revise it again, or walk away. The game will never answer for you.'
+      :rejected?'You can return with a new package. The game will never negotiate on their behalf.'
+      :'This bypasses all AI valuation logic. The decision belongs entirely to the human manager.';
+    const roundLine=Number(offer?.round||0)>0?`<small class="negotiation-round">ROUND ${Number(offer.round)} OF ${V104_MAX_DEAL_ROUNDS}</small>`:'';
+    content.innerHTML=`<header class="negotiation-header"><div><div class="eyebrow">ONLINE MANAGER NEGOTIATION</div><h3 id="negotiationTitle">TRANSFER OFFER</h3><p>${escapeHtml(sellerManager?.name||'The other manager')} controls ${escapeHtml(p.club.name)}. Only they can approve this package.</p>${transferArrivalNote(p)}</div><div class="negotiation-step">HUMAN DECISION</div></header><div class="negotiation-body"><aside class="negotiation-player"><div class="transfer-avatar">${avatarHTML(p.avatar,p.name)}</div><div class="dossier-ovr ${visibleOvrInfo(p).kind!=='exact'?'is-estimate':''}" style="justify-content:center"><strong>${escapeHtml(visibleOvrInfo(p).text)}</strong><small>OVR${visibleOvrInfo(p).kind==='range'?' EST.':''}</small></div><h4>${escapeHtml(p.name)}</h4><p>${escapeHtml(p.role)} · AGE ${Number(p.age||0)}<br>${escapeHtml(p.country)}</p><div class="negotiation-club-lockup">${badgeHTML(p.club)}<span>${escapeHtml(p.club.name)}</span></div></aside><section class="negotiation-talks"><div class="negotiation-values"><div><span>YOUR ESTIMATE</span><strong>${escapeHtml(vi.text)}</strong></div><div><span>SELLING MANAGER</span><strong>${escapeHtml(sellerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>AVAILABLE BUDGET</span><strong>${formatMoney(budget)}</strong></div></div><div class="offer-builder ${locked?'is-locked':''}"><label for="offerAmount">${agreed?'AGREED TRANSFER FEE':waiting?'SUBMITTED FEE':countered?'THEIR ASKING FEE':'YOUR TRANSFER FEE'}</label><div class="offer-control"><button type="button" id="offerMinus" ${locked?'disabled':''}>−</button><input id="offerAmount" inputmode="text" autocomplete="off" spellcheck="false" value="${amount}" ${locked?'readonly':''}><button type="button" id="offerPlus" ${locked?'disabled':''}>+</button></div><label for="offerSellOn" class="offer-secondary-label">SELL-ON CLAUSE</label><div class="offer-control offer-control-compact"><input id="offerSellOn" inputmode="numeric" autocomplete="off" spellcheck="false" value="${sellOn}" ${locked?'readonly':''}><b>% of the next transfer fee</b></div><small class="offer-builder-note">Instalments, add-ons and player exchanges are not available in an online career yet: they settle over many days and both devices would have to agree on every payment.</small></div><div id="negotiationResponse" class="negotiation-response ${waiting?'is-pending':agreed?'is-accepted':rejected?'is-rejected':countered?'is-counter':''}"><span>${headline}</span><strong>${escapeHtml(detail)}</strong><small>${escapeHtml(note)}</small>${roundLine}</div><div class="negotiation-actions"><button type="button" id="walkAwayOffer">${countered?'WALK AWAY':'BACK'}</button>${countered?`<button type="button" id="counterTransferOffer">REVISE PACKAGE</button>`:''}<button type="button" id="submitTransferOffer" class="submit-offer" ${waiting?'disabled':''}>${waiting?'AWAITING RESPONSE':agreed?'PROCEED TO PLAYER TALKS':countered?`ACCEPT ${formatMoney(amount)}`:rejected?'SUBMIT NEW PACKAGE':'SUBMIT TO MANAGER'}</button></div></section></div>`;
+    const input=$('#offerAmount'),sellOnInput=$('#offerSellOn');
+    const normalize=()=>Math.max(0,moneyNumber(input?.value));
+    const normalizeSellOn=()=>clamp(Math.round(Number(String(sellOnInput?.value||'').replace(/[^0-9.]/g,''))||0),0,30);
+    const update=value=>{if(!locked)input.value=String(Math.max(0,Math.round(Number(value||0)/1000)*1000));};
+    $('#offerMinus')?.addEventListener('click',()=>update(normalize()-250_000));
+    $('#offerPlus')?.addEventListener('click',()=>update(normalize()+250_000));
+    $('#walkAwayOffer')?.addEventListener('click',()=>{
+      if(!countered)return closeNegotiation();
+      runLockedAction(`HUMAN_BUY_REJECT:${offer.id}`,$('#walkAwayOffer'),async()=>{
+        const result=await v104RespondHumanTransferOffer(offer,'REJECTED');
+        if(!result.ok){showToast(result.message);return false;}
+        closeNegotiation();renderTransferHub();showToast('You walked away from the deal');return true;
+      },{releaseDelay:340,busyText:'ENDING TALKS…'});
+    });
+    $('#counterTransferOffer')?.addEventListener('click',event=>runLockedAction(`HUMAN_BUY_COUNTER:${offer.id}:R${offer.round||0}`,event.currentTarget,async()=>{
+      const fee=normalize();
+      if(fee>budget){showToast(`Your current transfer budget is ${formatMoney(budget)}`);return false;}
+      const result=await v104CounterHumanTransferOffer(offer,{fee,sellOn:normalizeSellOn()});
+      if(!result.ok){showToast(result.message);return false;}
+      v104RenderHumanTransferNegotiation(p);showToast(`Revised package sent to ${sellerManager?.name||'the other manager'}`);return true;
+    },{releaseDelay:360,busyText:'SENDING…'}));
+    $('#submitTransferOffer')?.addEventListener('click',event=>runLockedAction(`HUMAN_BUY:${p.id}:${status}:R${offer?.round||0}`,event.currentTarget,async()=>{
       if(agreed){openContractNegotiation(p,Number(offer.currentFee||0));return true;}
-      if(waiting)return false;const fee=normalize();if(fee>budget){showToast(`Your current transfer budget is ${formatMoney(budget)}`);return false;}
-      const sent=await v104SubmitHumanTransferOffer(p,fee);if(!sent.ok){showToast(sent.message);return false;}v104RenderHumanTransferNegotiation(p,fee);showToast(`Offer sent to ${sellerManager?.name||'the other manager'}`);return true;
-    },{releaseDelay:360,busyText:agreed?'OPENING TALKS…':'SENDING…'}));
+      if(waiting)return false;
+      if(countered){
+        const result=await v104RespondHumanTransferOffer(offer,'ACCEPTED');
+        if(!result.ok){showToast(result.message);return false;}
+        v104RenderHumanTransferNegotiation(p);showToast('Package agreed · you may now speak to the player');return true;
+      }
+      const fee=normalize();
+      if(fee>budget){showToast(`Your current transfer budget is ${formatMoney(budget)}`);return false;}
+      const sent=await v104SubmitHumanTransferOffer(p,fee,{sellOn:normalizeSellOn()});
+      if(!sent.ok){showToast(sent.message);return false;}
+      v104RenderHumanTransferNegotiation(p);showToast(`Package sent to ${sellerManager?.name||'the other manager'}`);return true;
+    },{releaseDelay:360,busyText:agreed?'OPENING TALKS…':countered?'ACCEPTING…':'SENDING…'}));
   }
   function v104OpenHumanTransferNegotiation(p){
     const modal=$('#negotiationModal'),offer=v104HumanOfferForPlayer(p.id,currentClub?.id),initial=offer?.currentFee||transferActivity.get(p.id)?.offer||null;
@@ -13312,10 +13358,22 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function v104OpenHumanIncomingOffer(offer){
     const p=careerPlayerById(offer?.playerId),buyer=clubById(offer?.buyerClubId),buyerManager=v104HumanManagerForClub(buyer);if(!offer||!p||!buyer||currentClub?.id!==offer.sellerClubId)return;
     let root=document.getElementById('livingTransferOverlay');if(!root){root=document.createElement('div');root.id='livingTransferOverlay';root.className='living-transfer-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="living-transfer-dialog"><header><span>ONLINE MANAGER TRANSFER OFFER</span><button type="button" data-living-close>×</button></header><main data-living-offer-body></main></section>';document.body.appendChild(root);}
-    const body=root.querySelector('[data-living-offer-body]'),open=offer.status==='OPEN';body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${Number(p.ovr||0)} OVR · AGE ${Number(p.age||0)}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub.name)} → ${escapeHtml(buyer.name)}</p></section><aside>${badgeHTML(buyer)}</aside></div><div class="living-negotiation-values"><div><span>OFFER</span><strong>${formatMoney(offer.currentFee)}</strong></div><div><span>BUYING MANAGER</span><strong>${escapeHtml(buyerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>PLAYER STATUS</span><strong>${escapeHtml(p.transferStatus?.replace(/_/g,' ')||'AT CLUB')}</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div><div class="living-offer-status ${open?'':'is-final'}"><strong>${open?'YOUR DECISION':'DECISION SAVED'}</strong><span>${escapeHtml(open?'This is another human manager. The game will not accept, reject or negotiate for you.':offer.statusCopy||offer.status.replace(/_/g,' '))}</span></div>${open?`<div class="living-negotiation-actions"><button type="button" data-human-reject>REJECT</button><button type="button" class="is-primary" data-human-accept>ACCEPT ${formatMoney(offer.currentFee)}</button></div>`:''}`;
+    const body=root.querySelector('[data-living-offer-body]');
+    const terms=v104NormaliseDealTerms({...(offer.terms||{}),fee:Number(offer.currentFee||0)});
+    const open=offer.status==='OPEN',myTurn=open&&v104OfferIsMyTurn(offer),waiting=open&&!myTurn;
+    const market=livingPlayerMarketValue(p),roundsLeft=Math.max(0,V104_MAX_DEAL_ROUNDS-Number(offer.round||0));
+    const suggested=Math.round(Math.max(Number(terms.fee||0)*1.15,market*1.04)/50000)*50000;
+    body.innerHTML=`<div class="living-negotiation-hero"><div>${avatarHTML(p.avatar,p.name)}</div><section><small>${escapeHtml(p.role)} · ${Number(p.ovr||0)} OVR · AGE ${Number(p.age||0)} · ${escapeHtml(livingContractLabel(p))}</small><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(currentClub.name)} → ${escapeHtml(buyer.name)}</p></section><aside>${badgeHTML(buyer)}</aside></div><div class="living-negotiation-values"><div><span>${Number(offer.round||0)>0?'CURRENT PACKAGE':'OFFER'}</span><strong>${formatMoney(terms.fee)}</strong></div><div><span>MARKET VALUE</span><strong>${formatMoney(market)}</strong></div><div><span>SELL-ON</span><strong>${Number(terms.sellOn||0)>0?`${Number(terms.sellOn)}%`:'NONE'}</strong></div><div><span>BUYING MANAGER</span><strong>${escapeHtml(buyerManager?.name||'ONLINE MANAGER')}</strong></div><div><span>EXPIRES</span><strong>${shortDateLabel(offer.expiresDate)}</strong></div></div>${myTurn?`<label class="living-counter-field"><span>YOUR COUNTER FEE</span><div><b>£</b><input id="livingHumanCounterAmount" inputmode="text" autocomplete="off" spellcheck="false" title="Money shorthand supported: 2m, 650k, 10k" value="${suggested}"></div></label><label class="living-counter-field"><span>SELL-ON YOU WANT (%)</span><div><b>%</b><input id="livingHumanCounterSellOn" inputmode="numeric" autocomplete="off" spellcheck="false" value="${Number(terms.sellOn||0)}"></div></label>`:''}<div class="living-offer-status ${open?'':'is-final'}"><strong>${myTurn?'YOUR DECISION':waiting?'WITH THE OTHER MANAGER':'DECISION SAVED'}</strong><span>${escapeHtml(myTurn?`This is another human manager. The game will not accept, reject or negotiate for you.${Number(offer.round||0)>0?` Round ${Number(offer.round)} of ${V104_MAX_DEAL_ROUNDS}.`:''}`:waiting?'Your revised package is with the buying manager. Nothing moves until they answer.':offer.statusCopy||offer.status.replace(/_/g,' '))}</span></div>${myTurn?`<div class="living-negotiation-actions"><button type="button" data-human-reject>REJECT</button>${roundsLeft>0?'<button type="button" data-human-counter>COUNTER</button>':''}<button type="button" class="is-primary" data-human-accept>ACCEPT ${formatMoney(terms.fee)}</button></div>`:''}`;
     const close=()=>{root.classList.remove('is-open');root.setAttribute('aria-hidden','true');};root.querySelector('[data-living-close]').onclick=close;
     body.querySelector('[data-human-reject]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_REJECT:${offer.id}`,event.currentTarget,async()=>{const result=await v104RespondHumanTransferOffer(offer,'REJECTED');if(!result.ok){showToast(result.message);return false;}close();renderTransferHub();showToast('Offer rejected · the other manager has been notified');return true;},{releaseDelay:360,busyText:'REJECTING…'}));
-    body.querySelector('[data-human-accept]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_ACCEPT:${offer.id}`,event.currentTarget,async()=>{const result=await v104RespondHumanTransferOffer(offer,'ACCEPTED');if(!result.ok){showToast(result.message);return false;}close();renderTransferHub();showToast('Fee approved · the buyer may now speak to the player');return true;},{releaseDelay:420,busyText:'ACCEPTING…'}));
+    body.querySelector('[data-human-accept]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_ACCEPT:${offer.id}`,event.currentTarget,async()=>{const result=await v104RespondHumanTransferOffer(offer,'ACCEPTED');if(!result.ok){showToast(result.message);return false;}close();renderTransferHub();showToast('Package approved · the buyer may now speak to the player');return true;},{releaseDelay:420,busyText:'ACCEPTING…'}));
+    body.querySelector('[data-human-counter]')?.addEventListener('click',event=>runLockedAction(`HUMAN_OFFER_COUNTER:${offer.id}:R${offer.round||0}`,event.currentTarget,async()=>{
+      const fee=Math.max(1_000,moneyNumber(body.querySelector('#livingHumanCounterAmount')?.value));
+      const sellOn=clamp(Math.round(Number(String(body.querySelector('#livingHumanCounterSellOn')?.value||'').replace(/[^0-9.]/g,''))||0),0,30);
+      const result=await v104CounterHumanTransferOffer(offer,{fee,sellOn});
+      if(!result.ok){showToast(result.message);return false;}
+      close();renderTransferHub();showToast(`Counter sent to ${buyerManager?.name||'the other manager'}`);return true;
+    },{releaseDelay:340,busyText:'COUNTERING…'}));
     root.classList.add('is-open');root.setAttribute('aria-hidden','false');queueAvatarHydration(root);
   }
   function validateLivingSaleOfferOwnership(offer,p,notify=true){const seller=clubById(offer?.sellerClubId)||currentClub,allowed=!!offer&&!!p&&seller?.id===currentClub?.id&&clubCanMarketPlayer(seller,p);if(allowed)return true;if(offer&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(offer.status)){offer.status='CLOSED';offer.statusCopy='The offer closed because this club no longer controls the player’s permanent registration.';}if(notify&&p)showToast(loanOwnershipActionMessage(currentClub,p,'negotiate a permanent sale'));return false;}
@@ -13952,6 +14010,58 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   // offer (buyer), response (seller), completion (buyer after player terms).
   // Every step is an ordered event and the final player subject is exclusive.
   function v104HumanTransferOffers(){livingSquad=normalizeLivingSquadState(livingSquad);return livingSquad.incomingOffers.filter(row=>row?.onlineHuman);}
+  // V105.1: an online deal carries the same package an offline one does.
+  //
+  // Instalments, add-ons and swaps are deliberately not settled online. They
+  // resolve over days against club budgets, and two devices processing that
+  // independently would drift apart, so the shared career agrees the cash
+  // terms and leaves deferred money to a later release that can put the
+  // payment schedule in the shared world rather than on each device.
+  const V104_ONLINE_UNSUPPORTED_TERMS=['installments','addOnType','addOnAmount','swapId'];
+  // A bound on haggling. Not a patience model - two humans do not need the
+  // game deciding they have lost interest - just a stop so a save cannot grow
+  // without limit if two managers trade counters forever.
+  const V104_MAX_DEAL_ROUNDS=12;
+  function v104NormaliseDealTerms(input={}){
+    const base=careerExpansion?.dealTerms
+      ?careerExpansion.dealTerms(input)
+      :{fee:negotiationMoney(input.fee),wage:negotiationMoney(input.wage),bonus:negotiationMoney(input.bonus),
+        years:Number(input.years),role:input.role||'Rotation',sellOn:Number(input.sellOn||0),
+        releaseClause:negotiationMoney(input.releaseClause),swapId:null,optionFee:0,
+        wageShare:Number(input.wageShare??100),installments:1,addOnType:'NONE',addOnAmount:0};
+    return{...base,swapId:null,installments:1,addOnType:'NONE',addOnAmount:0};
+  }
+  function v104DealTermsValid(terms){
+    if(!terms)return false;
+    if(careerExpansion?.dealTermsValid)return!!careerExpansion.dealTermsValid(terms);
+    return[terms.fee,terms.wage,terms.bonus,terms.releaseClause].every(v=>Number.isFinite(Number(v))&&Number(v)>=0)
+      &&Number.isInteger(Number(terms.years))&&terms.years>=1&&terms.years<=5
+      &&Number.isFinite(Number(terms.sellOn))&&terms.sellOn>=0&&terms.sellOn<=30;
+  }
+  function v104TermsMatch(a,b){
+    if(!a||!b)return false;
+    return['fee','wage','bonus','years','role','sellOn','releaseClause','wageShare']
+      .every(key=>String(a[key]??'')===String(b[key]??''));
+  }
+  function v104OfferAwaiting(offer){return offer?.awaiting==='BUYER'?'BUYER':'SELLER';}
+  // Whose turn it is, from this device's seat. Both devices replay the same
+  // events, so this answers the same way on each.
+  function v104OfferSideForClub(offer,clubId=currentClub?.id){
+    if(!offer||!clubId)return null;
+    if(String(clubId)===String(offer.sellerClubId))return'SELLER';
+    if(String(clubId)===String(offer.buyerClubId))return'BUYER';
+    return null;
+  }
+  function v104OfferIsMyTurn(offer,clubId=currentClub?.id){
+    return!!offer&&offer.status==='OPEN'&&v104OfferSideForClub(offer,clubId)===v104OfferAwaiting(offer);
+  }
+  function v104TermsSummaryLine(terms){
+    if(!terms)return'';
+    const bits=[`${formatMoney(terms.fee)} fee`];
+    if(Number(terms.sellOn)>0)bits.push(`${Number(terms.sellOn)}% sell-on`);
+    if(Number(terms.releaseClause)>0)bits.push(`${formatMoney(terms.releaseClause)} release clause`);
+    return bits.join(' · ');
+  }
   function v104HumanOfferForPlayer(playerId,buyerClubId=currentClub?.id){
     return [...v104HumanTransferOffers()].reverse().find(row=>String(row.playerId)===String(playerId)&&String(row.buyerClubId)===String(buyerClubId))||null;
   }
@@ -13959,29 +14069,65 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const actor=event?.actor_user_id||payload?.actorUserId||'';
     return!!v104Core()?.humanTransferActorAllowed(kind,payload,actor,v104HumanMembers());
   }
-  async function v104SubmitHumanTransferOffer(p,fee){
+  async function v104SubmitHumanTransferOffer(p,fee,proposedTerms=null){
     if(!v104Active()||!p?.club||!v104HumanControlledClub(p.club))return{ok:false,message:'This is not a human-controlled club.'};
     const buyer=currentClub,seller=p.club,buyerMember=v104HumanMemberForClub(buyer),sellerMember=v104HumanMemberForClub(seller),status=v104Status();
     if(!buyer||!buyerMember||!sellerMember||buyer.id===seller.id)return{ok:false,message:'The online manager seats could not be verified.'};
     if(status?.readOnly)return{ok:false,message:'Reconnect to the online career before submitting an offer.'};
     const amount=negotiationMoney(fee),attempt=v104HumanTransferOffers().filter(row=>row.playerId===p.id&&row.buyerClubId===buyer.id).length+1;
-    const offerId=`HTO-${Math.abs(hashString(`${multiplayerSession.careerId}|${buyer.id}|${seller.id}|${p.id}|${currentCareerISO()}|${attempt}|${amount}`)).toString(36).toUpperCase()}`;
+    // The subject key must be unique for the life of the career. Seeding it on
+    // fee and date alone lets a repeat bid after a rejection collide with the
+    // offer it is replacing, which the server rejects as VELMORA_SUBJECT_TAKEN.
+    const sequence=v104HumanTransferOffers().length+1;
+    const offerId=`HTO-${Math.abs(hashString(`${multiplayerSession.careerId}|${buyer.id}|${seller.id}|${p.id}|${currentCareerISO()}|${attempt}|${sequence}|${amount}`)).toString(36).toUpperCase()}`;
+    const terms=v104NormaliseDealTerms({...(proposedTerms||{}),fee:amount,
+      wage:proposedTerms?.wage??expectedWage(p,buyer),
+      years:proposedTerms?.years??Math.min(5,p.age>=31?2:p.age<=21?5:4),
+      role:proposedTerms?.role??suggestedRole(p)});
+    if(!v104DealTermsValid(terms))return{ok:false,message:'Check the fee, contract length and clause percentages.'};
     const payload={offerId,playerId:p.id,playerName:p.name,buyerClubId:buyer.id,sellerClubId:seller.id,
-      buyerUserId:buyerMember.user_id,sellerUserId:sellerMember.user_id,fee:amount,
+      buyerUserId:buyerMember.user_id,sellerUserId:sellerMember.user_id,fee:amount,terms,
       createdDate:currentCareerISO(),expiresDate:addDaysISO(currentCareerISO(),7)};
     const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_OFFER',
       subjectKey:`HUMAN_TRANSFER_OFFER:${offerId}`,payload,idempotencyKey:`human-offer:${offerId}`,clubId:buyer.id});
     if(!result?.claimed)return{ok:false,message:result?.message||'The offer could not be submitted.'};
-    return{ok:true,offer:v104HumanOfferForPlayer(p.id,buyer.id)};
+    // claimWorldAction pulls its own event back before returning, so the offer
+    // must exist locally by now. If it does not, the shared log accepted the
+    // claim but this device failed to apply it: say so rather than reporting a
+    // success the other manager will never see.
+    const stored=v104HumanOfferForPlayer(p.id,buyer.id);
+    if(!stored)return{ok:false,message:'The offer was not confirmed by the shared career. Reconnect and try again.'};
+    return{ok:true,offer:stored};
+  }
+  // Either manager can move the deal on: the seller answers the opening
+  // package, the buyer answers a counter. Nothing here decides for anyone.
+  async function v104CounterHumanTransferOffer(offer,proposedTerms){
+    if(!offer?.onlineHuman||offer.status!=='OPEN')return{ok:false,message:'This deal is no longer open.'};
+    const side=v104OfferSideForClub(offer);
+    if(!side)return{ok:false,message:'Your club is not part of this negotiation.'};
+    if(!v104OfferIsMyTurn(offer))return{ok:false,message:'The other manager is considering the current package.'};
+    if(Number(offer.round||0)>=V104_MAX_DEAL_ROUNDS)return{ok:false,message:'This negotiation has run its course. Accept the package on the table or walk away.'};
+    const terms=v104NormaliseDealTerms({...(offer.terms||{}),...(proposedTerms||{})});
+    if(!v104DealTermsValid(terms))return{ok:false,message:'Check the fee, contract length and clause percentages.'};
+    if(v104TermsMatch(terms,offer.terms))return{ok:false,message:'That is the package already on the table.'};
+    const payload={offerId:offer.id,playerId:offer.playerId,buyerClubId:offer.buyerClubId,sellerClubId:offer.sellerClubId,
+      buyerUserId:offer.buyerUserId,sellerUserId:offer.sellerUserId,fee:Number(terms.fee||0),terms,
+      actorSide:side,round:Number(offer.round||0)+1,counteredDate:currentCareerISO()};
+    const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_COUNTER',
+      subjectKey:`HUMAN_TRANSFER_COUNTER:${offer.id}:R${payload.round}`,payload,
+      idempotencyKey:`human-counter:${offer.id}:${payload.round}`,clubId:currentClub?.id||null});
+    if(!result?.claimed)return{ok:false,message:result?.message||'The counter could not be sent.'};
+    return{ok:true};
   }
   async function v104RespondHumanTransferOffer(offer,decision){
     const status=String(decision||'').toUpperCase();
     if(!offer?.onlineHuman||!['ACCEPTED','REJECTED'].includes(status)||offer.status!=='OPEN')return{ok:false,message:'This offer is no longer awaiting a decision.'};
-    if(String(currentClub?.id)!==String(offer.sellerClubId))return{ok:false,message:'Only the selling manager can decide this offer.'};
+    if(!v104OfferIsMyTurn(offer))return{ok:false,message:'The other manager is considering the current package.'};
     const payload={offerId:offer.id,playerId:offer.playerId,buyerClubId:offer.buyerClubId,sellerClubId:offer.sellerClubId,
-      buyerUserId:offer.buyerUserId,sellerUserId:offer.sellerUserId,fee:Number(offer.currentFee||0),status,respondedDate:currentCareerISO()};
+      buyerUserId:offer.buyerUserId,sellerUserId:offer.sellerUserId,fee:Number(offer.currentFee||0),
+      terms:offer.terms||null,actorSide:v104OfferSideForClub(offer),status,respondedDate:currentCareerISO()};
     const result=await multiplayerSession.client.claimWorldAction({kind:'HUMAN_TRANSFER_RESPONSE',
-      subjectKey:`HUMAN_TRANSFER_RESPONSE:${offer.id}`,payload,idempotencyKey:`human-response:${offer.id}:${status}`,clubId:offer.sellerClubId});
+      subjectKey:`HUMAN_TRANSFER_RESPONSE:${offer.id}`,payload,idempotencyKey:`human-response:${offer.id}:${status}`,clubId:currentClub?.id||offer.sellerClubId});
     if(!result?.claimed)return{ok:false,message:result?.message||'The decision could not be saved.'};
     return{ok:true};
   }
@@ -13999,10 +14145,16 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const windowId=transferWindowForDate(currentCareerISO())?.id||currentCareerISO().slice(0,7),core=v104Core();
     const subjectKey=core?.subjectKeys.player(p.id,windowId)||`PLAYER:${p.id}:${windowId}`;
     const transferId=`ONLINE-${Math.abs(hashString(`${multiplayerSession.careerId}|${subjectKey}|${buyer?.id}`)).toString(36).toUpperCase()}`;
+    // The registration carries the whole agreed package, so the sell-on the
+    // selling manager negotiated survives the move instead of being dropped
+    // at the point of completion.
+    const settledTerms=v104NormaliseDealTerms({...(offer?.terms||{}),fee:Number(agreedFee||0),
+      wage:Number(wage||0),bonus:Number(bonus||0),role:String(role||'Rotation'),
+      years:Number(years||3),releaseClause:Number(releaseClause||0)});
     const payload={transferId,offerId:offer?.id||null,playerId:p.id,playerName:p.name,
       buyerClubId:buyer?.id||null,sellerClubId:seller?.id||null,fee:Number(agreedFee||0),
       wage:Number(wage||0),bonus:Number(bonus||0),role:String(role||'Rotation'),years:Number(years||3),
-      releaseClause:Number(releaseClause||0),date:currentCareerISO(),freeAgent:!!p.freeAgent};
+      releaseClause:Number(releaseClause||0),terms:settledTerms,date:currentCareerISO(),freeAgent:!!p.freeAgent};
     const kind=humanSeller?'HUMAN_TRANSFER_COMPLETE':'TRANSFER';
     const result=await multiplayerSession.client.claimWorldAction({kind,subjectKey,payload,
       idempotencyKey:`online-transfer:${transferId}`,clubId:buyer?.id||null});
@@ -14017,21 +14169,70 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!seller||!buyer||!p||String(p.clubId)!==String(seller.id))return false;
     livingSquad=normalizeLivingSquadState(livingSquad);
     if(livingSquad.incomingOffers.some(row=>row.id===payload.offerId))return true;
+    // An offer from an older build carries a fee and nothing else; treat that
+    // as a package with default terms rather than refusing it.
+    const openingTerms=v104NormaliseDealTerms({...(payload.terms||{}),fee:Number(payload.fee||0)});
     const offer={id:String(payload.offerId),onlineHuman:true,playerId:p.id,buyerClubId:buyer.id,sellerClubId:seller.id,
       buyerUserId:payload.buyerUserId,sellerUserId:payload.sellerUserId,createdDate:payload.createdDate||currentCareerISO(),
       expiresDate:payload.expiresDate||addDaysISO(currentCareerISO(),7),originalFee:Number(payload.fee||0),currentFee:Number(payload.fee||0),
+      terms:openingTerms,awaiting:'SELLER',round:0,lastActorSide:'BUYER',
       status:'OPEN',statusCopy:`${currentClub?.id===seller.id?'The other manager is waiting for your decision.':'Waiting for the selling manager to respond.'}`};
     livingSquad.incomingOffers.push(offer);
     transferActivity.set(p.id,{...(transferActivity.get(p.id)||{}),status:'Awaiting Human Manager',offer:offer.currentFee,humanOfferId:offer.id});
     if(currentClub?.id===seller.id&&!careerInboxMessages.some(row=>row.id===`human-offer-${offer.id}`))addCareerInboxMessage({id:`human-offer-${offer.id}`,type:'TRANSFERS',sender:`${buyer.name.toUpperCase()} · ONLINE MANAGER`,subject:`Manager offer: ${p.name}`,preview:`${formatMoney(offer.currentFee)} · your approval is required.`,title:`${buyer.name} want to sign ${p.name}`,body:[`${buyer.name}'s manager has submitted ${formatMoney(offer.currentFee)}.`,`Nothing can happen without your explicit approval.`,`Open the Transfer Hub to accept or reject the offer.`],signoff:'Online Career Transfer Office',action:{label:'OPEN TRANSFER HUB',route:'transfers'},date:offer.createdDate});
     saveCareerState();refreshActiveCareerScreen();return true;
   }
+  function v104ApplyHumanTransferCounter(payload,event){
+    if(!v104TransferMemberAllowed('HUMAN_TRANSFER_COUNTER',payload,event))return false;
+    const offer=livingSquad.incomingOffers.find(row=>row.id===payload.offerId&&row.onlineHuman);
+    if(!offer||offer.status!=='OPEN')return!!offer;
+    // Round first, because a replayed event is normal and must be absorbed
+    // rather than refused: by the time it arrives again the turn has already
+    // flipped, so a turn check would reject work that was correctly applied.
+    const round=Number(payload.round||0);
+    if(round<=Number(offer.round||0))return true;
+    if(round!==Number(offer.round||0)+1)return false;
+    const side=String(payload.actorSide||'').toUpperCase();
+    if(!['BUYER','SELLER'].includes(side))return false;
+    // A counter can only come from the side that was actually being asked.
+    if(side!==v104OfferAwaiting(offer))return false;
+    const actorClubId=side==='BUYER'?offer.buyerClubId:offer.sellerClubId;
+    const actorMember=v104HumanMemberForClub(clubById(actorClubId));
+    if(!actorMember||String(actorMember.user_id)!==String(event?.actor_user_id||''))return false;
+    const terms=v104NormaliseDealTerms({...(offer.terms||{}),...(payload.terms||{})});
+    if(!v104DealTermsValid(terms))return false;
+    offer.terms=terms;offer.currentFee=Number(terms.fee||0);offer.round=round;
+    offer.lastActorSide=side;offer.awaiting=side==='SELLER'?'BUYER':'SELLER';
+    offer.counteredDate=payload.counteredDate||currentCareerISO();
+    const mine=v104OfferSideForClub(offer);
+    offer.statusCopy=mine===offer.awaiting
+      ?'The other manager has revised the package. It is your decision now.'
+      :'Your revised package is with the other manager.';
+    transferActivity.set(offer.playerId,{...(transferActivity.get(offer.playerId)||{}),status:'Negotiating',offer:offer.currentFee,humanOfferId:offer.id});
+    if(mine===offer.awaiting&&!careerInboxMessages.some(row=>row.id===`human-counter-${offer.id}-${round}`)){
+      const other=clubById(side==='BUYER'?offer.buyerClubId:offer.sellerClubId),p=careerPlayerById(offer.playerId);
+      addCareerInboxMessage({id:`human-counter-${offer.id}-${round}`,type:'TRANSFERS',sender:`${other?.name?.toUpperCase()||'ONLINE MANAGER'} · ONLINE MANAGER`,
+        subject:`Revised package: ${p?.name||offer.playerId}`,preview:`${v104TermsSummaryLine(terms)} · your decision.`,
+        title:`${other?.name||'The other club'} have revised their terms for ${p?.name||'the player'}`,
+        body:[`The package on the table is now ${v104TermsSummaryLine(terms)}.`,`Nothing moves without your answer. You can accept it, revise it again, or walk away.`],
+        signoff:'Online Career Transfer Office',action:{label:'OPEN TRANSFER HUB',route:'transfers'},date:offer.counteredDate});
+    }
+    saveCareerState();refreshActiveCareerScreen();return true;
+  }
   function v104ApplyHumanTransferResponse(payload,event){
     if(!v104TransferMemberAllowed('HUMAN_TRANSFER_RESPONSE',payload,event))return false;
     const offer=livingSquad.incomingOffers.find(row=>row.id===payload.offerId&&row.onlineHuman);if(!offer||offer.status!=='OPEN')return!!offer;
+    // Only the side being asked can answer.
+    const responder=String(payload.actorSide||'SELLER').toUpperCase();
+    if(responder!==v104OfferAwaiting(offer))return false;
+    const responderMember=v104HumanMemberForClub(clubById(responder==='BUYER'?offer.buyerClubId:offer.sellerClubId));
+    if(!responderMember||String(responderMember.user_id)!==String(event?.actor_user_id||''))return false;
     const decision=String(payload.status||'').toUpperCase();if(!['ACCEPTED','REJECTED'].includes(decision))return false;
     offer.status=decision==='ACCEPTED'?'FEE_AGREED':'REJECTED';offer.respondedDate=payload.respondedDate||currentCareerISO();
-    offer.statusCopy=decision==='ACCEPTED'?'The selling manager approved the fee. The buyer may now negotiate with the player.':'The selling manager rejected the offer.';
+    offer.statusCopy=decision==='ACCEPTED'
+      ?'The package is agreed. The buyer may now complete the registration.'
+      :`The ${responder==='BUYER'?'buying':'selling'} manager rejected the package.`;
+    offer.awaiting=null;
     transferActivity.set(offer.playerId,{...(transferActivity.get(offer.playerId)||{}),status:decision==='ACCEPTED'?'Fee Agreed':'Offer Rejected',offer:Number(offer.currentFee||0),humanOfferId:offer.id});
     if(currentClub?.id===offer.buyerClubId&&!careerInboxMessages.some(row=>row.id===`human-response-${offer.id}`)){const seller=clubById(offer.sellerClubId),p=careerPlayerById(offer.playerId);addCareerInboxMessage({id:`human-response-${offer.id}`,type:'TRANSFERS',sender:`${seller?.name?.toUpperCase()||'SELLING CLUB'} · ONLINE MANAGER`,subject:`${decision==='ACCEPTED'?'Offer accepted':'Offer rejected'}: ${p?.name||offer.playerId}`,preview:decision==='ACCEPTED'?'The fee is agreed · player talks may begin.':'The selling manager declined the proposal.',title:decision==='ACCEPTED'?`${seller?.name||'The selling club'} approve the transfer fee`:`${seller?.name||'The selling club'} reject the offer`,body:[offer.statusCopy],signoff:'Online Career Transfer Office',action:{label:'OPEN TRANSFERS',route:'transfers'},date:offer.respondedDate});}
     saveCareerState();refreshActiveCareerScreen();return true;
@@ -14047,6 +14248,9 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       if(!v104TransferMemberAllowed(kind,payload,event))return false;
       const approved=livingSquad.incomingOffers.find(row=>row.id===payload.offerId&&row.onlineHuman&&row.status==='FEE_AGREED'&&row.playerId===payload.playerId&&row.sellerClubId===payload.sellerClubId&&row.buyerClubId===payload.buyerClubId);
       if(!approved||Number(approved.currentFee)!==fee)return false;
+      // The sell-on cannot be quietly dropped or inflated between approval
+      // and registration: what completes is what the seller agreed to.
+      if(Number(approved.terms?.sellOn||0)!==Number(payload.terms?.sellOn||0))return false;
     }
     let source=null;
     if(payload.freeAgent){source=getFreeAgents().find(row=>row.id===payload.playerId)||null;}
@@ -14061,7 +14265,16 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     livingSquad.transferHistory.push(record);livingSquad.transferHistory=livingSquad.transferHistory.slice(-3000);signed.lastTransferDate=record.date;
     const history=livingPlayerHistoryRecord(signed);if(history&&!history.transfers.some(row=>row.id===record.id))history.transfers.push(record);
     recordCareerMemory({id:`MEM-${record.id}`,key:`ONLINE-TRANSFER|${record.id}`,type:'TRANSFER_COMPLETED',clubId:buyer.id,playerId:signed.id,date:record.date,transferId:record.id,importance:'NOTABLE',metadata:{fromClubId:seller?.id||null,toClubId:buyer.id,fee,source:record.source}});
-    updateLivingTransferRecords(record);careerExpansion?.setClause(signed,releaseClause);
+    updateLivingTransferRecords(record);
+    // An online registration used to move the player without ever running the
+    // sell-on settlement, so a clause agreed anywhere else was silently lost
+    // the moment that player was sold in a shared career. onTransfer pays the
+    // previous beneficiary and clears the spent clause before the new one is
+    // written in its place.
+    careerExpansion?.onTransfer(signed,seller,buyer,fee);
+    careerExpansion?.setClause(signed,releaseClause);
+    const settled=payload.terms&&typeof payload.terms==='object'?payload.terms:null;
+    if(seller&&Number(settled?.sellOn||0)>0)signed.v34SellOn={beneficiary:seller.id,owedBy:buyer.id,percent:Number(settled.sellOn)};
     livingSquad.incomingOffers.forEach(row=>{if(row.playerId===signed.id&&['OPEN','COUNTERED','FINAL_OFFER','FEE_AGREED'].includes(row.status)){row.status=row.id===payload.offerId?'COMPLETED':'CLOSED';row.statusCopy=row.id===payload.offerId?'Transfer completed.':'Player transferred elsewhere.';}});
     transferActivity.set(signed.id,{...(transferActivity.get(signed.id)||{}),status:'Completed',offer:fee,signingBonus:bonus,squadRole:signed.squadRole,contractLength:signed.contractYears,completedSeason:careerSeason,humanOfferId:payload.offerId||null});
     if(currentClub?.id===buyer.id||currentClub?.id===seller?.id){addCareerInboxMessage({id:`online-transfer-${record.id}`,type:'TRANSFERS',sender:'ONLINE CAREER TRANSFER OFFICE',subject:`Transfer complete: ${signed.name}`,preview:`${seller?.name||'Free agent'} → ${buyer.name} · ${fee?formatMoney(fee):'free'}.`,title:`${signed.name} joins ${buyer.name}`,body:[`The shared transfer has completed with one authoritative registration.`,`Every manager now sees the same squad and budget change.`],signoff:'Online Career Transfer Office',date:record.date});}
@@ -14069,6 +14282,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   }
   function v104ApplyWorldAction(kind,payload,subjectKey,event){
     if(kind==='HUMAN_TRANSFER_OFFER')return v104ApplyHumanTransferOffer(payload,event);
+    if(kind==='HUMAN_TRANSFER_COUNTER')return v104ApplyHumanTransferCounter(payload,event);
     if(kind==='HUMAN_TRANSFER_RESPONSE')return v104ApplyHumanTransferResponse(payload,event);
     if(kind==='HUMAN_TRANSFER_COMPLETE'||kind==='TRANSFER')return v104ApplyTransferComplete(kind,payload,event);
     return window.VELMORA_MP_WORLD_ACTIONS?.[kind]?.(payload,subjectKey,event)||false;

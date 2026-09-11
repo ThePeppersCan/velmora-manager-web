@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'105.0.0',
-    label:'V105',
-    channel:'PLAYER PATHWAYS',
-    cacheKey:'v105-player-pathways-20260910',
+    version:'105.1.0',
+    label:'V105.1',
+    channel:'ONLINE DEAL TERMS',
+    cacheKey:'v105-1-online-deal-terms-20260911',
     saveSchema:86
   });
 });
