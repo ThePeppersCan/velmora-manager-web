@@ -28,19 +28,19 @@ assert.equal(q.saveCareerState(),true,'a career saves before anything online hap
 // Single-player compatibility
 // ---------------------------------------------------------------
 const saved=JSON.parse(win.VelmoraSaveCodec.decode(r.local.get('velmora-manager-career-v32-slot-1')));
-// The save payload written by V103.3, key for key. Multiplayer adds nothing
-// to a single-player save file, so old saves keep loading and new saves keep
-// opening in an older build.
-const V103_KEYS=['academies','aiTransferHistory','audienceWorldState','avatarCooldowns','calendarEvents',
+// The current single-player payload, key for key. Multiplayer adds nothing
+// to it; V106's offline-only Player Career fields remain private and never
+// enter the shared online world.
+const CURRENT_SAVE_KEYS=['academies','aiTransferHistory','audienceWorldState','avatarCooldowns','calendarEvents',
  'careerChallenge','careerDecisionEvents','careerEventCooldowns','careerInboxMessages','careerNewsStories',
- 'careerPreferences','careerRuntime','careerSeason','careerTime','careerYear','championsCrown','clubBudgets',
+ 'careerMode','careerPreferences','careerRuntime','careerSeason','careerTime','careerYear','championsCrown','clubBudgets',
  'clubMembership','cupRuntime','currentClubId','developmentSnapshots','employmentStatus','firstWeekState',
  'fixtures','freeAgents','jobSearchState','lineups','livingSquad','manager','managerMarket','managerName',
- 'mediaWorld','negotiationEngine','officeReadMessages','ownershipState','pendingNegotiations','playerPromises',
+ 'mediaWorld','negotiationEngine','officeReadMessages','ownershipState','pendingNegotiations','playerCareerState','playerPromises',
  'preSeasonExperience','processedCalendarEvents','recruitmentDay','recruitmentIntel','recruitmentWorldKnowledge',
  'retiredPlayers','roadToGlory','scoutingAssignments','seasonCalendarCursor','selectedCalendarDate','squads',
  'transferActivity','transferScouted','transferShortlist','transferWindows','unexpectedEvents','version','worldSeed'];
-assert.deepEqual(Object.keys(saved).sort(),V103_KEYS.slice().sort(),
+assert.deepEqual(Object.keys(saved).sort(),CURRENT_SAVE_KEYS.slice().sort(),
   'the single-player save format is unchanged by multiplayer');
 assert.equal(online.active(),false,'a single-player career has no online session');
 assert.equal(bridge.activityRoute!==undefined,true);

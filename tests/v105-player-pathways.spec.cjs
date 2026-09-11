@@ -55,6 +55,7 @@ test('the music mini-player stays clear of manager creation',async({page})=>{
   await page.goto('/',{waitUntil:'domcontentloaded'});
   await page.locator('#btnNewCareer').click();
   await page.locator('[data-career-new-slot]').first().click();
+  await page.locator('#careerModeManager').click();
   await expect(page.locator('#screenManagerCreator')).toHaveClass(/is-active/);
   await expect(page.locator('.career-music-mini')).toBeHidden();
 });

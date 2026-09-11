@@ -10,7 +10,7 @@ const runtimeFiles=[
   'clubhouse-events.css','manager-career.css','season-board-polish.css','domestic-cups.css','world-history-records.css',
   'personnel-identity.js','personnel-identity.css',
   'multiplayer-core.js','multiplayer-client.js','multiplayer-ui.js','multiplayer.css',
-  'main-menu.css',
+  'main-menu.css','player-career.css',
   'matchday-cobalt.css','matchday-preview-redesign.css','press-conference.css',
   'results-cinematic.css','league-table-cinematic.css','press-conference-data.js',
   'press-conference-engine.js','index.html','app.js','clubs.js','names.js',

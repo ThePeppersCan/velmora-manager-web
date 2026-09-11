@@ -996,7 +996,7 @@
     cameraDirector:{shot:'MAIN',timer:0,lastShot:'',cutSerial:0},
     broadcast:{lastSpokenAt:0,lastText:'',recent:[],recentSkeletons:[],queue:null,barryState:'NEUTRAL',barryPriority:0,barryUntil:0,barryTimer:0,talkTimer:0,phaseSeen:'',crowdLevel:.12,crowdTarget:.12,speaking:false,debugEvent:'IDLE',voiceName:'TEXT ONLY',variantCount:BARRY_COMMENTARY_VARIANTS},
     teamTactics:{belros:null,zafran:null},
-    careerMode:false,onCareerComplete:null,onCareerClose:null,careerDelivered:false,audioDisabled:false,
+    careerMode:false,playerMode:false,controlledPlayerId:null,onCareerComplete:null,onCareerClose:null,careerDelivered:false,audioDisabled:false,
     syncMode:false,headless:false,liveSerial:0,engineElapsed:0,simClockMs:0,syncAnchorElapsed:0,syncAnchorPerf:0,syncRunning:false,syncAwaitingFreshSample:false,syncLastSampleAt:0,fastForwarding:false,rotationQueued:false,rotationAnnounceAt:0,audioRand:null,commentaryRand:null,renderLead:0,
     localClockAnchorPerf:0,localClockAnchorElapsed:0,careerHeartbeat:0,lastRenderAt:0
   };
@@ -1022,7 +1022,7 @@
   }
   function startCareerHeartbeat(){
     stopCareerHeartbeat();
-    if(!state.careerMode||state.syncMode||state.headless)return;
+    if(!state.careerMode||state.playerMode||state.syncMode||state.headless)return;
     state.careerHeartbeat=setInterval(()=>{
       if(!state.open||!state.careerMode||state.syncMode||state.headless)return;
       try{
@@ -1660,7 +1660,7 @@ function ensureBigMomentStyles(){
   function matchdayMinute(){return Math.min(90,state.matchTime/MATCH_SECONDS*90)}
   function matchdayTeamPlayers(team,playedOnly=false){return state.management?allPlayers.filter(p=>{const r=state.management.players[p.id];return r?.team===team&&(!playedOnly||r.seconds>0)}):roster[team]}
   function initMatchday(){
-    if(!state.careerMode){state.management=null;return}
+    if(!state.careerMode||state.playerMode){state.management=null;return}
     const players={};
     for(const team of ['belros','zafran'])for(const p of matchdaySquads[team]){
       const started=roster[team].some(a=>a.id===p.id),fitness=clamp(Number(p.careerMeta.fitness??100),0,100);
@@ -3454,7 +3454,7 @@ function triggerBigMoment(kind='hattrick'){
     };
   }
   function updateScoreUi(){
-    if($('wcgManage'))$('wcgManage').hidden=!state.careerMode||['fulltime','shootout','closed','secondcountdown'].includes(state.phase);
+    if($('wcgManage'))$('wcgManage').hidden=!state.careerMode||state.playerMode||['fulltime','shootout','closed','secondcountdown'].includes(state.phase);
     $('wcgScoreBelros').textContent=state.score.belros;$('wcgScoreZafran').textContent=state.score.zafran;
     let t=state.matchTime,phase='1ST HALF';
     if(state.phase==='intro'){ const remain=Math.max(0,Math.ceil(INTRO_SECONDS-state.introElapsed));$('wcgClock').textContent=state.careerMode?`00:${String(remain).padStart(2,'0')}`:`-${remain}`;phase='PRE-MATCH'; }
@@ -5952,7 +5952,7 @@ function triggerBigMoment(kind='hattrick'){
     try{
       createUi();applyFixtureConfig(opts);refreshFixtureUi();await preload();
       state.open=true;state.opening=false;state.rotationQueued=false;state.rotationAnnounceAt=0;
-      state.careerMode=!!opts.careerMode;state.onCareerComplete=typeof opts.onComplete==='function'?opts.onComplete:null;state.onCareerClose=typeof opts.onClose==='function'?opts.onClose:null;state.careerDelivered=false;state.audioDisabled=!!opts.disableAudio;
+      state.careerMode=!!opts.careerMode;state.playerMode=!!opts.playerMode;state.controlledPlayerId=opts.controlledPlayerId==null?null:String(opts.controlledPlayerId);state.onCareerComplete=typeof opts.onComplete==='function'?opts.onComplete:null;state.onCareerClose=typeof opts.onClose==='function'?opts.onClose:null;state.careerDelivered=false;state.audioDisabled=!!opts.disableAudio;
       state.syncMode=!!opts.syncMode;state.headless=!!opts.headless;state.liveSerial=Math.max(0,Number(opts.liveSerial)||0);state.engineElapsed=0;state.simClockMs=0;state.renderLead=0;
       state.syncAnchorElapsed=Math.max(0,Number(opts.targetElapsedMs)||0)/1000;state.syncAnchorPerf=performance.now();state.syncRunning=opts.running!==false;state.syncAwaitingFreshSample=!!(state.syncMode&&document.hidden);state.syncLastSampleAt=0;
       state.startedAt=state.liveSerial||Number(opts.startedAt)||Date.now();
@@ -5984,7 +5984,7 @@ function triggerBigMoment(kind='hattrick'){
       state.director={phase:'BUILD-UP',momentum:{belros:0,zafran:0},pressure:{belros:0,zafran:0},recent:[],pulse:0};
       initMatchday();resetStats();createEntities();if(!state.headless)primeBarryVoice();
       if(!state.headless&&!state.audioDisabled){audio.currentMatchMusicIndex=audio.chooseMatchMusicStart();audio.start()}if(!state.careerMode)await joinMatchChannel();
-      const root=$('wcWorldCupBroadcast');root.dataset.careerMode=state.careerMode?'true':'false';if($('wcgManage'))$('wcgManage').hidden=!state.careerMode;$('wcgMatchdayPanel')?.setAttribute('hidden','');root.classList.add('is-open');root.setAttribute('aria-hidden','false');$('wcgHalftime')?.classList.remove('is-open');$('wcgFulltime')?.classList.remove('is-open');hidePresentation();$('wcgVar')?.classList.remove('is-open','is-decision');
+      const root=$('wcWorldCupBroadcast');root.dataset.careerMode=state.careerMode?'true':'false';root.dataset.playerMode=state.playerMode?'true':'false';root.dataset.controlledPlayerId=state.controlledPlayerId||'';if($('wcgManage'))$('wcgManage').hidden=!state.careerMode||state.playerMode;$('wcgMatchdayPanel')?.setAttribute('hidden','');root.classList.add('is-open');root.setAttribute('aria-hidden','false');$('wcgHalftime')?.classList.remove('is-open');$('wcgFulltime')?.classList.remove('is-open');hidePresentation();$('wcgVar')?.classList.remove('is-open','is-decision');
       const admin=adminEnabled()&&!state.syncMode&&!state.careerMode;if($('wcgSpeed'))$('wcgSpeed').hidden=!admin;if($('wcgSkipHalf'))$('wcgSkipHalf').hidden=true;if($('wcgAdminEvents'))$('wcgAdminEvents').hidden=!admin;if($('wcgAdminPanel'))$('wcgAdminPanel').hidden=true;if($('wcgCareerSkip'))$('wcgCareerSkip').hidden=!state.careerMode;if($('wcgReturnLobby'))$('wcgReturnLobby').hidden=!state.careerMode;if($('wcgExit'))$('wcgExit').textContent=state.careerMode?'RETURN TO MATCHDAY':'EXIT BROADCAST';
       setSpeed(1,false);setBroadcastState('PRE_MATCH');if(!state.headless){say(commentary.intro[0]);showBanner('VELMORA MANAGER · QUIDDITCH','',2.0);updatePrematchPresentation();if(!state.careerMode){updatePredictionUi();void refreshPredictionCounts(true);void refreshBarryTipState(true);void refreshV2WatchParty(true);void refreshV2CareerBoard(true);requestV2PlayerTags(true)}}updateKickoffToss(0);
       if(state.headless)scheduleHeadlessCatchUp(state.syncAnchorElapsed);
@@ -6043,5 +6043,5 @@ function triggerBigMoment(kind='hattrick'){
 
   function pauseForProfile(){if(!state.open||!state.careerMode||!state.management)return null;const token={management:state.management,paused:state.management.paused};state.management.paused=true;matchdayRebaseClock();return token;}
   function resumeFromProfile(token){if(!token||state.management!==token.management)return;state.management.paused=token.paused;matchdayRebaseClock();}
-  window.VelmoraQuidditchEngine={pauseForProfile,resumeFromProfile,attributesFromCareerPlayer:player=>careerQuality(player,true).attributes,getPlayerQuality:()=>allPlayers.map(p=>({id:p.id,role:p.careerRole||p.role,source:p.qualitySource||'exhibition',ovr:p.careerMeta?.ovr??null,attributes:{...(entityById(p.id)?.attributes||p.engineAttributes||{})}})),manageTeam:matchdayShow,getMatchday:matchdayReport,open:openBroadcast,close:closeBroadcast,skipToFulltime:skipCareerToFulltime,getStatus:()=>({version:'V24.1 AUDIO',lastOpenError:state.lastOpenError||null,source:'RepoSports V2',open:state.open,opening:state.opening,careerMode:state.careerMode,fixture:activeFixture?.id||null,venue:activeFixture?.venue||'',stadiumClubId:activeFixture?.stadiumClubId||null,stadiumArtworkUrl:state.stadiumArtworkUrl||null,stadiumFallbackUsed:!!state.stadiumFallbackUsed,seed:state.seed,phase:state.phase,matchTime:state.matchTime,score:{...state.score},shootout:state.shootout?{score:{...state.shootout.score},attempts:{...state.shootout.attempts}}:null,tactics:state.teamTactics?{home:{club:teamMeta.belros.name,profile:tacticalDescriptor('belros')},away:{club:teamMeta.zafran.name,profile:tacticalDescriptor('zafran')}}:null,assetsKey:state.assetsKey||'',audioDisabled:state.audioDisabled,playerCount:allPlayers.length,ballState:state.ball?.state||null,hasCarrier:!!state.carrier,kickoffPending:!!state.kickoffReceiver})};
+  window.VelmoraQuidditchEngine={pauseForProfile,resumeFromProfile,attributesFromCareerPlayer:player=>careerQuality(player,true).attributes,getPlayerQuality:()=>allPlayers.map(p=>({id:p.id,role:p.careerRole||p.role,source:p.qualitySource||'exhibition',ovr:p.careerMeta?.ovr??null,attributes:{...(entityById(p.id)?.attributes||p.engineAttributes||{})}})),manageTeam:matchdayShow,getMatchday:matchdayReport,open:openBroadcast,close:closeBroadcast,skipToFulltime:skipCareerToFulltime,getStatus:()=>({version:'V24.1 AUDIO',lastOpenError:state.lastOpenError||null,source:'RepoSports V2',open:state.open,opening:state.opening,careerMode:state.careerMode,playerMode:state.playerMode,controlledPlayerId:state.controlledPlayerId,fixture:activeFixture?.id||null,venue:activeFixture?.venue||'',stadiumClubId:activeFixture?.stadiumClubId||null,stadiumArtworkUrl:state.stadiumArtworkUrl||null,stadiumFallbackUsed:!!state.stadiumFallbackUsed,seed:state.seed,phase:state.phase,matchTime:state.matchTime,score:{...state.score},shootout:state.shootout?{score:{...state.shootout.score},attempts:{...state.shootout.attempts}}:null,tactics:state.teamTactics?{home:{club:teamMeta.belros.name,profile:tacticalDescriptor('belros')},away:{club:teamMeta.zafran.name,profile:tacticalDescriptor('zafran')}}:null,assetsKey:state.assetsKey||'',audioDisabled:state.audioDisabled,playerCount:allPlayers.length,ballState:state.ball?.state||null,hasCarrier:!!state.carrier,kickoffPending:!!state.kickoffReceiver})};
 })();

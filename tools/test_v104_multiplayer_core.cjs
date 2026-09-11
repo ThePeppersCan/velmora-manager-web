@@ -10,7 +10,7 @@ const core=require('../multiplayer-core.js');
 // ---- state classification ------------------------------------------
 // Audited against the real save payload built by app.js.
 const SAVE_KEYS=['version','worldSeed','recruitmentDay','careerSeason','careerYear','currentClubId',
-  'employmentStatus','jobSearchState','firstWeekState','careerPreferences','careerChallenge','careerTime',
+  'employmentStatus','jobSearchState','firstWeekState','careerPreferences','careerChallenge','careerMode','playerCareerState','careerTime',
   'fixtures','calendarEvents','transferWindows','careerInboxMessages','careerNewsStories',
   'pendingNegotiations','processedCalendarEvents','selectedCalendarDate','seasonCalendarCursor',
   'careerDecisionEvents','playerPromises','careerEventCooldowns','aiTransferHistory','developmentSnapshots',
@@ -25,7 +25,7 @@ for(const key of SAVE_KEYS)assert.ok(['shared','private','club'].includes(core.c
 
 // The confidential drawer is private, without exception.
 for(const key of ['transferShortlist','transferScouted','scoutingAssignments','recruitmentIntel',
-  'careerPreferences','careerInboxMessages','officeReadMessages','careerDecisionEvents'])
+  'careerPreferences','careerInboxMessages','officeReadMessages','careerDecisionEvents','careerMode','playerCareerState'])
   assert.equal(core.classifyKey(key),'private',`${key} never leaves the owning device`);
 
 // The canonical world is shared, without exception.
