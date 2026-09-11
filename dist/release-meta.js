@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'105.1.0',
-    label:'V105.1',
-    channel:'ONLINE DEAL TERMS',
-    cacheKey:'v105-1-online-deal-terms-20260911',
+    version:'105.2.0',
+    label:'V105.2',
+    channel:'CAREER POLISH',
+    cacheKey:'v105-2-career-polish-20260911',
     saveSchema:86
   });
 });
