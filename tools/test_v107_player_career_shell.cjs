@@ -60,12 +60,30 @@ assert(snapshot.lastReview.minutes>0,'a starting athlete records participation m
 assert.equal(snapshot.lastReview.trustAfter-snapshot.lastReview.trustBefore,snapshot.lastReview.trustDelta,'post-match trust movement is auditable');
 assert(snapshot.lastReview.summary.length>20,'post-match review explains the manager response');
 
+// V107: authority and correspondence belong to the career's role.
+const userClub=q.clubById(d.v106PlayerCareerSnapshotForTest().clubId);
+const lineupBefore=JSON.stringify(q.ensureLineup(userClub));
+assert.equal(q.moveLineupPlayerToSlot(userClub,q.playerCareerPlayer().id,'starter',0),false,'a player cannot move themselves into the side');
+assert.equal(q.swapLineupPlayers(userClub,q.playerCareerPlayer().id,q.ensureLineup(userClub).starter[0]),false,'a player cannot swap the side around');
+assert.equal(JSON.stringify(q.ensureLineup(userClub)),lineupBefore,'the line-up changed under a player career');
+const benchId=q.ensureLineup(userClub).bench.filter(Boolean).find(id=>id!==q.playerCareerPlayer().id);
+assert(benchId,'expected a substitute to test the club AI path');
+assert.notEqual(q.moveLineupPlayerToSlot(userClub,benchId,'starter',0,{system:true}),false,'the club AI must still be able to name its own side');
+assert(q.ensureLineup(userClub).starter.includes(benchId),'the club AI move did not apply');
+
+const mail=q.buildOfficeMessages();
+assert(mail.length,'the player mailbox is empty');
+const deskIds=mail.filter(m=>/^board-season-|^scout-|^youth-|^finance-|^contracts-|^transfer-/.test(String(m.id)));
+assert.equal(deskIds.length,0,'manager-desk mail reached the player: '+deskIds.map(m=>m.id).join(', '));
+assert(mail.some(m=>m.senderRole==='Your representative'),'the player has no representative');
+assert(mail.some(m=>/Where you stand with me/i.test(String(m.subject||''))),'the manager never says where the player stands');
+
 const save=q.buildCareerSaveData();
 assert.equal(save.version,87);
 assert.equal(save.careerMode,'PLAYER');
 assert.equal(save.playerCareerState.userPlayerId,snapshot.playerId);
 q.resetCareerWorld();
-assert(q.applyCareerSaveData(save,1),'a V107 player career can be loaded');
+assert(q.applyCareerSaveData(save,1),'a V106 player career can be loaded');
 assert.equal(created.q.state().careerMode,'PLAYER');
 assert.equal(created.q.state().playerCareerState.userPlayerId,snapshot.playerId);
 
@@ -112,7 +130,9 @@ console.log(JSON.stringify({
     'manager trust contributes to deterministic team selection',
     'starting, bench and not-selected verdicts include clear reasons',
     'quick simulation records participation and a post-match manager review',
-    'Player Career persists while legacy saves remain Manager Career'
+    'Player Career persists while legacy saves remain Manager Career',
+    'the athlete cannot name the side; the club AI still can',
+    'the mailbox carries only correspondence addressed to the player'
   ],
   verdicts
 },null,2));

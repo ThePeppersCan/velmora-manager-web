@@ -28,23 +28,28 @@ body.pc-mode-player :is(
   .career-tabs [data-career-nav="transfers"]
 ){display:none!important}
 
-/* The squad screen becomes a reading room: study the side, don't pick it. */
-body.pc-mode-player #screenSquad.pc-readonly :is(
-  .swap-banner,
-  .v51-st3-grid [data-swap-action],
-  .subs-grid [data-swap-action],
-  .reserves-grid [data-swap-action],
-  [data-squad-action="captain"],
-  [data-squad-action="release"],
-  [data-squad-action="list"],
-  [data-squad-action="renew"],
-  [data-squad-action="promote"]
+/* The squad screen becomes a reading room: study the side, don't pick it.
+   The refusal is enforced in code; these rules stop the affordances from
+   advertising an action the career will not allow. */
+body.pc-mode-player :is(
+  #screenSquad .swap-banner,
+  #screenSquad [data-swap-action],
+  #screenSquad .profile-swap-btn,
+  #screenSquad .profile-action-stack,
+  #screenSquad [data-squad-action="captain"],
+  #screenSquad [data-squad-action="release"],
+  #screenSquad [data-squad-action="list"],
+  #screenSquad [data-squad-action="renew"],
+  #screenSquad [data-squad-action="promote"],
+  #screenSquad #cancelSwap
 ){display:none!important}
 
-body.pc-mode-player #screenSquad.pc-readonly :is(.v51-st3-grid,.subs-grid,.reserves-grid) [draggable]{
-  cursor:default;
-}
-body.pc-mode-player #screenSquad.pc-readonly .sq-save-status{opacity:.6}
+/* Cards stay readable and clickable for inspection, but never look draggable. */
+body.pc-mode-player #screenSquad .player-card{cursor:pointer}
+body.pc-mode-player #screenSquad .empty-player-slot{cursor:default;opacity:.55}
+body.pc-mode-player #screenSquad .empty-player-slot small{visibility:hidden}
+body.pc-mode-player #screenSquad .sq-save-status{opacity:.6}
+body.pc-mode-player #screenSquad .v66-profile-actions{grid-template-columns:1fr}
 
 /* ---------- 2. Finding yourself in the side ------------------------- */
 

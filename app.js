@@ -2947,7 +2947,7 @@
     if(!playerCareerActive()||!currentClub||!fixture)return null;playerCareerState=normalizePlayerCareerState(playerCareerState);let saved=playerCareerState.selections[fixture.fixtureId];if(saved&&restorePlayerCareerSelection(saved,currentClub))return saved;
     prepareAiLineupForFixture(currentClub,fixture,fixture.date);const lineup=ensureLineup(currentClub),squad=getSquad(currentClub),player=playerCareerPlayer(),starterIds=lineup.starter.filter(Boolean),benchIds=lineup.bench.filter(Boolean),reserveIds=lineup.reserve.filter(Boolean),scores=squad.map(p=>({p,score:aiLineupSelectionScore(p,currentClub,fixture,[])})).sort((a,b)=>b.score-a.score||a.p.id.localeCompare(b.p.id)),user=scores.find(row=>row.p.id===player?.id),verdict=starterIds.includes(player?.id)?'STARTING':benchIds.includes(player?.id)?'BENCH':'NOT_SELECTED';
     if(verdict==='BENCH'){const index=benchIds.indexOf(player.id);if(index>0){const first=benchIds[0];benchIds[0]=player.id;benchIds[index]=first;lineup.bench=[...benchIds,...Array(BENCH_SLOTS-benchIds.length).fill(null)];lineupCache.set(currentClub.id,normalizeLineup(currentClub,lineup));}}
-    const starterCut=Math.min(...starterIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),benchCut=Math.min(...benchIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),gap=verdict==='BENCH'?Math.max(0,starterCut-Number(user?.score||0)):verdict==='NOT_SELECTED'?Math.max(0,benchCut-Number(user?.score||0)):0,factors=playerCareerSelectionFactors(player,currentClub,fixture,Number(user?.score||0)),manager=currentClubManager(currentClub);saved={fixtureId:fixture.fixtureId,date:fixture.date,createdAt:currentCareerISO(),managerId:manager?.id||null,managerName:manager?.name||'Head Coach',verdict,reason:playerCareerDecisionReason(player,verdict,factors,gap,fixture),gap:Number(gap.toFixed(2)),factors,starterIds:[...ensureLineup(currentClub).starter.filter(Boolean)],benchIds:[...ensureLineup(currentClub).bench.filter(Boolean)],reserveIds:[...ensureLineup(currentClub).reserve.filter(Boolean)],preMatch:{goals:Number(player.seasonStats?.goals||0),assists:Number(player.seasonStats?.assists||0),trust:Number(player.managerTrust||0)}};playerCareerState.selections[fixture.fixtureId]=saved;saveCareerState();return saved;
+    const starterCut=Math.min(...starterIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),benchCut=Math.min(...benchIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),gap=verdict==='BENCH'?Math.max(0,starterCut-Number(user?.score||0)):verdict==='NOT_SELECTED'?Math.max(0,benchCut-Number(user?.score||0)):0,factors=playerCareerSelectionFactors(player,currentClub,fixture,Number(user?.score||0)),manager=currentClubManager(currentClub);saved={fixtureId:fixture.fixtureId,date:fixture.date,createdAt:currentCareerISO(),managerId:manager?.id||null,managerName:manager?.name||'Head Coach',verdict,reason:playerCareerDecisionReason(player,verdict,factors,gap,fixture),gap:Number(gap.toFixed(2)),factors,starterIds:[...ensureLineup(currentClub).starter.filter(Boolean)],benchIds:[...ensureLineup(currentClub).bench.filter(Boolean)],reserveIds:[...ensureLineup(currentClub).reserve.filter(Boolean)],preMatch:{goals:Number(player.seasonStats?.goals||0),assists:Number(player.seasonStats?.assists||0),trust:Number(player.managerTrust||0)}};playerCareerState.selections[fixture.fixtureId]=saved;pcTeamsheetMail(fixture,saved);saveCareerState();return saved;
   }
   // V107: the verdict is now published on the shared Matchday screen.
   function renderPlayerCareerTeamsheet(fixture=userFixtureOnDate(currentCareerISO())){
@@ -2961,7 +2961,7 @@
     fixture.matchday={version:1,participation,substitutions,captaincy:[],tacticalChanges:[],finalTactics:null};
   }
   function playerCareerAfterFixture(result){
-    if(!playerCareerActive()||!result?.fixture)return null;const player=playerCareerPlayer(),selection=playerCareerState.selections[result.fixture.fixtureId]||ensurePlayerCareerSelection(result.fixture);if(!player||!selection)return null;const ratingRow=(result.ratings||[]).find(row=>row.player?.id===player.id),part=result.fixture.matchday?.participation?.[String(player.id)],minutes=Number(part?.minutes??ratingRow?.minutes??(selection.verdict==='STARTING'?90:0)),rating=ratingRow?Number(ratingRow.rating):null,goals=Math.max(0,Number(player.seasonStats?.goals||0)-Number(selection.preMatch?.goals||0)),assists=Math.max(0,Number(player.seasonStats?.assists||0)-Number(selection.preMatch?.assists||0));let delta=0,reason='The manager keeps the current view.';if(minutes>0){delta=rating>=8.5?6:rating>=7.5?4:rating>=6.8?2:rating<6?-3:0;delta+=Math.min(3,goals*2+assists);if(result.potm?.id===player.id)delta+=2;reason=rating>=7.5?'A decisive performance strengthens your standing.':rating<6?'The manager expected a more reliable impact.':'A steady contribution keeps you in contention.';}else if(selection.verdict==='BENCH'){delta=-1;reason='You remained unused; the manager wants a stronger case in training.';}const trustBefore=Number(player.managerTrust||0),trustAfter=adjustPlayerManagerTrust(player,delta,'Player Career post-match review');playerCareerState.lastReview={fixtureId:result.fixture.fixtureId,date:result.fixture.date,verdict:selection.verdict,rating,minutes,goals,assists,trustBefore,trustAfter,trustDelta:trustAfter-trustBefore,summary:reason,resultCode:result.resultCode,opponentId:result.opponent?.id||null};return playerCareerState.lastReview;
+    if(!playerCareerActive()||!result?.fixture)return null;const player=playerCareerPlayer(),selection=playerCareerState.selections[result.fixture.fixtureId]||ensurePlayerCareerSelection(result.fixture);if(!player||!selection)return null;const ratingRow=(result.ratings||[]).find(row=>row.player?.id===player.id),part=result.fixture.matchday?.participation?.[String(player.id)],minutes=Number(part?.minutes??ratingRow?.minutes??(selection.verdict==='STARTING'?90:0)),rating=ratingRow?Number(ratingRow.rating):null,goals=Math.max(0,Number(player.seasonStats?.goals||0)-Number(selection.preMatch?.goals||0)),assists=Math.max(0,Number(player.seasonStats?.assists||0)-Number(selection.preMatch?.assists||0));let delta=0,reason='The manager keeps the current view.';if(minutes>0){delta=rating>=8.5?6:rating>=7.5?4:rating>=6.8?2:rating<6?-3:0;delta+=Math.min(3,goals*2+assists);if(result.potm?.id===player.id)delta+=2;reason=rating>=7.5?'A decisive performance strengthens your standing.':rating<6?'The manager expected a more reliable impact.':'A steady contribution keeps you in contention.';}else if(selection.verdict==='BENCH'){delta=-1;reason='You remained unused; the manager wants a stronger case in training.';}const trustBefore=Number(player.managerTrust||0),trustAfter=adjustPlayerManagerTrust(player,delta,'Player Career post-match review');playerCareerState.lastReview={fixtureId:result.fixture.fixtureId,date:result.fixture.date,verdict:selection.verdict,rating,minutes,goals,assists,trustBefore,trustAfter,trustDelta:trustAfter-trustBefore,summary:reason,resultCode:result.resultCode,opponentId:result.opponent?.id||null};pcReviewMail(playerCareerState.lastReview,result);return playerCareerState.lastReview;
   }
   function playerCareerResultHTML(result){
     if(!playerCareerActive()||!result?.saved)return'';const review=playerCareerState.lastReview,player=playerCareerPlayer();if(!review||!player||review.fixtureId!==result.fixture?.fixtureId)return'';return`<section class="pc-player-result"><span>YOUR PERFORMANCE · ${escapeHtml(review.verdict.replace('_',' '))}</span><div><img src="${escapeHtml(player.avatar)}" alt=""><span><h3>${escapeHtml(player.name)}</h3><p>${escapeHtml(review.summary)}</p></span><b>${review.rating??'—'}<small>RATING</small></b><b>${review.minutes}<small>MINUTES</small></b><b>${review.goals}<small>GOALS</small></b><b>${review.trustDelta>0?'+':''}${review.trustDelta}<small>TRUST · ${review.trustAfter}</small></b></div></section>`;
@@ -3956,9 +3956,9 @@
     const department=window.VelmoraPersonnelIdentity?.roleForMessage?.({...m,type,originalSender})||(type==='SCOUTING'?'scout':type==='MEDICAL'?'medical':type==='YOUTH'?'academy':type==='TRAINING'?'coach':null);
     const employee=department?(careerExpansion?.personnelForRole?.(department,c)||careerExpansion?.state().clubs[c?.id]?.staff.find(p=>p.role===department)):null;
     const staffRole=({BOARD:'executive',FINANCE:'executive',CONTRACTS:'executive',SCOUTING:'recruitment',TRANSFERS:'recruitment',MEDICAL:'medical',YOUTH:'coach',TRAINING:'coach',STAFF:'assistant',SQUAD:'assistant',MEDIA:'press',CAREER:'executive'}[type]||'assistant');
-    const official=/COMPETITION|DISCIPLINARY|LEAGUE OFFICE/i.test(originalSender),generic=originalSender===originalSender.toUpperCase()||/^(Medical Team|Performance Team|Head of Recruitment|Club Secretary|Finance Director)$/i.test(originalSender);
+    const official=m.external===true||/COMPETITION|DISCIPLINARY|LEAGUE OFFICE|YOUR REPRESENTATIVE/i.test(originalSender),generic=originalSender===originalSender.toUpperCase()||/^(Medical Team|Performance Team|Head of Recruitment|Club Secretary|Finance Director)$/i.test(originalSender);
     const person=player||(!official&&generic?(employee||firstWeekStaff(staffRole)):null);
-    let sender=person?.name||originalSender,role=player?'First-team player':official?'Competition administration':employee?(window.VelmoraPersonnelIdentity?.profile?.(department)?.title||({scout:'Chief scout',coach:'Assistant coach',medical:'Head of medical',academy:'Academy director',commercial:'Commercial director'}[department])):({BOARD:'Club executive',FINANCE:'Finance office',CONTRACTS:'Club secretary',SCOUTING:'Recruitment',TRANSFERS:'Transfer office',MEDICAL:'Medical team',YOUTH:'Academy',TRAINING:'Coaching team',STAFF:'Club operations',SQUAD:'Assistant manager',MEDIA:'Press office',CAREER:'Career office'}[type]||'Club office');
+    let sender=person?.name||originalSender,role=m.senderRole||(pcActive()&&m.audience==='PLAYER'&&originalSender===pcCoachName(c)?'Your manager':(player?'First-team player':m.external?'Outside the club':official?'Competition administration':employee?(window.VelmoraPersonnelIdentity?.profile?.(department)?.title||({scout:'Chief scout',coach:'Assistant coach',medical:'Head of medical',academy:'Academy director',commercial:'Commercial director'}[department])):({BOARD:'Club executive',FINANCE:'Finance office',CONTRACTS:'Club secretary',SCOUTING:'Recruitment',TRANSFERS:'Transfer office',MEDICAL:'Medical team',YOUTH:'Academy',TRAINING:'Coaching team',STAFF:'Club operations',SQUAD:'Assistant manager',MEDIA:'Press office',CAREER:'Career office'}[type]||'Club office')));
     if(event?.kind==='DISCIPLINE_APPEAL'){const secretary=firstWeekStaff('executive');sender=secretary.name;role='Club secretary';}
     const seed=hashString(String(m.id||m.subject||''))>>>0,pick=items=>items[seed%items.length];
     let subject=m.subject||m.title||'Club update',body=(Array.isArray(m.body)?m.body:[m.body]).filter(Boolean).map(String);
@@ -3989,15 +3989,18 @@
       else if(String(m.id).startsWith('stay-'))body=["I've thought about our conversation. I'm staying, and I'll put the transfer request aside.","Let's make this work. I want to feel that there's a place for me here."];
     }
     body=body.map(t=>t.replace(/presentation transfer budget/g,'transfer budget').replace(/an thirteen-player|An thirteen-player/g,'a senior').replace(/in an thirteen-player/g,'in a senior'));
-    const greeting=player?pick(['Boss,','Hi boss,','Gaffer,']):official?'Manager,':type==='BOARD'?'Manager,':pick(['Hi boss,','Hi,','Boss,']);
+    const pcName=pcActive()?String(pcPlayer()?.name||'').split(' ')[0]:'';
+    const greeting=pcActive()?(pcName?`${pcName},`:'Hi,'):player?pick(['Boss,','Hi boss,','Gaffer,']):official?'Manager,':type==='BOARD'?'Manager,':pick(['Hi boss,','Hi,','Boss,']);
     // A first-person paragraph may already contain its own salutation.
-    const hasGreeting=/^(Boss,|Hi boss,|Gaffer,|Morning,|Manager,)/.test(body[0]||'');
+    const hasGreeting=/^(Boss,|Hi boss,|Gaffer,|Morning,|Manager,)/.test(body[0]||'')||(!!pcName&&String(body[0]||'').startsWith(`${pcName},`));
     const signoff=player?player.name:sender;
     const threadKey=m.threadKey||(event?.kind==='PLAYING_TIME'?`playing-time-${event.playerId}`:event?.suspensionId?`discipline-${event.suspensionId}`:m.playerId?`${type}-${m.playerId}`:String(m.id||''));
     return {...m,type,subject,title:subject,body,sender,senderRole:role,originalSender,signoff,greeting:hasGreeting?'':greeting,closing:player?'':official?'Competition administration':type==='BOARD'?'Regards,':pick(['Thanks,','Speak soon,','Thanks, boss.']),senderVoice:player?.personality||player?.storyTraits?.name||null,senderPortrait:player?.avatar||person?.portrait||person?.image||(event?.kind==='DISCIPLINE_APPEAL'?firstWeekStaff('executive').image:officeSenderPortrait(m)),decisionId:event?.id||m.decisionId,threadKey,correspondenceVersion:37};
   }
   // V38: a visual and editorial layer over saved correspondence. Event facts stay intact.
   function v38MailStyle(m){
+    if(m.senderRole==='Your representative')return{key:'transfer',label:'Your agent',detail:'Acting for you',icon:'person'};
+    if(pcActive()&&m.audience==='PLAYER'&&['SQUAD'].includes(String(m.type||'').toUpperCase()))return{key:'player',label:'The manager',detail:'Selection & standing',icon:'person'};
     if(m.senderRole==='First-team player')return{key:'player',label:'Dressing room',detail:'A personal conversation',icon:'person'};
     if(/discipline-|DISCIPLINE/.test(String(m.id))||m.senderRole==='Competition administration'||v37InboxDecision(m)?.kind==='DISCIPLINE_APPEAL')return{key:'official',label:'Competition office',detail:'Discipline & appeals',icon:'shield'};
     return ({SCOUTING:{key:'scout',label:'Recruitment room',detail:'From your scouting network',icon:'search'},TRANSFERS:{key:'transfer',label:'Transfer desk',detail:'Deals & player interest',icon:'arrows'},FINANCE:{key:'board',label:'Finance office',detail:'The club’s accounts',icon:'ledger'},BOARD:{key:'board',label:'The boardroom',detail:'Club correspondence',icon:'shield'},CONTRACTS:{key:'board',label:'Contract desk',detail:'Terms & commitments',icon:'ledger'},MEDICAL:{key:'medical',label:'Medical room',detail:'Fitness & recovery',icon:'medical'},TRAINING:{key:'player',label:'Training ground',detail:'From the coaching team',icon:'person'},YOUTH:{key:'scout',label:'The academy',detail:'The next generation',icon:'person'},MEDIA:{key:'press',label:'Press office',detail:'Around the club',icon:'mail'}}[m.type]||{key:'club',label:'Club office',detail:'Behind the scenes',icon:'mail'});
@@ -4527,7 +4530,7 @@
     const market=processManagerMarketDay(nextDate);
     const media=processMediaNarrativesDay(nextDate,resolvedFixtures,market.events);
     const progression=updateSeasonProgression(nextDate);
-    if(pcActive())pcGenerateDecision(nextDate);
+    if(pcActive()){pcDailyMail(nextDate);pcGenerateDecision(nextDate);}
     const newDecision=pendingDecisionEvent();
     if(options.deferSave)v202Performance.deferredAdvanceSaveSkips++;else saveCareerState();
     if(!options.silent)refreshActiveCareerScreen();
@@ -6229,7 +6232,7 @@
       const currentId=ensureLineup(club).starter[slot],current=currentId?getSquad(club).find(p=>p.id===currentId):null;
       if(current&&!matchdayUnavailable(current,fixture))continue;
       const candidate=candidates.shift();if(!candidate)break;
-      const outgoing=current||null;moveLineupPlayerToSlot(club,candidate.id,'starter',slot);
+      const outgoing=current||null;moveLineupPlayerToSlot(club,candidate.id,'starter',slot,{system:true});
       replacements.push({out:outgoing,in:candidate,reason:outgoing?matchdayUnavailableReason(outgoing,fixture):'VACANT'});
     }
     readiness=matchdayLineupReadiness(club,fixture);
@@ -6285,8 +6288,9 @@
     return null;
   }
 
-  function moveLineupPlayerToSlot(club,playerId,targetGroup,targetSlot){
+  function moveLineupPlayerToSlot(club,playerId,targetGroup,targetSlot,opts={}){
     if(!club||!playerId||!['starter','bench','reserve'].includes(targetGroup))return false;
+    if(pcSquadEditBlocked(club,opts))return false;
     const lineup=ensureLineup(club);
     const source=playerLineupPosition(club,playerId);
     const targetArr=lineupGroupArray(lineup,targetGroup);
@@ -6302,10 +6306,10 @@
     return{source,target:{group:targetGroup,slot:targetSlot},targetId};
   }
 
-  function swapLineupPlayers(club,sourceId,targetId){
+  function swapLineupPlayers(club,sourceId,targetId,opts={}){
     const target=playerLineupPosition(club,targetId);
     if(!target)return false;
-    return moveLineupPlayerToSlot(club,sourceId,target.group,target.slot);
+    return moveLineupPlayerToSlot(club,sourceId,target.group,target.slot,opts);
   }
 
 
@@ -8625,6 +8629,7 @@
   }
 
   function beginSwap(playerId){
+    if(pcSquadEditBlocked())return;
     swapSourceId=playerId;
     const reserves=$('#squadReservePlaces');if(reserves)reserves.open=true;
     selectedPlayerId=playerId;
@@ -8697,7 +8702,7 @@
       showToast('Swap mode cancelled');
       return;
     }
-    if(swapSourceId && swapSourceId!==playerId){
+    if(swapSourceId && swapSourceId!==playerId && !pcSquadEditBlocked(club)){
       const sourcePos=playerLineupPosition(club,swapSourceId);
       const targetPos=playerLineupPosition(club,playerId);
       if(sourcePos&&targetPos){
@@ -8921,6 +8926,7 @@
   function tacticMeterHtml(label,value){return `<div class="tactic-profile-meter"><span>${escapeHtml(label)}</span><i><b style="width:${value}%"></b></i><strong>${value}</strong></div>`;}
   function v96TacticalPlanDeckHTML(){const active=careerPreferences.activeTacticalPlan;return`<section class="squad-tactic-plan-deck">${Object.values(careerPreferences.tacticalPlans).map(plan=>`<article class="squad-tactic-plan ${plan.id===active?'is-active':''}"><span><small>MATCH PLAN</small><strong>${escapeHtml(plan.name)}</strong></span><button type="button" data-squad-plan-load="${plan.id}">LOAD</button><em>${escapeHtml(plan.tactics.defensive)} · ${escapeHtml(plan.tactics.attacking)} · ${escapeHtml(plan.tactics.mentality)}</em></article>`).join('')}</section>`;}
   function renderSquadTactics(){
+    if(pcActive())return;
     const club=currentClub||selectedClub||clubs[0];careerPreferences=normalizeCareerPreferences(careerPreferences);const t=careerPreferences.tactics;
     const [label,description]=squadTacticIdentity(t),profile=squadTacticProfile(t);
     const content=$('#squadTacticsContent');if(!content)return;
@@ -8983,6 +8989,7 @@
   }
 
   function setSquadView(view){
+    if(pcActive()&&PC_MANAGER_SQUAD_VIEWS.includes(view))view='senior';
     squadView=view;
     $$('#squadSubnav [data-squad-view]').forEach(b=>{const active=b.dataset.squadView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-current',active?'page':'false');});
     $$('.squad-view').forEach(p=>{const active=p.dataset.squadPane===view;p.classList.toggle('is-active',active);p.setAttribute('aria-hidden',active?'false':'true');try{p.inert=!active;}catch(_e){}});
@@ -9006,8 +9013,10 @@
     const cards=$$('#subsGrid [data-player-id], #reservesGrid [data-player-id], #startingThreeShowcase [data-player-id]');
     const targets=$$('#subsGrid [data-drop-group], #reservesGrid [data-drop-group], #startingThreeShowcase [data-drop-group]');
     cards.forEach(card=>{
+      if(pcActive())card.setAttribute('draggable','false');
       if(squadDragBound.has(card))return;squadDragBound.add(card);
       card.addEventListener('dragstart',e=>{
+        if(pcSquadEditBlocked(club)){e.preventDefault();return;}
         if(squadSavePending)scheduleSquadSave();
         draggedSquadPlayerId=card.dataset.playerId;
         card.classList.add('is-dragging');
@@ -9034,6 +9043,7 @@
         const slot=Number(target.dataset.dropSlot||0);
         $$('#seniorSquadView .is-drag-over').forEach(t=>t.classList.remove('is-drag-over'));
         if(!playerId||!group)return;
+        if(pcSquadEditBlocked(club))return;
         const before=playerLineupPosition(club,playerId);
         const result=moveLineupPlayerToSlot(club,playerId,group,slot);
         draggedSquadPlayerId=null;
@@ -9095,6 +9105,7 @@
     $$('#seniorSquadView .empty-player-slot').forEach(slot=>{
       if(squadClickBound.has(slot))return;squadClickBound.add(slot);
       slot.addEventListener('click',()=>{
+        if(pcSquadEditBlocked(club))return;
         if(!swapSourceId){showToast('Select a player and choose “Swap with…” first');return;}
         const moved=moveLineupPlayerToSlot(club,swapSourceId,slot.dataset.dropGroup,Number(slot.dataset.dropSlot));
         if(moved){selectedPlayerId=swapSourceId;swapSourceId=null;refreshSeniorSquadUI({save:true});showToast('Player moved to '+rosterGroupLabel(slot.dataset.dropGroup));}
@@ -9159,6 +9170,7 @@
     const saved=saveCareerState();showToast(saved?'Club training focus saved':'Focus applied; career save failed. Try saving again.');return true;
   }
   function v23RenderTraining(){
+    if(pcActive())return;
     if(!currentClub)return;
     window.VelmoraTrainingView.mount($('#squadTrainingContent'),{data:v23TrainingData,setPlayer:v23SetTrainingPlayer,setPreference:v23SetTrainingPreference,setClubFocus:v23SetTrainingFocus,avatar:avatarHTML,openPlayer:id=>{selectedPlayerId=id;setSquadView('senior');},observeSession:()=>v46ObserveTrainingSession()});
   }
@@ -10472,6 +10484,20 @@
   // Marks the controlled athlete wherever a squad or line-up is drawn, so the
   // class survives every re-render instead of being painted on afterwards.
   function pcSelfClass(player){return pcActive()&&player&&player.id===playerCareerState.userPlayerId?' is-user-athlete':'';}
+  // An athlete does not pick the side. Every route that could change the
+  // user club's line-up, tactics or training passes through here, so the
+  // restriction is a rule of the career rather than a hidden button.
+  let pcRefusalAt=0;
+  function pcSquadEditBlocked(club=currentClub,{quiet=false,system=false}={}){
+    if(system||!pcActive())return false;
+    if(club&&currentClub&&club.id!==currentClub.id)return false;
+    if(!quiet&&Date.now()-pcRefusalAt>900){
+      pcRefusalAt=Date.now();
+      const boss=currentClub?currentClubManager(currentClub):null;
+      showToast(`${boss?.name||'The manager'} picks the team — not you`);
+    }
+    return true;
+  }
 
   // The top bar is shared markup, so relabel it rather than fork it. The
   // original manager label is stashed once so switching careers restores it.
@@ -10508,6 +10534,8 @@
     if(active){
       const heading=$('#screenSquad .squad-heading h2');if(heading)heading.textContent='YOUR TEAM';
       const officeHeading=$('#screenOffice .office-heading h2');if(officeHeading)officeHeading.textContent='MY CAREER';
+      const postKicker=$('#screenOffice .office-message-toolbar .office-kicker');if(postKicker)postKicker.textContent='ADDRESSED TO YOU';
+      const postTitle=$('#screenOffice .office-message-toolbar h3');if(postTitle)postTitle.textContent='YOUR POST';
       const officeEyebrow=$('#screenOffice .office-heading .eyebrow');if(officeEyebrow)officeEyebrow.textContent='PLAYER CAREER';
       if(!PC_OFFICE_TABS.includes(officeActiveTab))officeActiveTab='inbox';
       if(!PC_SQUAD_VIEWS.includes(squadView))squadView='senior';
@@ -10763,7 +10791,7 @@
     if(willing){
       const rise=Math.max(50,Math.round(Number(player.wage||800)*(.10+trust/900)/25)*25),years=trust>=75?3:2;
       queueDecisionEvent({
-        id:`DEC-PC-RENEWAL-${club.id}-${date}`,kind:'PC_RENEWAL',category:'CONTRACT TALKS',sender:'YOUR REPRESENTATIVE',clubId:club.id,
+        id:`DEC-PC-RENEWAL-${club.id}-${date}`,kind:'PC_RENEWAL',category:'CONTRACT TALKS',sender:pcAgent().name,fromAgent:true,clubId:club.id,
         title:`${club.name} have opened terms`,
         body:`${club.name} are willing to extend. The offer on the table is ${formatMoney(Number(player.wage||0)+rise)} per week over ${plural(years,'year')}. Your representative wants a decision before it cools.`,
         eventData:{rise,years},
@@ -10775,7 +10803,7 @@
       });
       showToast('The club have come back with terms');
     }else{
-      addCareerInboxMessage({id:`pc-talks-declined-${club.id}-${date}`,type:'CONTRACTS',sender:'YOUR REPRESENTATIVE',subject:'The club are not ready to talk',preview:`${club.name} want to see more before discussing a new deal.`,title:'The club are not ready to talk',body:[`I raised a new contract with ${club.name}. The answer was not no, but it was not yet.`,`They want consistent minutes and performances first. Manager trust is sitting at ${Math.round(trust)}/100 — that is the number moving this decision.`],signoff:'Your representative',date});
+      addCareerInboxMessage({id:`pc-talks-declined-${club.id}-${date}`,type:'CONTRACTS',sender:pcAgent().name,fromAgent:true,subject:'The club are not ready to talk',preview:`${club.name} want to see more before discussing a new deal.`,title:'The club are not ready to talk',body:[`I raised a new contract with ${club.name}. The answer was not no, but it was not yet.`,`They want consistent minutes and performances first. Manager trust is sitting at ${Math.round(trust)}/100 — that is the number moving this decision.`],signoff:pcAgent().name,date});
       showToast('The club want to see more first');
     }
     saveCareerState();refreshActiveCareerScreen();return true;
@@ -10945,13 +10973,13 @@
       setEventCooldown('PC-MINUTES',date);
       if(choiceId==='patient'){trust(4);adjustPlayerMorale(player,-1);}
       if(choiceId==='ask'){trust(-2);adjustPlayerMorale(player,1);player.playingTimeSatisfaction=clamp(Number(player.playingTimeSatisfaction||60)+6,0,100);}
-      if(choiceId==='demand'){trust(-14);adjustPlayerMorale(player,-2);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...playerCareerGenerateOffers(player)];}
+      if(choiceId==='demand'){trust(-14);adjustPlayerMorale(player,-2);const fresh=playerCareerGenerateOffers(player);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...fresh];pcInterestMail(fresh);}
       return true;
     }
     if(event.kind==='PC_MEDIA'){
       setEventCooldown('PC-MEDIA',date);
       if(choiceId==='team'){trust(3);getSquad(club||{}).forEach?.(p=>adjustPlayerMorale(p,0));}
-      if(choiceId==='ambition'){trust(-3);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...playerCareerGenerateOffers(player).slice(0,2)];}
+      if(choiceId==='ambition'){trust(-3);const fresh=playerCareerGenerateOffers(player).slice(0,2);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...fresh];pcInterestMail(fresh);}
       if(choiceId==='decline')trust(1);
       return true;
     }
@@ -11005,6 +11033,272 @@
     refreshActiveCareerScreen();
     if(result?.reason==='DECISION'&&result.decision)showCareerDecisionOverlay(result.decision);
     return result;
+  }
+
+  // ---------- The mailbox ----------
+  // A manager's inbox is a desk: board notices, scouting dossiers, finance
+  // memos, other players' contracts. None of that is addressed to an athlete.
+  // Player Career keeps only mail written to the player, and generates the
+  // correspondence a professional would actually receive.
+  function pcMail(message){
+    if(!message?.id)return;
+    addCareerInboxMessage({...message,audience:'PLAYER',
+      external:message.external??!!message.fromAgent,
+      senderRole:message.senderRole||(message.fromAgent?'Your representative':undefined)});
+  }
+
+  function pcMessageIsForPlayer(m){
+    if(!m)return false;
+    if(m.audience==='PLAYER')return true;
+    const decision=v37InboxDecision(m);
+    if(decision)return String(decision.kind||'').startsWith('PC_');
+    return !!playerCareerState.userPlayerId&&m.playerId===playerCareerState.userPlayerId;
+  }
+
+  // The athlete's representative is a person, not a department. Deterministic
+  // from the world seed so the same career always has the same agent.
+  function pcAgent(){
+    const player=pcPlayer();
+    const seed=hashString(`${worldSeed}-PC-AGENT-${player?.id||'none'}`)>>>0;
+    const rng=mulberry32(seed);
+    const name=randomManagerName(player?.country||Object.keys(namePools)[0],rng);
+    return{name,title:'Your representative'};
+  }
+  function pcCoachName(club=currentClub){
+    const boss=club?currentClubManager(club):null;
+    return boss?.name||'Head Coach';
+  }
+
+  // Live briefings: recomputed every render, never stored.
+  function pcBriefingMessages(){
+    const player=pcPlayer();if(!player)return[];
+    const club=currentClub,date=currentCareerISO(),out=[];
+    const trust=Math.round(Number(player.managerTrust||0)),band=pcTrustBand(trust);
+    const lineup=club?ensureLineup(club):null;
+    const place=lineup?(lineup.starter.includes(player.id)?'in the Starting Three':lineup.bench.includes(player.id)?'among the substitutes':'outside the matchday squad'):'without a club';
+    const fixture=club?nextUserFixture(date,true):null;
+    const opponent=fixture?clubById(fixture.homeClubId===club.id?fixture.awayClubId:fixture.homeClubId):null;
+
+    if(club){
+      out.push({
+        id:`pc-brief-standing-${careerTime.seasonId}`,type:'SQUAD',sender:pcCoachName(club),
+        subject:'Where you stand with me',
+        preview:`${band.label.toLowerCase()} · currently ${place}.`,
+        time:'TODAY',
+        title:`${pcCoachName(club)} on your place in the side`,
+        body:[
+          `I'll be straight with you. Right now you are ${place}, and my trust in you sits at ${trust} out of 100 — ${band.label.toLowerCase()}.`,
+          playerCareerTrustCopy(trust),
+          `Selection here is not personal and it is not fixed. Ability, fitness, sharpness, form and how you fit the plan all go into it. Move those and you move the team sheet.`
+        ],
+        signoff:pcCoachName(club)
+      });
+    }
+
+    const open=playerCareerState.offers.filter(o=>o.status==='OPEN');
+    const contract=pcContractInfo(player,club);
+    out.push({
+      id:`pc-brief-agent-${date.slice(0,7)}-${open.length}`,type:'CONTRACTS',sender:pcAgent().name,fromAgent:true,
+      subject:open.length?`${open.length} club${open.length===1?'':'s'} have asked about you`:'Market update',
+      preview:open.length?`${clubById(open[0].clubId)?.name||'A club'} lead the interest.`:'No formal approaches this month.',
+      time:'THIS WEEK',
+      title:open.length?'There is interest in you':'Quiet on the market',
+      body:open.length?[
+        `I've had contact from ${open.map(o=>clubById(o.clubId)?.name).filter(Boolean).join(', ')||'a number of clubs'}.`,
+        `The strongest terms on the table are ${formatMoney(Number(open[0].weeklyWage||0))} a week over ${plural(Number(open[0].contractYears||1),'year')}. Nothing is signed until you say so.`,
+        `Everything is listed under INTEREST when you want to look properly.`
+      ]:[
+        club?`No club has made a formal approach this month. That is normal — interest follows minutes and performances, not potential.`:`I am working the market. Approaches will appear under INTEREST as they come in.`,
+        contract?.club&&contract.daysLeft!=null?`Your current deal runs to ${shortDateLabel(contract.endDate)} — ${plural(Math.max(0,Math.round(contract.daysLeft/30)),'month')} left.`:'',
+        `Keep your head down. I'll tell you the moment anything real comes in.`
+      ].filter(Boolean),
+      signoff:pcAgent().name
+    });
+
+    if(contract?.club&&contract.daysLeft!=null&&contract.daysLeft<=540){
+      const urgent=contract.daysLeft<=180;
+      out.push({
+        id:`pc-brief-contract-${contract.endDate}`,type:'CONTRACTS',sender:pcAgent().name,fromAgent:true,
+        subject:urgent?'Your contract is running out':'Time to think about your next deal',
+        preview:`${plural(Math.max(0,Math.round(contract.daysLeft)),'day')} remaining at ${club.name}.`,
+        time:'TODAY',
+        title:urgent?`Only ${plural(Math.max(0,Math.round(contract.daysLeft)),'day')} left on your deal`:'Your deal enters its final stretch',
+        body:[
+          `Your contract with ${club.name} expires on ${shortDateLabel(contract.endDate)}. You are on ${formatMoney(contract.wage)} a week as a ${String(contract.role).toLowerCase()} player.`,
+          urgent?`Inside the last six months other clubs can talk to you directly. If you want to stay, we should ask them now rather than let it drift.`:`We can open talks whenever you want. The club's answer will depend on where you sit with the manager.`,
+          `Open CONTRACT and ask about a new deal when you're ready.`
+        ],
+        signoff:pcAgent().name,
+        action:{label:'OPEN CONTRACT',route:'pc-contract'}
+      });
+    }
+
+    const injured=player.injured||Number(player.injuryDaysRemaining||0)>0;
+    if(injured||Number(player.fitness||100)<78){
+      out.push({
+        id:`pc-brief-medical-${date.slice(0,7)}-${injured?'out':'low'}`,type:'MEDICAL',sender:'CLUB PHYSIO',
+        subject:injured?'Your recovery plan':'Your readings are down',
+        preview:injured?`${plural(Math.max(0,Math.round(Number(player.injuryDaysRemaining||0))),'day')} of recovery remaining.`:`Condition at ${Math.round(Number(player.fitness||0))}%.`,
+        time:'TODAY',
+        title:injured?`${String(player.injury||'Injury')} — recovery`:'We need to manage your load',
+        body:injured?[
+          `You are unavailable with ${String(player.injury||'an injury').toLowerCase()}. Current estimate is ${plural(Math.max(0,Math.round(Number(player.injuryDaysRemaining||0))),'day')}.`,
+          `You will not be considered for selection while you are on this programme, and your sharpness will drop while you are out. That is expected — rushing back costs more than it buys.`
+        ]:[
+          `Your condition is at ${Math.round(Number(player.fitness||0))}% and your sharpness at ${Math.round(Number(trainingRules?.read?.(player)?.sharpness??0))}%.`,
+          `Nothing is torn, but at these readings the staff will think twice before starting you. Rest and clean sessions bring it back faster than pushing does.`
+        ],
+        signoff:'Club Physio'
+      });
+    }
+
+    if(fixture&&club){
+      const days=Math.max(0,diffDaysISO(date,fixture.date));
+      out.push({
+        id:`pc-brief-fixture-${fixture.fixtureId}`,type:'TRAINING',sender:'PERFORMANCE STAFF',
+        subject:`Preparation: ${opponent?.name||'next fixture'}`,
+        preview:days===0?'Matchday. The team sheet is published today.':`${plural(days,'day')} until kick-off.`,
+        time:days===0?'TODAY':`IN ${days}D`,
+        title:`${club.name} v ${opponent?.name||'opponent'} — what the staff are watching`,
+        body:[
+          `${String(fixture.competitionName||fixture.type)} · ${shortDateLabel(fixture.date)} · ${fixture.homeClubId===club.id?'home':'away'}.`,
+          days===0?`The team sheet goes up today. Whatever the call, the reasoning will be on your matchday screen.`:`${plural(days,'day')} of preparation left. Sessions between now and then are what the manager is judging.`,
+          `You are at ${Math.round(Number(player.fitness||0))}% condition and ${String(player.form||'average').toLowerCase()} form going in.`
+        ],
+        signoff:'Performance Staff'
+      });
+    }
+    return out;
+  }
+
+  function buildPlayerOfficeMessages(){
+    const persistent=careerInboxMessages.filter(pcMessageIsForPlayer)
+      .slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    const seen=new Set();
+    const shaped=pcBriefingMessages().map(m=>({...m,isBriefing:true,audience:'PLAYER',
+      external:m.external??!!m.fromAgent,
+      senderRole:m.senderRole||(m.fromAgent?'Your representative':undefined)}));
+    return [...persistent,...shaped]
+      .filter(m=>m?.id&&!seen.has(m.id)&&(seen.add(m.id),true))
+      .map(m=>v38MailView(v37Correspondence(m)));
+  }
+
+  // ---------- Real events reaching the player's mailbox ----------
+  function pcTeamsheetMail(fixture,selection){
+    const player=pcPlayer(),club=currentClub;
+    if(!player||!club||!fixture||!selection)return;
+    const opponent=clubById(fixture.homeClubId===club.id?fixture.awayClubId:fixture.homeClubId);
+    const coach=pcCoachName(club);
+    const heading={STARTING:'You start',BENCH:'You are among the substitutes',NOT_SELECTED:'You are not in the squad'}[selection.verdict]||'Team sheet';
+    pcMail({
+      id:`pc-sheet-${fixture.fixtureId}`,type:'SQUAD',sender:coach,playerId:player.id,
+      subject:`${heading} v ${opponent?.name||'the opposition'}`,
+      preview:String(selection.reason||''),
+      title:`${heading} — ${club.name} v ${opponent?.name||'opponent'}`,
+      body:[
+        `Team sheet for ${shortDateLabel(fixture.date)} is published. ${selection.reason}`,
+        `For the record: ${selection.factors.ability} overall, ${selection.factors.fitness}% condition, ${selection.factors.sharpness}% sharpness, ${selection.factors.tacticalFit}% tactical fit, trust ${selection.factors.managerTrust}/100.`,
+        selection.verdict==='STARTING'?`Repay it.`:selection.verdict==='BENCH'?`Be ready. Matches turn late and I will use you if the game asks for it.`:`This is not the end of it. Training decides the next one.`
+      ],
+      signoff:coach,date:fixture.date,
+      notificationPriority:'IMPORTANT'
+    });
+  }
+
+  function pcReviewMail(review,result){
+    const player=pcPlayer(),club=currentClub;
+    if(!player||!review)return;
+    const opponent=review.opponentId?clubById(review.opponentId):null;
+    const coach=pcCoachName(club);
+    const moved=Number(review.trustDelta||0);
+    pcMail({
+      id:`pc-review-${review.fixtureId}`,type:'SQUAD',sender:coach,playerId:player.id,
+      subject:review.minutes>0?`Your match: ${review.rating??'—'} rating`:'You were not used',
+      preview:String(review.summary||''),
+      title:review.minutes>0?`How you did against ${opponent?.name||'them'}`:`You stayed on the bench against ${opponent?.name||'them'}`,
+      body:[
+        review.minutes>0
+          ?`${review.minutes} minutes, ${plural(Number(review.goals||0),'goal')}, ${plural(Number(review.assists||0),'assist')}, rated ${review.rating??'—'}.`
+          :`You were in the squad but did not get on.`,
+        String(review.summary||''),
+        `Trust ${moved>0?'up':moved<0?'down':'unchanged'}${moved?` ${moved>0?'+':''}${moved}`:''} — now ${review.trustAfter}/100.`
+      ],
+      signoff:coach,date:review.date||currentCareerISO(),
+      notificationPriority:moved!==0?'IMPORTANT':'INTERESTING'
+    });
+  }
+
+  function pcInterestMail(offers){
+    const player=pcPlayer();if(!player||!offers?.length)return;
+    const lead=clubById(offers[0].clubId);
+    pcMail({
+      id:`pc-interest-${currentCareerISO()}-${offers[0].id}`,type:'CONTRACTS',sender:pcAgent().name,fromAgent:true,playerId:player.id,
+      subject:`${lead?.name||'A club'} have been in touch`,
+      preview:`${formatMoney(Number(offers[0].weeklyWage||0))} a week over ${plural(Number(offers[0].contractYears||1),'year')}.`,
+      title:`A formal approach from ${lead?.name||'a club'}`,
+      body:[
+        `${lead?.name||'A club'} have made a concrete approach: ${formatMoney(Number(offers[0].weeklyWage||0))} a week over ${plural(Number(offers[0].contractYears||1),'year')}.`,
+        offers.length>1?`${offers.length-1} other club${offers.length>2?'s are':' is'} also asking. All of it is under INTEREST.`:`It is under INTEREST whenever you want to look at it.`,
+        `Say the word and I'll take it further. Say nothing and it will cool.`
+      ],
+      signoff:pcAgent().name,
+      action:{label:'OPEN INTEREST',route:'pc-offers'},
+      notificationPriority:'IMPORTANT'
+    });
+  }
+
+  // Injuries and trust milestones are noticed rather than announced, so the
+  // daily pass compares state and writes the letter the player would get.
+  function pcDailyMail(date=currentCareerISO()){
+    const player=pcPlayer(),club=currentClub;
+    if(!player)return;
+    playerCareerState.mailWatch=playerCareerState.mailWatch&&typeof playerCareerState.mailWatch==='object'?playerCareerState.mailWatch:{};
+    const watch=playerCareerState.mailWatch;
+    const injuryDays=Math.max(0,Math.round(Number(player.injuryDaysRemaining||0)));
+    if(injuryDays>0&&!watch.injured){
+      watch.injured=true;
+      pcMail({
+        id:`pc-injury-${date}`,type:'MEDICAL',sender:'CLUB PHYSIO',playerId:player.id,
+        subject:`You are out: ${String(player.injury||'injury')}`,
+        preview:`${plural(injuryDays,'day')} estimated.`,
+        title:`Assessment: ${String(player.injury||'injury')}`,
+        body:[
+          `The scan is back. You are looking at roughly ${plural(injuryDays,'day')} out.`,
+          `You are unavailable for selection until you are cleared. Sharpness will fall while you are out and the manager will pick around you — that is the part that stings, and the part you cannot rush.`
+        ],
+        signoff:'Club Physio',date,notificationPriority:'IMPORTANT'
+      });
+    }
+    if(injuryDays===0&&watch.injured){
+      watch.injured=false;
+      pcMail({
+        id:`pc-fit-${date}`,type:'MEDICAL',sender:'CLUB PHYSIO',playerId:player.id,
+        subject:'You are cleared',
+        preview:'Available for selection again.',
+        title:'Cleared to train and play',
+        body:[`You have completed the programme and are available for selection again.`,`Your sharpness is down after time out. Expect the staff to build you back in rather than throw you straight in.`],
+        signoff:'Club Physio',date
+      });
+    }
+    if(club){
+      const trust=Math.round(Number(player.managerTrust||0)),band=pcTrustBand(trust).key;
+      if(watch.trustBand&&watch.trustBand!==band){
+        const rising=trust>Number(watch.trustValue||0);
+        pcMail({
+          id:`pc-trust-${date}-${band}`,type:'SQUAD',sender:pcCoachName(club),playerId:player.id,
+          subject:rising?'You have moved up in my thinking':'You have slipped down my list',
+          preview:pcTrustBand(trust).label,
+          title:rising?`${pcCoachName(club)} has seen enough to move you up`:`${pcCoachName(club)} has reconsidered your role`,
+          body:[
+            `You are now ${pcTrustBand(trust).label.toLowerCase()} — trust ${trust}/100.`,
+            playerCareerTrustCopy(trust)
+          ],
+          signoff:pcCoachName(club),date,
+          notificationPriority:'INTERESTING'
+        });
+      }
+      watch.trustBand=band;watch.trustValue=trust;
+    }
   }
 
   function goCareerScreen(name){
@@ -11996,7 +12290,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     void v210OpenCareerMatch(fixture);
   }
 
-  function applyMatchStaffRecommendation(){const fixture=userFixtureOnDate(currentCareerISO())||nextUserFixture(currentCareerISO(),true);const fc=fixtureClubs(fixture),opponent=fc.home?.id===currentClub?.id?fc.away:fc.home;if(!opponent)return;const rec=matchStaffRecommendation(opponent);careerPreferences.tactics.attacking=rec.attacking;careerPreferences.tactics.defensive=rec.defensive;saveCareerState();renderMatchday();showToast(`${rec.label} plan applied`);}
+  function applyMatchStaffRecommendation(){if(pcSquadEditBlocked())return;const fixture=userFixtureOnDate(currentCareerISO())||nextUserFixture(currentCareerISO(),true);const fc=fixtureClubs(fixture),opponent=fc.home?.id===currentClub?.id?fc.away:fc.home;if(!opponent)return;const rec=matchStaffRecommendation(opponent);careerPreferences.tactics.attacking=rec.attacking;careerPreferences.tactics.defensive=rec.defensive;saveCareerState();renderMatchday();showToast(`${rec.label} plan applied`);}
   // ---------- V20.7.1: Matchday Stakes & Occasion Engine ----------
   function leagueFixtureRoundMax(divKey){
     const rounds=fixtures.filter(f=>f.type==='LEAGUE'&&f.competitionId===divKey).map(f=>Number(f.round||0)).filter(Number.isFinite);return rounds.length?Math.max(...rounds):0;
@@ -12603,6 +12897,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   }
 
   function buildOfficeMessages(){
+    if(pcActive())return buildPlayerOfficeMessages();
     v37RepairLegacyPromises();v37RefreshPlayingTimeDecisions();
     const club=currentClub||selectedClub||clubs[0];
     const squad=getSquad(club);
@@ -12875,6 +13170,15 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const trust=player?playerTrustLabel(player.managerTrust):m.type==='BOARD'?boardRelationshipLabel(boardConfidenceValue()):'Club channel';
     const mood=player?playerHappinessLabel(playerHappinessBreakdown(player,club).overall):event&&!event.resolved?'Awaiting direction':'Professional';
     const due=event?.resolved?'Decision recorded':event?.expiresDate?`Due ${shortDateLabel(event.expiresDate)}`:event&&!event.optional?(next?`Before ${shortDateLabel(next.date)}`:'Reply requested'):m.action?'Follow-up available':'No action needed';
+    if(pcActive()){
+      const pcStakes=({PC_MINUTES:'Your place in the side',PC_MEDIA:'Your profile',PC_FITNESS:'Your availability',PC_DRESSING_ROOM:'Dressing-room standing',PC_RENEWAL:'Your contract'}[event?.kind]||({CONTRACTS:'Your contract',MEDICAL:'Your availability',SQUAD:'Selection',TRAINING:'Preparation',MEDIA:'Your profile'}[m.type]||'Your career'));
+      const me=pcPlayer();
+      return{event,player:me,secondary:null,
+        trust:me?`Manager trust ${Math.round(Number(me.managerTrust||0))}/100`:'No club',
+        mood:event&&!event.resolved?'Waiting on you':String(me?.morale||'Professional'),
+        due,stakes:pcStakes,
+        nextLabel:next&&opponent?`${next.homeClubId===club.id?'HOME':'AWAY'} · ${opponent.name}`:'Awaiting fixture'};
+    }
     const stakes=({PLAYING_TIME:'Trust & selection',TRAINING_CLASH:'Squad harmony',DISCIPLINE_APPEAL:'Player availability',CONTRACT:'Player future',BAD_RUN:'Morale & confidence',PROSPECT:'Development pathway',GOOD_RUN:'Squad mentality',PLAYER_RELATIONSHIP:'Manager trust',CAPTAIN_MEETING:'Dressing-room mood',CLUB_LIFE:'Club relationships',UNEXPECTED_EVENT:'Club direction'}[event?.kind]||({BOARD:'Board confidence',TRANSFERS:'Recruitment plan',SCOUTING:'Squad planning',MEDICAL:'Match availability',FINANCE:'Club resources',CONTRACTS:'Squad planning',YOUTH:'Player pathway',SQUAD:'Dressing-room mood',TRAINING:'Preparation',MEDIA:'Public narrative'}[m.type]||'Club context'));
     const nextLabel=next&&opponent?`${next.homeClubId===club.id?'HOME':'AWAY'} · ${opponent.name}`:'Awaiting fixture';
     return{event,player,secondary,trust,mood,due,stakes,nextLabel};
@@ -12917,11 +13221,11 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(!selectedOfficeMessageId||!list.some(m=>m.id===selectedOfficeMessageId))selectedOfficeMessageId=(featured[0]||routine[0])?.id||null;
     $('#officeUnreadCount').textContent=all.filter(m=>!officeReadMessages.has(m.id)&&notificationPriorityForMessage(m)!=='ROUTINE').length;
     const waiting=all.filter(m=>{const d=v37InboxDecision(m);return d&&!d.resolved&&!d.optional;}).length,optional=all.filter(m=>{const d=v37InboxDecision(m);return d&&!d.resolved&&d.optional;}).length;
-    const row=m=>{const priority=officeMessagePriority(m),isRead=officeReadMessages.has(m.id),style=v38MailStyle(m),situation=officeInboxSituation(m);return `<button type="button" class="v37-mail-row v38-mail-row v38-tone-${style.key} priority-${notificationPriorityForMessage(m).toLowerCase()} ${m.id===selectedOfficeMessageId?'is-selected':''} ${isRead?'is-read':'is-unread'}" data-office-message="${escapeHtml(m.id)}" aria-pressed="${m.id===selectedOfficeMessageId}"><span class="v38-mail-portrait"><span class="v37-mail-avatar">${avatarHTML(officeSenderPortrait(m),m.sender)}</span><span class="v38-mail-emblem">${v38MailIcon(style.icon)}</span></span><span class="v37-mail-copy"><span class="v38-mail-department">${escapeHtml(style.label)}</span><span class="v37-mail-sender">${escapeHtml(m.sender)}</span><strong>${escapeHtml(m.subject)}</strong><span class="v37-mail-snippet">${escapeHtml(m.body?.[0]||m.preview||'')}</span><span class="office-sim-row-context"><span>${escapeHtml(situation.stakes)}</span><span>${escapeHtml(situation.due)}</span></span><span class="v37-mail-meta"><time>${escapeHtml(m.isBriefing?'Club briefing':m.time||shortDateLabel(m.date||currentCareerISO()))}</time><b class="mail-priority is-${notificationPriorityForMessage(m).toLowerCase()}">${escapeHtml(priority.label)}</b>${!isRead&&notificationPriorityForMessage(m)!=='ROUTINE'?'<i aria-label="Unread"></i>':''}</span></span></button>`;};
-    const routineBlock=routine.length?`${collapseRoutine?`<button type="button" class="office-routine-toggle" data-office-routine-toggle aria-expanded="${officeRoutineExpanded}"><span><b>ROUTINE CLUB UPDATES</b><small>Grouped so they do not compete with decisions and stories</small></span><strong>${routine.length} ${officeRoutineExpanded?'HIDE':'SHOW'} →</strong></button>`:''}<div class="office-routine-group ${collapseRoutine&&!officeRoutineExpanded?'is-collapsed':''}">${routine.map(row).join('')}</div>`:'';
+    const row=m=>{const priority=officeMessagePriority(m),isRead=officeReadMessages.has(m.id),style=v38MailStyle(m),situation=officeInboxSituation(m);return `<button type="button" class="v37-mail-row v38-mail-row v38-tone-${style.key} priority-${notificationPriorityForMessage(m).toLowerCase()} ${m.id===selectedOfficeMessageId?'is-selected':''} ${isRead?'is-read':'is-unread'}" data-office-message="${escapeHtml(m.id)}" aria-pressed="${m.id===selectedOfficeMessageId}"><span class="v38-mail-portrait"><span class="v37-mail-avatar">${avatarHTML(officeSenderPortrait(m),m.sender)}</span><span class="v38-mail-emblem">${v38MailIcon(style.icon)}</span></span><span class="v37-mail-copy"><span class="v38-mail-department">${escapeHtml(style.label)}</span><span class="v37-mail-sender">${escapeHtml(m.sender)}</span><strong>${escapeHtml(m.subject)}</strong><span class="v37-mail-snippet">${escapeHtml(m.body?.[0]||m.preview||'')}</span><span class="office-sim-row-context"><span>${escapeHtml(situation.stakes)}</span><span>${escapeHtml(situation.due)}</span></span><span class="v37-mail-meta"><time>${escapeHtml(m.isBriefing?(pcActive()?'Standing brief':'Club briefing'):m.time||shortDateLabel(m.date||currentCareerISO()))}</time><b class="mail-priority is-${notificationPriorityForMessage(m).toLowerCase()}">${escapeHtml(priority.label)}</b>${!isRead&&notificationPriorityForMessage(m)!=='ROUTINE'?'<i aria-label="Unread"></i>':''}</span></span></button>`;};
+    const routineBlock=routine.length?`${collapseRoutine?`<button type="button" class="office-routine-toggle" data-office-routine-toggle aria-expanded="${officeRoutineExpanded}"><span><b>${pcActive()?'ROUTINE UPDATES':'ROUTINE CLUB UPDATES'}</b><small>Grouped so they do not compete with decisions and stories</small></span><strong>${routine.length} ${officeRoutineExpanded?'HIDE':'SHOW'} →</strong></button>`:''}<div class="office-routine-group ${collapseRoutine&&!officeRoutineExpanded?'is-collapsed':''}">${routine.map(row).join('')}</div>`:'';
     const briefingMessage=all.find(m=>m.id===selectedOfficeMessageId)||featured[0]||all[0],briefingPortrait=briefingMessage?officeSenderPortrait(briefingMessage):'';
-    const briefing=`<section class="office-sim-briefing" aria-label="Manager briefing"><header><span class="office-sim-briefing-badge">${briefingPortrait?avatarHTML(briefingPortrait,'Club representative'):badgeHTML(club)}</span><span><span>MANAGER BRIEFING</span><strong>${escapeHtml(club.name)}</strong></span><time>${escapeHtml(shortDateLabel(currentCareerISO()))}</time></header><div class="office-sim-briefing-grid"><div class="${waiting?'is-alert':''}"><span>DECISIONS</span><strong>${waiting?`${waiting} waiting`:'All clear'}</strong></div><div><span>UNREAD</span><strong>${unread.length} meaningful</strong></div><div><span>NEXT FIXTURE</span><strong>${escapeHtml(opponent?opponent.name:'Awaiting schedule')}</strong></div></div></section>`;
-    $('#officeMessageList').innerHTML=list.length?`${briefing}<div class="office-sim-lane-label"><span>${officeInboxFilter==='action'?'NEEDS YOUR DECISION':'CLUB SITUATIONS'}</span><b>${featured.length}</b></div>${featured.map(row).join('')}${routineBlock}`:'<div class="office-reader-empty"><div><h3>A quiet moment at the club</h3><p>No situations are waiting in this view. Return to Briefing for the full club picture.</p></div></div>';
+    const briefing=`<section class="office-sim-briefing" aria-label="Manager briefing"><header><span class="office-sim-briefing-badge">${briefingPortrait?avatarHTML(briefingPortrait,'Club representative'):badgeHTML(club)}</span><span><span>${pcActive()?'YOUR MAILBOX':'MANAGER BRIEFING'}</span><strong>${escapeHtml(pcActive()?(pcPlayer()?.name||club.name):club.name)}</strong></span><time>${escapeHtml(shortDateLabel(currentCareerISO()))}</time></header><div class="office-sim-briefing-grid"><div class="${waiting?'is-alert':''}"><span>DECISIONS</span><strong>${waiting?`${waiting} waiting`:'All clear'}</strong></div><div><span>UNREAD</span><strong>${unread.length} ${pcActive()?(unread.length===1?'letter':'letters'):'meaningful'}</strong></div><div><span>NEXT FIXTURE</span><strong>${escapeHtml(opponent?opponent.name:'Awaiting schedule')}</strong></div></div></section>`;
+    $('#officeMessageList').innerHTML=list.length?`${briefing}<div class="office-sim-lane-label"><span>${officeInboxFilter==='action'?'NEEDS YOUR DECISION':pcActive()?'YOUR CAREER':'CLUB SITUATIONS'}</span><b>${featured.length}</b></div>${featured.map(row).join('')}${routineBlock}`:`<div class="office-reader-empty"><div><h3>${pcActive()?'Nothing waiting':'A quiet moment at the club'}</h3><p>${pcActive()?'No letters in this view. Open MAILBOX for everything addressed to you.':'No situations are waiting in this view. Return to Briefing for the full club picture.'}</p></div></div>`;
     $('#officeMessageList [data-office-routine-toggle]')?.addEventListener('click',()=>{officeRoutineExpanded=!officeRoutineExpanded;renderOfficeInbox();});
     $$('#officeMessageList [data-office-message]').forEach(btn=>btn.addEventListener('click',()=>{
       selectedOfficeMessageId=btn.dataset.officeMessage;
@@ -12946,7 +13250,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       <header class="v38-letter-hero office-sim-scene" style="--office-scene:url('${scene}')">
         <div class="v38-letter-eyebrow"><span>${v38MailIcon(style.icon)}${escapeHtml(style.label)}</span><span class="v37-mail-state ${priority.className}">${escapeHtml(priority.label==='REPLIED'?'You replied':priority.label==='SETTLED'?'Settled':priority.label==='REPLY NEEDED'?'Waiting for you':priority.label==='OPTIONAL'?'Optional conversation':m.isBriefing?'Briefing':priority.label==='ROUTINE'?'Routine update':'Delivered')}</span></div>
         <div class="v38-letter-intro"><div class="v38-letter-title"><span>${escapeHtml(style.detail)}</span><h3>${escapeHtml(m.subject)}</h3><div class="v38-sender-line"><strong>${escapeHtml(m.sender)}</strong><span>${escapeHtml(m.senderRole||m.type)}</span></div></div><div class="office-sim-cast"><div class="office-sim-actor"><div class="office-sim-actor-portrait">${avatarHTML(portrait,m.sender)}</div><small>${escapeHtml(situation.mood)}</small></div>${situation.secondary?`<div class="office-sim-actor is-secondary"><div class="office-sim-actor-portrait">${avatarHTML(situation.secondary.avatar,situation.secondary.name)}</div><small>${escapeHtml(situation.secondary.name)}</small></div>`:''}</div></div>
-        <div class="v38-letter-address"><span>To ${escapeHtml(managerName||'the manager')}</span><time>${escapeHtml(date)}</time></div>
+        <div class="v38-letter-address"><span>To ${escapeHtml(pcActive()?(pcPlayer()?.name||'you'):(managerName||'the manager'))}</span><time>${escapeHtml(date)}</time></div>
       </header>
       <div class="v38-letter-paper"><section class="office-sim-intel" aria-label="Situation context"><div><span>DEADLINE</span><strong>${escapeHtml(situation.due)}</strong></div><div><span>WHAT IS AT STAKE</span><strong>${escapeHtml(situation.stakes)}</strong></div><div><span>${situation.player?'MANAGER TRUST':'NEXT FIXTURE'}</span><strong>${escapeHtml(situation.player?situation.trust:situation.nextLabel)}</strong></div></section><div class="office-sim-conversation"><div class="v37-letter-body">${m.greeting?`<p class="v38-salutation">${escapeHtml(m.greeting)}</p>`:''}${(m.body||[]).map(p=>`<p>${escapeHtml(p)}</p>`).join('')}<div class="v37-letter-signature">${m.closing?`<span>${escapeHtml(m.closing)}</span>`:''}<strong>${escapeHtml(m.signoff||m.sender)}</strong><small>${escapeHtml(m.senderRole||'')}</small></div></div></div>
       ${resolved?`<section class="v37-reply-receipt v38-reply-receipt ${settled?'is-settled':''}" role="status" tabindex="-1"><header><span class="v38-reply-crest">${badgeHTML(club)}</span><span><b>${settled?'Settled on the pitch':escapeHtml(managerName||'You')}</b><small>${settled?'No further reply needed':'Your reply'}${decision.resolvedDate?' · '+escapeHtml(shortDateLabel(decision.resolvedDate)):''}</small></span>${v38MailIcon(settled?'shield':'mail')}</header><p>${settled?'Your recent team selections have settled this concern. No new promise is needed.':escapeHtml(choice?v38ReplySpeech(decision,choice):'Decision recorded.')}</p>${outcome&&!settled?`<span class="office-sim-outcome-label">CONSEQUENCE RECORDED</span><p>${escapeHtml(outcome.copy)}</p><div class="office-sim-consequences">${outcome.tags.map(tag=>`<span>${escapeHtml(tag)}</span>`).join('')}</div>`:''}</section>`:''}

@@ -96,6 +96,64 @@ test('the team-sheet verdict is published on the shared Matchday screen',async({
   expect(await page.locator('#screenMatchday .is-user-athlete').count()).toBe(1);
 });
 
+test('an athlete cannot pick the team',async({page})=>{
+  await openPreview(page);
+  await startPlayerCareer(page);
+  await page.evaluate(()=>document.querySelector('#screenCentral .career-tabs>[data-career-nav="squad"]').click());
+  await expect(page.locator('#screenSquad')).toHaveClass(/is-active/);
+  const result=await page.evaluate(()=>{
+    const lineup=()=>[...document.querySelectorAll('#startingThreeShowcase [data-player-id]')].map(n=>n.dataset.playerId).join(',');
+    const before=lineup();
+    const cards=[...document.querySelectorAll('#startingThreeShowcase [data-player-id]')];
+    const subs=[...document.querySelectorAll('#subsGrid [data-player-id]')];
+    cards[0]?.click();subs[0]?.click();cards[0]?.click();          // the old swap gesture
+    document.querySelector('#screenSquad [data-swap-action]')?.click(); // the swap action
+    subs[0]?.click();
+    return {before,after:lineup(),
+      draggable:[...cards,...subs].map(n=>n.getAttribute('draggable')),
+      swapOffered:[...document.querySelectorAll('#screenSquad [data-swap-action]')].some(n=>getComputedStyle(n).display!=='none')};
+  });
+  expect(result.after).toBe(result.before);
+  expect(result.draggable.every(v=>v==='false')).toBe(true);
+  expect(result.swapOffered).toBe(false);
+});
+
+test('tactics, training and youth are not the athlete\'s to set',async({page})=>{
+  await openPreview(page);
+  await startPlayerCareer(page);
+  await page.evaluate(()=>document.querySelector('#screenCentral .career-tabs>[data-career-nav="squad"]').click());
+  const result=await page.evaluate(()=>{
+    const force=t=>{const b=document.querySelector(`#squadSubnav [data-squad-view="${t}"]`);b.hidden=false;b.style.removeProperty('display');b.click();return document.querySelector('#squadSubnav .is-active')?.dataset.squadView;};
+    return {tactics:force('tactics'),training:force('training'),youth:force('youth'),
+      tacticsPane:document.querySelector('#squadTacticsContent')?.innerHTML.length||0,
+      trainingPane:document.querySelector('#squadTrainingContent')?.innerHTML.length||0};
+  });
+  expect(result.tactics).not.toBe('tactics');
+  expect(result.training).not.toBe('training');
+  expect(result.youth).not.toBe('youth');
+  expect(result.tacticsPane).toBe(0);
+  expect(result.trainingPane).toBe(0);
+});
+
+test('the mailbox carries only mail addressed to the player',async({page})=>{
+  await openPreview(page);
+  await startPlayerCareer(page);
+  await page.evaluate(()=>document.querySelector('#screenCentral .career-tabs>[data-career-nav="office"]').click());
+  await expect(page.locator('#screenOffice')).toHaveClass(/is-active/);
+  const list=page.locator('#officeMessageList');
+  await expect(list).toContainText('YOUR MAILBOX');
+  await expect(list).toContainText('Where you stand with me');
+  await expect(list).toContainText('Your agent');
+  await expect(list).toContainText('The manager');
+  for(const desk of ['BOARD OF DIRECTORS','HEAD OF RECRUITMENT','FINANCE DIRECTOR','ACADEMY DIRECTOR','RECRUITMENT TEAM']){
+    await expect(list).not.toContainText(desk);
+  }
+  // A published team sheet is a letter, not just a screen.
+  await page.evaluate(()=>window.VELMORA_MANAGER_DEBUG.v106PrepareTeamsheetForTest('BENCH'));
+  await page.evaluate(()=>document.querySelector('#screenMatchday .career-tabs>[data-career-nav="office"]').click());
+  await expect(list).toContainText(/among the substitutes|You start|not in the squad/);
+});
+
 test('Manager Career keeps its own shell untouched',async({page})=>{
   await openPreview(page);
   await page.evaluate(()=>window.VELMORA_MANAGER_DEBUG.assignClubForTest(window.VELMORA_CLUBS[0]));
