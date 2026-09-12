@@ -1,8 +1,8 @@
 {
   "name": "velmora-manager",
-  "version": "107.0.0",
+  "version": "108.0.0",
   "private": true,
-  "description": "Velmora Manager V107 Player Career Shell",
+  "description": "Velmora Manager V108 Career Threads",
   "scripts": {
     "build": "node tools/build_v34.cjs",
     "test": "node tools/run_release_suite.cjs",
@@ -71,6 +71,7 @@
     "test:online-deals": "node tools/test_v105_1_online_deal_terms.cjs",
     "test:copy-and-celebration": "node tools/test_v105_2_copy_and_celebration.cjs",
     "test:player-career": "node tools/test_v107_player_career_shell.cjs",
+    "test:career-threads": "node tools/test_v108_threads.cjs",
     "visual:update": "playwright test --update-snapshots"
   },
   "devDependencies": {

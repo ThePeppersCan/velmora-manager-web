@@ -29,10 +29,10 @@ assert.equal(q.saveCareerState(),true,'a career saves before anything online hap
 // ---------------------------------------------------------------
 const saved=JSON.parse(win.VelmoraSaveCodec.decode(r.local.get('velmora-manager-career-v32-slot-1')));
 // The current single-player payload, key for key. Multiplayer adds nothing
-// to it; V106's offline-only Player Career fields remain private and never
+// to it; V108's offline-only Player Career and thread fields remain private and never
 // enter the shared online world.
 const CURRENT_SAVE_KEYS=['academies','aiTransferHistory','audienceWorldState','avatarCooldowns','calendarEvents',
- 'careerChallenge','careerDecisionEvents','careerEventCooldowns','careerInboxMessages','careerNewsStories',
+ 'careerChallenge','careerDecisionEvents','careerEventCooldowns','careerInboxMessages','careerNewsStories','careerThreads',
  'careerMode','careerPreferences','careerRuntime','careerSeason','careerTime','careerYear','championsCrown','clubBudgets',
  'clubMembership','cupRuntime','currentClubId','developmentSnapshots','employmentStatus','firstWeekState',
  'fixtures','freeAgents','jobSearchState','lineups','livingSquad','manager','managerMarket','managerName',

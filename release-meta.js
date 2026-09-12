@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'107.0.0',
-    label:'V107',
-    channel:'PLAYER CAREER SHELL',
-    cacheKey:'v107-player-career-shell-20260912',
-    saveSchema:87
+    version:'108.0.0',
+    label:'V108',
+    channel:'CAREER THREADS',
+    cacheKey:'v108-career-threads-20260912',
+    saveSchema:88
   });
 });

@@ -13,7 +13,7 @@ const SAVE_KEYS=['version','worldSeed','recruitmentDay','careerSeason','careerYe
   'employmentStatus','jobSearchState','firstWeekState','careerPreferences','careerChallenge','careerMode','playerCareerState','careerTime',
   'fixtures','calendarEvents','transferWindows','careerInboxMessages','careerNewsStories',
   'pendingNegotiations','processedCalendarEvents','selectedCalendarDate','seasonCalendarCursor',
-  'careerDecisionEvents','playerPromises','careerEventCooldowns','aiTransferHistory','developmentSnapshots',
+  'careerDecisionEvents','playerPromises','careerEventCooldowns','careerThreads','aiTransferHistory','developmentSnapshots',
   'careerRuntime','unexpectedEvents','preSeasonExperience','cupRuntime','roadToGlory','managerMarket',
   'ownershipState','audienceWorldState','championsCrown','livingSquad','mediaWorld','negotiationEngine',
   'clubMembership','squads','lineups','clubBudgets','freeAgents','academies','retiredPlayers',
@@ -25,7 +25,7 @@ for(const key of SAVE_KEYS)assert.ok(['shared','private','club'].includes(core.c
 
 // The confidential drawer is private, without exception.
 for(const key of ['transferShortlist','transferScouted','scoutingAssignments','recruitmentIntel',
-  'careerPreferences','careerInboxMessages','officeReadMessages','careerDecisionEvents','careerMode','playerCareerState'])
+  'careerPreferences','careerInboxMessages','officeReadMessages','careerDecisionEvents','careerThreads','careerMode','playerCareerState'])
   assert.equal(core.classifyKey(key),'private',`${key} never leaves the owning device`);
 
 // The canonical world is shared, without exception.

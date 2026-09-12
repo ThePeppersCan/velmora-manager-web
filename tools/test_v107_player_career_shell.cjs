@@ -10,15 +10,14 @@ const root=path.resolve(__dirname,'..');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'player-career.css'),'utf8');
 
-assert.equal(release.version,'107.0.0');
-assert.equal(release.label,'V107');
-assert.equal(release.channel,'PLAYER CAREER SHELL');
-assert.equal(release.saveSchema,87);
+assert(Number(release.version.split('.')[0])>=107);
+assert(Number(release.label.slice(1))>=107);
+assert(release.saveSchema>=87);
 assert(index.includes('screenCareerMode')&&index.includes('screenPlayerSetup'),'the player-career entry screens are mounted');
 assert(!index.includes('screenPlayerHub')&&!index.includes('screenPlayerTeamsheet'),'V107 retires the bespoke player-career screens');
 assert(index.includes('data-office-pane="pcstanding"')&&index.includes('data-office-pane="pccontract"')&&index.includes('data-office-pane="pcoffers"')&&index.includes('data-office-pane="pcrecord"'),'Player Career runs on the shared Office shell');
-assert(index.includes('player-career.css?v=v107-player-career-shell-20260912'),'the player-career visual layer is release-keyed');
-assert(index.includes('player-career-shell.css?v=v107-player-career-shell-20260912'),'the shared-shell layer is release-keyed');
+assert(index.includes(`player-career.css?v=${release.cacheKey}`),'the player-career visual layer is release-keyed');
+assert(index.includes(`player-career-shell.css?v=${release.cacheKey}`),'the shared-shell layer is release-keyed');
 assert(!index.includes('v106-player-career-20260911'),'the V106 browser cache key is fully retired');
 assert(css.includes('@media(max-width:760px)'),'the focused slice has a compact responsive layout');
 
@@ -79,7 +78,7 @@ assert(mail.some(m=>m.senderRole==='Your representative'),'the player has no rep
 assert(mail.some(m=>/Where you stand with me/i.test(String(m.subject||''))),'the manager never says where the player stands');
 
 const save=q.buildCareerSaveData();
-assert.equal(save.version,87);
+assert.equal(save.version,release.saveSchema);
 assert.equal(save.careerMode,'PLAYER');
 assert.equal(save.playerCareerState.userPlayerId,snapshot.playerId);
 q.resetCareerWorld();

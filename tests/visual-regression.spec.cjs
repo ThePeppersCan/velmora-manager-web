@@ -55,6 +55,25 @@ for(const viewport of viewports){
   }
 }
 
+test('Career Threads has a readable, non-overlapping home on Central',async({page})=>{
+  await openPreview(page,'/?screen=central&club=NYR',viewports[0]);
+  const panel=page.locator('#centralCareerThreads');
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('header strong')).toHaveText('WHAT YOU ARE CARRYING');
+  await expect(panel.locator('.central-thread-empty')).toBeVisible();
+  const geometry=await page.evaluate(()=>{
+    const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const panel=document.querySelector('#centralCareerThreads');
+    return{panel:rect('#centralCareerThreads'),snapshot:rect('#centralSeasonSnapshot'),briefing:rect('.central-manager-briefing'),frame:rect('.game-frame'),background:getComputedStyle(panel).backgroundImage,titleSize:parseFloat(getComputedStyle(panel.querySelector('header strong')).fontSize)};
+  });
+  expect(geometry.panel.x).toBeGreaterThanOrEqual(geometry.snapshot.right-1);
+  expect(geometry.panel.y).toBeGreaterThanOrEqual(geometry.briefing.bottom-1);
+  expect(geometry.panel.right).toBeLessThanOrEqual(geometry.frame.right+1);
+  expect(geometry.panel.bottom).toBeLessThanOrEqual(geometry.frame.bottom+1);
+  expect(geometry.background).not.toBe('none');
+  expect(geometry.titleSize).toBeGreaterThanOrEqual(8);
+});
+
 test('Club Pulse exposes four independent audience dossiers',async({page})=>{
   const viewport=viewports[0];
   await openPreview(page,'/?screen=central&club=NYR',viewport);

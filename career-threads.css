@@ -1,0 +1,145 @@
+/* V108 — persistent storylines on Central. The panel shares the snapshot row,
+   but carries a darker visual weight so an active relationship can actually
+   interrupt the otherwise even dashboard. */
+body.v20-ui #screenCentral .central-season-snapshot{
+  width:30.4%!important;
+}
+
+body.v20-ui #screenCentral>.central-career-thread-panel{
+  position:absolute;
+  z-index:18;
+  left:55.72%;
+  top:85.98%;
+  width:18.62%;
+  height:9.88%;
+  display:grid;
+  grid-template-rows:2.05cqw minmax(0,1fr);
+  overflow:hidden;
+  border:1px solid rgba(102,151,204,.72);
+  border-radius:.42cqw;
+  background:linear-gradient(155deg,#081f3c 0%,#0b2e55 58%,#0a3b65 100%);
+  box-shadow:0 .38cqw 1.05cqw rgba(6,28,62,.24),inset 0 1px rgba(255,255,255,.08);
+  color:#fff;
+}
+body.v20-ui .central-career-thread-panel>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.42cqw;
+  padding:0 .62cqw;
+  border-bottom:1px solid rgba(203,226,250,.15);
+  background:rgba(4,19,40,.35);
+}
+body.v20-ui .central-career-thread-panel>header div{
+  min-width:0;
+  display:grid;
+  gap:.10cqw;
+}
+body.v20-ui .central-career-thread-panel>header span{
+  color:#62d6d9;
+  font:900 clamp(7px,.24cqw,9px)/1 Arial,sans-serif;
+  letter-spacing:.16em;
+}
+body.v20-ui .central-career-thread-panel>header strong{
+  overflow:hidden;
+  color:#fff;
+  font:900 clamp(8px,.34cqw,12px)/1 Arial,sans-serif;
+  letter-spacing:.06em;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+body.v20-ui .central-career-thread-panel>header>b{
+  flex:0 0 auto;
+  padding:.18cqw .30cqw;
+  border:1px solid rgba(105,217,219,.28);
+  border-radius:999px;
+  color:#a8e9eb;
+  font:900 clamp(7px,.22cqw,9px)/1 Arial,sans-serif;
+  letter-spacing:.08em;
+}
+body.v20-ui .central-thread-list{
+  min-height:0;
+  display:grid;
+  grid-auto-rows:minmax(0,1fr);
+  padding:.28cqw;
+  gap:.22cqw;
+}
+body.v20-ui .central-thread-list button{
+  position:relative;
+  min-width:0;
+  min-height:0;
+  display:grid;
+  grid-template-columns:.14cqw minmax(0,1fr) auto;
+  align-items:center;
+  gap:.34cqw;
+  padding:.28cqw .36cqw .28cqw .24cqw;
+  overflow:hidden;
+  border:1px solid rgba(207,228,248,.14);
+  border-radius:.22cqw;
+  background:rgba(241,248,255,.065);
+  color:#fff;
+  text-align:left;
+}
+body.v20-ui .central-thread-list button:not(:disabled){cursor:pointer;}
+body.v20-ui .central-thread-list button:not(:disabled):hover{
+  border-color:rgba(102,216,220,.55);
+  background:rgba(241,248,255,.11);
+}
+body.v20-ui .central-thread-list button:focus-visible{outline:.12cqw solid #6edadd;outline-offset:-.12cqw;}
+body.v20-ui .central-thread-list button>i{
+  align-self:stretch;
+  width:.14cqw;
+  border-radius:999px;
+  background:linear-gradient(to top,#55d0d4 var(--thread-heat),rgba(158,188,218,.18) var(--thread-heat));
+}
+body.v20-ui .central-thread-list button>span{
+  min-width:0;
+  display:grid;
+  gap:.08cqw;
+}
+body.v20-ui .central-thread-list small{
+  color:#7ddadd;
+  font:900 clamp(7px,.20cqw,9px)/1 Arial,sans-serif;
+  letter-spacing:.11em;
+}
+body.v20-ui .central-thread-list strong{
+  overflow:hidden;
+  color:#fff;
+  font:900 clamp(8px,.31cqw,11px)/1.05 Arial,sans-serif;
+  letter-spacing:.035em;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+body.v20-ui .central-thread-list em{
+  overflow:hidden;
+  color:#bed0e1;
+  font:700 clamp(7px,.22cqw,9px)/1.18 Arial,sans-serif;
+  font-style:normal;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+body.v20-ui .central-thread-list button>b{
+  color:#d7ecfb;
+  font:900 clamp(7px,.20cqw,9px)/1 Arial,sans-serif;
+  letter-spacing:.05em;
+  white-space:nowrap;
+}
+body.v20-ui .central-thread-list button:disabled{opacity:.92;}
+body.v20-ui .central-thread-list button.is-resolved{opacity:.72;}
+body.v20-ui .central-thread-empty{
+  display:grid;
+  align-content:center;
+  gap:.12cqw;
+  padding:.2cqw .34cqw;
+}
+body.v20-ui .central-thread-empty span{color:#6ed7da;font:900 clamp(7px,.20cqw,9px)/1 Arial,sans-serif;letter-spacing:.13em;}
+body.v20-ui .central-thread-empty strong{color:#fff;font:900 clamp(8px,.29cqw,11px)/1.1 Arial,sans-serif;}
+body.v20-ui .central-thread-empty p{margin:0;color:#aec4d7;font:700 clamp(7px,.21cqw,9px)/1.25 Arial,sans-serif;}
+
+@media(max-width:1300px){
+  body.v20-ui #screenCentral>.central-career-thread-panel{grid-template-rows:1.85cqw minmax(0,1fr);}
+  body.v20-ui .central-thread-list em{display:none;}
+}
+@media(prefers-reduced-motion:reduce){
+  body.v20-ui .central-thread-list button{transition:none!important;}
+}

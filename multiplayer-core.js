@@ -38,6 +38,7 @@
     'careerInboxMessages',        // this manager's correspondence
     'careerDecisionEvents',       // confidential inbox decisions
     'careerEventCooldowns',
+    'careerThreads',              // this manager/player's persistent story state
     'careerPreferences',          // draft tactics before submission, UI prefs
     'careerChallenge',
     'careerMode',                 // local story mode; Online Career remains manager-only
