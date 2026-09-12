@@ -1,0 +1,268 @@
+/* ========================================================================
+   V107 — PLAYER CAREER SHELL
+   Player Career now lives inside the manager-mode shell, so it must look
+   like the same game. These rules do three things and nothing else:
+     1. Withdraw the manager's controls without leaving holes in the layout.
+     2. Mark the athlete wherever they appear in a published side.
+     3. Dress the MY CAREER panes in the Office's own pixel language —
+        Lilita One display, Silkscreen kickers, blue ink on warm paper.
+   ======================================================================== */
+
+/* ---------- 1. Authority withdrawn ---------------------------------- */
+
+/* The shell hides tabs with the `hidden` property; several nav stylesheets set
+   an explicit display, so restate it. */
+.career-tabs>[data-career-nav][hidden],
+.central-nav-surface>[data-career-nav][hidden],
+#officeSubnav [data-office-tab][hidden],
+#squadSubnav [data-squad-view][hidden]{display:none!important}
+
+body.pc-mode-player :is(
+  #matchEditTeam,
+  .matchday-edit-team,
+  [data-match-apply-tactic],
+  #screenSquad [data-squad-view="tactics"],
+  #screenSquad [data-squad-view="training"],
+  #screenSquad [data-squad-view="youth"],
+  .central-nav-surface [data-career-nav="transfers"],
+  .career-tabs [data-career-nav="transfers"]
+){display:none!important}
+
+/* The squad screen becomes a reading room: study the side, don't pick it. */
+body.pc-mode-player #screenSquad.pc-readonly :is(
+  .swap-banner,
+  .v51-st3-grid [data-swap-action],
+  .subs-grid [data-swap-action],
+  .reserves-grid [data-swap-action],
+  [data-squad-action="captain"],
+  [data-squad-action="release"],
+  [data-squad-action="list"],
+  [data-squad-action="renew"],
+  [data-squad-action="promote"]
+){display:none!important}
+
+body.pc-mode-player #screenSquad.pc-readonly :is(.v51-st3-grid,.subs-grid,.reserves-grid) [draggable]{
+  cursor:default;
+}
+body.pc-mode-player #screenSquad.pc-readonly .sq-save-status{opacity:.6}
+
+/* ---------- 2. Finding yourself in the side ------------------------- */
+
+.is-user-athlete{
+  position:relative;
+  box-shadow:inset 3px 0 0 #ffd33d,0 0 0 1px rgba(255,211,61,.35);
+}
+.is-user-athlete::after{
+  content:"YOU";
+  position:absolute;top:6px;right:6px;
+  padding:2px 5px;
+  border-radius:3px;
+  background:#ffd33d;color:#123;
+  font:700 8px/1 "Silkscreen",monospace;letter-spacing:.08em;
+  pointer-events:none;
+}
+
+/* Central's portrait plinth holds the athlete rather than a manager. */
+.pc-central-athlete{
+  display:block;width:100%;height:100%;
+  object-fit:contain;object-position:bottom center;
+  filter:drop-shadow(0 18px 14px rgba(0,0,0,.34));
+}
+
+/* Central's contract strip, in the finance panel's own shape. */
+.pc-central-contract{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  margin:10px 0;background:rgba(10,50,95,.14);
+}
+.pc-central-contract span{
+  padding:8px 6px;text-align:center;background:rgba(255,255,255,.92);
+}
+.pc-central-contract b{display:block;font:400 16px/1 "Lilita One",Impact,sans-serif;color:#082d66}
+.pc-central-contract small{
+  display:block;margin-top:4px;
+  font:700 8px/1 "Silkscreen",monospace;letter-spacing:.06em;color:#0877c5;
+}
+
+/* Matchday: the verdict card takes the tone of the decision. */
+#matchdayStatusCard.is-pc-starting{--md2-accent:#39c96b;border-color:#39c96b!important}
+#matchdayStatusCard.is-pc-bench{--md2-accent:#ffb24c;border-color:#ffb24c!important}
+#matchdayStatusCard.is-pc-out{--md2-accent:#9fb1bd;border-color:#9fb1bd!important}
+
+/* ---------- 3. MY CAREER panes, in the Office's language ------------ */
+
+body.v20-ui .office-pane[data-office-pane="pcstanding"],
+body.v20-ui .office-pane[data-office-pane="pccontract"],
+body.v20-ui .office-pane[data-office-pane="pcoffers"],
+body.v20-ui .office-pane[data-office-pane="pcrecord"]{
+  --office-world-blue:#087be0;
+  --office-world-deep:#06285f;
+  --office-world-yellow:#ffe532;
+  --office-world-ink:#092f67;
+  position:relative!important;
+  height:100%!important;
+  min-height:0!important;
+  color:var(--office-world-ink)!important;
+  font-family:"Nunito Sans",Arial,sans-serif!important;
+  background-color:#eaf7ff!important;
+  background-position:center top!important;
+  background-size:100% auto!important;
+  background-repeat:no-repeat!important;
+  overflow:hidden!important;
+}
+body.v20-ui .office-pane[data-office-pane="pcstanding"]{
+  background-image:linear-gradient(180deg,rgba(0,58,135,.18),rgba(236,249,255,.94) 34%,#eaf7ff 58%),url("assets/inbox-pixel-v2/scene-dressing-room.png")!important;
+}
+body.v20-ui .office-pane[data-office-pane="pccontract"]{
+  background-image:linear-gradient(180deg,rgba(0,53,126,.18),rgba(236,249,255,.94) 34%,#eaf7ff 58%),url("assets/inbox-pixel-v2/scene-boardroom.png")!important;
+}
+body.v20-ui .office-pane[data-office-pane="pcoffers"]{
+  background-image:linear-gradient(180deg,rgba(0,53,126,.18),rgba(236,249,255,.94) 34%,#eaf7ff 58%),url("assets/inbox-pixel-v2/scene-recruitment.png")!important;
+}
+body.v20-ui .office-pane[data-office-pane="pcrecord"]{
+  background-image:linear-gradient(180deg,rgba(0,72,152,.12),rgba(235,250,255,.94) 34%,#eaf7ff 58%),url("assets/inbox-pixel-v2/office-header-campus.png")!important;
+}
+
+.pc-office-pane{position:relative;z-index:1;height:100%;overflow:auto;padding:clamp(10px,.6cqw,16px)}
+.pc-office-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(9px,.6cqw,15px);
+  align-content:start;
+  max-width:1500px;margin:0 auto;
+}
+.pc-office-grid.is-single{grid-template-columns:minmax(0,1fr)}
+
+.pc-office-card{
+  min-width:0;
+  padding:clamp(12px,.75cqw,19px);
+  border:2px solid #0d5aa8;
+  border-radius:9px;
+  background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(246,251,255,.99));
+  box-shadow:inset 0 0 0 2px #fff,0 4px 0 rgba(6,40,95,.18),0 9px 18px rgba(6,42,91,.1);
+}
+.pc-office-card .office-kicker,
+.pc-office-card > span.office-kicker{
+  display:block;
+  color:#0877c5;
+  font:700 clamp(8px,.38cqw,10px)/1 "Silkscreen",monospace;
+  letter-spacing:.06em;
+}
+.pc-office-card h3{
+  margin:6px 0 2px;
+  color:#082d66;
+  font:400 clamp(20px,1.25cqw,30px)/1 "Lilita One",Impact,sans-serif;
+}
+.pc-office-card p{
+  margin:8px 0 0;
+  color:#496a87;
+  font:800 clamp(10px,.48cqw,13px)/1.4 "Nunito Sans",sans-serif;
+}
+.pc-office-empty{color:#6f8aa1!important;font-style:normal}
+
+.pc-office-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(12px,.8cqw,20px);align-items:center}
+.pc-office-hero > img{
+  width:clamp(88px,6cqw,132px);
+  height:clamp(120px,8cqw,176px);
+  align-self:end;
+  object-fit:contain;object-position:bottom center;
+  border-radius:7px;
+  background:linear-gradient(180deg,#eaf7ff,#d6ecfa);
+  filter:drop-shadow(0 10px 8px rgba(6,40,95,.28));
+}
+
+.pc-office-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:12px;background:#cfe4f3}
+.pc-office-metrics.is-wide{grid-template-columns:repeat(5,minmax(0,1fr))}
+.pc-office-metrics span{padding:9px 5px;text-align:center;background:#fff}
+.pc-office-metrics b{display:block;color:#082d66;font:400 clamp(16px,1cqw,23px)/1 "Lilita One",Impact,sans-serif}
+.pc-office-metrics small{display:block;margin-top:4px;color:#0877c5;font:700 clamp(7px,.32cqw,8px)/1 "Silkscreen",monospace;letter-spacing:.05em}
+
+.pc-office-trust-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 10px}
+.pc-office-trust-head strong{color:#082d66;font:400 clamp(16px,1cqw,24px)/1 "Lilita One",Impact,sans-serif}
+.pc-office-trust-head b{color:#0877c5;font:400 clamp(26px,1.7cqw,40px)/1 "Lilita One",Impact,sans-serif}
+.pc-office-card .pc-trust-track{height:10px;margin:0 0 10px;border:2px solid #0d5aa8;border-radius:6px;background:#dcecf8;overflow:hidden}
+.pc-office-card .pc-trust-track i{display:block;height:100%;background:linear-gradient(90deg,#18cfff,#39c96b)}
+
+.pc-office-standing-row{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  margin-top:10px;padding:9px 11px;border:2px solid #cfe4f3;border-radius:7px;background:#f5fbff;
+}
+.pc-office-standing-row span{color:#0877c5;font:700 9px/1 "Silkscreen",monospace;letter-spacing:.05em}
+.pc-office-standing-row b{color:#082d66;font:400 15px/1 "Lilita One",Impact,sans-serif}
+
+.pc-office-manager{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:2px dashed #cfe4f3}
+.pc-office-manager .pc-office-portrait,.pc-office-manager .manager-portrait-crop{width:64px;height:76px}
+.pc-office-manager strong{display:block;color:#082d66;font:400 17px/1.1 "Lilita One",Impact,sans-serif}
+
+.pc-office-review{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:10px;background:#cfe4f3}
+.pc-office-review span{padding:9px 5px;text-align:center;background:#fff}
+.pc-office-review b{display:block;color:#082d66;font:400 19px/1 "Lilita One",Impact,sans-serif}
+.pc-office-review small{display:block;margin-top:4px;color:#0877c5;font:700 8px/1 "Silkscreen",monospace}
+
+.pc-office-rivals{display:grid;gap:7px;margin-top:11px}
+.pc-office-rival{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 9px;border:2px solid #cfe4f3;border-radius:7px;background:#f9fdff}
+.pc-office-rival img{width:36px;height:40px;object-fit:contain}
+.pc-office-rival strong{display:block;color:#082d66;font:800 12px/1.2 "Nunito Sans",sans-serif}
+.pc-office-rival small{display:block;color:#6f8aa1;font:800 10px/1.3 "Nunito Sans",sans-serif}
+.pc-office-rival b{color:#0877c5;font:400 18px/1 "Lilita One",Impact,sans-serif}
+.pc-office-rival b.is-ahead{color:#d4623f}
+
+.pc-office-contract-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;margin:9px 0}
+.pc-office-contract-head .club-badge,.pc-office-contract-head img{width:46px;height:46px;object-fit:contain}
+.pc-office-contract-head strong{display:block;color:#082d66;font:400 19px/1.1 "Lilita One",Impact,sans-serif}
+.pc-office-contract-head small{display:block;color:#6f8aa1;font:800 10px/1.3 "Nunito Sans",sans-serif}
+.pc-contract-status{padding:5px 8px;border-radius:5px;background:#39c96b;color:#04331a;font:700 9px/1 "Silkscreen",monospace;letter-spacing:.05em}
+.pc-contract-status.is-expiring{background:#ff8f5a;color:#3a1403}
+.pc-contract-status.is-final-year{background:#ffe532;color:#3a3000}
+.pc-contract-status.is-free-agent{background:#9fb1bd;color:#10222e}
+
+.pc-office-actions{display:flex;gap:9px;margin-top:13px}
+.pc-office-card .pc-primary-action{
+  border:2px solid #06285f;border-radius:7px;
+  background:var(--office-world-yellow,#ffe532);color:#06285f;
+  padding:11px 15px;
+  font:700 10px/1 "Silkscreen",monospace;letter-spacing:.06em;
+  box-shadow:0 3px 0 rgba(6,40,95,.32);
+  cursor:pointer;
+}
+.pc-office-card .pc-primary-action:disabled{background:#dbe8f2;color:#8ea7ba;box-shadow:none;cursor:not-allowed}
+.pc-office-note{display:block;margin-top:9px;color:#6f8aa1;font:800 10px/1.4 "Nunito Sans",sans-serif}
+
+.pc-office-offers{display:grid;gap:8px;margin-top:11px}
+.pc-office-offer{display:grid;grid-template-columns:46px minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:9px 11px;border:2px solid #cfe4f3;border-radius:7px;background:#f9fdff}
+.pc-office-offer .club-badge,.pc-office-offer img{width:44px;height:44px;object-fit:contain}
+.pc-office-offer strong{display:block;color:#082d66;font:400 17px/1.1 "Lilita One",Impact,sans-serif}
+.pc-office-offer small{display:block;color:#6f8aa1;font:800 10px/1.3 "Nunito Sans",sans-serif}
+.pc-office-offer > span{text-align:center}
+.pc-office-offer > span b{display:block;color:#082d66;font:400 16px/1 "Lilita One",Impact,sans-serif}
+.pc-office-offer > span small{color:#0877c5;font:700 8px/1 "Silkscreen",monospace}
+
+.pc-office-history{display:grid;gap:5px;margin-top:11px}
+.pc-office-history > div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:7px 10px;border-bottom:2px solid #e4f0f9}
+.pc-office-history b{color:#0877c5;font:700 9px/1 "Silkscreen",monospace;white-space:nowrap}
+.pc-office-history span{color:#082d66;font:800 11px/1.3 "Nunito Sans",sans-serif}
+.pc-office-history small{color:#6f8aa1;font:800 10px/1.3 "Nunito Sans",sans-serif;white-space:nowrap}
+
+@media(max-width:1100px){
+  .pc-office-grid{grid-template-columns:minmax(0,1fr)}
+  .pc-office-metrics,.pc-office-metrics.is-wide{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pc-office-offer{grid-template-columns:40px minmax(0,1fr);row-gap:8px}
+  .pc-office-offer > span,.pc-office-offer button{grid-column:1/-1}
+}
+@media(max-width:760px){
+  .pc-office-hero{grid-template-columns:minmax(0,1fr)}
+  .pc-office-hero > img{justify-self:center}
+  .pc-central-contract{grid-template-columns:repeat(3,1fr)}
+}
+
+/* When the athlete is not in the published three, the matchday panel still
+   says where they are. */
+.pc-matchday-place{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;
+  margin:8px 0 0;padding:10px 14px;
+  border:1px solid rgba(255,211,61,.45);border-radius:6px;
+  background:rgba(255,211,61,.08);
+}
+.pc-matchday-place span{font:700 8px/1 "Silkscreen",monospace;letter-spacing:.08em;color:#b58900}
+.pc-matchday-place strong{font-weight:800;font-size:13px}
+.pc-matchday-place b{font:700 10px/1 "Silkscreen",monospace;letter-spacing:.06em;color:#b58900}
+.pc-matchday-place.is-user-athlete::after{top:50%;transform:translateY(-50%)}

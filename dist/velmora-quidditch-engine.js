@@ -1657,6 +1657,10 @@ function ensureBigMomentStyles(){
   // V22 — Career match management. Active entities and the full match squad are separate.
   const MATCHDAY_TACTICS = {defensive:['Balanced','Press','Drop Back'],attacking:['Balanced','Fast Break','Possession','Direct'],mentality:['Defensive','Balanced','Attacking'],width:['Compact','Balanced','Wide'],tempo:['Patient','Balanced','Urgent'],freedom:['Structured','Balanced','Fluid']};
   function matchdayTactics(raw={}){return Object.fromEntries(Object.entries(MATCHDAY_TACTICS).map(([k,values])=>[k,values.includes(raw[k])?raw[k]:'Balanced']))}
+  // V107 — a watched career match always breaks at the interval. Manager Career
+  // pauses on the team talk; Player Career runs the broadcast package and
+  // restarts itself, because the athlete has no changes to make.
+  function careerHalvesEnabled(){return !!(state.management||state.playerMode)}
   function matchdayMinute(){return Math.min(90,state.matchTime/MATCH_SECONDS*90)}
   function matchdayTeamPlayers(team,playedOnly=false){return state.management?allPlayers.filter(p=>{const r=state.management.players[p.id];return r?.team===team&&(!playedOnly||r.seconds>0)}):roster[team]}
   function initMatchday(){
@@ -3360,6 +3364,7 @@ function triggerBigMoment(kind='hattrick'){
     else if(t<card*2){setBroadcastState('HALFTIME_STATS');setBroadcastSequence('halftimeStats',{frozen:true,reset:false});showPresentation('v36-half-stats','FIRST-HALF DATA','MATCH STATISTICS',`${matchupMarkup(true)}${halftimeStatsMarkup()}`,'ACTUAL TRACKED MATCH DATA','stats')}
     else if(t<card*3){const p=playerOfPeriod(1),s=state.playerStats[p.id];setBroadcastSequence('halftimeSpotlight',{frozen:true,reset:false});showPresentation('v36-half-player','FIRST-HALF STANDOUT',p.name,`<div class="wcg-player-half"><img src="${p.standing}" alt="${p.name}"><p>${s.goals} GOALS · ${s.shots} SHOTS · ${s.interceptions} INTERCEPTIONS · ${s.saves} SAVES</p></div>`,'RETROSPECTIVE MATCH IMPACT ONLY','player')}
     else if(t<card*4){setBroadcastSequence('secondHalfIntro',{frozen:true,reset:false});showPresentation('v36-half-summary','BARRY BRAMBLE · HALF-TIME',state.score.belros===state.score.zafran?'NOTHING BETWEEN THEM':'ADVANTAGE AT THE BREAK',`<p class="wcg-moment-copy">${halftimeSummary()}</p>`,'SECOND HALF NEXT','summary')}
+    else if(state.playerMode){state.halftimeReady=true;hidePresentation();handleSecondHalf()}
     else openHalftimeWaitingScreen();
   }
   function updateSecondHalfCountdown(dt){tickBroadcastSequence(dt);state.secondCountdown=Math.max(0,state.secondCountdown-dt);const n=Math.max(1,Math.ceil(state.secondCountdown));showPresentation(`second-${n}`,'SECOND HALF',String(n),'<div class="wcg-count-copy">PLAYERS SET · REFEREE READY</div>','PLAY!','countdown');if(state.secondCountdown<=0){hidePresentation();setBroadcastSequence('secondHalf',{frozen:false});beginKickoff(other(state.firstKickoff),true)}}
@@ -5828,13 +5833,13 @@ function triggerBigMoment(kind='hattrick'){
       // short penalty setup. Presentation can pause while official time continues.
       const clockRuns=!state.celebration&&(!state.special||state.special.type==='penalty');
       if(clockRuns){
-        const remaining=(state.management&&state.phase==='first'?MATCH_SECONDS/2:MATCH_SECONDS)-state.matchTime;
+        const remaining=(careerHalvesEnabled()&&state.phase==='first'?MATCH_SECONDS/2:MATCH_SECONDS)-state.matchTime;
         const playedDt=Math.min(scaledDt,Math.max(0,remaining));matchdayEnergyStep(playedDt);state.matchTime+=playedDt;
         // Do not award possession time while a penalty is being staged.
         if(!state.special&&state.possession&&state.teamStats[state.possession])state.teamStats[state.possession].possession+=scaledDt;
         if(!state.special&&state.carrier?.player?.id&&state.playerStats[state.carrier.player.id])state.playerStats[state.carrier.player.id].possession+=scaledDt;
       }
-      if(state.management&&state.phase==='first'&&state.matchTime>=MATCH_SECONDS/2){state.matchTime=MATCH_SECONDS/2;beginHalftime();return}
+      if(careerHalvesEnabled()&&state.phase==='first'&&state.matchTime>=MATCH_SECONDS/2){state.matchTime=MATCH_SECONDS/2;beginHalftime();return}
       if((state.phase==='first'||state.phase==='second')&&state.matchTime>=MATCH_SECONDS){state.matchTime=MATCH_SECONDS;const aggHome=Number(state.score.belros||0)+Number(state.fixture?.aggregateHomeOffset||0),aggAway=Number(state.score.zafran||0)+Number(state.fixture?.aggregateAwayOffset||0),needsDecider=!!state.fixture?.knockoutDecider&&aggHome===aggAway;if(needsDecider)beginShootout();else finishMatch(false)}
       if(state.management&&['first','second'].includes(state.phase)){matchdayAiChanges();matchdayProcessPending()}
       if((state.phase==='first'||state.phase==='second')&&!state.celebration){updateMatchFlowDirector(liveDt);updateFlight(liveDt);
