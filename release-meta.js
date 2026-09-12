@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'108.0.0',
-    label:'V108',
-    channel:'CAREER THREADS',
-    cacheKey:'v108-career-threads-20260912',
-    saveSchema:88
+    version:'109.0.0',
+    label:'V109',
+    channel:'STORY DIRECTOR',
+    cacheKey:'v109-story-director-20260912',
+    saveSchema:89
   });
 });

@@ -1306,6 +1306,9 @@
         lastPressureDate:row.lastPressureDate||null,
         openEventId:row.openEventId||null,
         beats:Array.isArray(row.beats)?row.beats.slice(-8):[],
+        branch:row.branch||null,
+        collisions:Array.isArray(row.collisions)?row.collisions.slice(-6):[],
+        directorVersion:Math.max(1,Number(row.directorVersion||1)),
         baseline:row.baseline&&typeof row.baseline==='object'?row.baseline:{},
         resolution:row.resolution&&typeof row.resolution==='object'?row.resolution:null
       }))
@@ -1314,7 +1317,7 @@
   function v108CareerThreads(){if(!careerThreads||careerThreads.version!==1||!Array.isArray(careerThreads.threads))careerThreads=normalizeCareerThreadsState(careerThreads);return careerThreads;}
   function v108ThreadById(id){return v108CareerThreads().threads.find(row=>row.id===id)||null;}
   function v108ActiveCareerThreads(){return v108CareerThreads().threads.filter(row=>row.status==='ACTIVE'&&row.mode===careerMode&&(!currentClub||!row.clubId||row.clubId===currentClub.id||row.key==='player-move'));}
-  function v108ThreadChoice(id,label,copy,summary,heat=0,tags=[]){return{id,label,copy,summary,heat,tags};}
+  function v108ThreadChoice(id,label,copy,summary,heat=0,tags=[],meta={}){return{id,label,copy,summary,heat,tags,...meta};}
   function v108ThreadPlayer(thread){return thread?.subjectPlayerId?careerPlayerById(thread.subjectPlayerId):null;}
   function v108ThreadSecondaryPlayer(thread){return thread?.secondaryPlayerId?careerPlayerById(thread.secondaryPlayerId):null;}
   function v108ThreadTargetClub(thread){return thread?.targetClubId?clubById(thread.targetClubId):null;}
@@ -1325,7 +1328,9 @@
     const days=Math.max(0,diffDaysISO(beat.date,date));const when=days===0?'Earlier today':days===1?'Yesterday':days<7?`${plural(days,'day')} ago`:days<13?'Last week':days<20?'A fortnight ago':days<31?`${plural(Math.round(days/7),'week')} ago`:'Last month';
     return`${when}, ${String(beat.summary||'your last decision changed the situation').replace(/^./,c=>c.toLowerCase())}`;
   }
-  function v108ThreadCadence(thread){const phase=typeof v2073SeasonPhaseProfile==='function'?v2073SeasonPhaseProfile():{key:'MID_SEASON'},phasePull=['WINTER_WINDOW','RUN_IN','FINAL_STRETCH'].includes(phase.key)?2:0;return clamp(24-Math.round(Number(thread?.heat||0)/7)-phasePull,8,21);}
+  const V109_STORY_PHASES={PRE_SEASON:{cadence:2,manager:{'manager-gamble':10},player:{'player-shirt':8}},OPENING_WEEKS:{cadence:1,manager:{'manager-gamble':8},player:{'player-shirt':12,'player-dressing':4}},MID_SEASON:{cadence:0,manager:{'manager-board':8,'manager-gamble':5},player:{'player-shirt':6,'player-dressing':7}},WINTER_WINDOW:{cadence:-3,manager:{'manager-wantaway':18,'manager-board':5},player:{'player-move':18,'player-shirt':5}},RUN_IN:{cadence:-2,manager:{'manager-board':16,'manager-gamble':7},player:{'player-shirt':15,'player-dressing':8}},FINAL_STRETCH:{cadence:-3,manager:{'manager-board':20},player:{'player-shirt':18,'player-dressing':7}}};
+  function v109StoryPhase(){const phase=typeof v2073SeasonPhaseProfile==='function'?v2073SeasonPhaseProfile():{key:'MID_SEASON',label:'MID-SEASON'};return{...phase,director:V109_STORY_PHASES[phase.key]||V109_STORY_PHASES.MID_SEASON};}
+  function v108ThreadCadence(thread){const phase=v109StoryPhase(),branchPull=thread?.branch&&Number(thread?.heat||0)>=62?-2:0;return clamp(24-Math.round(Number(thread?.heat||0)/7)+Number(phase.director.cadence||0)+branchPull,7,22);}
   function v108ScheduleNextThreadBeat(thread,date=currentCareerISO()){
     const variance=(Math.abs(hashString(`${worldSeed}-${thread.id}-${thread.stage}-${date}`))%5)-2,days=clamp(v108ThreadCadence(thread)+variance,7,22);thread.nextBeatDate=addDaysISO(date,days);return thread.nextBeatDate;
   }
@@ -1345,7 +1350,7 @@
     }).filter(row=>forPlayerCareer||row.budget>=Math.min(livingPlayerMarketValue(player)*.72,2_000_000)).sort((a,b)=>b.fit-a.fit||a.club.name.localeCompare(b.club.name));
     return candidates[0]?.club||clubs.find(club=>club.id!==currentClub.id)||null;
   }
-  function v108ThreadDefinition(thread,date=currentCareerISO()){
+  function v108BaseThreadDefinition(thread,date=currentCareerISO()){
     const stage=Number(thread.stage||0),p=v108ThreadPlayer(thread),other=v108ThreadSecondaryPlayer(thread),target=v108ThreadTargetClub(thread),club=currentClub,record=v108RecentRecord(club,6),phase=typeof v2073SeasonPhaseProfile==='function'?v2073SeasonPhaseProfile():{label:'SEASON',race:'THE CAMPAIGN'};
     const common={category:thread.category,title:thread.title,location:'manager-office',stakes:`${phase.label} · ${phase.race}`,sender:'CLUB STAFF',body:thread.label,choices:[]};
     if(thread.key==='manager-wantaway'){
@@ -1385,9 +1390,60 @@
     }
     return common;
   }
+  function v109ThreadEvidence(thread){
+    const p=v108ThreadPlayer(thread),other=v108ThreadSecondaryPlayer(thread),user=pcPlayer(),record=v108RecentRecord(currentClub,6),confidence=ensureBoardConfidence();
+    if(thread.key==='manager-wantaway')return`${p?.name||'The player'}: trust ${Math.round(Number(p?.managerTrust||0))}/100, satisfaction ${Math.round(Number(p?.playingTimeSatisfaction||60))}/100${p?.transferRequested?', transfer request active':''}; window ${isTransferWindowOpen()?'open':'closed'}.`;
+    if(thread.key==='manager-gamble')return`${p?.name||'The prospect'}: ${v108PlayerStatLine(p)}, ${Math.round(Number(p?.ovr||0))} OVR and ${Math.round(Number(p?.potential||0))} potential.`;
+    if(thread.key==='manager-board')return`Live board file: ${plural(record.points,'point')} from ${plural(record.form.length,'league result')}; confidence ${confidence}/100.`;
+    if(thread.key==='player-shirt')return`Selection file: trust ${Math.round(Number(user?.managerTrust||0))}/100, fitness ${Math.round(Number(user?.fitness||0))}%; ${other?.name||p?.name||'rival'} ${Math.round(Number((other||p)?.ovr||0))} OVR.`;
+    if(thread.key==='player-move')return`Career file: trust ${Math.round(Number(user?.managerTrust||0))}/100; window ${isTransferWindowOpen()?'open':'closed'}; destination ${v108ThreadTargetClub(thread)?.name||'unconfirmed'}.`;
+    return`Dressing-room file: trust ${Math.round(Number(user?.managerTrust||0))}/100, morale ${moraleIndex(user?.morale)}/5; ${p?.name||'the senior player'} remains an influential voice.`;
+  }
+  function v109BranchLine(thread){
+    const last=thread?.beats?.at(-1)?.choiceId;if(!last)return'';
+    const lines={
+      'manager-wantaway':{central:'You promised importance. The player is now judging the role, not the speech.',listen:'You opened the door honestly. The next decision is whether that honesty becomes a route out.',standards:'You challenged the player publicly enough for every new signal to feel personal.',hold:'You closed the door. The relationship now depends on whether results justify the stance.',value:'You named a price. The market and the player both heard it as permission to act.',pathway:'You answered outside interest with an inside opportunity; minutes are now the proof.'},
+      'manager-gamble':{back:'You made minutes the promise. Every unused team sheet now counts against it.',protect:'You chose patience, so the staff are measuring improvement rather than headlines.',loan:'You called a loan the right pathway. Keeping the player idle would now contradict you.',double:'You increased the responsibility; output and fatigue both belong in the verdict.',bench:'You kept the prospect close without forcing the story. The player wants to know what close means.',reset:'You admitted the first plan was wrong. This verdict must show what replaced it.'},
+      'manager-board':{own:'You put your name against the recovery. The board have compared the words with every result.',context:'You asked for context. The directors now want evidence that context is changing.',defy:'You challenged the premise. The meeting has become a referendum on your authority.',points:'You accepted a measurable target; nobody in the room can soften the arithmetic now.',youth:'You defended a longer project. Development evidence now carries unusual weight.',freedom:'You demanded freedom. The board are deciding whether independence looks like leadership or drift.'},
+      'player-shirt':{work:'You made training the argument. The coaches have logged the work, session by session.',talk:'You asked for a precise gap. This is the first direct test of their answer.',claim:'You said the shirt should be yours. The next duel is being watched as proof, not potential.',edge:'You attacked the contest. The manager has noticed both the edge and the physical cost.',team:'You made the unit better. Teammates now have a stake in how the manager reads the rivalry.',quiet:'You refused the theatre. Your execution has to be loud enough on its own.'},
+      'player-move':{listen:'You authorised real talks. Silence from here would be a decision too.',leverage:'You wanted leverage without commitment. Both clubs are now testing where the line sits.',loyal:'You closed the approach down. Your current club has had time to answer that loyalty.','accept-terms':'You accepted the outline. Only the consequences, not the intent, remain uncertain.',improve:'You demanded a stronger role. The buying club must now decide how badly they want you.',stay:'You stepped away. The question is what your recommitment is worth at home.'},
+      'player-dressing':{listen:'You treated the challenge as information. The senior group noticed the restraint.',push:'You drew a calm line. The room is deciding whether it saw confidence or resistance.',snap:'You made the clash public. Every attempt at peace now has an audience.',mentor:'You proposed a working pact. The next exchange will show whether it was real.',distance:'You chose professional distance. The room can live with cold clarity if the work holds.',camp:'You answered status with status. Teammates are now being pulled into the story.'}
+    };return lines[thread.key]?.[last]||'The last answer changed how everyone in the room reads this moment.';
+  }
+  function v109ThreadCollision(thread){
+    if(Number(thread?.stage||0)<1)return null;const other=v108ActiveCareerThreads().find(row=>row.id!==thread.id&&row.mode===thread.mode&&row.clubId===thread.clubId);if(!other)return null;
+    const pair=[thread.key,other.key].sort().join('+'),key=`${pair}:${thread.stage}:${other.stage}`;if((thread.collisions||[]).includes(key))return null;
+    const copy={
+      'manager-gamble+manager-wantaway':'The possible vacancy around a senior player has turned the prospect pathway into part of the same decision. Selling, keeping and promoting can no longer be judged separately.',
+      'manager-board+manager-wantaway':'The board are treating your handling of the unsettled player as evidence about control of the whole project.',
+      'manager-board+manager-gamble':'The board review now includes the prospect pathway: short-term points and long-term value have entered the same argument.',
+      'player-move+player-shirt':'Outside interest has changed the rivalry. Your competitor sees opportunity if you leave; the manager sees a test of commitment if you stay.',
+      'player-dressing+player-shirt':'The senior voice in the room has taken a position on the selection battle. This is no longer only between you and the manager.',
+      'player-dressing+player-move':'The dressing room has heard enough about the outside interest for your commitment to become a question inside the club.'
+    }[pair];return copy?{key,otherThreadId:other.id,title:'PRESSURES COLLIDE',text:copy}:null;
+  }
+  function v109EarlyChoice(thread){
+    if(Number(thread?.stage||0)!==1)return null;const prior=thread.beats?.[0]?.choiceId,p=v108ThreadPlayer(thread),user=pcPlayer(),record=v108RecentRecord(currentClub,6),confidence=ensureBoardConfidence();
+    if(thread.key==='manager-wantaway'&&prior==='central'&&Number(p?.managerTrust||0)>=65)return v108ThreadChoice('commit-early','CLOSE THE STORY — COMMIT TO EACH OTHER','The promise has been answered by trust. Secure the commitment now instead of manufacturing a final crisis.',`you and ${p?.name||'the player'} closed the transfer story with a mutual commitment`,-20,['EARLY RESOLUTION','PLAYER COMMITS','TRUST REPAID'],{terminal:true,directorAction:'COMMIT_EARLY'});
+    if(thread.key==='manager-wantaway'&&['listen','standards'].includes(prior)&&isTransferWindowOpen())return v108ThreadChoice('sell-early','AUTHORISE THE CLEAN EXIT','The route out is already clear. Complete the sale before uncertainty starts writing the ending.',`you authorised ${p?.name||'the player'}'s clean early exit`,-8,['EARLY RESOLUTION','TRANSFER COMPLETED','SQUAD PLACE OPENS'],{terminal:true,directorAction:'SELL_EARLY'});
+    if(thread.key==='manager-gamble'&&prior==='loan')return v108ThreadChoice('loan-pathway-early','COMMIT TO THE LOAN PATHWAY','Stop half-owning two plans. Make competitive minutes elsewhere the settled development route.',`you committed ${p?.name||'the prospect'} to the loan pathway`,-12,['EARLY RESOLUTION','LOAN PATHWAY','PLAN SETTLED'],{terminal:true,directorAction:'LOAN_PATHWAY_EARLY'});
+    if(thread.key==='manager-gamble'&&(Number(p?.seasonStats?.starts||0)>=4||Number(p?.seasonStats?.goals||0)>=3))return v108ThreadChoice('promote-early','MAKE THE BREAKTHROUGH PERMANENT','The evidence is already strong enough. Recognise the role before caution becomes its own broken promise.',`you made ${p?.name||'the prospect'}'s breakthrough permanent`,-16,['EARLY RESOLUTION','ROLE SECURED','EVIDENCE REWARDED'],{terminal:true,directorAction:'PROMOTE_EARLY'});
+    if(thread.key==='manager-board'&&record.points>=13&&confidence>=68)return v108ThreadChoice('backed-early','BANK THE BOARD’S BACKING','The recovery target has already been met. Record the board’s support and close the review.',`you converted the recovery into formal board backing`,-18,['EARLY RESOLUTION','BOARD BACKING','RECOVERY PROVEN'],{terminal:true,directorAction:'BACKED_EARLY'});
+    if(thread.key==='manager-board'&&(confidence<=34||record.l>=4))return v108ThreadChoice('warning-early','ACCEPT THE FORMAL WARNING','The evidence has removed the room for another soft checkpoint. Accept the warning and end the ambiguity.',`you accepted that the board review had become a formal warning`,14,['EARLY RESOLUTION','FORMAL WARNING','POSITION AT RISK'],{terminal:true,directorAction:'WARNING_EARLY'});
+    if(thread.key==='player-shirt'&&Number(user?.managerTrust||0)>=72)return v108ThreadChoice('claim-early','CLAIM THE ROLE NOW','Your trust and training evidence have already moved the hierarchy. Ask the manager to make that progress official.',`you turned the selection battle into a recognised first-team role`,-17,['EARLY RESOLUTION','ROLE CLAIMED','TRUST REWARDED'],{terminal:true,directorAction:'CLAIM_EARLY'});
+    if(thread.key==='player-move'&&prior==='loyal'&&Number(user?.managerTrust||0)>=66)return v108ThreadChoice('close-interest','REAFFIRM YOUR FUTURE HERE','The loyalty has been met with trust. Close the file before outside interest becomes theatre.',`you reaffirmed your future at the club and ended the outside interest`,-18,['EARLY RESOLUTION','STAYING','TRUST UP'],{terminal:true,directorAction:'CLOSE_INTEREST'});
+    if(thread.key==='player-dressing'&&prior==='listen'&&Number(user?.managerTrust||0)>=58&&moraleIndex(user?.morale)>=3)return v108ThreadChoice('settle-early','MAKE THE RESPECT MUTUAL','The lesson landed and the room has stayed healthy. Turn the test into a working relationship now.',`you and ${p?.name||'the senior player'} settled the test with mutual respect`,-17,['EARLY RESOLUTION','RESPECT EARNED','ROOM SETTLES'],{terminal:true,directorAction:'SETTLE_EARLY'});
+    return null;
+  }
+  function v108ThreadDefinition(thread,date=currentCareerISO()){
+    const base=v108BaseThreadDefinition(thread,date);if(Number(thread?.stage||0)<1)return{...base,directorEvidence:v109ThreadEvidence(thread)};
+    const branch=v109BranchLine(thread),evidence=v109ThreadEvidence(thread),early=v109EarlyChoice(thread),collision=v109ThreadCollision(thread),choices=early?[early,...(base.choices||[]).slice(0,2)]:base.choices;
+    return{...base,title:`${base.title} — CONSEQUENCES`,body:`${branch} ${base.body} ${evidence}`,prompt:early?'Do you resolve this now, or let the pressure keep moving?':base.prompt,choices,branch,directorEvidence:evidence,collision};
+  }
   function v108CareerThreadScene(thread,definition,date=currentCareerISO()){
     const previous=v108ThreadPreviously(thread,date),beats=[];
     if(previous)beats.push({speaker:'PREVIOUSLY',role:'staff',title:'PREVIOUSLY',text:previous});
+    if(definition.collision)beats.push({speaker:'STORY DIRECTOR',role:'staff',title:definition.collision.title,text:definition.collision.text});
     beats.push({speaker:definition.sender||'AROUND THE CLUB',role:definition.playerId?'primary':'staff',title:thread.stage===0?'A STORY BEGINS':'THE NEXT BEAT',text:definition.body});
     if(!definition.playerId)beats.push({speaker:careerMode==='PLAYER'?'YOU':managerName||'MANAGER',role:'manager',title:'WHAT THIS CARRIES',text:thread.stage===0?'This will not disappear when the conversation closes. The next beat will remember what you say here.':'The people in the room remember the last answer. This choice will change what returns later.'});
     return{version:3,location:definition.location||'manager-office',backdrop:decisionSceneBackdrop(definition.location||'manager-office'),stakes:definition.stakes||thread.category,tension:thread.heat,prompt:definition.prompt||'How do you respond?',beats};
@@ -1397,8 +1453,8 @@
     const existing=careerDecisionEvents.find(event=>event.threadId===thread.id&&!event.resolved);if(existing){thread.openEventId=existing.id;return existing;}
     if(!force&&pendingDecisionEvent())return null;
     const definition=v108ThreadDefinition(thread,date),id=`DEC-THREAD-${thread.id}-${thread.stage}-${date}`;
-    const event=queueDecisionEvent({id,kind:thread.mode==='PLAYER'?'PC_CAREER_THREAD':'CAREER_THREAD',threadId:thread.id,threadKey:thread.key,threadStage:thread.stage,category:definition.category||thread.category,playerId:definition.playerId||null,secondaryPlayerId:definition.secondaryPlayerId||null,sender:definition.sender||'CLUB STAFF',title:definition.title||thread.title,body:definition.body||thread.label,scene:v108CareerThreadScene(thread,definition,date),choices:definition.choices||[]});
-    if(event)thread.openEventId=event.id;return event;
+    const event=queueDecisionEvent({id,kind:thread.mode==='PLAYER'?'PC_CAREER_THREAD':'CAREER_THREAD',threadId:thread.id,threadKey:thread.key,threadStage:thread.stage,category:definition.category||thread.category,playerId:definition.playerId||null,secondaryPlayerId:definition.secondaryPlayerId||null,sender:definition.sender||'CLUB STAFF',title:definition.title||thread.title,body:definition.body||thread.label,scene:v108CareerThreadScene(thread,definition,date),choices:definition.choices||[],directorBranch:definition.branch||null,directorEvidence:definition.directorEvidence||null,collision:definition.collision||null});
+    if(event){thread.openEventId=event.id;if(definition.collision){thread.collisions=Array.from(new Set([...(thread.collisions||[]),definition.collision.key])).slice(-6);}}return event;
   }
   function v108CreateCareerThread(key,date=currentCareerISO(),force=false){
     const meta=V108_THREAD_KEYS[key],state=v108CareerThreads();if(!meta||meta.mode!==careerMode)return null;
@@ -1408,13 +1464,22 @@
     if(['manager-wantaway','manager-gamble','player-shirt','player-dressing'].includes(key)&&!subject)return null;
     const target=key==='manager-wantaway'?v108ThreadTransferClub(subject,false):key==='player-move'?v108ThreadTransferClub(user,true):null;if(key==='player-move'&&!target)return null;
     if(!force&&meta.mode==='MANAGER'&&employmentStatus!=='employed')return null;if(!force&&meta.mode==='PLAYER'&&!pcActive())return null;
-    state.sequence++;const record=v108RecentRecord(currentClub,6),thread={id:`THREAD-${careerTime.seasonId}-${String(state.sequence).padStart(3,'0')}`,key,mode:meta.mode,title:meta.title,label:meta.label,category:meta.category,seasonId:careerTime.seasonId,clubId:currentClub?.id||null,subjectPlayerId:subject?.id||null,secondaryPlayerId:key==='player-shirt'?subject?.id:null,targetClubId:target?.id||null,stage:0,heat:meta.heat,status:'ACTIVE',createdDate:date,nextBeatDate:date,lastPressureDate:date,openEventId:null,beats:[],baseline:{boardConfidence:ensureBoardConfidence(),form:[...record.form],playerStats:key==='manager-gamble'?deepClone(subject?.seasonStats||{}):{},managerTrust:Number(user?.managerTrust||0)},resolution:null};
+    state.sequence++;const record=v108RecentRecord(currentClub,6),thread={id:`THREAD-${careerTime.seasonId}-${String(state.sequence).padStart(3,'0')}`,key,mode:meta.mode,title:meta.title,label:meta.label,category:meta.category,seasonId:careerTime.seasonId,clubId:currentClub?.id||null,subjectPlayerId:subject?.id||null,secondaryPlayerId:key==='player-shirt'?subject?.id:null,targetClubId:target?.id||null,stage:0,heat:meta.heat,status:'ACTIVE',createdDate:date,nextBeatDate:date,lastPressureDate:date,openEventId:null,beats:[],branch:null,collisions:[],directorVersion:2,baseline:{boardConfidence:ensureBoardConfidence(),form:[...record.form],playerStats:key==='manager-gamble'?deepClone(subject?.seasonStats||{}):{},managerTrust:Number(user?.managerTrust||0)},resolution:null};
     state.threads.push(thread);state.lastStartedDate=date;return thread;
   }
   function v108MaybeStartCareerThread(date=currentCareerISO()){
     const state=v108CareerThreads();if(v108ActiveCareerThreads().length>=V108_THREAD_ACTIVE_CAP)return null;if(state.lastStartedDate&&diffDaysISO(state.lastStartedDate,date)<14)return null;
-    const day=Number(careerTime.dayNumber||1),seen=key=>state.threads.some(row=>row.key===key&&row.seasonId===careerTime.seasonId),keys=careerMode==='PLAYER'?[day>=12?'player-shirt':null,day>=26?'player-dressing':null,day>=40&&isTransferWindowOpen(date)?'player-move':null]:[day>=14&&isTransferWindowOpen(date)?'manager-wantaway':null,day>=28?'manager-board':null,day>=36?'manager-gamble':null];
-    for(const key of keys.filter(Boolean)){if(seen(key))continue;const thread=v108CreateCareerThread(key,date,false);if(thread)return thread;}return null;
+    const day=Number(careerTime.dayNumber||1),phase=v109StoryPhase(),record=v108RecentRecord(currentClub,6),user=pcPlayer(),seen=key=>state.threads.some(row=>row.key===key&&row.seasonId===careerTime.seasonId),eligible=careerMode==='PLAYER'?[day>=12?'player-shirt':null,day>=26?'player-dressing':null,day>=40&&isTransferWindowOpen(date)?'player-move':null]:[day>=14&&isTransferWindowOpen(date)?'manager-wantaway':null,day>=28?'manager-board':null,day>=36?'manager-gamble':null];
+    const pressure={
+      'manager-wantaway':isTransferWindowOpen(date)?12:0,
+      'manager-board':record.l>=3?16:record.w>=4?-4:5,
+      'manager-gamble':8,
+      'player-shirt':Number(user?.managerTrust||0)<55?14:6,
+      'player-dressing':moraleIndex(user?.morale)<=2?13:5,
+      'player-move':isTransferWindowOpen(date)?15:0
+    };
+    const scores=eligible.filter(key=>key&&!seen(key)).map(key=>({key,score:Number(phase.director[careerMode==='PLAYER'?'player':'manager']?.[key]||0)+Number(pressure[key]||0)+(Math.abs(hashString(`${worldSeed}-V109-START-${careerTime.seasonId}-${key}`))%5)})).sort((a,b)=>b.score-a.score||a.key.localeCompare(b.key));
+    for(const row of scores){const thread=v108CreateCareerThread(row.key,date,false);if(thread){thread.directorStart={date,phase:phase.key,score:row.score};return thread;}}return null;
   }
   function v108ThreadPressureDelta(thread){
     const p=v108ThreadPlayer(thread),record=v108RecentRecord(currentClub,6),phase=typeof v2073SeasonPhaseProfile==='function'?v2073SeasonPhaseProfile():{key:'MID_SEASON'};let delta=0;
@@ -1459,12 +1524,25 @@
     if(thread.key==='player-dressing'&&user){if(stage===0){if(choiceId==='listen')adjustPlayerManagerTrust(user,3,'Thread: senior standard heard');if(choiceId==='snap'){adjustPlayerMorale(user,-1);adjustPlayerManagerTrust(user,-3,'Thread: dressing-room clash');}}if(stage===1){if(choiceId==='mentor')adjustPlayerManagerTrust(user,4,'Thread: senior pact');if(choiceId==='camp')adjustPlayerManagerTrust(user,-4,'Thread: dressing-room camps');}if(stage===2){if(choiceId==='respect'){adjustPlayerMorale(user,2);adjustPlayerManagerTrust(user,5,'Thread resolved: senior respect');}if(choiceId==='cold')adjustPlayerMorale(user,-1);}}
     return{terminal,verdict};
   }
+  function v109ApplyDirectorAction(thread,choice){
+    const action=choice?.directorAction,p=v108ThreadPlayer(thread),target=v108ThreadTargetClub(thread),user=pcPlayer();if(!action)return{terminal:false,verdict:null};let verdict=choice.label||'STORY RESOLVED';
+    if(action==='COMMIT_EARLY'&&p){p.transferRequested=false;p.transferListed=false;p.transferStatus='LISTEN';adjustPlayerManagerTrust(p,7,'Story Director: mutual commitment');adjustPlayerMorale(p,1);verdict='THE PLAYER COMMITS TO THE PROJECT';}
+    if(action==='SELL_EARLY'&&p){if(!v108MoveManagerPlayer(thread,p,target)){p.transferRequested=true;p.transferListed=true;p.transferStatus='TRANSFER_LISTED';verdict='THE SALE STALLED — THE REQUEST REMAINS';}else verdict=`${target?.name||'THE BUYING CLUB'} COMPLETE THE DEAL`;}
+    if(action==='LOAN_PATHWAY_EARLY'&&p){p.loanListed=true;p.transferStatus='LOAN_LISTED';adjustPlayerManagerTrust(p,2,'Story Director: clear loan pathway');verdict='THE LOAN PATHWAY IS SET';}
+    if(action==='PROMOTE_EARLY'&&p){p.squadRole=Number(p.ovr||0)>=backgroundClubStrength(currentClub)?'Important':'Rotation';p.dynamicPotentialDelta=clamp(Number(p.dynamicPotentialDelta||0)+1,-4,5);adjustPlayerMorale(p,2);verdict='THE BREAKTHROUGH BECOMES A ROLE';}
+    if(action==='BACKED_EARLY'){shiftBoardConfidence(4,'Story Director: recovery proven');verdict='THE BOARD BACK THE DIRECTION';}
+    if(action==='WARNING_EARLY'){managerMarket.warning={...(managerMarket.warning||{}),phase:'WARNING',startedDate:currentCareerISO(),reason:'V109 story director verdict'};shiftBoardConfidence(-5,'Story Director: formal warning');verdict='THE POSITION IS UNDER FORMAL REVIEW';}
+    if(action==='CLAIM_EARLY'&&user){adjustPlayerManagerTrust(user,5,'Story Director: role claimed');user.squadRole=Number(user.ovr||0)>=backgroundClubStrength(currentClub)?'Important':'Rotation';verdict='THE MANAGER RECOGNISES YOUR ROLE';}
+    if(action==='CLOSE_INTEREST'&&user){adjustPlayerManagerTrust(user,4,'Story Director: loyalty reaffirmed');user.transferRequested=false;user.transferListed=false;user.transferStatus='LISTEN';verdict='YOUR FUTURE STAYS HERE';}
+    if(action==='SETTLE_EARLY'&&user){adjustPlayerManagerTrust(user,4,'Story Director: senior respect earned');adjustPlayerMorale(user,1);verdict='THE ROOM ACCEPTS THE RESET';}
+    return{terminal:true,verdict};
+  }
   function v108ResolveCareerThreadDecision(event,choiceId){
     const thread=v108ThreadById(event?.threadId);if(!thread||thread.status!=='ACTIVE')return null;const choice=event.choices?.find(row=>row.id===choiceId);if(!choice)return null;
-    const date=currentCareerISO(),effect=v108ApplyThreadWorldEffect(thread,event,choiceId),summary=String(choice.summary||`you chose ${choice.label||choiceId}`),p=v108ThreadPlayer(thread);thread.beats.push({stage:thread.stage,date,choiceId,summary,outcomeTitle:choice.label||choiceId});thread.beats=thread.beats.slice(-8);thread.heat=clamp(Number(thread.heat||0)+Number(choice.heat||0),0,100);thread.openEventId=null;
-    const tags=[...(choice.tags||[]),`THREAD ${thread.stage+1}/3`],outcome={eyebrow:thread.stage>=2?'STORYLINE RESOLVED':'THE STORY CONTINUES',title:effect.verdict||choice.label||'DECISION RECORDED',copy:thread.stage>=2?`${summary.replace(/^./,c=>c.toUpperCase())}. This ending is now part of the career record.`:`${summary.replace(/^./,c=>c.toUpperCase())}. This will be remembered when ${thread.title.toLowerCase()} returns.`,tags};
-    if(thread.key==='manager-gamble'&&thread.stage>=2)outcome.copy=`${p?.name||'The prospect'} finishes the thread with ${v108PlayerStatLine(p)}. ${summary.replace(/^./,c=>c.toUpperCase())}.`;
-    if(thread.stage>=2||effect.terminal){thread.status='RESOLVED';thread.resolution={date,key:choiceId,title:outcome.title,summary};thread.nextBeatDate=null;}else{thread.stage++;v108ScheduleNextThreadBeat(thread,date);}
+    const date=currentCareerISO(),effect=v108ApplyThreadWorldEffect(thread,event,choiceId),director=v109ApplyDirectorAction(thread,choice),terminal=thread.stage>=2||effect.terminal||director.terminal||choice.terminal,summary=String(choice.summary||`you chose ${choice.label||choiceId}`),p=v108ThreadPlayer(thread);thread.branch=choiceId;thread.beats.push({stage:thread.stage,date,choiceId,summary,outcomeTitle:choice.label||choiceId,evidence:event.directorEvidence||v109ThreadEvidence(thread),collisionKey:event.collision?.key||null});thread.beats=thread.beats.slice(-8);thread.heat=clamp(Number(thread.heat||0)+Number(choice.heat||0),0,100);thread.openEventId=null;
+    const tags=[...(choice.tags||[]),terminal&&thread.stage<2?'RESOLVED BEFORE FINAL BEAT':`THREAD ${thread.stage+1}/3`],outcome={eyebrow:terminal?'STORYLINE RESOLVED':'THE STORY CONTINUES',title:director.verdict||effect.verdict||choice.label||'DECISION RECORDED',copy:terminal?`${summary.replace(/^./,c=>c.toUpperCase())}. The live evidence justified ending the story here, and this outcome is now part of the career record.`:`${summary.replace(/^./,c=>c.toUpperCase())}. This branch will change what returns when ${thread.title.toLowerCase()} continues.`,tags};
+    if(thread.key==='manager-gamble'&&terminal)outcome.copy=`${p?.name||'The prospect'} closes the thread with ${v108PlayerStatLine(p)}. ${summary.replace(/^./,c=>c.toUpperCase())}.`;
+    if(terminal){thread.status='RESOLVED';thread.resolution={date,key:choiceId,title:outcome.title,summary,early:thread.stage<2,evidence:event.directorEvidence||v109ThreadEvidence(thread)};thread.nextBeatDate=null;}else{thread.stage++;v108ScheduleNextThreadBeat(thread,date);}
     event.threadBeatSummary=summary;event.outcome=outcome;return outcome;
   }
   function processCareerThreads(date=currentCareerISO()){
@@ -1664,6 +1742,7 @@
     '.living-transfer-overlay',
     '.rtg-review-overlay',
     '.v2073-season-moment-overlay',
+    '.v109-advance-recap-overlay',
     '.v44-manager-scene-overlay',
     '.press-conference-overlay',
     '.club-pulse-dossier',
@@ -4988,6 +5067,45 @@
     },300);
   }
 
+  // ---------- V109: truthful multi-day advance recap ----------
+  function v109AdvanceRecapSnapshot(){
+    const squad=currentClub?getSquad(currentClub):[],average=field=>squad.length?squad.reduce((sum,p)=>sum+Number(field(p)||0),0)/squad.length:0,threads=v108CareerThreads().threads;
+    return{date:currentCareerISO(),clubName:currentClub?.name||'Your club',boardConfidence:Math.round(ensureBoardConfidence()),fitness:Math.round(average(p=>p.fitness)),morale:Number(average(p=>moraleIndex(p.morale)).toFixed(1)),activeThreads:threads.filter(row=>row.status==='ACTIVE'&&row.mode===careerMode).length,resolvedThreads:threads.filter(row=>row.status==='RESOLVED'&&row.mode===careerMode).length};
+  }
+  function v109BeginAdvanceRecap(){return{version:1,before:v109AdvanceRecapSnapshot(),days:[],startedAt:Date.now()};}
+  function v109CaptureAdvanceRecapDay(recap,result){
+    if(!recap||!result?.advanced)return recap;const items=[],push=(kind,title,detail='')=>{if(title&&!items.some(row=>row.title===title))items.push({kind,title:String(title),detail:String(detail||'')});};
+    if(result.decision)push('decision',result.decision.title||'Decision required',result.decision.category||'A career decision is waiting.');
+    if(result.fixture){const sides=fixtureClubs(result.fixture);push('match',`${sides.home?.name||'Home'} v ${sides.away?.name||'Away'}`,result.fixture.competitionName||result.fixture.type||'Matchday');}
+    if(result.important)push('important',result.important.title||'Important event',result.important.body||result.important.detail||'');
+    for(const event of (result.events||[]).filter(row=>row&&(row.priority==='IMPORTANT'||eventShouldStopAdvance(row))).slice(0,2))push('calendar',event.title||event.label||event.type,String(event.description||event.body||event.type||''));
+    for(const event of (result.market?.events||[]).filter(row=>['INTERVIEW','JOB_OFFER','APPROACH','WARNING','FINAL_WARNING','SACKED','CONTRACT_EXPIRED'].includes(row.type)).slice(0,1))push('career',event.title||String(event.type||'').replaceAll('_',' '),event.message||event.body||'');
+    if(!items.length&&Number(result.resolvedFixtures?.length||0)>0)push('world','The wider game moved on',`${plural(result.resolvedFixtures.length,'fixture')} settled elsewhere in the world.`);
+    recap.days.push({date:currentCareerISO(),items:items.slice(0,3)});return recap;
+  }
+  function v109FinishAdvanceRecap(recap,result){
+    const after=v109AdvanceRecapSnapshot(),before=recap?.before||after;return{...(recap||{}),after,result,daysAdvanced:Math.max(0,diffDaysISO(before.date,after.date)),deltas:{board:after.boardConfidence-before.boardConfidence,fitness:after.fitness-before.fitness,morale:Number((after.morale-before.morale).toFixed(1)),resolvedThreads:after.resolvedThreads-before.resolvedThreads}};
+  }
+  function v109DeltaLabel(value,suffix=''){const n=Number(value||0);return`${n>0?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;}
+  function ensureV109AdvanceRecapOverlay(){
+    let root=document.getElementById('v109AdvanceRecapOverlay');if(root)return root;root=document.createElement('div');root.id='v109AdvanceRecapOverlay';root.className='v109-advance-recap-overlay';root.setAttribute('aria-hidden','true');root.innerHTML='<section class="v109-advance-recap-shell" role="dialog" aria-modal="true" aria-labelledby="v109AdvanceRecapTitle"><header><div><span>VELMORA STORY DIRECTOR</span><strong id="v109AdvanceRecapTitle">WHILE TIME MOVED</strong></div><b data-v109-recap-range></b></header><main data-v109-recap-body></main><footer><p>Every item above came from the days just processed.</p><button type="button" data-v109-recap-continue>CONTINUE</button></footer></section>';document.body.appendChild(root);root.querySelector('[data-v109-recap-continue]').onclick=()=>{const next=root._v109Continue;root._v109Continue=null;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');scheduleOverlaySync();if(typeof next==='function')setTimeout(next,40);};return root;
+  }
+  function showV109AdvanceRecap(recap,onContinue){
+    const root=ensureV109AdvanceRecapOverlay(),body=root.querySelector('[data-v109-recap-body]'),days=(recap?.days||[]).filter(day=>day.items?.length),metrics=[['DAYS MOVED',plural(recap?.daysAdvanced||0,'day')],['BOARD',v109DeltaLabel(recap?.deltas?.board,' pts')],['AVG FITNESS',v109DeltaLabel(recap?.deltas?.fitness,'%')],['STORIES CLOSED',v109DeltaLabel(recap?.deltas?.resolvedThreads)]];
+    root.querySelector('[data-v109-recap-range]').textContent=`${shortDateLabel(recap.before.date)} — ${shortDateLabel(recap.after.date)}`;
+    body.innerHTML=`<section class="v109-recap-metrics">${metrics.map(([label,value])=>`<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('')}</section><section class="v109-recap-timeline"><div class="v109-recap-heading"><span>CAREER LOG</span><strong>${days.length?`${plural(days.length,'meaningful day')} recorded`:'NO MAJOR INTERRUPTION'}</strong></div>${days.length?days.map(day=>`<article><time>${escapeHtml(shortDateLabel(day.date))}</time><div>${day.items.map(item=>`<section class="is-${escapeHtml(item.kind)}"><i></i><p><strong>${escapeHtml(item.title)}</strong>${item.detail?`<span>${escapeHtml(item.detail)}</span>`:''}</p></section>`).join('')}</div></article>`).join(''):`<article class="is-quiet"><time>${escapeHtml(shortDateLabel(recap.after.date))}</time><div><section><i></i><p><strong>THE ROUTINE HELD</strong><span>No matchday, decision or major career event interrupted the advance.</span></p></section></div></article>`}</section>`;
+    root._v109Continue=onContinue;root.classList.add('is-open');root.setAttribute('aria-hidden','false');scheduleOverlaySync();return root;
+  }
+  function v109OpenAdvanceDestination(result,advanced){
+    if(result?.reason==='DECISION'&&result.decision){showCareerDecisionOverlay(result.decision);showToast(`${plural(advanced,'day')} advanced · decision required`);}
+    else if(result?.reason==='MATCHDAY'&&result.fixture){const {home,away}=fixtureClubs(result.fixture);goCareerScreen('matchday');showToast(`${plural(advanced,'day')} advanced · ${home?.name||''} v ${away?.name||''}`);}
+    else if(result?.reason==='SEASON_REVIEW'){renderSeasonReviewOverlay();showToast(`${plural(advanced,'day')} advanced · season review ready`);}
+    else if(result?.important)showToast(`${plural(advanced,'day')} advanced · ${result.important.title}`);
+    else if(result?.reason==='ONLINE_SYNC')showToast('Moving the shared calendar…');
+    else if(result?.reason==='ONLINE_BARRIER')showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
+    else showToast(`${plural(advanced,'day')} advanced · ${shortDateLabel(currentCareerISO())}`);
+  }
+
   function advanceCentralToNextEvent(){
     if(centralAdvanceToEventBusy||centralAdvanceBusy)return;
     if(roadToGlory.seasonReview?.pending){renderSeasonReviewOverlay();return;}
@@ -4995,18 +5113,13 @@
     const currentFixture=userFixtureOnDate(currentCareerISO());if(currentFixture){goCareerScreen('matchday');return;}
     const panel=$('#centralAdvancePanel'),dayButton=$('#centralAdvanceDay'),nextButton=$('#centralAdvanceNext');if(!panel)return;
     centralAdvanceToEventBusy=true;setCareerNavigationLocked(true,'central');panel.classList.add('is-advancing');panel.setAttribute('aria-busy','true');if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;
-    let result=null,advanced=0;const maxDays=35;
+    let result=null,advanced=0;const maxDays=35,recap=v109BeginAdvanceRecap();
     const finish=()=>{if(advanced>0)saveCareerState();renderCentral();panel.classList.remove('is-advancing');panel.classList.add('has-advanced');panel.removeAttribute('aria-busy');if(dayButton)dayButton.disabled=false;if(nextButton)nextButton.disabled=false;
-      if(result?.reason==='DECISION'&&result.decision){showCareerDecisionOverlay(result.decision);showToast(`${advanced} day${advanced===1?'':'s'} advanced · decision required`);}
-      else if(result?.reason==='MATCHDAY'&&result.fixture){const {home,away}=fixtureClubs(result.fixture);showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${home?.name||''} v ${away?.name||''}`);}
-      else if(result?.important)showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${result.important.title}`);
-      else if(result?.reason==='ONLINE_SYNC')showToast('Moving the shared calendar…');
-      else if(result?.reason==='ONLINE_BARRIER')showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
-      else showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${shortDateLabel(currentCareerISO())}`);
+      const completed=v109FinishAdvanceRecap(recap,result),destination=()=>v109OpenAdvanceDestination(result,advanced);if(advanced>1)showV109AdvanceRecap(completed,destination);else destination();
       setTimeout(()=>panel.classList.remove('has-advanced'),420);centralAdvanceToEventBusy=false;setCareerNavigationLocked(false,'central');};
     const step=()=>{
       try{
-        result=advanceCareerDay({silent:true,deferSave:true});if(result.advanced)advanced++;renderCentralAdvance();if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;if(!result.advanced||result.reason==='MATCHDAY'||result.reason==='DECISION'||result.important||advanced>=maxDays){finish();return;}setTimeout(step,85);
+        result=advanceCareerDay({silent:true,deferSave:true});if(result.advanced){advanced++;v109CaptureAdvanceRecapDay(recap,result);}renderCentralAdvance();if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;if(!result.advanced||result.reason==='MATCHDAY'||result.reason==='DECISION'||result.important||advanced>=maxDays){finish();return;}setTimeout(step,85);
       }catch(err){console.error('Advance to Next Event failed',err);result={advanced:false};showToast('Advance failed · try again');finish();}
     };
     setTimeout(step,110);
@@ -8402,7 +8515,7 @@
   // so an online career can publish the same structure without a slot write.
   function buildCareerSaveData(){
     return {
-        version:window.VELMORA_RELEASE?.saveSchema||88,careerMode,playerCareerState,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
+        version:window.VELMORA_RELEASE?.saveSchema||89,careerMode,playerCareerState,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
         careerTime:{...careerTime},fixtures,calendarEvents,transferWindows,careerInboxMessages,careerNewsStories,pendingNegotiations,processedCalendarEvents:[...processedCalendarEvents],selectedCalendarDate,seasonCalendarCursor,
         careerDecisionEvents,playerPromises,careerEventCooldowns,careerThreads,aiTransferHistory,developmentSnapshots,careerRuntime,unexpectedEvents,preSeasonExperience,cupRuntime,roadToGlory,managerMarket,ownershipState,audienceWorldState,championsCrown,livingSquad,mediaWorld,negotiationEngine,
         clubMembership:Object.fromEntries(clubs.map(c=>[c.id,{divisionKey:c.divisionKey,division:c.division,tier:Number(c.tier||4),reputation:Number(c.reputation||1)}])),
@@ -13912,6 +14025,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
         else if(overlay.id==='infoModal')closeInfo();
         else if(overlay.id==='negotiationModal')closeNegotiation();
         else if(overlay.id==='contractModal')closeContractRenewal();
+        else if(overlay.id==='v109AdvanceRecapOverlay')overlay.querySelector('[data-v109-recap-continue]')?.click();
         else if(overlay.id==='livingTransferOverlay'){overlay.classList.remove('is-open');overlay.setAttribute('aria-hidden','true');}
         else{overlay.classList.remove('is-open');overlay.setAttribute('aria-hidden','true');}
         e.preventDefault();e.stopPropagation();scheduleOverlaySync();return;
@@ -15868,7 +15982,9 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     startFirstWeekForTest:(club,source='direct')=>{currentClub=club;selectedClub=club;employmentStatus='employed';jobSearchState=normalizeJobSearchState({startingMode:source==='offer'?'unemployed':'direct',appointedDate:currentCareerISO(),reputation:18});assignManagerClubBranding(club);initializeCareerLifecycle();startFirstWeek(club,source);return{state:deepClone(firstWeekState),preferences:deepClone(careerPreferences),report:firstWeekSquadReport(club),targets:firstWeekRecommendedTargets().map(p=>p.id)};},
     getFirstWeekState:()=>deepClone(firstWeekState),getCareerPreferences:()=>deepClone(careerPreferences),
     getLivingCareerState:()=>deepClone({careerTime,careerDecisionEvents,playerPromises,careerEventCooldowns,careerThreads,aiTransferHistory,developmentSnapshots,careerRuntime,cupRuntime,news:careerNewsStories.slice(0,20)}),
-    v108CareerThreadsIntegrityForTest:()=>{const state=v108CareerThreads(),active=v108ActiveCareerThreads(),events=careerDecisionEvents.filter(event=>event.threadId),duplicates=active.filter((thread,index)=>active.findIndex(row=>row.key===thread.key) !== index);return{version:'V108',saveSchema:88,totalThreads:state.threads.length,activeThreads:active.length,resolvedThreads:state.threads.filter(thread=>thread.status==='RESOLVED').length,activeCap:V108_THREAD_ACTIVE_CAP,capRespected:active.length<=V108_THREAD_ACTIVE_CAP,duplicateActiveKeys:duplicates.length,rememberedBeats:state.threads.reduce((sum,thread)=>sum+thread.beats.length,0),laterEventsWithPreviously:events.filter(event=>Number(event.threadStage)>0&&event.scene?.beats?.some(beat=>beat.title==='PREVIOUSLY')).length,centralPanelMounted:!!document.getElementById('centralCareerThreads'),immersiveBoardThreads:events.filter(event=>event.threadKey==='manager-board').every(event=>immersiveDecisionEvent(event)),saveConnected:!!buildCareerSaveData().careerThreads};},
+    v108CareerThreadsIntegrityForTest:()=>{const state=v108CareerThreads(),active=v108ActiveCareerThreads(),events=careerDecisionEvents.filter(event=>event.threadId),duplicates=active.filter((thread,index)=>active.findIndex(row=>row.key===thread.key) !== index);return{version:'V108',saveSchema:Number(window.VELMORA_RELEASE?.saveSchema||89),totalThreads:state.threads.length,activeThreads:active.length,resolvedThreads:state.threads.filter(thread=>thread.status==='RESOLVED').length,activeCap:V108_THREAD_ACTIVE_CAP,capRespected:active.length<=V108_THREAD_ACTIVE_CAP,duplicateActiveKeys:duplicates.length,rememberedBeats:state.threads.reduce((sum,thread)=>sum+thread.beats.length,0),laterEventsWithPreviously:events.filter(event=>Number(event.threadStage)>0&&event.scene?.beats?.some(beat=>beat.title==='PREVIOUSLY')).length,centralPanelMounted:!!document.getElementById('centralCareerThreads'),immersiveBoardThreads:events.filter(event=>event.threadKey==='manager-board').every(event=>immersiveDecisionEvent(event)),saveConnected:!!buildCareerSaveData().careerThreads};},
+    v109StoryDirectorIntegrityForTest:()=>{const state=v108CareerThreads(),events=careerDecisionEvents.filter(event=>event.threadId),phase=v109StoryPhase();return{version:'V109',saveSchema:Number(window.VELMORA_RELEASE?.saveSchema||89),phase:phase.key,phaseDirected:!!phase.director,branchAwareEvents:events.filter(event=>Number(event.threadStage)>0&&event.directorBranch).length,evidenceBackedEvents:events.filter(event=>event.directorEvidence).length,collisionEvents:events.filter(event=>event.collision).length,earlyResolutions:state.threads.filter(thread=>thread.resolution?.early).length,directorThreads:state.threads.filter(thread=>Number(thread.directorVersion)>=2).length,advanceNextVisible:getComputedStyle(document.getElementById('centralAdvanceNext')).display!=='none',recapOverlayReady:typeof showV109AdvanceRecap==='function',saveConnected:!!buildCareerSaveData().careerThreads};},
+    showV109AdvanceRecapForTest:()=>{const recap={before:v109AdvanceRecapSnapshot(),days:[{date:currentCareerISO(),items:[{kind:'important',title:'Board confidence reviewed',detail:'The live club record was added to the minutes.'}]}]};recap.after={...recap.before,date:addDaysISO(recap.before.date,5),boardConfidence:recap.before.boardConfidence+2,fitness:recap.before.fitness-1,resolvedThreads:recap.before.resolvedThreads+1};recap.daysAdvanced=5;recap.deltas={board:2,fitness:-1,morale:0,resolvedThreads:1};showV109AdvanceRecap(recap,()=>{});return true;},
     advanceLivingDaysForTest:(days=1)=>{const out=[];for(let i=0;i<Math.max(0,Number(days)||0);i++){const r=advanceCareerDay({silent:true});out.push(deepClone({date:currentCareerISO(),advanced:r.advanced,reason:r.reason,important:r.important||null}));if(!r.advanced||r.reason==='MATCHDAY'||r.reason==='DECISION')break;}return out;},
     generateCareerDecisionForTest:()=>deepClone(generateContextualCareerDecision(currentCareerISO())),
     simulateCurrentFixtureForTest:(mode='QUICK SIM')=>{const f=userFixtureOnDate(currentCareerISO());return f?deepClone(simulateUserFixture(f,mode)):null;},

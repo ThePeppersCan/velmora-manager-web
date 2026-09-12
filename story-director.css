@@ -1,0 +1,127 @@
+/* V109 — Story Director and truthful time-advance presentation. */
+body.v20-ui #screenCentral .central-advance-actions{
+  display:grid!important;
+  grid-template-rows:minmax(0,1.55fr) minmax(1.36cqw,.58fr)!important;
+  gap:0!important;
+  min-width:0;
+  background:#071d35!important;
+}
+body.v20-ui #screenCentral .central-advance-action{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  border-bottom:1px solid rgba(160,206,229,.17)!important;
+}
+body.v20-ui #screenCentral .central-advance-next{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:.30cqw;
+  min-width:0;
+  padding:0 .78cqw;
+  overflow:hidden;
+  border:0;
+  background:linear-gradient(112deg,#071d35 0%,#0d3152 72%,#0e4261 100%)!important;
+  color:#fff;
+  cursor:pointer;
+  text-align:left;
+  transition:filter .16s ease,background .16s ease;
+}
+body.v20-ui #screenCentral .central-advance-next::after{
+  content:'›';
+  color:#79dfe1;
+  font:300 1.05cqw/1 Arial,sans-serif;
+}
+body.v20-ui #screenCentral .central-advance-next span{
+  color:#83a9c4;
+  font:900 clamp(7px,.24cqw,9px)/1 Arial,sans-serif;
+  letter-spacing:.14em;
+}
+body.v20-ui #screenCentral .central-advance-next strong{
+  overflow:hidden;
+  color:#b5f0ef!important;
+  font:900 clamp(8px,.34cqw,12px)/1 Arial,sans-serif;
+  letter-spacing:.075em;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+body.v20-ui #screenCentral .central-advance-next:hover{filter:brightness(1.15)}
+body.v20-ui #screenCentral .central-advance-next:disabled{cursor:wait;filter:saturate(.45);opacity:.62}
+body.v20-ui #screenCentral .central-advance-next:focus-visible{outline:2px solid #77e0e1;outline-offset:-3px}
+
+.v109-advance-recap-overlay{
+  position:fixed;
+  z-index:10040;
+  inset:0;
+  display:none;
+  place-items:center;
+  padding:clamp(16px,3vw,48px);
+  background:radial-gradient(circle at 50% 10%,rgba(23,74,105,.33),transparent 44%),rgba(2,10,20,.88);
+  backdrop-filter:blur(12px) saturate(.8);
+}
+.v109-advance-recap-overlay.is-open{display:grid}
+.v109-advance-recap-shell{
+  width:min(920px,94vw);
+  max-height:min(820px,91vh);
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  overflow:hidden;
+  border:1px solid rgba(119,199,220,.42);
+  border-radius:18px;
+  background:linear-gradient(155deg,#07192c 0%,#0b2741 56%,#071725 100%);
+  box-shadow:0 28px 90px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.07);
+  color:#f5fbff;
+}
+.v109-advance-recap-shell>header{
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:24px;
+  padding:24px 28px 20px;
+  border-bottom:1px solid rgba(167,208,229,.14);
+  background:linear-gradient(90deg,rgba(15,69,94,.34),rgba(7,22,38,.16));
+}
+.v109-advance-recap-shell>header div{display:grid;gap:7px}
+.v109-advance-recap-shell>header span,.v109-recap-heading span{
+  color:#69d9dc;
+  font:900 10px/1 Arial,sans-serif;
+  letter-spacing:.2em;
+}
+.v109-advance-recap-shell>header strong{font:900 clamp(24px,3vw,38px)/.95 Arial,sans-serif;letter-spacing:.045em}
+.v109-advance-recap-shell>header>b{color:#aac3d4;font:800 12px/1 Arial,sans-serif;letter-spacing:.08em;white-space:nowrap}
+.v109-advance-recap-shell>main{min-height:0;overflow:auto;padding:24px 28px 28px;scrollbar-color:#38677e transparent}
+.v109-recap-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:24px}
+.v109-recap-metrics article{display:grid;gap:9px;padding:14px 15px;border:1px solid rgba(145,196,219,.15);border-radius:10px;background:rgba(222,242,251,.055)}
+.v109-recap-metrics span{color:#8ba9bc;font:900 9px/1 Arial,sans-serif;letter-spacing:.13em}
+.v109-recap-metrics strong{color:#fff;font:900 17px/1 Arial,sans-serif;letter-spacing:.025em}
+.v109-recap-timeline{display:grid;gap:0}
+.v109-recap-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid rgba(146,192,214,.2)}
+.v109-recap-heading strong{color:#a9c1d1;font:800 10px/1 Arial,sans-serif;letter-spacing:.08em}
+.v109-recap-timeline>article{display:grid;grid-template-columns:112px minmax(0,1fr);gap:18px;padding:15px 0;border-bottom:1px solid rgba(144,188,209,.105)}
+.v109-recap-timeline time{padding-top:4px;color:#87a5b8;font:900 10px/1.2 Arial,sans-serif;letter-spacing:.08em}
+.v109-recap-timeline>article>div{display:grid;gap:12px}
+.v109-recap-timeline section{display:grid;grid-template-columns:9px minmax(0,1fr);gap:12px;align-items:start}
+.v109-recap-timeline section i{width:8px;height:8px;margin-top:5px;border:2px solid #59cfd2;border-radius:50%;box-shadow:0 0 0 4px rgba(89,207,210,.1)}
+.v109-recap-timeline section.is-decision i,.v109-recap-timeline section.is-important i{border-color:#e9bd62;box-shadow:0 0 0 4px rgba(233,189,98,.1)}
+.v109-recap-timeline section.is-match i{border-color:#72d49c;box-shadow:0 0 0 4px rgba(114,212,156,.1)}
+.v109-recap-timeline p{display:grid;gap:5px;margin:0}
+.v109-recap-timeline p strong{color:#edf8fd;font:900 13px/1.2 Arial,sans-serif;letter-spacing:.025em}
+.v109-recap-timeline p span{color:#9cb5c5;font:500 12px/1.45 Arial,sans-serif}
+.v109-advance-recap-shell>footer{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 28px;border-top:1px solid rgba(167,208,229,.14);background:#061522}
+.v109-advance-recap-shell>footer p{margin:0;color:#7896aa;font:700 10px/1.3 Arial,sans-serif;letter-spacing:.06em}
+.v109-advance-recap-shell>footer button{min-width:170px;padding:13px 22px;border:1px solid #82e0e1;border-radius:8px;background:linear-gradient(135deg,#17617a,#248e99);box-shadow:0 9px 26px rgba(16,116,129,.26);color:#fff;font:900 11px/1 Arial,sans-serif;letter-spacing:.14em;cursor:pointer}
+.v109-advance-recap-shell>footer button:hover{filter:brightness(1.13)}
+.v109-advance-recap-shell>footer button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+@media(max-width:680px){
+  .v109-advance-recap-shell>header,.v109-advance-recap-shell>main,.v109-advance-recap-shell>footer{padding-left:18px;padding-right:18px}
+  .v109-recap-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .v109-recap-timeline>article{grid-template-columns:84px minmax(0,1fr);gap:10px}
+  .v109-advance-recap-shell>footer{align-items:stretch;flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){
+  body.v20-ui #screenCentral .central-advance-next,.v109-advance-recap-shell>footer button{transition:none!important}
+}

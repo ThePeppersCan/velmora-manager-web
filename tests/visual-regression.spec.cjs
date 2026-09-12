@@ -74,6 +74,25 @@ test('Career Threads has a readable, non-overlapping home on Central',async({pag
   expect(geometry.titleSize).toBeGreaterThanOrEqual(8);
 });
 
+test('Story Director makes next-event advance explicit and presents a factual recap',async({page})=>{
+  await openPreview(page,'/?screen=central&club=NYR',viewports[0]);
+  const next=page.locator('#centralAdvanceNext');
+  await expect(next).toBeVisible();
+  await expect(next).toContainText('NEXT EVENT');
+  await next.focus();
+  await expect(next).toBeFocused();
+  await page.evaluate(()=>window.VELMORA_MANAGER_DEBUG.showV109AdvanceRecapForTest());
+  const recap=page.locator('#v109AdvanceRecapOverlay');
+  await expect(recap).toBeVisible();
+  await expect(recap).toContainText('WHILE TIME MOVED');
+  await expect(recap).toContainText('Every item above came from the days just processed.');
+  await expect(recap.locator('.v109-recap-metrics article')).toHaveCount(4);
+  await expect(recap.locator('[data-v109-recap-continue]')).toBeFocused();
+  await expect(page).toHaveScreenshot('story-director-recap-laptop.png',{fullPage:true});
+  await page.keyboard.press('Escape');
+  await expect(recap).toBeHidden();
+});
+
 test('Club Pulse exposes four independent audience dossiers',async({page})=>{
   const viewport=viewports[0];
   await openPreview(page,'/?screen=central&club=NYR',viewport);
