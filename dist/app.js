@@ -12105,7 +12105,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(fixture.type==='CHAMPIONS_CROWN'&&fixture.ccStage==='FINAL')return won?{tone:'champion',label:'CHAMPIONS',title:'CHAMPIONS OF THE FOUR WORLDS',copy:`${club.name} have won the Champions Crown.`,newsTitle:`${club.name.toUpperCase()} ARE CHAMPIONS OF THE FOUR WORLDS`}:{tone:'defeat',label:'FINAL',title:'CHAMPIONS CROWN FINAL DEFEAT',copy:`${club.name}'s continental run ends one match short of the crown.`,newsTitle:`${club.name.toUpperCase()} FALL IN CHAMPIONS CROWN FINAL`};
     if(fixture.type==='PLAYOFF'&&String(fixture.round||fixture.stage||'').toUpperCase()==='FINAL')return won?{tone:'champion',label:'PROMOTED',title:'PROMOTION SECURED',copy:`${club.name} have won the promotion final and will move up a tier.`,newsTitle:`${club.name.toUpperCase()} WIN PROMOTION`}:{tone:'defeat',label:'PLAYOFF FINAL',title:'PROMOTION DREAM ENDS',copy:`${club.name} have been beaten in the promotion final.`,newsTitle:`${club.name.toUpperCase()} MISS OUT IN PROMOTION FINAL`};
     if(isDomesticCupFinal(fixture))return won?{tone:'champion',label:'CUP WINNERS',title:`${String(fixture.competitionName||'DOMESTIC CUP').toUpperCase()} WINNERS`,copy:`${club.name} have lifted ${fixture.competitionName||'the domestic cup'}.`,newsTitle:`${club.name.toUpperCase()} LIFT ${String(fixture.competitionName||'DOMESTIC CUP').toUpperCase()}`}:{tone:'defeat',label:'CUP FINAL',title:'FINAL DEFEAT',copy:`${club.name} finish as runners-up in ${fixture.competitionName||'the domestic cup'}.`,newsTitle:`${club.name.toUpperCase()} BEATEN IN ${String(fixture.competitionName||'CUP').toUpperCase()} FINAL`};
-    if(fixture.type==='LEAGUE'&&isFinalLeagueMatchday(fixture,club)){
+    if(fixture.type==='LEAGUE'&&isFinalLeagueMatchday(fixture,club)&&!fixtures.some(f=>f.type==='LEAGUE'&&f.competitionId===fixture.competitionId&&!f.played)){
       const rows=standingsForDivision(fixture.competitionId),row=rows.find(x=>x.club.id===club.id),tier=Number(club.tier||4),relegationLine=Math.max(1,rows.length-2);if(row?.pos===1)return{tone:'champion',label:'CHAMPIONS',title:tier===1?'LEAGUE CHAMPIONS':'CHAMPIONS · PROMOTED',copy:tier===1?`${club.name} finish top of ${club.division}.`:`${club.name} are champions and secure promotion.`,newsTitle:`${club.name.toUpperCase()} CROWNED ${String(club.division||'LEAGUE').toUpperCase()} CHAMPIONS`};if(tier>1&&row?.pos===2)return{tone:'champion',label:'PROMOTED',title:'AUTOMATIC PROMOTION SECURED',copy:`A second-place finish sends ${club.name} up automatically.`,newsTitle:`${club.name.toUpperCase()} SECURE AUTOMATIC PROMOTION`};if(tier<4&&row?.pos>=relegationLine)return{tone:'defeat',label:'RELEGATED',title:'RELEGATION CONFIRMED',copy:`${club.name} will compete one tier lower next season.`,newsTitle:`${club.name.toUpperCase()} RELEGATED`};if(tier===1&&row?.pos<=4)return{tone:'success',label:'QUALIFIED',title:'CHAMPIONS CROWN PLACE SECURED',copy:`${club.name} finish in the top four and qualify for the Champions Crown.`,newsTitle:`${club.name.toUpperCase()} SECURE CHAMPIONS CROWN PLACE`};if(occasion?.race?.label==='SURVIVAL DECIDER'&&row?.pos<relegationLine)return{tone:'success',label:'SURVIVAL',title:'SURVIVAL SECURED',copy:`${club.name} finish above the relegation places.`,newsTitle:`${club.name.toUpperCase()} SECURE SURVIVAL`};
     }
     if(occasion?.directRival&&won)return{tone:'success',label:'RIVALRY',title:'BRAGGING RIGHTS SECURED',copy:`${club.name} take the latest chapter of this rivalry.`,newsTitle:`${club.name.toUpperCase()} CLAIM RIVALRY VICTORY`};if(occasion?.unbeaten>=6&&resultCode!=='L')return{tone:'success',label:'STREAK',title:`UNBEATEN RUN EXTENDED`,copy:`${club.name}'s league unbeaten sequence continues beyond ${plural(occasion.unbeaten,'match','matches')}.`,newsTitle:null};if(occasion?.academy?.player)return{tone:'milestone',label:'ACADEMY',title:'SENIOR MILESTONE',copy:`${occasion.academy.player.name} made a first senior start.`,newsTitle:null};return null;
@@ -12113,14 +12113,30 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   function matchResultMomentHTML(r){const m=r?.resultMoment||matchResultMomentData(r);return m?`<section class="result-occasion-moment is-${escapeHtml(m.tone||'success')}"><span>${escapeHtml(m.label)}</span><strong>${escapeHtml(m.title)}</strong><small>${escapeHtml(m.copy)}</small></section>`:'';}
   function v2072LeagueClinchedType(r){
     const f=r?.fixture,club=currentClub||selectedClub;if(!f||f.type!=='LEAGUE'||!club)return null;
-    const rows=standingsForDivision(f.competitionId),row=rows.find(x=>x.club?.id===club.id);if(!row)return null;
-    const remainingFor=id=>fixtures.filter(x=>!x.played&&x.type==='LEAGUE'&&x.competitionId===f.competitionId&&(x.homeClubId===id||x.awayClubId===id)).length;
-    const tier=Number(club.tier||4),second=rows[1],third=rows[2],fifth=rows[4],relegationFirst=rows[Math.max(0,rows.length-3)],ownMax=Number(row.pts||0)+remainingFor(club.id)*3;
-    if(row.pos===1&&second&&Number(row.pts||0)>Number(second.pts||0)+remainingFor(second.club.id)*3)return tier>1?'promotion-title':'league';
-    if(tier>1&&row.pos<=2&&third&&Number(row.pts||0)>Number(third.pts||0)+remainingFor(third.club.id)*3)return'promotion';
-    if(tier===1&&row.pos<=4&&fifth&&Number(row.pts||0)>Number(fifth.pts||0)+remainingFor(fifth.club.id)*3)return'qualification';
-    if(tier<4&&row.pos>=rows.length-2&&relegationFirst&&ownMax<Number(relegationFirst.pts||0))return'relegation';
-    if(row.pos<rows.length-2&&relegationFirst&&Number(row.pts||0)>Number(relegationFirst.pts||0)+remainingFor(relegationFirst.club.id)*3&&String(r?.occasion?.race?.label||'').includes('SURVIVAL'))return'survival';
+    const rows=standingsForDivision(f.competitionId),row=rows.find(x=>x.club?.id===club.id);if(!row||rows.length<2)return null;
+    const leagueFixtures=fixtures.filter(x=>x.type==='LEAGUE'&&x.competitionId===f.competitionId);if(!leagueFixtures.length)return null;
+    const remaining=new Map(rows.map(x=>[x.club.id,0]));
+    leagueFixtures.filter(x=>!x.played).forEach(x=>{
+      for(const id of [x.homeClubId,x.awayClubId])remaining.set(id,(remaining.get(id)||0)+1);
+    });
+    const ownRemaining=remaining.get(club.id)||0,ownPoints=Number(row.pts||0),ownMax=ownPoints+ownRemaining*3;
+    let worstPosition=1,bestPosition=1;
+    for(const rival of rows){
+      if(rival.club.id===club.id)continue;
+      const rivalRemaining=remaining.get(rival.club.id)||0,rivalPoints=Number(rival.pts||0),rivalMax=rivalPoints+rivalRemaining*3;
+      // Every rival matters, including clubs lower down with games in hand.
+      // Equal points are still catchable while either club can change its goal
+      // difference. Only completed schedules make the table's tie-break final.
+      const settledTie=ownRemaining===0&&rivalRemaining===0,rivalAhead=rival.pos<row.pos;
+      if(rivalMax>ownPoints||(rivalMax===ownPoints&&(!settledTie||rivalAhead)))worstPosition++;
+      if(rivalPoints>ownMax||(rivalPoints===ownMax&&settledTie&&rivalAhead))bestPosition++;
+    }
+    const tier=Number(club.tier||4),safePlaces=rows.length-3;
+    if(worstPosition===1)return tier>1?'promotion-title':'league';
+    if(tier>1&&worstPosition<=2)return'promotion';
+    if(tier===1&&worstPosition<=4)return'qualification';
+    if(tier<4&&bestPosition>safePlaces)return'relegation';
+    if(tier<4&&worstPosition<=safePlaces&&String(r?.occasion?.race?.label||'').includes('SURVIVAL'))return'survival';
     return null;
   }
   function v2072DerivedAchievementMoment(r,type){
@@ -12134,7 +12150,9 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     return null;
   }
   function v2072AchievementType(r,moment=r?.resultMoment||matchResultMomentData(r)){
-    const f=r?.fixture;if(!f)return null;const derived=v2072LeagueClinchedType(r);if(derived)return derived;
+    const f=r?.fixture;if(!f)return null;
+    // A presentation label must never override the current league arithmetic.
+    if(f.type==='LEAGUE')return v2072LeagueClinchedType(r);
     const label=String(moment?.label||'').toUpperCase(),title=String(moment?.title||'').toUpperCase();
     if(!moment)return null;
     if(f.type==='CHAMPIONS_CROWN'&&f.ccStage==='FINAL')return r.resultCode==='W'?'crown':'runnerup-crown';
@@ -12181,7 +12199,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     root.querySelector('[data-v2072-close]').onclick=close;root._v2072Close=close;return root;
   }
   function showAchievementCelebration(r,options={}){
-    if(!r?.saved||!r.fixture)return false;let moment=r.resultMoment||matchResultMomentData(r),type=v2072AchievementType(r,moment);if(!type)return false;if(!moment)moment=v2072DerivedAchievementMoment(r,type);
+    if(!r?.saved||!r.fixture)return false;let moment=r.resultMoment||matchResultMomentData(r),type=v2072AchievementType(r,moment);if(!type)return false;if(r.fixture.type==='LEAGUE'||!moment)moment=v2072DerivedAchievementMoment(r,type);
     const key=v2072AchievementKey(r,type),seen=roadToGlory.presentation?.seenAchievementKeys||[];
     if(!options.force&&seen.includes(key))return false;
     roadToGlory.presentation=roadToGlory.presentation||{seenAchievementKeys:[],lastSeasonFinaleId:null};
