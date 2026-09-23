@@ -32,6 +32,7 @@ function career({ matchDay = 6, daily = () => {} } = {}) {
     EVENT_PRIORITY: { INFO: 0, NORMAL: 1, IMPORTANT: 2, BLOCKING: 3 },
     roadToGlory: { seasonReview: { pending: false } },
     careerInboxMessages: [], currentClub: { id: 'club' },
+    careerMode: 'MANAGER', pcActive: () => false,
     v202Performance: { deferredAdvanceSaveSkips: 0 },
     v37InboxDecision: () => null,
     initializeCareerCalendar() {}, v104Active: () => false,
@@ -161,6 +162,23 @@ test('shared-calendar barriers do not advance local time', () => {
   assert.equal(run.state.day, 0);
   assert.equal(run.state.saves, 0);
   assert.match(run.state.toasts.at(-1), /other manager/);
+});
+
+test('player career preserves its separate decisions and ignores manager-only stops', () => {
+  const run = career({ daily(day, context, state) {
+    context.careerInboxMessages.unshift({ id: 'board-offer', notificationPriority: 'IMPORTANT' });
+    state.calendarEvents = [{ priority: 'IMPORTANT', title: 'Board review' }];
+  } });
+  run.context.careerMode = 'PLAYER';
+  run.context.pcActive = () => true;
+  run.context.roadToGlory.seasonReview.pending = true;
+  let decisionDate = null;
+  run.context.pcGenerateDecision = date => { decisionDate = date; };
+  const result = run.context.advanceCareerDay({ silent: true });
+  assert.equal(result.advanced, true);
+  assert.equal(result.blocked, false);
+  assert.equal(result.important, null);
+  assert.equal(decisionDate, 1);
 });
 
 test('a simulation or save error releases navigation and reports failure', () => {
