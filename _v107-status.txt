@@ -1,0 +1,14 @@
+=== PUSH master -> deploy/source === 
+ 
+To https://github.com/ThePeppersCan/velmora-manager-web.git
+   4044f2d..69347a7  HEAD -> source
+ 
+--- local master --- 
+69347a7 Run Player Career inside the manager shell, and give the athlete a player's authority
+--- remote source --- 
+69347a7 Run Player Career inside the manager shell, and give the athlete a player's authority
+ 
+--- ahead/behind, should be 0 0 --- 
+0	0
+ 
+DONE 
