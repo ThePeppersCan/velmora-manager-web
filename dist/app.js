@@ -4371,7 +4371,7 @@
     return dayEvents;
   }
 
-  function eventShouldStopAdvance(event){return (EVENT_PRIORITY[event?.priority]||0)>=EVENT_PRIORITY.IMPORTANT;}
+  function eventShouldStopAdvance(event){return !!event?.blocking||!!event?.requiresAction||(EVENT_PRIORITY[event?.priority]||0)>=EVENT_PRIORITY.IMPORTANT;}
   function refreshActiveCareerScreen(){
     if(activePrimaryScreen==='central')renderCentral();else if(activePrimaryScreen==='squad')renderSquad();else if(activePrimaryScreen==='transfers')renderTransfers();else if(activePrimaryScreen==='office')renderOffice();else if(activePrimaryScreen==='season')renderSeason();else if(activePrimaryScreen==='matchday')renderMatchday();else if(activePrimaryScreen==='results')renderResults();
   }
@@ -4401,6 +4401,7 @@
       return {advanced:false,blocked:true,reason:'ONLINE_SYNC',
         online:{reason:'SYNCING',message:'Moving the shared calendar…'},events:[]};
     }
+    const inboxBefore=new Set(careerInboxMessages.map(message=>message.id));
     const nextDate=addDaysISO(currentCareerISO(),1);
     setCareerDate(nextDate);
     processDailyPlayerUpdates(nextDate);
@@ -4418,7 +4419,11 @@
     if(!options.silent)refreshActiveCareerScreen();
     const match=userFixtureOnDate(nextDate);
     const managerImportant=market.events.find(e=>['INTERVIEW','JOB_OFFER','APPROACH','WARNING','FINAL_WARNING','SACKED','CONTRACT_EXPIRED'].includes(e.type));
-    const important=progression.important||dayEvents.find(eventShouldStopAdvance)||living.important||managerImportant;
+    // Catch important mail from every daily system, including staff, loans and
+    // recruitment. Existing unread mail must not stop every subsequent advance.
+    const importantMessage=careerInboxMessages.find(message=>!inboxBefore.has(message.id)&&notificationPriorityForMessage(message)==='IMPORTANT');
+    const inboxImportant=importantMessage?{type:'INBOX',title:importantMessage.subject||importantMessage.title||'Important email received',messageId:importantMessage.id}:null;
+    const important=progression.important||inboxImportant||dayEvents.find(eventShouldStopAdvance)||living.important||managerImportant;
     return {advanced:true,blocked:!!match||!!newDecision||!!roadToGlory.seasonReview?.pending,reason:match?'MATCHDAY':newDecision?'DECISION':roadToGlory.seasonReview?.pending?'SEASON_REVIEW':important?'IMPORTANT_EVENT':null,fixture:match,decision:newDecision,events:dayEvents,important,resolvedFixtures,living,market,media,progression};
   }
 
@@ -4583,19 +4588,20 @@
     }else{
       button.classList.remove('is-matchday-ready','is-decision-ready');
       if(kicker)kicker.textContent='ADVANCE';
-      if(strong)strong.textContent='1 DAY';
+      if(strong)strong.textContent='NEXT EVENT';
       const next=dayData.slice(1).find(x=>['match','deadline','season','transfer','scout','board','youth','contract','medical','event'].includes(x.event.type));
       if(nextEl){
         if(next){
           const dayName=dayNames[next.d.getUTCDay()];
           nextEl.textContent=`${next.event.label} · ${dayName} ${next.d.getUTCDate()}`;
         }else{
-          nextEl.textContent='Progress career time';
+          nextEl.textContent='Stops for important emails and matchdays';
         }
       }
-      button.setAttribute('aria-label','Advance one career day');
-      if(nextButton){nextButton.disabled=false;nextButton.querySelector('span').textContent='ADVANCE TO';nextButton.querySelector('strong').textContent='NEXT EVENT';}
+      button.setAttribute('aria-label','Advance to next important email or matchday');
+      if(nextButton){nextButton.disabled=false;nextButton.querySelector('span').textContent='ADVANCE';nextButton.querySelector('strong').textContent='1 DAY';}
     }
+    if(nextButton)nextButton.setAttribute('aria-label',currentDecision?'Open career decision':currentFixture?'Go to matchday':'Advance one career day');
 
     $$('#centralAdvanceDays [data-central-advance-date]').forEach(btn=>btn.addEventListener('click',()=>{
       const offset=Number(btn.dataset.centralAdvanceDate||0);
@@ -4608,7 +4614,7 @@
 
   let centralAdvanceBusy=false;
   function advanceCentralCareerDay(){
-    if(centralAdvanceBusy)return;
+    if(centralAdvanceBusy||centralAdvanceToEventBusy)return;
     if(roadToGlory.seasonReview?.pending){renderSeasonReviewOverlay();return;}
     const decision=pendingDecisionEvent();if(decision){showCareerDecisionOverlay(decision);return;}
     const currentFixture=userFixtureOnDate(currentCareerISO());
@@ -4666,18 +4672,38 @@
     const panel=$('#centralAdvancePanel'),dayButton=$('#centralAdvanceDay'),nextButton=$('#centralAdvanceNext');if(!panel)return;
     centralAdvanceToEventBusy=true;setCareerNavigationLocked(true,'central');panel.classList.add('is-advancing');panel.setAttribute('aria-busy','true');if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;
     let result=null,advanced=0;const maxDays=35;
-    const finish=()=>{if(advanced>0)saveCareerState();renderCentral();panel.classList.remove('is-advancing');panel.classList.add('has-advanced');panel.removeAttribute('aria-busy');if(dayButton)dayButton.disabled=false;if(nextButton)nextButton.disabled=false;
-      if(result?.reason==='DECISION'&&result.decision){showCareerDecisionOverlay(result.decision);showToast(`${advanced} day${advanced===1?'':'s'} advanced · decision required`);}
+    const finish=()=>{
+      try{
+        if(advanced>0)saveCareerState();
+        renderCentral();
+      }finally{
+        panel.classList.remove('is-advancing');panel.classList.add('has-advanced');panel.removeAttribute('aria-busy');
+        if(dayButton)dayButton.disabled=false;if(nextButton)nextButton.disabled=false;
+        setTimeout(()=>panel.classList.remove('has-advanced'),420);centralAdvanceToEventBusy=false;setCareerNavigationLocked(false,'central');
+      }
+      if(result?.reason==='ERROR')showToast('Advance failed · try again');
+      else if(result?.reason==='SEASON_REVIEW'){renderSeasonReviewOverlay();showToast('Season review ready');}
+      else if(result?.reason==='DECISION'&&result.decision){showCareerDecisionOverlay(result.decision);showToast(`${advanced} day${advanced===1?'':'s'} advanced · decision required`);}
       else if(result?.reason==='MATCHDAY'&&result.fixture){const {home,away}=fixtureClubs(result.fixture);showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${home?.name||''} v ${away?.name||''}`);}
-      else if(result?.important)showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${result.important.title}`);
+      else if(result?.important){
+        if(result.important.messageId)centralOpenOffice('inbox',result.important.messageId);
+        showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${result.important.title||'Important career event'}`);
+      }
       else if(result?.reason==='ONLINE_SYNC')showToast('Moving the shared calendar…');
       else if(result?.reason==='ONLINE_BARRIER')showToast(result.online?.message||'The shared calendar is waiting on the other manager.');
       else showToast(`${advanced} day${advanced===1?'':'s'} advanced · ${shortDateLabel(currentCareerISO())}`);
-      setTimeout(()=>panel.classList.remove('has-advanced'),420);centralAdvanceToEventBusy=false;setCareerNavigationLocked(false,'central');};
+    };
     const step=()=>{
       try{
-        result=advanceCareerDay({silent:true,deferSave:true});if(result.advanced)advanced++;renderCentralAdvance();if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;if(!result.advanced||result.reason==='MATCHDAY'||result.reason==='DECISION'||result.important||advanced>=maxDays){finish();return;}setTimeout(step,85);
-      }catch(err){console.error('Advance to Next Event failed',err);result={advanced:false};showToast('Advance failed · try again');finish();}
+        result=advanceCareerDay({silent:true,deferSave:true});
+        if(result.advanced)advanced++;
+        renderCentralAdvance();if(dayButton)dayButton.disabled=true;if(nextButton)nextButton.disabled=true;
+      }catch(err){console.error('Advance to Next Event failed',err);result={advanced:false,reason:'ERROR'};}
+      if(!result.advanced||result.blocked||result.important||advanced>=maxDays){
+        try{finish();}catch(err){console.error('Finishing career advance failed',err);showToast('Advance failed · try again');}
+        return;
+      }
+      setTimeout(step,85);
     };
     setTimeout(step,110);
   }
@@ -12554,8 +12580,8 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   });
 
   $('#centralContinue').addEventListener('click',e=>runLockedAction('CENTRAL_MATCH_PREVIEW',e.currentTarget,()=>goCareerScreen('matchday'),{releaseDelay:220,busyText:'OPENING…'}));
-  $('#centralAdvanceDay')?.addEventListener('click',advanceCentralCareerDay);
-  $('#centralAdvanceNext')?.addEventListener('click',advanceCentralToNextEvent);
+  $('#centralAdvanceDay')?.addEventListener('click',advanceCentralToNextEvent);
+  $('#centralAdvanceNext')?.addEventListener('click',advanceCentralCareerDay);
   $('#centralSettings').addEventListener('click',()=>{ensureMenuMusic();openSettings();});
   $('#centralInbox').addEventListener('click',()=>openOfficeInbox('all'));
   $('#squadSettings').addEventListener('click',()=>{ensureMenuMusic();openSettings();});
