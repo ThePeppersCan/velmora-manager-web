@@ -12,10 +12,10 @@
   }
 })(typeof window==='object'?window:globalThis,function(){
   return Object.freeze({
-    version:'105.2.0',
-    label:'V105.2',
-    channel:'CAREER POLISH',
-    cacheKey:'v105-2-career-polish-20260911',
-    saveSchema:86
+    version:'107.0.0',
+    label:'V107',
+    channel:'PLAYER CAREER SHELL',
+    cacheKey:'v107-player-career-shell-20260912',
+    saveSchema:87
   });
 });

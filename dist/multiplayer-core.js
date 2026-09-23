@@ -40,6 +40,8 @@
     'careerEventCooldowns',
     'careerPreferences',          // draft tactics before submission, UI prefs
     'careerChallenge',
+    'careerMode',                 // local story mode; Online Career remains manager-only
+    'playerCareerState',          // controlled-athlete identity is never shared online
     'firstWeekState',
     'jobSearchState',
     'playerPromises',

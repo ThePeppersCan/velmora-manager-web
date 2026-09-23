@@ -50,6 +50,8 @@
 
   const screens = {
     menu: document.getElementById('screenMenu'),
+    careerMode: document.getElementById('screenCareerMode'),
+    playerSetup: document.getElementById('screenPlayerSetup'),
     managerCreator: document.getElementById('screenManagerCreator'),
     careerStart: document.getElementById('screenCareerStart'),
     unemployed: document.getElementById('screenUnemployed'),
@@ -259,6 +261,10 @@
   let managerAppearanceCategory = 'skin';
   let managerWardrobeCategory = 'outfit';
   let managerConfirmed = false;
+  let careerMode = 'MANAGER';
+  let playerSetupStage = 'route';
+  let pendingPlayerSetup = {kind:null,name:'',age:19,role:'ATTACKER',avatar:null};
+  let playerCareerState = {version:1,userPlayerId:null,origin:null,status:'SETUP',selections:{},acknowledgedTeamsheets:{},offers:[],lastReview:null,startedDate:null};
   let employmentStatus = 'setup';
   let jobSearchState = {startedDate:null,reputation:18,offers:[],offerHistory:[],declinedClubIds:[],lastOfferDate:null,totalOffers:0,appointedDate:null,startingMode:null};
   let appointmentClubId = null;
@@ -1276,6 +1282,7 @@
     const event=careerDecisionEvents.find(e=>e.id===id);if(!event||event.resolved)return;
     if(event.kind==='PLAYING_TIME'){v37RefreshPlayingTimeDecisions();if(event.resolved){hideCareerDecisionOverlay();refreshActiveCareerScreen();return;}}
     const p=event.playerId?careerPlayerById(event.playerId):null;event.choiceId=choiceId;event.resolved=true;event.resolvedDate=currentCareerISO();
+    if(String(event.kind||'').startsWith('PC_'))pcResolveDecision(event,choiceId);
     if(event.kind==='PLAYING_TIME'){
       if(choiceId==='promise'){event.promiseId=createPlayingTimePromise(p)?.id;adjustPlayerMorale(p,1);adjustPlayerManagerTrust(p,5,'Playing-time commitment');}
       if(choiceId==='work'){adjustPlayerMorale(p,0);adjustPlayerManagerTrust(p,-2,'No playing-time promise');}
@@ -1509,6 +1516,7 @@
   function showScreen(name){
     const target=screens[name];
     if(!target)return false;
+    syncPlayerCareerChrome();
     if(activePrimaryScreen==='squad'&&name!=='squad')flushSquadSave();
     v45CloseQuickAccess?.();
     const serial=++screenTransitionSerial;
@@ -1535,6 +1543,7 @@
     if(name==='results'){
       const reportScroll=target.querySelector('.results-scroll');
       if(reportScroll)reportScroll.scrollTop=0;
+      const impact=target.querySelector('#resultsLeagueImpact');impact?.querySelector('.pc-player-result')?.remove();if(impact&&playerCareerActive()&&lastPresentationResult)impact.insertAdjacentHTML('afterbegin',playerCareerResultHTML(lastPresentationResult));
     }
     updateCareerNavState(name==='results'?'matchday':name);
     v45EnsureQuickAccessUI?.();
@@ -2851,6 +2860,111 @@
     saveCareerState();
     renderUnemployedHub();showScreen('unemployed');
     showToast('Career started unemployed · the job search begins');
+  }
+
+  // ---------- V106: Player Career focused playable slice ----------
+  function normalizePlayerCareerState(value={}){
+    const src=value&&typeof value==='object'?value:{};
+    return {
+      version:1,
+      userPlayerId:src.userPlayerId||null,
+      origin:['CREATED','EXISTING'].includes(src.origin)?src.origin:null,
+      status:['SETUP','UNSIGNED','CLUB'].includes(src.status)?src.status:'SETUP',
+      selections:src.selections&&typeof src.selections==='object'?src.selections:{},
+      acknowledgedTeamsheets:src.acknowledgedTeamsheets&&typeof src.acknowledgedTeamsheets==='object'?src.acknowledgedTeamsheets:{},
+      offers:Array.isArray(src.offers)?src.offers:[],
+      lastReview:src.lastReview&&typeof src.lastReview==='object'?src.lastReview:null,
+      startedDate:src.startedDate||null
+    };
+  }
+  function playerCareerActive(){return careerMode==='PLAYER'&&careerHasStarted();}
+  function playerCareerPlayer(){return playerCareerState.userPlayerId?careerPlayerById(playerCareerState.userPlayerId):null;}
+  function playerCareerModeSelect(){careerMode='MANAGER';employmentStatus='setup';currentClub=null;showScreen('careerMode');}
+  function playerCareerAvatarOptions(){const club=clubs.find(c=>Number(c.tier||4)>=3)||clubs[0];return Array.from({length:8},(_,i)=>seniorAvatarPathFor(club,i+1));}
+  function beginPlayerCareerSetup(){
+    resetCareerWorld();careerMode='PLAYER';employmentStatus='setup';currentClub=null;selectedClub=clubs.find(c=>Number(c.tier||4)>=3)||clubs[0]||null;playerSetupStage='route';
+    const avatars=playerCareerAvatarOptions();pendingPlayerSetup={kind:null,name:'Ari Vale',age:19,role:'ATTACKER',avatar:avatars[0]||'assets/player-avatars/player-001.png'};playerCareerState=normalizePlayerCareerState({});
+    renderPlayerCareerSetup();showScreen('playerSetup');
+  }
+  function playerCareerExistingCandidates(){
+    const pool=clubs.filter(c=>Number(c.tier||4)>=3).flatMap(c=>getSquad(c).slice(0,3).map(p=>({player:p,club:c})));return pool.sort((a,b)=>(hashString(`${worldSeed}-PC-EXISTING-${a.player.id}`)%100000)-(hashString(`${worldSeed}-PC-EXISTING-${b.player.id}`)%100000)||a.player.name.localeCompare(b.player.name)).slice(0,18);
+  }
+  function playerCareerClubCandidates(player=null){
+    const target=Number(player?.ovr||61);return clubs.filter(c=>Number(c.tier||4)>=3).map(club=>{const range=rangeFromOvr(club.ovr),level=(range[0]+range[1])/2,fit=100-Math.abs(level-target)*8+(hashString(`${worldSeed}-PC-CLUB-${club.id}`)%9);return{club,fit:Math.round(fit),level};}).sort((a,b)=>b.fit-a.fit||a.club.name.localeCompare(b.club.name)).slice(0,18);
+  }
+  function renderPlayerCareerSetup(){
+    const host=$('#playerSetupContent'),title=$('#playerSetupTitle'),step=$('#playerSetupStep'),kicker=$('#playerSetupKicker');if(!host)return;
+    const setHeader=(name,count,eyebrow='PLAYER CAREER')=>{if(title)title.textContent=name;if(step)step.textContent=count;if(kicker)kicker.textContent=eyebrow;};
+    if(playerSetupStage==='route'){
+      setHeader('CHOOSE YOUR ATHLETE','STEP 1 OF 3');host.innerHTML=`<section class="pc-setup-lead"><div><span class="pc-card-kicker">YOUR CAREER · YOUR IDENTITY</span><h1>WHO WILL YOU BECOME?</h1><p>Create a new prospect from the ground up, or take control of one real athlete already living inside the Velmora world.</p></div></section><section class="pc-route-grid"><button type="button" class="pc-choice-card" data-pc-route="create"><span>ORIGINAL ATHLETE</span><h2>CREATE AN ATHLETE</h2><p>Choose your identity, age, primary role and portrait. Your attributes are balanced to the level where you begin.</p><strong>OPEN ATHLETE CREATOR ›</strong></button><button type="button" class="pc-choice-card" data-pc-route="existing"><span>EXISTING WORLD</span><h2>SELECT AN ATHLETE</h2><p>Step into the career of a generated squad player. Their club, contract, form and place in the team all remain intact.</p><strong>BROWSE REAL SQUADS ›</strong></button></section>`;return;
+    }
+    if(playerSetupStage==='create'){
+      setHeader('CREATE YOUR ATHLETE','STEP 2 OF 3','PLAYER CAREER · CREATOR');const avatars=playerCareerAvatarOptions(),active=pendingPlayerSetup.avatar||avatars[0];host.innerHTML=`<section class="pc-setup-lead"><div><span class="pc-card-kicker">ORIGINAL ATHLETE</span><h1>BUILD YOUR PLAYING IDENTITY</h1><p>These choices create a full player record. Ability is calibrated when you choose a club or begin unsigned.</p></div></section><section class="pc-create-shell"><article class="pc-create-preview"><img src="${escapeHtml(v262StandingSprite({id:'PC-PREVIEW',avatar:active,name:pendingPlayerSetup.name}))}" alt="Athlete preview"><h2>${escapeHtml(pendingPlayerSetup.name||'YOUR ATHLETE')}</h2><p>${escapeHtml(pendingPlayerSetup.role)} · AGE ${pendingPlayerSetup.age}</p></article><article class="pc-create-form"><div class="pc-form-grid"><div class="pc-field"><label for="pcPlayerName">PLAYER NAME</label><input id="pcPlayerName" maxlength="30" value="${escapeHtml(pendingPlayerSetup.name)}"></div><div class="pc-field"><label for="pcPlayerAge">AGE</label><input id="pcPlayerAge" type="number" min="16" max="34" value="${pendingPlayerSetup.age}"></div><div class="pc-field is-wide"><label>PRIMARY ROLE</label><div class="pc-role-picker">${V44_ROLES.map(role=>`<button type="button" class="${pendingPlayerSetup.role===role?'is-active':''}" data-pc-role="${role}">${role}</button>`).join('')}</div></div><div class="pc-field is-wide"><label>PLAYER PORTRAIT</label><div class="pc-avatar-picker">${avatars.map(src=>`<button type="button" class="${active===src?'is-active':''}" data-pc-avatar="${escapeHtml(src)}"><img src="${escapeHtml(src)}" alt=""></button>`).join('')}</div></div></div><div class="pc-form-actions"><button type="button" class="pc-secondary-action" data-pc-back-route>BACK</button><button type="button" class="pc-primary-action" data-pc-create-continue>CHOOSE CAREER START</button></div></article></section>`;return;
+    }
+    if(playerSetupStage==='start'){
+      setHeader('CHOOSE YOUR START','STEP 3 OF 3','PLAYER CAREER · FIRST CONTRACT');host.innerHTML=`<section class="pc-setup-lead"><div><span class="pc-card-kicker">${escapeHtml(pendingPlayerSetup.name.toUpperCase())} · ${escapeHtml(pendingPlayerSetup.role)}</span><h1>HOW WILL YOUR STORY BEGIN?</h1><p>Join a suitable club immediately or enter the living transfer market as an unsigned athlete.</p></div></section><section class="pc-route-grid"><button type="button" class="pc-choice-card" data-pc-start="club"><span>FIRST CONTRACT</span><h2>JOIN A CLUB</h2><p>Choose from clubs where your current ability gives you a credible route toward the matchday squad.</p><strong>VIEW CLUB OPPORTUNITIES ›</strong></button><button type="button" class="pc-choice-card" data-pc-start="unsigned"><span>FREE AGENT</span><h2>START UNSIGNED</h2><p>Begin without a club, review deterministic offers, and let the season continue while you decide.</p><strong>ENTER THE MARKET ›</strong></button></section>`;return;
+    }
+    if(playerSetupStage==='clubs'){
+      setHeader('CHOOSE YOUR CLUB','FINAL STEP','PLAYER CAREER · FIRST CONTRACT');const preview=playerCareerCreatedPreview();host.innerHTML=`<section class="pc-setup-lead"><div><span class="pc-card-kicker">PLAUSIBLE OPPORTUNITIES</span><h1>FIND THE RIGHT FIRST STEP</h1><p>These clubs are matched to ${escapeHtml(preview.name)}'s projected ${preview.ovr} OVR. Selection is still earned after signing.</p></div></section><section class="pc-club-grid">${playerCareerClubCandidates(preview).map(({club,fit})=>`<button type="button" class="pc-club-card" data-pc-club="${escapeHtml(club.id)}">${badgeHTML(club)}<span><small>${escapeHtml(club.division)}</small><strong>${escapeHtml(club.name)}</strong><b>${clamp(fit,0,99)}% PATHWAY FIT</b></span><em>Real AI manager · no guaranteed starting place</em></button>`).join('')}</section>`;return;
+    }
+    setHeader('SELECT AN ATHLETE','STEP 2 OF 2','PLAYER CAREER · EXISTING WORLD');host.innerHTML=`<section class="pc-setup-lead"><div><span class="pc-card-kicker">REAL PLAYERS · REAL CONTRACTS</span><h1>TAKE OVER AN EXISTING CAREER</h1><p>The athlete remains in their current squad. Form, fitness, ability and manager trust determine the first teamsheet.</p></div></section><section class="pc-existing-grid">${playerCareerExistingCandidates().map(({player:p,club})=>`<button type="button" class="pc-athlete-card" data-pc-existing="${escapeHtml(p.id)}" data-pc-existing-club="${escapeHtml(club.id)}"><img src="${escapeHtml(p.avatar)}" alt=""><span><small>${escapeHtml(club.name)}</small><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.role)} · AGE ${p.age}</small></span><b>${p.ovr}</b></button>`).join('')}</section>`;
+  }
+  function playerCareerCreatedPreview(club=null){
+    const range=club?rangeFromOvr(club.ovr):[58,64],ovr=clamp(Math.round((range[0]+range[1])/2)-2,52,75),age=clamp(Number(pendingPlayerSetup.age||19),16,34),potential=clamp(ovr+(age<=19?12:age<=22?8:4),ovr,92),rng=mulberry32(hashString(`${worldSeed}-PC-CREATED-${pendingPlayerSetup.name}-${pendingPlayerSetup.role}-${club?.id||'FREE'}`));
+    return{id:`PC-${hashString(`${worldSeed}-${pendingPlayerSetup.name}-${pendingPlayerSetup.role}`).toString(36).toUpperCase()}`,name:String(pendingPlayerSetup.name||'Ari Vale').trim().slice(0,30),country:club?.country||nations[hashString(`${worldSeed}-PC-NATION`)%Math.max(1,nations.length)]||'Velmora',age,role:pendingPlayerSetup.role,ovr,potential,basePotential:potential,dynamicPotentialDelta:0,potentialModelVersion:2,stats:makeStats(ovr,pendingPlayerSetup.role,rng),fitness:94,morale:'Content',form:'Average',contractYears:0,wage:0,lastWage:Math.max(650,Math.round((ovr-43)*(ovr-43)*9)),value:Math.max(70000,playerAbilityValue(ovr,age)),potentialStatus:age<=21?'Promising Player':'Room to Grow',avatar:pendingPlayerSetup.avatar||playerCareerAvatarOptions()[0],spriteRevision:playerSpriteCatalog.revision,captain:false,freeAgent:!club,clubId:club?.id||null,ownerClubId:club?.id||null,clubName:club?.name||'FREE AGENT',joinedSeason:1,peakOvr:ovr,retiringAtEnd:false,careerClubs:club?[club.id]:[],isUserPlayer:true,managerTrust:52,playingTimeSatisfaction:70};
+  }
+  function playerCareerGenerateOffers(player){
+    return playerCareerClubCandidates(player).slice(0,3).map(({club,fit},index)=>({id:`PCO-${hashString(`${worldSeed}-${player.id}-${club.id}`).toString(36).toUpperCase()}`,clubId:club.id,status:'OPEN',fit:clamp(fit,0,99),weeklyWage:Math.max(700,Math.round((Number(player.lastWage||800)*(1.02+index*.04))/50)*50),contractYears:index===0?3:2,receivedDate:currentCareerISO()}));
+  }
+  function startPlayerCareer(player,club=null,origin='CREATED'){
+    if(!player)return false;commitPendingCareerSlot();careerMode='PLAYER';currentClub=club||null;selectedClub=club||selectedClub||clubs[0];employmentStatus=club?'employed':'unemployed';firstWeekState=normalizeFirstWeekState({active:false,completed:true},true);managerProfile=createDefaultManagerProfile();managerName='PLAYER CAREER';managerConfirmed=true;
+    player.isUserPlayer=true;ensureLivingPlayerMeta(player,club);player.managerTrust=clamp(Number(player.managerTrust||52),0,100);
+    if(club){player.freeAgent=false;player.clubId=club.id;player.ownerClubId=club.id;player.clubName=club.name;if(!getSquad(club).some(p=>p.id===player.id))getSquad(club).push(player);setLivingPlayerContract(player,club,3,Math.max(700,Number(player.lastWage||900)),player.squadRole||'Rotation',currentCareerISO(),'PLAYER_CAREER_START');addPlayerToLineup(club,player.id,'reserve');}
+    else{player.freeAgent=true;player.clubId=null;player.ownerClubId=null;player.clubName='FREE AGENT';if(!getFreeAgents().some(p=>p.id===player.id))getFreeAgents().unshift(player);}
+    playerCareerState=normalizePlayerCareerState({userPlayerId:player.id,origin,status:club?'CLUB':'UNSIGNED',startedDate:currentCareerISO(),offers:club?[]:playerCareerGenerateOffers(player)});initializeCareerLifecycle();saveCareerState();officeActiveTab=club?'inbox':'pcoffers';renderCentral();showScreen('central');showToast(club?`${player.name} joins ${club.name} · earn the manager's trust`:`${player.name} begins unsigned · contract opportunities are ready`);return true;
+  }
+  function acceptPlayerCareerOffer(offerId){
+    playerCareerState=normalizePlayerCareerState(playerCareerState);const offer=playerCareerState.offers.find(row=>row.id===offerId&&row.status==='OPEN'),player=playerCareerPlayer(),club=clubById(offer?.clubId);if(!offer||!player||!club)return false;const free=getFreeAgents(),index=free.findIndex(p=>p.id===player.id);if(index>=0)free.splice(index,1);currentClub=club;selectedClub=club;employmentStatus='employed';player.freeAgent=false;player.clubId=club.id;player.ownerClubId=club.id;player.clubName=club.name;player.careerClubs=Array.from(new Set([...(player.careerClubs||[]),club.id]));player.managerTrust=50;player.integration=52;setLivingPlayerContract(player,club,offer.contractYears,offer.weeklyWage,'Rotation',currentCareerISO(),'PLAYER_CAREER_OFFER');getSquad(club).push(player);addPlayerToLineup(club,player.id,'reserve');offer.status='ACCEPTED';playerCareerState.offers.forEach(row=>{if(row.id!==offer.id&&row.status==='OPEN')row.status='DECLINED';});playerCareerState.status='CLUB';recordLivingCareerEvent(player,'SIGNED_FREE',null,club,0,currentCareerISO(),{source:'PLAYER_CAREER'});initializeCareerLifecycle();saveCareerState();refreshActiveCareerScreen();showToast(`Contract signed · ${club.name}`);return true;
+  }
+  function playerCareerTrustCopy(score){score=Number(score||0);if(score>=82)return'The manager sees you as one of the first names on the teamsheet.';if(score>=68)return'You are trusted for important minutes, but competition remains live.';if(score>=52)return'You are in contention. Training readiness and form can swing the next call.';if(score>=36)return'You must rebuild confidence through sharp training and reliable performances.';return'The manager needs compelling evidence before your role will grow.';}
+  // V107: the player hub was folded into Central. renderPlayerCareerCentral
+  // dresses the shared dashboard instead of drawing a second one.
+  function renderPlayerCareerHub(){if(pcActive())renderCentral();}
+  function advancePlayerCareer(days=1){return pcAdvance(days);}
+  function playerCareerSelectionFactors(player,club,fixture,total){
+    const plan=aiClubSquadPlanReview(club,fixture.date,false),manager=currentClubManager(club),fit=Math.round(aiPlayerTacticalFitScore(player,club,plan?.tacticalProfile,manager)),sharp=Math.round(trainingRules.read(player).sharpness||0),trust=Math.round(Number(player.managerTrust||0));return{ability:Number(player.ovr||0),fitness:Math.round(Number(player.fitness||0)),sharpness:sharp,form:player.form||'Average',tacticalFit:fit,managerTrust:trust,selectionScore:Number(total.toFixed(2))};
+  }
+  function playerCareerDecisionReason(player,verdict,factors,gap=0,fixture=null){
+    if(matchdayUnavailable(player,fixture))return`${player.name} is unavailable: ${matchdayUnavailableReason(player,fixture).toLowerCase()}.`;
+    if(verdict==='STARTING')return factors.managerTrust>=68?`Strong manager trust and a ${factors.tacticalFit}% tactical fit secure a starting place.`:`Ability, ${factors.fitness}% fitness and tactical balance put you in the Starting Three.`;
+    if(verdict==='BENCH')return`You are ${Math.max(0,gap).toFixed(1)} selection points from the Starting Three. The manager values your role coverage from the bench.`;
+    return`You finished ${Math.max(0,gap).toFixed(1)} selection points behind the final bench place. Fitness, form, role coverage and trust all contributed.`;
+  }
+  function restorePlayerCareerSelection(selection,club){
+    if(!selection||!club)return false;const ids=new Set(getSquad(club).map(p=>p.id)),all=[...(selection.starterIds||[]),...(selection.benchIds||[]),...(selection.reserveIds||[])];if(!all.length||all.some(id=>!ids.has(id)))return false;const next=blankLineup();selection.starterIds.slice(0,STARTER_SLOTS).forEach((id,i)=>next.starter[i]=id);selection.benchIds.slice(0,BENCH_SLOTS).forEach((id,i)=>next.bench[i]=id);selection.reserveIds.slice(0,RESERVE_SLOTS).forEach((id,i)=>next.reserve[i]=id);lineupCache.set(club.id,normalizeLineup(club,next));return true;
+  }
+  function ensurePlayerCareerSelection(fixture){
+    if(!playerCareerActive()||!currentClub||!fixture)return null;playerCareerState=normalizePlayerCareerState(playerCareerState);let saved=playerCareerState.selections[fixture.fixtureId];if(saved&&restorePlayerCareerSelection(saved,currentClub))return saved;
+    prepareAiLineupForFixture(currentClub,fixture,fixture.date);const lineup=ensureLineup(currentClub),squad=getSquad(currentClub),player=playerCareerPlayer(),starterIds=lineup.starter.filter(Boolean),benchIds=lineup.bench.filter(Boolean),reserveIds=lineup.reserve.filter(Boolean),scores=squad.map(p=>({p,score:aiLineupSelectionScore(p,currentClub,fixture,[])})).sort((a,b)=>b.score-a.score||a.p.id.localeCompare(b.p.id)),user=scores.find(row=>row.p.id===player?.id),verdict=starterIds.includes(player?.id)?'STARTING':benchIds.includes(player?.id)?'BENCH':'NOT_SELECTED';
+    if(verdict==='BENCH'){const index=benchIds.indexOf(player.id);if(index>0){const first=benchIds[0];benchIds[0]=player.id;benchIds[index]=first;lineup.bench=[...benchIds,...Array(BENCH_SLOTS-benchIds.length).fill(null)];lineupCache.set(currentClub.id,normalizeLineup(currentClub,lineup));}}
+    const starterCut=Math.min(...starterIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),benchCut=Math.min(...benchIds.map(id=>scores.find(row=>row.p.id===id)?.score??999)),gap=verdict==='BENCH'?Math.max(0,starterCut-Number(user?.score||0)):verdict==='NOT_SELECTED'?Math.max(0,benchCut-Number(user?.score||0)):0,factors=playerCareerSelectionFactors(player,currentClub,fixture,Number(user?.score||0)),manager=currentClubManager(currentClub);saved={fixtureId:fixture.fixtureId,date:fixture.date,createdAt:currentCareerISO(),managerId:manager?.id||null,managerName:manager?.name||'Head Coach',verdict,reason:playerCareerDecisionReason(player,verdict,factors,gap,fixture),gap:Number(gap.toFixed(2)),factors,starterIds:[...ensureLineup(currentClub).starter.filter(Boolean)],benchIds:[...ensureLineup(currentClub).bench.filter(Boolean)],reserveIds:[...ensureLineup(currentClub).reserve.filter(Boolean)],preMatch:{goals:Number(player.seasonStats?.goals||0),assists:Number(player.seasonStats?.assists||0),trust:Number(player.managerTrust||0)}};playerCareerState.selections[fixture.fixtureId]=saved;saveCareerState();return saved;
+  }
+  // V107: the verdict is now published on the shared Matchday screen.
+  function renderPlayerCareerTeamsheet(fixture=userFixtureOnDate(currentCareerISO())){
+    if(!pcActive()||!fixture)return false;
+    if(!ensurePlayerCareerSelection(fixture))return false;
+    renderMatchday();showScreen('matchday');return true;
+  }
+  function playerCareerPrepareQuickParticipation(fixture){
+    if(!playerCareerActive()||!fixture||fixture.matchday?.participation)return;const selection=ensurePlayerCareerSelection(fixture),sides=fixtureClubs(fixture),player=playerCareerPlayer(),participation={},substitutions=[];for(const [club,team] of [[sides.home,'home'],[sides.away,'away']]){if(!club)continue;activeStarters(club).forEach(p=>participation[String(p.id)]={team,started:true,minutes:90,fitnessCost:7,energy:76,entered:null,left:null,sentOff:false});}
+    if(selection?.verdict==='BENCH'&&player){const team=fixture.homeClubId===currentClub.id?'home':'away',minute=58+(hashString(`${worldSeed}-PC-SUB-${fixture.fixtureId}-${player.id}`)%16),out=activeStarters(currentClub).slice().sort((a,b)=>Number(a.fitness||100)-Number(b.fitness||100)||a.id.localeCompare(b.id))[0];if(out){participation[String(out.id)].minutes=minute;participation[String(out.id)].left=minute;participation[String(player.id)]={team,started:false,minutes:90-minute,fitnessCost:4,energy:86,entered:minute,left:null,sentOff:false};substitutions.push({team,minute,outId:out.id,outName:out.name,inId:player.id,inName:player.name});}}
+    fixture.matchday={version:1,participation,substitutions,captaincy:[],tacticalChanges:[],finalTactics:null};
+  }
+  function playerCareerAfterFixture(result){
+    if(!playerCareerActive()||!result?.fixture)return null;const player=playerCareerPlayer(),selection=playerCareerState.selections[result.fixture.fixtureId]||ensurePlayerCareerSelection(result.fixture);if(!player||!selection)return null;const ratingRow=(result.ratings||[]).find(row=>row.player?.id===player.id),part=result.fixture.matchday?.participation?.[String(player.id)],minutes=Number(part?.minutes??ratingRow?.minutes??(selection.verdict==='STARTING'?90:0)),rating=ratingRow?Number(ratingRow.rating):null,goals=Math.max(0,Number(player.seasonStats?.goals||0)-Number(selection.preMatch?.goals||0)),assists=Math.max(0,Number(player.seasonStats?.assists||0)-Number(selection.preMatch?.assists||0));let delta=0,reason='The manager keeps the current view.';if(minutes>0){delta=rating>=8.5?6:rating>=7.5?4:rating>=6.8?2:rating<6?-3:0;delta+=Math.min(3,goals*2+assists);if(result.potm?.id===player.id)delta+=2;reason=rating>=7.5?'A decisive performance strengthens your standing.':rating<6?'The manager expected a more reliable impact.':'A steady contribution keeps you in contention.';}else if(selection.verdict==='BENCH'){delta=-1;reason='You remained unused; the manager wants a stronger case in training.';}const trustBefore=Number(player.managerTrust||0),trustAfter=adjustPlayerManagerTrust(player,delta,'Player Career post-match review');playerCareerState.lastReview={fixtureId:result.fixture.fixtureId,date:result.fixture.date,verdict:selection.verdict,rating,minutes,goals,assists,trustBefore,trustAfter,trustDelta:trustAfter-trustBefore,summary:reason,resultCode:result.resultCode,opponentId:result.opponent?.id||null};return playerCareerState.lastReview;
+  }
+  function playerCareerResultHTML(result){
+    if(!playerCareerActive()||!result?.saved)return'';const review=playerCareerState.lastReview,player=playerCareerPlayer();if(!review||!player||review.fixtureId!==result.fixture?.fixtureId)return'';return`<section class="pc-player-result"><span>YOUR PERFORMANCE · ${escapeHtml(review.verdict.replace('_',' '))}</span><div><img src="${escapeHtml(player.avatar)}" alt=""><span><h3>${escapeHtml(player.name)}</h3><p>${escapeHtml(review.summary)}</p></span><b>${review.rating??'—'}<small>RATING</small></b><b>${review.minutes}<small>MINUTES</small></b><b>${review.goals}<small>GOALS</small></b><b>${review.trustDelta>0?'+':''}${review.trustDelta}<small>TRUST · ${review.trustAfter}</small></b></div></section>`;
   }
   function jobDivisionLabel(key){return divisionLabelForKey(key);}
   function jobSalaryForClub(club,seed=''){
@@ -4288,7 +4402,7 @@
     if(careerExpansion){if(currentClub)careerExpansion.department(currentClub);careerExpansion.daily(date);}
     if(resolvedFixtures.length)generateWorldNewsForResults(resolvedFixtures,date);
     const aiDeal=maybeGenerateAITransfer(date),shortlistInterest=maybeGenerateShortlistInterest(date);if(date.endsWith('-01')){processAiSquadMaintenance(date);processLivingSquadMonthly(date);generateLeagueTableNews(date);}const improved=date.endsWith('-01')?applyMonthlyDevelopment(date):[];
-    unexpectedProcessActiveObjectives(date);const delayedOutcomes=processDelayedAudienceOutcomes(date);let decision=null;if(currentClub){normalizeSquadRoles(currentClub);const baseline=objectiveConfidenceBaseline(currentClub);if(careerRuntime.lastBoardConfidenceDate!==date&&date.endsWith('-01')){careerRuntime.boardConfidence=clamp(Math.round(ensureBoardConfidence()*.78+baseline*.22),0,100);careerRuntime.lastBoardConfidenceDate=date;}decision=generateIncomingTransferOffer(date)||maybeGenerateUnexpectedCareerEvent(date)||generateContextualCareerDecision(date);}
+    unexpectedProcessActiveObjectives(date);const delayedOutcomes=processDelayedAudienceOutcomes(date);let decision=null;if(currentClub&&careerMode==='MANAGER'){normalizeSquadRoles(currentClub);const baseline=objectiveConfidenceBaseline(currentClub);if(careerRuntime.lastBoardConfidenceDate!==date&&date.endsWith('-01')){careerRuntime.boardConfidence=clamp(Math.round(ensureBoardConfidence()*.78+baseline*.22),0,100);careerRuntime.lastBoardConfidenceDate=date;}decision=generateIncomingTransferOffer(date)||maybeGenerateUnexpectedCareerEvent(date)||generateContextualCareerDecision(date);}
     const important=decision?.type==='INCOMING_OFFER'?{title:`Transfer offer received: ${decision.playerName}`,type:'TRANSFER_OFFER'}:decision?.kind==='UNEXPECTED_EVENT'?{title:decision.title||'Unexpected club situation',type:'UNEXPECTED_EVENT'}:delayedOutcomes.find(row=>row.verdict==='ADVERSE')?{title:'A previous decision has developed',type:'DELAYED_OUTCOME'}:improved.length?{title:'Monthly player development report',type:'DEVELOPMENT_REPORT'}:aiDeal?.shortlisted?{title:`Shortlisted target moved: ${aiDeal.playerName}`,type:'SHORTLIST_INTEREST'}:null;
     return{aiDeal,shortlistInterest,improved,decision,delayedOutcomes,important};
   }
@@ -4387,7 +4501,7 @@
     // not. This also prevents a manager being named as their own blocker.
     const onlineBarrier=v104ProgressionBlock();
     if(onlineBarrier)return {advanced:false,blocked:true,reason:'ONLINE_BARRIER',online:onlineBarrier,events:[]};
-    if(roadToGlory.seasonReview?.pending){if(!options.silent)renderSeasonReviewOverlay();return {advanced:false,blocked:true,reason:'SEASON_REVIEW',events:[]};}
+    if(careerMode==='MANAGER'&&roadToGlory.seasonReview?.pending){if(!options.silent)renderSeasonReviewOverlay();return {advanced:false,blocked:true,reason:'SEASON_REVIEW',events:[]};}
     const decision=pendingDecisionEvent();
     if(decision)return {advanced:false,blocked:true,reason:'DECISION',decision,events:[]};
     if(blockingFixture){
@@ -4414,17 +4528,19 @@
     const market=processManagerMarketDay(nextDate);
     const media=processMediaNarrativesDay(nextDate,resolvedFixtures,market.events);
     const progression=updateSeasonProgression(nextDate);
+    if(pcActive())pcGenerateDecision(nextDate);
     const newDecision=pendingDecisionEvent();
     if(options.deferSave)v202Performance.deferredAdvanceSaveSkips++;else saveCareerState();
     if(!options.silent)refreshActiveCareerScreen();
     const match=userFixtureOnDate(nextDate);
-    const managerImportant=market.events.find(e=>['INTERVIEW','JOB_OFFER','APPROACH','WARNING','FINAL_WARNING','SACKED','CONTRACT_EXPIRED'].includes(e.type));
+    const managerImportant=careerMode==='MANAGER'?market.events.find(e=>['INTERVIEW','JOB_OFFER','APPROACH','WARNING','FINAL_WARNING','SACKED','CONTRACT_EXPIRED'].includes(e.type)):null;
     // Catch important mail from every daily system, including staff, loans and
     // recruitment. Existing unread mail must not stop every subsequent advance.
     const importantMessage=careerInboxMessages.find(message=>!inboxBefore.has(message.id)&&notificationPriorityForMessage(message)==='IMPORTANT');
     const inboxImportant=importantMessage?{type:'INBOX',title:importantMessage.subject||importantMessage.title||'Important email received',messageId:importantMessage.id}:null;
-    const important=progression.important||inboxImportant||dayEvents.find(eventShouldStopAdvance)||living.important||managerImportant;
-    return {advanced:true,blocked:!!match||!!newDecision||!!roadToGlory.seasonReview?.pending,reason:match?'MATCHDAY':newDecision?'DECISION':roadToGlory.seasonReview?.pending?'SEASON_REVIEW':important?'IMPORTANT_EVENT':null,fixture:match,decision:newDecision,events:dayEvents,important,resolvedFixtures,living,market,media,progression};
+    const important=careerMode==='MANAGER'?progression.important||inboxImportant||dayEvents.find(eventShouldStopAdvance)||living.important||managerImportant:null;
+    const seasonReviewBlocking=careerMode==='MANAGER'&&roadToGlory.seasonReview?.pending;
+    return {advanced:true,blocked:!!match||!!newDecision||!!seasonReviewBlocking,reason:match?'MATCHDAY':newDecision?'DECISION':seasonReviewBlocking?'SEASON_REVIEW':important?'IMPORTANT_EVENT':null,fixture:match,decision:newDecision,events:dayEvents,important,resolvedFixtures,living,market,media,progression};
   }
 
   function clubMonogram(club){
@@ -4710,7 +4826,7 @@
 
 
   function centralOpenOffice(tab='inbox',messageId=null){
-    officeActiveTab=tab;
+    officeActiveTab=pcActive()&&!PC_OFFICE_TABS.includes(tab)?'pcstanding':tab;
     if(messageId){
       officeInboxFilter='all';
       selectedOfficeMessageId=messageId;
@@ -5418,6 +5534,7 @@
   function v65TaskCategoryGlyph(key){const paths={transfer:'<path d="M4 8h12m0 0-3-3m3 3-3 3M20 16H8m0 0 3 3m-3-3 3-3"/>',contract:'<path d="M7 3.5h8l3 3V20H7z"/><path d="M15 3.5V7h3M10 11h5M10 14h5M10 17h3"/>',squad:'<circle cx="9" cy="8" r="3"/><path d="M3.8 19c.4-3.3 2.1-5 5.2-5s4.8 1.7 5.2 5M15.2 11.5c2.7.2 4.4 1.8 4.8 4.5"/>',medical:'<path d="M9 4h6v5h5v6h-5v5H9v-5H4V9h5z"/>',board:'<path d="M4 18h16M6 18V9l6-4 6 4v9M9 18v-5h6v5"/>',admin:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>',scouting:'<circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4M11 8v6M8 11h6"/>',discipline:'<path d="M12 3 4.5 6v5c0 4.8 3 8 7.5 10 4.5-2 7.5-5.2 7.5-10V6z"/><path d="M12 8v5M12 16h.01"/>',career:'<path d="M4 19V8l8-4 8 4v11M8 19v-6h8v6"/><path d="M9 9h6"/>',season:'<rect x="4" y="5.5" width="16" height="14" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/>',club:'<path d="M12 3 4.5 6v5c0 4.8 3 8 7.5 10 4.5-2 7.5-5.2 7.5-10V6z"/>'};return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[key]||paths.club}</svg>`;}
   function v65TaskUrgencyProfile(task={}){if(task.deadline){const days=diffDaysISO(currentCareerISO(),task.deadline);if(days<=0)return{key:'today',label:'TODAY'};if(days===1)return{key:'critical',label:'1 DAY LEFT'};if(days<=3)return{key:'soon',label:`${days} DAYS LEFT`};if(days<=7)return{key:'watch',label:`${days} DAYS LEFT`};}if(task.priority==='URGENT')return{key:'urgent',label:'URGENT'};if(task.priority==='IMPORTANT')return{key:'important',label:'IMPORTANT'};return{key:'routine',label:'ROUTINE'};}
   function v2077BuildCentralTasks(club=currentClub){
+    if(pcActive())return pcBuildCentralTasks(club);
     if(!club||employmentStatus!=='employed')return[];initializeLivingSquadState(false);initializeManagerMarketState();const tasks=[],date=currentCareerISO(),squad=getSquad(club),academy=getAcademy(club),push=t=>{if(t?.id&&!tasks.some(x=>x.id===t.id))tasks.push(t);};
     const decision=pendingDecisionEvent();if(decision)push({id:`decision-${decision.id}`,priority:'URGENT',category:decision.kind==='UNEXPECTED_EVENT'?'CLUB EVENT':'DECISION',title:decision.title||'Manager decision required',copy:String(decision.body||'A career decision is waiting for your response.'),route:'decision',ref:decision.id,deadline:decision.expiresDate||null});
     if(v2080IsPreSeasonWindow()){v2080EnsurePreSeasonExperience(false);if(!preSeasonExperience.briefingCompleted)push({id:`preseason-briefing-${careerTime.seasonId}`,priority:'IMPORTANT',category:'NEW SEASON',title:`Complete the ${careerTime.seasonId} season briefing`,copy:`Review the squad, board plan, academy intake and pre-season programme.`,route:'preseason'});else if(preSeasonExperience.programme!=='SKIP'){const ps=v2080PreSeasonProgress();if(ps.played<ps.total)push({id:`preseason-programme-${careerTime.seasonId}`,priority:'ROUTINE',category:'PRE-SEASON',title:`${v2080Programme().label}: ${ps.played}/${ps.total} complete`,copy:`${ps.w}W ${ps.d}D ${ps.l}L · friendlies do not affect competitive records.`,route:'preseason'});}}
@@ -5437,14 +5554,14 @@
     const baseLimit=settings.taskDensity==='ESSENTIAL'?3:settings.taskDensity==='STANDARD'?4:6,tracked=ordered.filter(t=>t.v45Tracked),regular=ordered.filter(t=>!t.v45Tracked&&(settings.taskDensity!=='ESSENTIAL'||t.priority!=='ROUTINE')),limit=Math.min(6,Math.max(baseLimit,tracked.length));
     return[...tracked,...regular].slice(0,limit);
   }
-  function v2077HandleCentralTask(task){if(!task)return;if(task.route==='preseason'){openV2080NewSeasonExperience();return;}if(task.route==='decision'){const event=careerDecisionEvents.find(e=>e.id===task.ref&&!e.resolved)||pendingDecisionEvent();if(event)showCareerDecisionOverlay(event);return;}if(task.route==='manager-offer'){openManagerJobOffer(task.ref);return;}if(task.route==='manager-interview'){openManagerInterview(task.ref);return;}if(task.route==='manager-career'){officeActiveTab='manager';managerCareerView='career';goCareerScreen('office');return;}if(task.route==='transfer-offer'){transferActiveTab='hub';transferHubView='incoming';goCareerScreen('transfers');setTransferTab('hub');setTimeout(()=>openLivingIncomingOffer(task.ref),0);return;}if(task.route==='loan-offer'){transferActiveTab='hub';transferHubView='loans';goCareerScreen('transfers');setTransferTab('hub');setTimeout(()=>openLivingLoanOffer(task.ref),0);return;}if(task.route==='contracts'){officeActiveTab='contracts';selectedContractPlayerId=task.ref||null;goCareerScreen('office');return;}if(task.route==='board'){centralOpenOffice('board');return;}if(task.route==='youth'){squadView='youth';selectedYouthId=task.ref||null;goCareerScreen('squad');return;}if(task.route==='player'){squadView='senior';selectedPlayerId=task.ref||null;goCareerScreen('squad');return;}if(task.route==='squad'){squadView='senior';goCareerScreen('squad');return;}if(task.route==='inbox'){centralOpenOffice('inbox',task.ref||null);return;}if(task.route==='scouting'){selectedTransferPlayerId=task.ref||selectedTransferPlayerId;transferActiveTab='scouting';goCareerScreen('transfers');setTransferTab('scouting');return;}}
+  function v2077HandleCentralTask(task){if(!task)return;if(pcActive()&&pcHandleCentralTask(task))return;if(task.route==='preseason'){openV2080NewSeasonExperience();return;}if(task.route==='decision'){const event=careerDecisionEvents.find(e=>e.id===task.ref&&!e.resolved)||pendingDecisionEvent();if(event)showCareerDecisionOverlay(event);return;}if(task.route==='manager-offer'){openManagerJobOffer(task.ref);return;}if(task.route==='manager-interview'){openManagerInterview(task.ref);return;}if(task.route==='manager-career'){officeActiveTab='manager';managerCareerView='career';goCareerScreen('office');return;}if(task.route==='transfer-offer'){transferActiveTab='hub';transferHubView='incoming';goCareerScreen('transfers');setTransferTab('hub');setTimeout(()=>openLivingIncomingOffer(task.ref),0);return;}if(task.route==='loan-offer'){transferActiveTab='hub';transferHubView='loans';goCareerScreen('transfers');setTransferTab('hub');setTimeout(()=>openLivingLoanOffer(task.ref),0);return;}if(task.route==='contracts'){officeActiveTab='contracts';selectedContractPlayerId=task.ref||null;goCareerScreen('office');return;}if(task.route==='board'){centralOpenOffice('board');return;}if(task.route==='youth'){squadView='youth';selectedYouthId=task.ref||null;goCareerScreen('squad');return;}if(task.route==='player'){squadView='senior';selectedPlayerId=task.ref||null;goCareerScreen('squad');return;}if(task.route==='squad'){squadView='senior';goCareerScreen('squad');return;}if(task.route==='inbox'){centralOpenOffice('inbox',task.ref||null);return;}if(task.route==='scouting'){selectedTransferPlayerId=task.ref||selectedTransferPlayerId;transferActiveTab='scouting';goCareerScreen('transfers');setTransferTab('scouting');return;}}
   function v2077RenderCentralTasks(club=currentClub){
     const target=$('#centralInboxList'),panel=$('.central-inbox-panel');if(!target||!panel)return[];
     const allTasks=v2077BuildCentralTasks(club),tasks=allTasks.filter(t=>t.priority!=='ROUTINE'||t.v45Tracked),header=panel.querySelector('.central-panel-header'),label=header?.querySelectorAll('span')?.[1],count=$('#centralAttentionCount');
     if(label)label.textContent='NEEDS YOUR ATTENTION';if(count){count.textContent=String(tasks.length);count.classList.toggle('has-urgent',tasks.some(t=>t.priority==='URGENT'));}
     target.classList.add('v2077-task-list','v45-task-list');
-    target.innerHTML=tasks.length?tasks.map(t=>{const category=v65TaskCategoryProfile(t),urgency=v65TaskUrgencyProfile(t);return`<article class="central-task-row is-${t.priority.toLowerCase()} is-category-${category.key} is-urgency-${urgency.key} ${t.v45Tracked?'is-tracked':''}" data-central-task-card="${escapeHtml(t.id)}" data-task-category="${category.key}" data-task-urgency="${urgency.key}"><button type="button" class="v45-task-main" data-central-task="${escapeHtml(t.id)}" aria-label="Open ${escapeHtml(t.title)}"><span class="central-task-kicker"><span class="central-task-category"><i aria-hidden="true">${v65TaskCategoryGlyph(category.key)}</i><b>${escapeHtml(category.label)}</b></span><span class="central-task-urgency is-${urgency.key}">${escapeHtml(urgency.label)}</span></span><span class="central-task-copy"><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.copy)}</p></span><span class="central-task-chevron" aria-hidden="true">›</span></button><div class="v45-task-controls" aria-label="Task controls"><button type="button" data-v45-task-action="track" data-v45-task-id="${escapeHtml(t.id)}" class="${t.v45Tracked?'is-active':''}" title="${t.v45Tracked?'Stop tracking':'Track on Central'}" aria-label="${t.v45Tracked?'Stop tracking':'Track task'}">★</button><button type="button" data-v45-task-action="remind" data-v45-task-id="${escapeHtml(t.id)}" title="Remind me in 7 days" aria-label="Remind me in 7 days">7D</button><button type="button" data-v45-task-action="dismiss" data-v45-task-id="${escapeHtml(t.id)}" title="Dismiss this task from Central" aria-label="Dismiss task">×</button></div></article>`;}).join(''):`<div class="central-task-empty"><b>✓</b><strong>QUIET WEEK</strong><span>Nothing genuinely needs your response. Routine updates remain available in the Office.</span></div>`;
-    if(!tasks.length)target.querySelector('.central-task-empty')?.insertAdjacentHTML('beforeend','<div class="central-quiet-actions"><button type="button" data-central-quiet-route="squad">SQUAD</button><button type="button" data-central-quiet-route="scouting">SCOUTING</button><button type="button" data-central-quiet-route="board">BOARD</button></div>');
+    target.innerHTML=tasks.length?tasks.map(t=>{const category=v65TaskCategoryProfile(t),urgency=v65TaskUrgencyProfile(t);return`<article class="central-task-row is-${t.priority.toLowerCase()} is-category-${category.key} is-urgency-${urgency.key} ${t.v45Tracked?'is-tracked':''}" data-central-task-card="${escapeHtml(t.id)}" data-task-category="${category.key}" data-task-urgency="${urgency.key}"><button type="button" class="v45-task-main" data-central-task="${escapeHtml(t.id)}" aria-label="Open ${escapeHtml(t.title)}"><span class="central-task-kicker"><span class="central-task-category"><i aria-hidden="true">${v65TaskCategoryGlyph(category.key)}</i><b>${escapeHtml(category.label)}</b></span><span class="central-task-urgency is-${urgency.key}">${escapeHtml(urgency.label)}</span></span><span class="central-task-copy"><strong>${escapeHtml(t.title)}</strong><p>${escapeHtml(t.copy)}</p></span><span class="central-task-chevron" aria-hidden="true">›</span></button><div class="v45-task-controls" aria-label="Task controls"><button type="button" data-v45-task-action="track" data-v45-task-id="${escapeHtml(t.id)}" class="${t.v45Tracked?'is-active':''}" title="${t.v45Tracked?'Stop tracking':'Track on Central'}" aria-label="${t.v45Tracked?'Stop tracking':'Track task'}">★</button><button type="button" data-v45-task-action="remind" data-v45-task-id="${escapeHtml(t.id)}" title="Remind me in 7 days" aria-label="Remind me in 7 days">7D</button><button type="button" data-v45-task-action="dismiss" data-v45-task-id="${escapeHtml(t.id)}" title="Dismiss this task from Central" aria-label="Dismiss task">×</button></div></article>`;}).join(''):`<div class="central-task-empty"><b>✓</b><strong>QUIET WEEK</strong><span>${pcActive()?'Nothing needs you today. Train, stay sharp, and wait for the next team sheet.':'Nothing genuinely needs your response. Routine updates remain available in the Office.'}</span></div>`;
+    if(!tasks.length)target.querySelector('.central-task-empty')?.insertAdjacentHTML('beforeend',pcActive()?'<div class="central-quiet-actions"><button type="button" data-central-quiet-route="squad">TEAM</button><button type="button" data-central-quiet-route="pc-standing">MY STANDING</button><button type="button" data-central-quiet-route="pc-contract">CONTRACT</button></div>':'<div class="central-quiet-actions"><button type="button" data-central-quiet-route="squad">SQUAD</button><button type="button" data-central-quiet-route="scouting">SCOUTING</button><button type="button" data-central-quiet-route="board">BOARD</button></div>');
     target.querySelectorAll('[data-central-task]').forEach(btn=>btn.addEventListener('click',()=>v2077HandleCentralTask(tasks.find(t=>t.id===btn.dataset.centralTask))));
     target.querySelectorAll('[data-central-quiet-route]').forEach(btn=>btn.addEventListener('click',()=>v2077HandleCentralTask({route:btn.dataset.centralQuietRoute})));
     target.querySelectorAll('[data-v45-task-action]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const task=tasks.find(t=>t.id===btn.dataset.v45TaskId);if(!task)return;const action=btn.dataset.v45TaskAction;if(v45UpdateTaskControl(task.id,action)){showToast(action==='dismiss'?'Task dismissed from Central':action==='remind'?'Task will return in 7 days':task.v45Tracked?'Task untracked':'Task tracked on Central');}}));
@@ -5466,7 +5583,7 @@
   function v262StandingSprite(player){if(!player)return'';const n=v210AvatarNumber(player),key=String(n).padStart(3,'0');return playerSpriteAssetUrl(`assets/quidditch-engine/standing/player-${key}.png`);}
   function v262FeaturedPlayer(club,starters){const designated=getSquad(club).find(p=>p.captain),available=(starters||[]).filter(Boolean),starterCaptain=available.find(p=>p.captain);if(starterCaptain)return{player:starterCaptain,kind:'CAPTAIN'};const fallback=[...available].sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0)||Number(b.age||0)-Number(a.age||0))[0]||designated||getSquad(club)[0]||null;return{player:fallback,kind:fallback===designated?'CAPTAIN':'MATCH CAPTAIN'};}
   function v262StatusIcons(player,fixture,isCaptain=false){if(!player)return'';const icons=[];const add=(file,label)=>icons.push(`<img src="${V262_PRESENTATION_ROOT}status/${file}" alt="" title="${escapeHtml(label)}">`);if(isCaptain)add('captain-star.png','Captain');if(player.injured||Number(player.injuryDaysRemaining||0)>0)add('injured.png','Injured');if(player.suspended||Number(player.suspensionMatches||0)>0)add('suspended.png','Suspended');if(Number(player.fitness??100)<72)add('fitness-concern.png','Fitness concern');if(String(player.form||'').toUpperCase()==='EXCELLENT')add('excellent-form.png','Excellent form');if(['POOR','TERRIBLE'].includes(String(player.form||'').toUpperCase()))add('poor-form.png','Poor form');if(player.onLoan)add('loan-player.png','Loan player');return icons.join('');}
-  function v262LineupHTML(players,fixture,featuredId){return players.map((p,i)=>p?`<li class="${p.id===featuredId?'is-featured':''} ${matchdayUnavailable(p,fixture)?'is-unavailable':''}"><span class="central-lineup-role">${v262RoleCode(p.role)}</span><strong>${escapeHtml(p.name)}</strong><span class="central-lineup-status">${v262StatusIcons(p,fixture,!!p.captain)}</span></li>`:`<li class="is-vacant"><span class="central-lineup-role">—</span><strong>VACANT</strong></li>`).join('');}
+  function v262LineupHTML(players,fixture,featuredId){return players.map((p,i)=>p?`<li class="${p.id===featuredId?'is-featured':''}${pcSelfClass(p)} ${matchdayUnavailable(p,fixture)?'is-unavailable':''}"><span class="central-lineup-role">${v262RoleCode(p.role)}</span><strong>${escapeHtml(p.name)}</strong><span class="central-lineup-status">${v262StatusIcons(p,fixture,!!p.captain)}</span></li>`:`<li class="is-vacant"><span class="central-lineup-role">—</span><strong>VACANT</strong></li>`).join('');}
   function v262SetPresentationImage(selector,src,alt=''){const el=$(selector);if(!el)return;el.src=src||'';el.alt=alt||'';el.style.display=src?'':'none';}
   function v262PresentationAsset(list,key){return list[Math.abs(hashString(String(key)))%list.length];}
   function v262RenderFixturePresentation(home,away,fixture){
@@ -5689,6 +5806,7 @@
     const ownRow=mockStandingRows().find(r=>r.club.id===club.id);const form=recentClubForm(club,5);const confidence=ensureBoardConfidence();const morale=squadMoraleLabel(club);const budget=moneyNumber(club.budget);
     $('#centralSeasonSnapshot').innerHTML=`<header>CLUB SNAPSHOT</header><div class="snapshot-grid living-snapshot"><div><strong>${ownRow?.pos?ordinal(ownRow.pos):'-'}</strong><span>LEAGUE POS</span></div><div><strong class="snapshot-form">${form.length?form.join(' '):'—'}</strong><span>RECENT FORM</span></div><div><strong>${confidence}</strong><span>BOARD CONFIDENCE</span></div><div><strong>${escapeHtml(morale.toUpperCase())}</strong><span>SQUAD MORALE</span></div><div><strong>${daysToMatch}</strong><span>${matchToday?'MATCHDAY':'DAYS TO MATCH'}</span></div></div><button type="button" class="central-manager-security-strip" data-central-manager-career><span>MANAGER STATUS</span><strong>${escapeHtml(managerMarketJobSecurity())}</strong><small>${managerRepStars()} · ${activeManagerVacancies().length} live vacancies</small></button>`;
     $('#centralSeasonSnapshot [data-central-manager-career]')?.addEventListener('click',()=>{officeActiveTab='manager';managerCareerView='career';goCareerScreen('office');});
+    if(pcActive()){renderPlayerCareerCentral(club,nextFixture);return;}
     maybeShowChampionsCrownFinalCelebration();
     maybeOpenSeasonReview();
     setTimeout(()=>{if(!maybeOpenV2080NewSeasonExperience())maybeOpenV2073SeasonMoment();},80);
@@ -5735,6 +5853,7 @@
     fixtures=[];v202MarkCompetitionDataDirty();calendarEvents=[];transferWindows=[];careerInboxMessages=[];careerNewsStories=[];pendingNegotiations=[];processedCalendarEvents.clear();
     careerDecisionEvents=[];playerPromises=[];careerEventCooldowns={};aiTransferHistory=[];developmentSnapshots={};negotiationEngine=normalizeNegotiationEngineState({});careerRuntime={boardConfidence:null,lastBoardConfidenceDate:null,lastDevelopmentMonth:null,lastAiTransferDate:null,lastLivingNewsDate:null};unexpectedEvents=normalizeUnexpectedEventsState({});cupRuntime={roundByes:{}};
     careerChallenge=normalizeCareerChallenge({});
+    playerCareerState=normalizePlayerCareerState({});
     roadToGlory=normalizeRoadToGloryState({});
     managerMarket=normalizeManagerMarketState({});
     ownershipState={version:1,profiles:{},relationships:{},takeovers:[],sequence:0,createdDate:null};
@@ -6153,8 +6272,9 @@
   function prepareFixtureLineupsForMatchday(fixture,{repairUser=false,notify=false}={}){
     if(!fixture)return{ready:false,message:'No playable fixture today',home:null,away:null};
     const {home,away}=fixtureClubs(fixture);if(!home||!away)return{ready:false,message:'Matchday clubs could not be resolved.',home:null,away:null};
+    if(playerCareerActive()&&(home.id===currentClub?.id||away.id===currentClub?.id))ensurePlayerCareerSelection(fixture);
     const sides=[home,away].map(club=>{
-      const isUser=club.id===currentClub?.id&&employmentStatus==='employed';
+      const isUser=careerMode==='MANAGER'&&club.id===currentClub?.id&&employmentStatus==='employed';
       if(!isUser||repairUser)return repairMatchdayLineupForFixture(club,fixture,{notify:notify&&isUser});
       return matchdayLineupReadiness(club,fixture);
     });
@@ -6654,7 +6774,7 @@
     managerMarket.aiClubPlans[club.id]=plan;return plan;
   }
   function aiClubPlan(club,date=currentCareerISO()){
-    if(!club||club.id===currentClub?.id&&employmentStatus==='employed')return null;managerMarket.aiClubPlans=managerMarket.aiClubPlans||{};const manager=currentClubManager(club);if(!manager||manager.id===PLAYER_MANAGER_ID)return null;
+    if(!club||careerMode==='MANAGER'&&club.id===currentClub?.id&&employmentStatus==='employed')return null;managerMarket.aiClubPlans=managerMarket.aiClubPlans||{};const manager=currentClubManager(club);if(!manager||manager.id===PLAYER_MANAGER_ID)return null;
     let plan=managerMarket.aiClubPlans[club.id];if(!plan||plan.managerId!==manager.id)plan=resetAiClubPlanForManager(club,manager,date);
     plan.tacticalProfile=normalizeAiTacticalProfile(plan.tacticalProfile||aiManagerTacticalProfile(manager,club));plan.playerStatuses=plan.playerStatuses&&typeof plan.playerStatuses==='object'?plan.playerStatuses:{};plan.needs=plan.needs&&typeof plan.needs==='object'?plan.needs:{};plan.priorityRoles=Array.isArray(plan.priorityRoles)?plan.priorityRoles:[];plan.surplusIds=Array.isArray(plan.surplusIds)?plan.surplusIds:[];plan.developmentIds=Array.isArray(plan.developmentIds)?plan.developmentIds:[];return plan;
   }
@@ -6705,18 +6825,19 @@
     if(!p||matchdayUnavailable(p,fixture))return-999;const plan=aiClubSquadPlanReview(club,fixture?.date||currentCareerISO()),manager=currentClubManager(club),importance=aiFixtureImportance(fixture,club),fit=aiPlayerTacticalFitScore(p,club,plan?.tacticalProfile,manager),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',fitness=Number(p.fitness??82),starts=(p.recentStartDates||[]).slice(-5).length;
     let score=trainingRules.matchModifier(p)+Number(p.ovr||55)*(importance>=88?1.32:1.12)+aiPlayerFormSelectionBonus(p.form)*1.8+(fitness-78)*.24+(fit-55)*.18;
     if(status==='CORE')score+=5;if(status==='STARTER')score+=2.5;if(status==='DEVELOP'&&Number(manager?.youthTrust||50)>=70)score+=2;if(status==='SURPLUS')score-=7;if(status==='LOAN')score-=4;
+    if(careerMode==='PLAYER'&&p.id===playerCareerState.userPlayerId)score+=(Number(p.managerTrust||50)-50)*.22;
     if(importance<66){score-=starts*1.4;if(fitness>=90)score+=2.2;if(['ROTATION','DEVELOP'].includes(status))score+=3.2;}else if(importance>=90){score+=Number(p.ovr||55)*.08;}
     const profile=plan?.tacticalProfile||normalizeAiTacticalProfile(),deployment=v44BestAiDeploymentRole(p,selectedRoles,profile),deploymentFam=v44RoleFamiliarity(p,deployment);if(!selectedRoles.includes('DEFENDER')&&profile.defensive==='Drop Back'&&deployment==='DEFENDER')score+=6*(deployment===p.role?1:deploymentFam/100);if(!selectedRoles.includes('PLAYMAKER')&&profile.attacking==='Possession'&&deployment==='PLAYMAKER')score+=6*(deployment===p.role?1:deploymentFam/100);if(!selectedRoles.includes('ATTACKER')&&['Fast Break','Direct'].includes(profile.attacking)&&deployment==='ATTACKER')score+=6*(deployment===p.role?1:deploymentFam/100);if(selectedRoles.length&&!selectedRoles.includes(deployment))score+=1.8;if(deployment!==p.role)score+=Math.max(-5,(v44RoleSuitabilityModifier(p,deployment)-1)*28);
     return score;
   }
   function prepareAiLineupForFixture(club,fixture,date=fixture?.date||currentCareerISO()){
-    if(!club||club.id===currentClub?.id&&employmentStatus==='employed')return ensureLineup(club);const manager=currentClubManager(club);if(!manager||manager.id===PLAYER_MANAGER_ID)return ensureLineup(club);const plan=aiClubSquadPlanReview(club,date),squad=getSquad(club).filter(p=>!p.onLoan||p.clubId===club.id),selected=[],selectedRoles=[],roleAssignments={};
+    if(!club||careerMode==='MANAGER'&&club.id===currentClub?.id&&employmentStatus==='employed')return ensureLineup(club);const manager=currentClubManager(club);if(!manager||manager.id===PLAYER_MANAGER_ID)return ensureLineup(club);const plan=aiClubSquadPlanReview(club,date),squad=getSquad(club).filter(p=>!p.onLoan||p.clubId===club.id),selected=[],selectedRoles=[],roleAssignments={};
     while(selected.length<STARTER_SLOTS){let best=null,bestScore=-1e9;for(const p of squad){if(selected.some(x=>x.id===p.id))continue;const score=aiLineupSelectionScore(p,club,fixture,selectedRoles);if(score>bestScore){best=p;bestScore=score;}}if(!best||bestScore<-500)break;selected.push(best);const deployed=v44BestAiDeploymentRole(best,selectedRoles,plan?.tacticalProfile)||best.role;selectedRoles.push(deployed);roleAssignments[best.id]=deployed;}
     if(selected.length<STARTER_SLOTS){squad.filter(p=>!matchdayUnavailable(p,fixture)).sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0)).forEach(p=>{if(selected.length<STARTER_SLOTS&&!selected.some(x=>x.id===p.id))selected.push(p);});}
     const remaining=squad.filter(p=>!selected.some(x=>x.id===p.id)).sort((a,b)=>aiLineupSelectionScore(b,club,fixture,selectedRoles)-aiLineupSelectionScore(a,club,fixture,selectedRoles));const next=blankLineup();selected.slice(0,STARTER_SLOTS).forEach((p,i)=>next.starter[i]=p.id);remaining.slice(0,BENCH_SLOTS).forEach((p,i)=>next.bench[i]=p.id);remaining.slice(BENCH_SLOTS,BENCH_SLOTS+RESERVE_SLOTS).forEach((p,i)=>next.reserve[i]=p.id);lineupCache.set(club.id,normalizeLineup(club,next));if(fixture){fixture.v44RoleAssignments=fixture.v44RoleAssignments&&typeof fixture.v44RoleAssignments==='object'?fixture.v44RoleAssignments:{};fixture.v44RoleAssignments[club.id]=roleAssignments;}if(plan){plan.lastSelectionFixtureId=fixture?.fixtureId||null;plan.lastSelectionDate=date;plan.lastSelectedIds=selected.map(p=>p.id);plan.lastSelectedRoles={...roleAssignments};}return lineupCache.get(club.id);
   }
   function aiTacticalCohesionModifier(club){
-    if(!club||club.id===currentClub?.id&&employmentStatus==='employed')return 0;const plan=aiClubSquadPlanReview(club,currentCareerISO());if(!plan)return 0;const manager=currentClubManager(club),starters=activeStarters(club);if(!starters.length)return 0;const fit=starters.reduce((s,p)=>s+aiPlayerTacticalFitScore(p,club,plan.tacticalProfile,manager),0)/starters.length;let mod=clamp((fit-55)/22,-1.15,1.45);if(plan.transitionUntil&&currentCareerISO()<plan.transitionUntil)mod-=.28;return Number(mod.toFixed(2));
+    if(!club||careerMode==='MANAGER'&&club.id===currentClub?.id&&employmentStatus==='employed')return 0;const plan=aiClubSquadPlanReview(club,currentCareerISO());if(!plan)return 0;const manager=currentClubManager(club),starters=activeStarters(club);if(!starters.length)return 0;const fit=starters.reduce((s,p)=>s+aiPlayerTacticalFitScore(p,club,plan.tacticalProfile,manager),0)/starters.length;let mod=clamp((fit-55)/22,-1.15,1.45);if(plan.transitionUntil&&currentCareerISO()<plan.transitionUntil)mod-=.28;return Number(mod.toFixed(2));
   }
 
   function aiManagerSpellRecord(manager,club=clubById(manager?.currentClubId),throughDate=currentCareerISO()){
@@ -6750,7 +6871,7 @@
   }
   function currentClubManager(club){
     const human=v104HumanManagerForClub(club);if(human)return human;
-    const id=managerMarket.clubManagers?.[club?.id];return id===PLAYER_MANAGER_ID?{id:PLAYER_MANAGER_ID,name:managerName,reputation:Number(roadToGlory.managerReputation||18),preferredStyle:careerPreferences?.tactics?.mentality||'Balanced',status:'EMPLOYED',currentClubId:club?.id}:managerMarket.managers?.[id]||null;
+    const id=managerMarket.clubManagers?.[club?.id];return id===PLAYER_MANAGER_ID&&careerMode==='MANAGER'?{id:PLAYER_MANAGER_ID,name:managerName,reputation:Number(roadToGlory.managerReputation||18),preferredStyle:careerPreferences?.tactics?.mentality||'Balanced',status:'EMPLOYED',currentClubId:club?.id}:managerMarket.managers?.[id]||null;
   }
   function ensurePlayerManagerContract(club=currentClub,years=2,salary=null){
     if(!club)return null;
@@ -6825,15 +6946,15 @@
   function initializeManagerMarketState(){
     managerMarket=normalizeManagerMarketState(managerMarket);
     clubs.forEach(club=>{
-      if(v104HumanControlledClub(club)){const open=managerVacancyForClub(club.id);if(open)open.status='CLOSED';if(club.id===currentClub?.id&&employmentStatus==='employed')managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
+      if(v104HumanControlledClub(club)){const open=managerVacancyForClub(club.id);if(open)open.status='CLOSED';if(careerMode==='MANAGER'&&club.id===currentClub?.id&&employmentStatus==='employed')managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
       let id=managerMarket.clubManagers[club.id];
-      if(employmentStatus==='employed'&&currentClub?.id===club.id){managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
+      if(careerMode==='MANAGER'&&employmentStatus==='employed'&&currentClub?.id===club.id){managerMarket.clubManagers[club.id]=PLAYER_MANAGER_ID;return;}
       if(id===PLAYER_MANAGER_ID)id=null;
       const openVacancy=managerVacancyForClub(club.id);if(openVacancy){const existing=id?managerMarket.managers[id]:null;if(existing&&v44IsCaretaker(existing)&&existing.currentClubId===club.id){managerMarket.clubManagers[club.id]=existing.id;openVacancy.caretakerManagerId=existing.id;}else v44EnsureCaretakerForVacancy(openVacancy,currentCareerISO());return;}
       let m=id?managerMarket.managers[id]:null;
       if(!m||m.status!=='EMPLOYED'||m.currentClubId!==club.id){m=createAiManagerForClub(club,`INIT-${careerTime.seasonId}`);managerMarket.clubManagers[club.id]=m.id;}else enrichAiManagerIdentity(m,club);
     });
-    if(employmentStatus==='employed'&&currentClub){
+    if(careerMode==='MANAGER'&&employmentStatus==='employed'&&currentClub){
       managerMarket.clubManagers[currentClub.id]=PLAYER_MANAGER_ID;
       openPlayerManagerSpell(currentClub,jobSearchState.appointedDate||`${careerYear}-08-01`);
       ensurePlayerManagerContract(currentClub,2);
@@ -7063,7 +7184,11 @@
   }
   function processManagerMarketDay(date=currentCareerISO()){
     if(managerMarket.lastProcessDate===date)return{events:[]};managerMarket.lastProcessDate=date;initializeManagerMarketState();expireManagerOffers(date);const events=[];
-    events.push(...processAiManagerSummerReview(date));events.push(...processAiManagerSecurity(date));ensureCareerMarketVacancies(date);events.push(...processAiVacancyShortlists(date));events.push(...processPlayerApplications(date));const approach=processUnsolicitedPlayerApproaches(date);if(approach)events.push({type:'APPROACH',clubId:approach.clubId,id:approach.id});const filled=processAiVacancyHiring(date);if(filled)events.push({type:'AI_HIRING',count:filled});const security=processPlayerJobSecurity(date);if(security)events.push(security);const contract=processPlayerManagerContract(date);if(contract)events.push(contract);repairManagerMarketIntegrity();return{events};
+    events.push(...processAiManagerSummerReview(date));events.push(...processAiManagerSecurity(date));
+    if(careerMode==='PLAYER'){
+      events.push(...processAiVacancyShortlists(date));const filled=processAiVacancyHiring(date);if(filled)events.push({type:'AI_HIRING',count:filled});repairManagerMarketIntegrity();return{events};
+    }
+    ensureCareerMarketVacancies(date);events.push(...processAiVacancyShortlists(date));events.push(...processPlayerApplications(date));const approach=processUnsolicitedPlayerApproaches(date);if(approach)events.push({type:'APPROACH',clubId:approach.clubId,id:approach.id});const filled=processAiVacancyHiring(date);if(filled)events.push({type:'AI_HIRING',count:filled});const security=processPlayerJobSecurity(date);if(security)events.push(security);const contract=processPlayerManagerContract(date);if(contract)events.push(contract);repairManagerMarketIntegrity();return{events};
   }
   function managerMarketJobSecurity(){return employmentStatus==='employed'?managerSecurityLabel(playerJobSecurityScore()):'UNEMPLOYED';}
   function managerVacancyCardHTML(v,compact=false){
@@ -8027,7 +8152,8 @@
     const raw=careerSlotRaw(slot);if(!raw)return{slot:Number(slot),empty:true,corrupt:false};
     const data=decodeCareerRaw(raw);if(!data)return{slot:Number(slot),empty:false,corrupt:true};
     const club=clubById(data.currentClubId),standing=careerSlotStanding(data),profile=data.manager?.identity||data.manager||{},savedAt=data.careerRuntime?.lastSavedAt||null;
-    return{slot:Number(slot),empty:false,corrupt:false,managerName:String(profile.name||data.managerName||'CAREER MANAGER'),clubId:club?.id||null,clubName:club?.name||(data.employmentStatus==='unemployed'?'UNEMPLOYED':'UNKNOWN CLUB'),division:club?.division||data.clubMembership?.[club?.id]?.divisionKey||'',date:data.careerTime?.currentDate||`${Number(data.careerYear||2026)}-08-01`,seasonId:data.careerTime?.seasonId||seasonIdForYear(Number(data.careerYear||2026)),standing,savedAt,employmentStatus:data.employmentStatus||'employed'};
+    const mode=data.careerMode==='PLAYER'?'PLAYER':'MANAGER',athlete=data.playerCareerState?.userPlayerId?[...Object.values(data.squads||{}).flat(),...(data.freeAgents||[])].find(p=>p?.id===data.playerCareerState.userPlayerId):null;
+    return{slot:Number(slot),empty:false,corrupt:false,careerMode:mode,managerName:mode==='PLAYER'?String(athlete?.name||'PLAYER CAREER'):String(profile.name||data.managerName||'CAREER MANAGER'),clubId:club?.id||null,clubName:club?.name||(data.employmentStatus==='unemployed'?(mode==='PLAYER'?'UNSIGNED':'UNEMPLOYED'):'UNKNOWN CLUB'),division:club?.division||data.clubMembership?.[club?.id]?.divisionKey||'',date:data.careerTime?.currentDate||`${Number(data.careerYear||2026)}-08-01`,seasonId:data.careerTime?.seasonId||seasonIdForYear(Number(data.careerYear||2026)),standing,savedAt,employmentStatus:data.employmentStatus||'employed'};
   }
   function careerSaveSlots(){return Array.from({length:CAREER_SAVE_SLOT_COUNT},(_,i)=>careerSlotSummary(i+1));}
   function ensureCareerSaveMigration(){
@@ -8047,11 +8173,11 @@
   function closeCareerSaveMenu(){const root=document.getElementById('careerSaveOverlay');if(!root)return;root.classList.remove('is-open');root.setAttribute('aria-hidden','true');careerSaveConfirm=null;syncPrimaryScreenInteractivity();}
   async function beginNewCareerInSlot(slot){
     try{await window.VelmoraCareerStore?.flush();}catch(_){showToast("Save failed. Export your progress before starting another career.");return false;}
-    if(!careerSlotKey(slot))return false;pendingNewCareerSlot=Number(slot);activeCareerSlot=null;employmentStatus='setup';currentClub=null;careerSaveConfirm=null;closeCareerSaveMenu();beginManagerCreator(true);return true;
+    if(!careerSlotKey(slot))return false;pendingNewCareerSlot=Number(slot);activeCareerSlot=null;careerMode='MANAGER';employmentStatus='setup';currentClub=null;careerSaveConfirm=null;closeCareerSaveMenu();playerCareerModeSelect();return true;
   }
   async function resumeCareerFromSlot(slot){
     try{await window.VelmoraCareerStore?.flush();}catch(_){showToast("Save failed. Export your progress before switching careers.");return false;}
-    if(!loadCareerState(slot)){showToast('That career save could not be loaded');return false;}closeCareerSaveMenu();if(employmentStatus==='unemployed'){renderUnemployedHub();showScreen('unemployed');showToast(`Slot ${slot} loaded · ${shortDateLabel(currentCareerISO())}`);}else if(firstWeekState.active&&!firstWeekState.completed){renderFirstWeek();showScreen('firstWeek');showToast(`Slot ${slot} resumed · ${currentClub?.name||'new club'}`);}else{renderCentral();showScreen('central');showToast(`Slot ${slot} loaded · ${seasonLabel()}`);}return true;
+    if(!loadCareerState(slot)){showToast('That career save could not be loaded');return false;}closeCareerSaveMenu();if(careerMode==='PLAYER'){renderCentral();showScreen('central');showToast(`Player Career loaded · ${shortDateLabel(currentCareerISO())}`);}else if(employmentStatus==='unemployed'){renderUnemployedHub();showScreen('unemployed');showToast(`Slot ${slot} loaded · ${shortDateLabel(currentCareerISO())}`);}else if(firstWeekState.active&&!firstWeekState.completed){renderFirstWeek();showScreen('firstWeek');showToast(`Slot ${slot} resumed · ${currentClub?.name||'new club'}`);}else{renderCentral();showScreen('central');showToast(`Slot ${slot} loaded · ${seasonLabel()}`);}return true;
   }
   function renderCareerSaveMenu(){
     const root=document.getElementById('careerSaveOverlay');if(!root)return;ensureCareerSaveMigration();const slots=careerSaveSlots(),mode=careerSaveMenuMode,body=root.querySelector('[data-career-save-body]'),title=root.querySelector('[data-career-save-title]'),sub=root.querySelector('[data-career-save-subtitle]');
@@ -8078,7 +8204,7 @@
   // so an online career can publish the same structure without a slot write.
   function buildCareerSaveData(){
     return {
-        version:window.VELMORA_RELEASE?.saveSchema||86,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
+        version:window.VELMORA_RELEASE?.saveSchema||87,careerMode,playerCareerState,worldSeed,recruitmentDay,careerSeason,careerYear,currentClubId:currentClub?.id||null,employmentStatus,jobSearchState,firstWeekState,careerPreferences,careerChallenge,
         careerTime:{...careerTime},fixtures,calendarEvents,transferWindows,careerInboxMessages,careerNewsStories,pendingNegotiations,processedCalendarEvents:[...processedCalendarEvents],selectedCalendarDate,seasonCalendarCursor,
         careerDecisionEvents,playerPromises,careerEventCooldowns,aiTransferHistory,developmentSnapshots,careerRuntime,unexpectedEvents,preSeasonExperience,cupRuntime,roadToGlory,managerMarket,ownershipState,audienceWorldState,championsCrown,livingSquad,mediaWorld,negotiationEngine,
         clubMembership:Object.fromEntries(clubs.map(c=>[c.id,{divisionKey:c.divisionKey,division:c.division,tier:Number(c.tier||4),reputation:Number(c.reputation||1)}])),
@@ -8140,6 +8266,8 @@
     try{
       const nextEmploymentStatus=d.employmentStatus||(d.currentClubId?'employed':'setup');if(nextEmploymentStatus!=='employed'&&nextEmploymentStatus!=='unemployed')return false;
       resetCareerWorld();
+      careerMode=d.careerMode==='PLAYER'?'PLAYER':'MANAGER';
+      playerCareerState=normalizePlayerCareerState(d.playerCareerState||{});
       Object.entries(d.careerRuntime?.expansion?.customClubs||{}).forEach(([id,identity])=>{const club=clubById(id);if(club)Object.assign(club,identity);});
       activeCareerSlot=Number(slot);pendingNewCareerSlot=null;employmentStatus=nextEmploymentStatus;
       jobSearchState=normalizeJobSearchState(d.jobSearchState||{startingMode:d.currentClubId?'direct':null});
@@ -8304,7 +8432,7 @@
     const condition=unavailable?livingPlayerAvailabilityLabel(p):p.fitness>=90?'Match ready':p.fitness>=80?'Available':'Manage load';
     const cardTitle=`${p.name} · ${cardGroupLabel(group,index)}${source?' · selected to swap':target?' · drop or click to swap here':unregistered?' · awaiting registration':''}`;
     return `
-      <button type="button" draggable="true" ${slotAttributes} class="player-card v51-card ${className} tier-${tier} ${selected?'is-selected':''} ${source?'is-swap-source':''} ${target?'is-swap-target':''}" data-player-id="${p.id}" title="${escapeHtml(cardTitle)}">
+      <button type="button" draggable="true" ${slotAttributes} class="player-card v51-card ${className} tier-${tier} ${selected?'is-selected':''} ${source?'is-swap-source':''} ${target?'is-swap-target':''}${pcSelfClass(p)}" data-player-id="${p.id}" title="${escapeHtml(cardTitle)}">
         <span class="squad-slot-status">${group==='starter'?'ON PITCH':group==='bench'?`SUB ${index-STARTER_SLOTS+1}`:unregistered?'UNREGISTERED':`RESERVE ${index-MATCHDAY_SENIOR_SIZE+1}`}</span>
         <div class="v51-badge is-number" aria-hidden="true"><span>${squadNo}</span></div>
         <div class="v51-info">
@@ -9076,6 +9204,7 @@
     $('#youthAcademyCount').textContent=academy.length;$('#retiredClubCount').textContent=Math.max(clubRetired.length,roadToGlory.careerHistory.length);$('#careerSeasonLabel').textContent=seasonLabel();
     if($('#settingsSeasonLabel'))$('#settingsSeasonLabel').textContent=`${careerYear}/${String((careerYear+1)%100).padStart(2,'0')} · Season ${careerSeason} · ${currentClub.name}`;
     setSquadView(squadView);
+    pcLockSquadScreen();
     // Defensive render check: the roster must never silently disappear because of a view/layout transition.
     requestAnimationFrame(()=>{
       const starters=$('#startingThreeShowcase'),subs=$('#subsGrid'),reserves=$('#reservesGrid');
@@ -10347,8 +10476,579 @@
     return{ok:true,player:signed,group:playerLineupPosition(club,signed.id)?.group||'reserve',cost:totalCost};
   }
 
+
+  // ======================================================================
+  // V107 — PLAYER CAREER SHELL
+  // Player Career runs inside the same career shell as Manager Career: the
+  // same top bar, the same screens, the same navigation. The difference is
+  // authority, not furniture. An athlete reads the team sheet rather than
+  // writing it, so the manager's controls are withdrawn and the panels that
+  // held them now hold the things a player actually owns — standing with the
+  // manager, a contract, outside interest and a personal record.
+  // ======================================================================
+  const PC_NAV_LABELS={central:'CENTRAL',squad:'TEAM',matchday:'MATCHDAY',season:'SEASON',office:'MY CAREER'};
+  const PC_HIDDEN_NAV=new Set(['transfers']);
+  const PC_OFFICE_TABS=['inbox','pcstanding','pccontract','pcoffers','pcrecord'];
+  const PC_MANAGER_OFFICE_TABS=['board','finances','contracts','staff','manager'];
+  const PC_SQUAD_VIEWS=['overview','senior','dynamics','legends'];
+  const PC_MANAGER_SQUAD_VIEWS=['tactics','training','youth'];
+
+  function pcActive(){return playerCareerActive();}
+  function pcPlayer(){return playerCareerPlayer();}
+  // Marks the controlled athlete wherever a squad or line-up is drawn, so the
+  // class survives every re-render instead of being painted on afterwards.
+  function pcSelfClass(player){return pcActive()&&player&&player.id===playerCareerState.userPlayerId?' is-user-athlete':'';}
+
+  // The top bar is shared markup, so relabel it rather than fork it. The
+  // original manager label is stashed once so switching careers restores it.
+  // Several nav stylesheets set display with !important, so hiding a tab has to
+  // be stated inline rather than left to the hidden attribute alone.
+  function pcSetTabHidden(node,hide){
+    if(!node)return;
+    node.hidden=!!hide;
+    if(hide)node.style.setProperty('display','none','important');
+    else node.style.removeProperty('display');
+  }
+  function syncPlayerCareerChrome(){
+    const active=pcActive();
+    document.body.classList.toggle('pc-mode-player',active);
+    document.querySelectorAll('.career-tabs>[data-career-nav],.central-nav-surface>[data-career-nav]').forEach(btn=>{
+      const route=btn.dataset.careerNav;
+      if(btn.dataset.pcManagerLabel==null)btn.dataset.pcManagerLabel=String(btn.textContent||'').trim();
+      if(active){
+        pcSetTabHidden(btn,PC_HIDDEN_NAV.has(route));
+        if(PC_NAV_LABELS[route])btn.textContent=PC_NAV_LABELS[route];
+      }else{
+        pcSetTabHidden(btn,false);
+        if(btn.dataset.pcManagerLabel)btn.textContent=btn.dataset.pcManagerLabel;
+      }
+    });
+    document.querySelectorAll('#officeSubnav [data-office-tab]').forEach(btn=>{
+      const tab=btn.dataset.officeTab;
+      if(PC_OFFICE_TABS.includes(tab)&&tab!=='inbox')pcSetTabHidden(btn,!active);
+      else if(PC_MANAGER_OFFICE_TABS.includes(tab))pcSetTabHidden(btn,active);
+    });
+    document.querySelectorAll('#squadSubnav [data-squad-view]').forEach(btn=>{
+      if(PC_MANAGER_SQUAD_VIEWS.includes(btn.dataset.squadView))pcSetTabHidden(btn,active);
+    });
+    if(active){
+      const heading=$('#screenSquad .squad-heading h2');if(heading)heading.textContent='YOUR TEAM';
+      const officeHeading=$('#screenOffice .office-heading h2');if(officeHeading)officeHeading.textContent='MY CAREER';
+      const officeEyebrow=$('#screenOffice .office-heading .eyebrow');if(officeEyebrow)officeEyebrow.textContent='PLAYER CAREER';
+      if(!PC_OFFICE_TABS.includes(officeActiveTab))officeActiveTab='inbox';
+      if(!PC_SQUAD_VIEWS.includes(squadView))squadView='senior';
+    }
+  }
+
+  // ---------- contract ----------
+  function pcContractInfo(player=pcPlayer(),club=currentClub){
+    if(!player)return null;
+    const date=currentCareerISO();
+    if(typeof syncLivingContractYears==='function')syncLivingContractYears(player,date);
+    const end=player.contractEndDate||null;
+    const daysLeft=end?Math.max(0,diffDaysISO(date,end)):null;
+    const wage=Math.max(0,Math.round(Number(player.wage||0)));
+    return{
+      club,
+      wage,
+      annual:wage*52,
+      role:player.squadRole||'Rotation',
+      endDate:end,
+      daysLeft,
+      years:Math.max(0,Number(player.contractYears||0)),
+      status:!club?'FREE AGENT':daysLeft==null?'ACTIVE':daysLeft<=180?'EXPIRING':daysLeft<=365?'FINAL YEAR':'ACTIVE',
+      signed:player.contractStartDate||playerCareerState.startedDate||null
+    };
+  }
+
+  function pcTrustBand(trust){
+    trust=Number(trust||0);
+    if(trust>=82)return{key:'first-name',label:'FIRST NAME ON THE SHEET'};
+    if(trust>=68)return{key:'trusted',label:'TRUSTED FOR BIG MINUTES'};
+    if(trust>=52)return{key:'contention',label:'IN CONTENTION'};
+    if(trust>=36)return{key:'fringe',label:'ON THE FRINGE'};
+    return{key:'out',label:'OUT OF THE PICTURE'};
+  }
+
+  // ---------- Central ----------
+  // Board expectations become your standing. Club finances become your
+  // contract. Everything else on Central already speaks to a player.
+  function renderPlayerCareerCentral(club=currentClub,nextFixture=null){
+    const player=pcPlayer();if(!player)return;
+    const trust=Math.round(Number(player.managerTrust||0)),band=pcTrustBand(trust),stats=player.seasonStats||{},review=playerCareerState.lastReview;
+    const objectivePanel=$('.central-objectives-panel'),objectiveHost=$('#centralObjectives');
+    if(objectivePanel){
+      const headerLabel=objectivePanel.querySelector('.central-panel-header span:nth-of-type(2)');
+      if(headerLabel)headerLabel.textContent='Your standing';
+      objectivePanel.classList.remove('is-v70-challenge','is-v70-complete','is-v70-failed');
+    }
+    if(objectiveHost){
+      const sharp=Math.round(Number(trainingRules?.read?.(player)?.sharpness??player.fitness??0));
+      const rows=[
+        {icon:'★',title:'Manager trust',status:band.label,progress:clamp(trust,0,100)},
+        {icon:'◆',title:'Match sharpness',status:`${sharp}% sharp · ${escapeHtml(String(player.form||'Average'))} form`,progress:clamp(sharp,0,100)},
+        {icon:'▲',title:'Condition',status:`${Math.round(Number(player.fitness||0))}% fitness`,progress:clamp(Math.round(Number(player.fitness||0)),0,100)}
+      ];
+      objectiveHost.style.setProperty('--central-objective-count',String(rows.length));
+      objectiveHost.innerHTML=rows.map(o=>`
+      <button type="button" class="objective-row central-objective-row" data-pc-open-office="pcstanding" title="Open My Standing">
+        <div class="objective-icon">${o.icon}</div>
+        <div class="objective-copy"><strong>${escapeHtml(o.title)}</strong><div class="objective-meta"><span>${o.status}</span><b>${o.progress}%</b></div><div class="progress"><i style="width:${o.progress}%"></i></div></div>
+      </button>`).join('');
+    }
+    const contract=pcContractInfo(player,club),financeHost=$('#centralFinances'),financePanel=$('.central-finances-panel');
+    if(financePanel){
+      const headerLabel=financePanel.querySelector('.central-panel-header span:nth-of-type(2)');
+      if(headerLabel)headerLabel.textContent='Your contract';
+    }
+    if(financeHost&&contract){
+      const openOffers=playerCareerState.offers.filter(o=>o.status==='OPEN').length;
+      financeHost.innerHTML=`
+      <div class="finance-budget"><div class="finance-label">WEEKLY WAGE</div><div class="finance-value">${contract.club?formatMoney(contract.wage):'—'}</div><small>${contract.club?`${escapeHtml(contract.role)} · ${formatMoney(contract.annual)} per year`:'No club · reviewing contract opportunities'}</small></div>
+      <div class="pc-central-contract"><span><b>${contract.endDate?escapeHtml(shortDateLabel(contract.endDate)):'—'}</b><small>EXPIRES</small></span><span><b>${contract.daysLeft==null?'—':Math.round(contract.daysLeft/30)}</b><small>MONTHS LEFT</small></span><span><b>${openOffers}</b><small>OPEN APPROACHES</small></span></div>
+      <div class="finance-status"><span>Contract status</span><strong>${escapeHtml(contract.status)}</strong><button type="button" data-pc-open-office="pccontract">DETAILS →</button></div>`;
+      financePanel.classList.add('is-actionable');financePanel.tabIndex=0;
+      financePanel.onclick=()=>pcOpenOffice('pccontract');
+      financePanel.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pcOpenOffice('pccontract');}};
+    }
+    const snapshot=$('#centralSeasonSnapshot');
+    if(snapshot){
+      const row=mockStandingRows().find(r=>r.club.id===club?.id),avg=stats.ratingCount?Number(Number(stats.ratingSum||0)/stats.ratingCount).toFixed(1):'—';
+      snapshot.innerHTML=`<header>YOUR SEASON</header><div class="snapshot-grid living-snapshot"><div><strong>${stats.apps||0}</strong><span>APPEARANCES</span></div><div><strong>${stats.starts||0}</strong><span>STARTS</span></div><div><strong>${stats.goals||0}</strong><span>GOALS</span></div><div><strong>${avg}</strong><span>AVG RATING</span></div><div><strong>${row?.pos?ordinal(row.pos):'-'}</strong><span>CLUB POSITION</span></div></div><button type="button" class="central-manager-security-strip" data-pc-open-office="pcstanding"><span>MANAGER TRUST</span><strong>${trust}/100 · ${escapeHtml(band.label)}</strong><small>${review?escapeHtml(String(review.summary||'').slice(0,72)):'No match review yet this season.'}</small></button>`;
+    }
+    // The portrait plinth carries the person who picks the side, not a stand-in
+    // for a manager the player never created.
+    const portrait=$('#centralManagerPortrait');
+    if(portrait){
+      const boss=club?currentClubManager(club):null;
+      const bossProfile=boss&&boss.id!==PLAYER_MANAGER_ID?ensureAiManagerAppearanceProfile(boss,club):null;
+      portrait.innerHTML=bossProfile?managerPortraitHTML(bossProfile,'central-manager-portrait-figure','office'):'';
+      portrait.setAttribute('aria-label',boss?`${boss.name}, your manager`:'Your manager');
+      queueManagerHydration(portrait);
+    }
+    // "This week at your club" is written for a manager. Same three cards,
+    // read from where the athlete is standing.
+    const weekHub=$('[data-central-week-hub]');
+    if(weekHub){
+      const hubLabel=weekHub.querySelector('.central-panel-header span:nth-of-type(2)');
+      if(hubLabel)hubLabel.textContent='Your week';
+      const matchLabel=$('#centralWeekMatch')?.querySelector('span');
+      if(matchLabel)matchLabel.textContent='YOUR NEXT MATCH';
+      const storyLabel=$('#centralWeekStory')?.querySelector('span');
+      if(storyLabel)storyLabel.textContent='AROUND THE DRESSING ROOM';
+      const attentionLabel=$('#centralWeekAttention')?.querySelector('span');
+      if(attentionLabel)attentionLabel.textContent='NEEDS YOU';
+      const attentionTitle=$('#centralWeekAttentionTitle');
+      if(attentionTitle&&attentionTitle.textContent==='NOTHING NEEDS YOU'){
+        attentionTitle.textContent='NOTHING NEEDS YOU';
+        const copy=$('#centralWeekAttentionCopy');
+        if(copy)copy.textContent='Keep training. The manager names the side on matchday.';
+      }
+    }
+    const financeContext=$('#centralBoardFocus');
+    if(financeContext)financeContext.textContent=`MANAGER TRUST ${trust}/100 · ${band.label}`;
+    const tacticalNote=$('#centralTacticalNote');
+    if(tacticalNote)tacticalNote.textContent=`${String(player.role||'').toUpperCase()} · ${String(player.form||'AVERAGE').toUpperCase()} FORM`;
+    document.querySelectorAll('[data-pc-open-office]').forEach(btn=>{
+      btn.onclick=e=>{e.stopPropagation();pcOpenOffice(btn.dataset.pcOpenOffice);};
+    });
+  }
+
+  function pcOpenOffice(tab='inbox'){officeActiveTab=PC_OFFICE_TABS.includes(tab)?tab:'inbox';goCareerScreen('office');}
+
+  // ---------- Central attention list ----------
+  // Same widget, player-sized stakes.
+  function pcBuildCentralTasks(club=currentClub){
+    const player=pcPlayer();if(!player)return[];
+    const tasks=[],date=currentCareerISO(),push=t=>{if(t?.id&&!tasks.some(x=>x.id===t.id))tasks.push(t);};
+    const decision=pendingDecisionEvent();
+    if(decision)push({id:`decision-${decision.id}`,priority:'URGENT',category:'YOUR CALL',title:decision.title||'A decision is waiting',copy:String(decision.body||'Someone is waiting on your answer.'),route:'decision',ref:decision.id,deadline:decision.expiresDate||null});
+    const fixture=club?userFixtureOnDate(date):null;
+    if(fixture){
+      const selection=ensurePlayerCareerSelection(fixture);
+      push({id:`pc-matchday-${fixture.fixtureId}`,priority:'URGENT',category:'MATCHDAY',title:selection?`Team sheet: ${String(selection.verdict).replace('_',' ')}`:'Matchday',copy:selection?String(selection.reason||''):'The manager names the side today.',route:'pc-matchday'});
+    }
+    const open=playerCareerState.offers.filter(o=>o.status==='OPEN');
+    if(open.length){
+      const first=clubById(open[0].clubId);
+      push({id:`pc-offers-${open.length}-${open[0].id}`,priority:club?'IMPORTANT':'URGENT',category:'CONTRACT',title:club?`${open.length} club${open.length===1?'':'s'} have made an approach`:'Choose your first club',copy:`${first?.name||'A club'} lead the interest · ${formatMoney(Number(open[0].weeklyWage||0))} per week`,route:'pc-offers'});
+    }
+    const contract=pcContractInfo(player,club);
+    if(contract?.club&&contract.daysLeft!=null&&contract.daysLeft<=365){
+      push({id:`pc-contract-${contract.endDate}`,priority:contract.daysLeft<=120?'URGENT':'IMPORTANT',category:'CONTRACT',title:contract.daysLeft<=120?'Your contract is running out':'Your contract enters its final year',copy:`${plural(Math.max(0,Math.round(contract.daysLeft)),'day')} remaining at ${club.name}.`,route:'pc-contract',deadline:contract.endDate});
+    }
+    if(player.injured||Number(player.injuryDaysRemaining||0)>0){
+      push({id:`pc-injury-${player.injuryDaysRemaining||1}`,priority:'IMPORTANT',category:'MEDICAL',title:'You are unavailable',copy:`${escapeHtml(String(player.injury||'Injury'))} · ${plural(Math.max(0,Math.round(Number(player.injuryDaysRemaining||0))),'day')} of recovery remaining.`,route:'pc-standing'});
+    }
+    const trust=Number(player.managerTrust||0);
+    if(trust<40&&!fixture)push({id:`pc-trust-${Math.round(trust/5)}`,priority:'IMPORTANT',category:'SELECTION',title:'You are out of the picture',copy:'Training sharpness and a run of performances are the only way back into the side.',route:'pc-standing'});
+    const review=playerCareerState.lastReview;
+    if(review&&review.date===date)push({id:`pc-review-${review.fixtureId}`,priority:'ROUTINE',category:'REVIEW',title:'The manager has reviewed your match',copy:String(review.summary||''),route:'pc-standing'});
+    const settings=v2077CareerSettings(),withControl=tasks.map(t=>{const control=v45TaskControlStatus(t);return{...t,v45Tracked:control.tracked,v45Snoozed:control.snoozed,v45Dismissed:control.dismissed};}).filter(t=>!t.v45Dismissed&&!t.v45Snoozed);
+    const ordered=withControl.sort((a,b)=>Number(b.v45Tracked)-Number(a.v45Tracked)||v2077TaskPriorityWeight(b.priority)-v2077TaskPriorityWeight(a.priority)||String(a.title).localeCompare(String(b.title)));
+    return ordered.slice(0,Math.min(6,settings.taskDensity==='ESSENTIAL'?3:settings.taskDensity==='STANDARD'?4:6));
+  }
+
+  function pcHandleCentralTask(task){
+    if(!task)return true;
+    if(task.route==='pc-matchday'){goCareerScreen('matchday');return true;}
+    if(task.route==='pc-offers'){pcOpenOffice('pcoffers');return true;}
+    if(task.route==='pc-contract'){pcOpenOffice('pccontract');return true;}
+    if(task.route==='pc-standing'){pcOpenOffice('pcstanding');return true;}
+    if(['transfer-offer','loan-offer','contracts','board','youth','scouting','manager-career','manager-offer','manager-interview'].includes(task.route)){pcOpenOffice('pcstanding');return true;}
+    return false;
+  }
+
+  // ---------- MY CAREER (Office shell) ----------
+  function renderPlayerCareerOffice(){
+    const player=pcPlayer(),club=currentClub;
+    const badgeSource=club||selectedClub||clubs[0];
+    setBadge($('#officeClubBadgeTop'),badgeSource);setBadge($('#officeHeadingBadge'),badgeSource);
+    $('.office-screen')?.style.setProperty('--club-accent',badgeSource?.accent||'#1bb5b6');
+    if($('#officeClubLine'))$('#officeClubLine').textContent=club?`${club.name} · ${club.division} · ${seasonLabel()}`:`Free agent · ${seasonLabel()}`;
+    const trust=Math.round(Number(player?.managerTrust||0)),band=pcTrustBand(trust);
+    if($('#officeBoardConfidence'))$('#officeBoardConfidence').textContent=`${trust}/100`;
+    if($('#officeBoardStatus'))$('#officeBoardStatus').textContent=band.label;
+    const confidenceLabel=$('#screenOffice .office-confidence-mini span');
+    if(confidenceLabel)confidenceLabel.textContent='MANAGER TRUST';
+    const ring=$('#officeConfidenceRing');
+    if(ring){ring.style.setProperty('--confidence',trust);const b=ring.querySelector('b');if(b)b.textContent=trust;}
+    if($('#officeUnreadCount'))$('#officeUnreadCount').textContent=officeUnreadCount();
+    setOfficeTab(officeActiveTab);
+  }
+
+  function renderPcStanding(){
+    const host=$('#officePcStandingContent'),player=pcPlayer();if(!host||!player)return;
+    const club=currentClub,trust=Math.round(Number(player.managerTrust||0)),band=pcTrustBand(trust),stats=player.seasonStats||{},review=playerCareerState.lastReview;
+    const manager=club?currentClubManager(club):null,managerProfileData=manager&&manager.id!==PLAYER_MANAGER_ID?ensureAiManagerAppearanceProfile(manager,club):null;
+    const sharp=Math.round(Number(trainingRules?.read?.(player)?.sharpness??player.fitness??0));
+    const rivals=club?getSquad(club).filter(p=>p.id!==player.id&&String(p.role)===String(player.role)).sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0)).slice(0,4):[];
+    const lineup=club?ensureLineup(club):null;
+    const place=lineup?(lineup.starter.includes(player.id)?'STARTING THREE':lineup.bench.includes(player.id)?'SUBSTITUTES':'OUTSIDE THE SQUAD'):'NO CLUB';
+    host.innerHTML=`
+      <section class="pc-office-grid">
+        <article class="pc-office-card pc-office-hero">
+          <img src="${escapeHtml(v262StandingSprite(player))}" alt="${escapeHtml(player.name)}">
+          <div>
+            <span class="office-kicker">${escapeHtml(club?club.name.toUpperCase():'FREE AGENT')}</span>
+            <h3>${escapeHtml(player.name)}</h3>
+            <p>${escapeHtml(player.role)} · AGE ${player.age} · ${escapeHtml(player.country||'Velmora')}</p>
+            <div class="pc-office-metrics"><span><b>${player.ovr}</b><small>OVERALL</small></span><span><b>${Math.round(Number(player.fitness||0))}</b><small>FITNESS</small></span><span><b>${sharp}</b><small>SHARPNESS</small></span><span><b>${escapeHtml(String(player.form||'—'))}</b><small>FORM</small></span></div>
+          </div>
+        </article>
+        <article class="pc-office-card pc-office-trust">
+          <span class="office-kicker">MANAGER TRUST</span>
+          <div class="pc-office-trust-head"><strong>${escapeHtml(band.label)}</strong><b>${trust}</b></div>
+          <div class="pc-trust-track"><i style="width:${clamp(trust,0,100)}%"></i></div>
+          <p>${escapeHtml(playerCareerTrustCopy(trust))}</p>
+          <div class="pc-office-standing-row"><span>CURRENT PLACE</span><b>${escapeHtml(place)}</b></div>
+          ${manager?`<div class="pc-office-manager">${managerProfileData?managerPortraitHTML(managerProfileData,'pc-office-portrait','office'):''}<div><span class="office-kicker">YOUR MANAGER</span><strong>${escapeHtml(manager.name)}</strong><p>${escapeHtml(managerProfileDescriptor(manager))}</p></div></div>`:''}
+        </article>
+        <article class="pc-office-card">
+          <span class="office-kicker">LAST MATCH REVIEW</span>
+          ${review?`<div class="pc-office-review"><span><b>${review.rating??'—'}</b><small>RATING</small></span><span><b>${review.minutes||0}</b><small>MINUTES</small></span><span><b>${review.goals||0}</b><small>GOALS</small></span><span><b>${Number(review.trustDelta)>0?'+':''}${review.trustDelta||0}</b><small>TRUST</small></span></div><p>${escapeHtml(String(review.summary||''))}</p>`:'<p class="pc-office-empty">No match review recorded yet. Your first appearance will be assessed here.</p>'}
+        </article>
+        <article class="pc-office-card">
+          <span class="office-kicker">COMPETITION FOR YOUR SHIRT</span>
+          ${rivals.length?`<div class="pc-office-rivals">${rivals.map(p=>`<div class="pc-office-rival"><img src="${escapeHtml(p.avatar||'')}" alt=""><div><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.squadRole||'Squad')} · ${escapeHtml(String(p.form||'Average'))} form</small></div><b class="${Number(p.ovr||0)>Number(player.ovr||0)?'is-ahead':''}">${p.ovr}</b></div>`).join('')}</div>`:'<p class="pc-office-empty">Nobody else is competing for your role right now.</p>'}
+        </article>
+      </section>`;
+    queueAvatarHydration(host);queueManagerHydration(host);
+  }
+
+  function renderPcContract(){
+    const host=$('#officePcContractContent'),player=pcPlayer();if(!host||!player)return;
+    const club=currentClub,contract=pcContractInfo(player,club);
+    const history=(livingSquad?.careerEvents||[]).filter?.(e=>e.playerId===player.id)||[];
+    host.innerHTML=`
+      <section class="pc-office-grid">
+        <article class="pc-office-card pc-office-contract">
+          <span class="office-kicker">CURRENT DEAL</span>
+          ${club?`
+          <div class="pc-office-contract-head">${badgeHTML(club)}<div><strong>${escapeHtml(club.name)}</strong><small>${escapeHtml(club.division||'')}</small></div><b class="pc-contract-status is-${contract.status.toLowerCase().replace(/\s+/g,'-')}">${escapeHtml(contract.status)}</b></div>
+          <div class="pc-office-metrics"><span><b>${formatMoney(contract.wage)}</b><small>PER WEEK</small></span><span><b>${formatMoney(contract.annual)}</b><small>PER YEAR</small></span><span><b>${contract.endDate?escapeHtml(shortDateLabel(contract.endDate)):'—'}</b><small>EXPIRES</small></span><span><b>${escapeHtml(contract.role)}</b><small>SQUAD ROLE</small></span></div>
+          <p>${contract.daysLeft==null?'Your deal runs to the end of the current agreement.':contract.daysLeft<=180?`Only ${plural(Math.round(contract.daysLeft),'day')} remain. Clubs can open talks with you in the coming weeks.`:`${plural(Math.round(contract.daysLeft),'day')} remain on this contract.`}</p>
+          <div class="pc-office-actions"><button type="button" class="pc-primary-action" data-pc-request-talks ${contract.daysLeft!=null&&contract.daysLeft<=540?'':'disabled'}>ASK ABOUT A NEW DEAL</button></div>
+          <small class="pc-office-note">${contract.daysLeft!=null&&contract.daysLeft<=540?'Your representative will raise it with the club. Standing with the manager shapes the answer.':'Renewal talks open inside the final eighteen months of a deal.'}</small>
+          `:'<p class="pc-office-empty">You are a free agent. Open approaches are listed under INTEREST.</p>'}
+        </article>
+        <article class="pc-office-card">
+          <span class="office-kicker">CAREER MOVES</span>
+          ${history.length?`<div class="pc-office-history">${history.slice(0,8).map(e=>`<div><b>${escapeHtml(shortDateLabel(e.date||''))}</b><span>${escapeHtml(String(e.type||'MOVE').replace(/_/g,' '))}</span><small>${escapeHtml(clubById(e.toClubId)?.name||clubById(e.clubId)?.name||'')}</small></div>`).join('')}</div>`:`<p class="pc-office-empty">Your career record starts here${club?` at ${escapeHtml(club.name)}`:''}.</p>`}
+        </article>
+      </section>`;
+    host.querySelector('[data-pc-request-talks]')?.addEventListener('click',()=>pcRequestContractTalks());
+  }
+
+  function pcRequestContractTalks(){
+    const player=pcPlayer(),club=currentClub;if(!player||!club)return false;
+    const date=currentCareerISO(),key=`PC-TALKS-${club.id}`;
+    if(!eventCooldownReady(key,date,45)){showToast('Your representative has already raised it recently');return false;}
+    setEventCooldown(key,date);
+    const trust=Number(player.managerTrust||0),form=String(player.form||'Average'),willing=trust>=58||['Excellent','Good'].includes(form);
+    if(willing){
+      const rise=Math.max(50,Math.round(Number(player.wage||800)*(.10+trust/900)/25)*25),years=trust>=75?3:2;
+      queueDecisionEvent({
+        id:`DEC-PC-RENEWAL-${club.id}-${date}`,kind:'PC_RENEWAL',category:'CONTRACT TALKS',sender:'YOUR REPRESENTATIVE',clubId:club.id,
+        title:`${club.name} have opened terms`,
+        body:`${club.name} are willing to extend. The offer on the table is ${formatMoney(Number(player.wage||0)+rise)} per week over ${plural(years,'year')}. Your representative wants a decision before it cools.`,
+        eventData:{rise,years},
+        choices:[
+          {id:'sign',label:'SIGN THE EXTENSION',copy:`Commit to ${plural(years,'year')} at ${formatMoney(Number(player.wage||0)+rise)} per week.`},
+          {id:'push',label:'PUSH FOR MORE',copy:'Ask for a better deal. The club may improve it, or may walk away for now.'},
+          {id:'wait',label:'LEAVE IT FOR NOW',copy:'Say nothing and keep your options open.'}
+        ]
+      });
+      showToast('The club have come back with terms');
+    }else{
+      addCareerInboxMessage({id:`pc-talks-declined-${club.id}-${date}`,type:'CONTRACTS',sender:'YOUR REPRESENTATIVE',subject:'The club are not ready to talk',preview:`${club.name} want to see more before discussing a new deal.`,title:'The club are not ready to talk',body:[`I raised a new contract with ${club.name}. The answer was not no, but it was not yet.`,`They want consistent minutes and performances first. Manager trust is sitting at ${Math.round(trust)}/100 — that is the number moving this decision.`],signoff:'Your representative',date});
+      showToast('The club want to see more first');
+    }
+    saveCareerState();refreshActiveCareerScreen();return true;
+  }
+
+  function renderPcOffers(){
+    const host=$('#officePcOffersContent'),player=pcPlayer();if(!host||!player)return;
+    const open=playerCareerState.offers.filter(o=>o.status==='OPEN'),settled=playerCareerState.offers.filter(o=>o.status!=='OPEN');
+    host.innerHTML=`
+      <section class="pc-office-grid is-single">
+        <article class="pc-office-card">
+          <span class="office-kicker">${currentClub?'OUTSIDE INTEREST':'CONTRACT OPPORTUNITIES'}</span>
+          ${open.length?`<div class="pc-office-offers">${open.map(o=>{const c=clubById(o.clubId);return c?`<div class="pc-office-offer">${badgeHTML(c)}<div><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.division||'')} · ${o.fit}% stylistic fit</small></div><span><b>${formatMoney(Number(o.weeklyWage||0))}</b><small>PER WEEK</small></span><span><b>${o.contractYears}</b><small>YEARS</small></span><button type="button" class="pc-primary-action" data-pc-offer="${escapeHtml(o.id)}">${currentClub?'ACCEPT MOVE':'SIGN'}</button></div>`:'';}).join('')}</div>`:`<p class="pc-office-empty">${currentClub?'No club has made a formal approach. Performances and manager trust attract interest.':'No offers are open. Advance a day to let your representative work.'}</p>`}
+        </article>
+        ${settled.length?`<article class="pc-office-card"><span class="office-kicker">CLOSED APPROACHES</span><div class="pc-office-history">${settled.slice(0,8).map(o=>{const c=clubById(o.clubId);return `<div><b>${escapeHtml(c?.name||'Club')}</b><span>${escapeHtml(o.status)}</span><small>${escapeHtml(shortDateLabel(o.receivedDate||''))}</small></div>`;}).join('')}</div></article>`:''}
+      </section>`;
+    host.querySelectorAll('[data-pc-offer]').forEach(btn=>btn.addEventListener('click',()=>{acceptPlayerCareerOffer(btn.dataset.pcOffer);refreshActiveCareerScreen();}));
+  }
+
+  function renderPcRecord(){
+    const host=$('#officePcRecordContent'),player=pcPlayer();if(!host||!player)return;
+    const stats=player.seasonStats||{},career=player.careerStats||{};
+    const avg=stats.ratingCount?Number(Number(stats.ratingSum||0)/stats.ratingCount).toFixed(2):'—';
+    const recent=fixtures.filter(f=>f.played&&currentClub&&[f.homeClubId,f.awayClubId].includes(currentClub.id)).slice(-8).reverse();
+    host.innerHTML=`
+      <section class="pc-office-grid is-single">
+        <article class="pc-office-card">
+          <span class="office-kicker">${escapeHtml(seasonLabel())} · THIS SEASON</span>
+          <div class="pc-office-metrics is-wide"><span><b>${stats.apps||0}</b><small>APPEARANCES</small></span><span><b>${stats.starts||0}</b><small>STARTS</small></span><span><b>${stats.goals||0}</b><small>GOALS</small></span><span><b>${stats.assists||0}</b><small>ASSISTS</small></span><span><b>${avg}</b><small>AVG RATING</small></span></div>
+        </article>
+        <article class="pc-office-card">
+          <span class="office-kicker">FULL CAREER</span>
+          <div class="pc-office-metrics is-wide"><span><b>${career.apps||stats.apps||0}</b><small>APPEARANCES</small></span><span><b>${career.goals||stats.goals||0}</b><small>GOALS</small></span><span><b>${career.assists||stats.assists||0}</b><small>ASSISTS</small></span><span><b>${(player.careerClubs||[]).length||1}</b><small>CLUBS</small></span></div>
+        </article>
+        <article class="pc-office-card">
+          <span class="office-kicker">RECENT CLUB RESULTS</span>
+          ${recent.length?`<div class="pc-office-history">${recent.map(f=>{const home=clubById(f.homeClubId),away=clubById(f.awayClubId);return `<div><b>${escapeHtml(shortDateLabel(f.date))}</b><span>${escapeHtml(home?.name||'')} ${f.homeScore}–${f.awayScore} ${escapeHtml(away?.name||'')}</span><small>${escapeHtml(f.competitionName||f.type||'')}</small></div>`;}).join('')}</div>`:'<p class="pc-office-empty">No matches have been played yet.</p>'}
+        </article>
+      </section>`;
+  }
+
+  // ---------- TEAM (Squad shell, read-only) ----------
+  function pcLockSquadScreen(){
+    const screen=$('#screenSquad');if(!screen)return;
+    const active=pcActive();
+    screen.classList.toggle('pc-readonly',active);
+    if(!active)return;
+    const heading=screen.querySelector('.squad-heading h2');if(heading)heading.textContent='YOUR TEAM';
+    const note=screen.querySelector('.v51-sub-note strong');if(note)note.textContent='The manager picks this side. You can study it, not change it.';
+    const small=screen.querySelector('.v51-sub-note small');if(small)small.textContent='Your place is decided by ability, fitness, form and manager trust.';
+    const depth=$('#squadDepthCopy');if(depth)depth.textContent='The rest of the manager’s options';
+    const saveStatus=screen.querySelector('.sq-save-status');if(saveStatus)saveStatus.textContent='Read only';
+  }
+
+  // ---------- MATCHDAY ----------
+  // The bespoke team-sheet screen is gone. The verdict lives in the matchday
+  // side rail where the staff recommendation sits for a manager.
+  function renderPlayerCareerMatchday(fixture=userFixtureOnDate(currentCareerISO())){
+    const player=pcPlayer();if(!player)return;
+    const recCard=$('#matchdayRecCard'),intelCard=$('#matchdayIntelCard'),statusCard=$('#matchdayStatusCard');
+    const selection=fixture?ensurePlayerCareerSelection(fixture):null;
+    if(statusCard&&selection){
+      const head=$('#matchdayStatusHeadline'),note=$('#matchdayStatusNote');
+      if(head)head.textContent=String(selection.verdict).replace('_',' ');
+      if(note)note.textContent=String(selection.reason||'');
+      statusCard.classList.remove('is-pc-starting','is-pc-bench','is-pc-out');
+      statusCard.classList.add(selection.verdict==='STARTING'?'is-pc-starting':selection.verdict==='BENCH'?'is-pc-bench':'is-pc-out');
+      const label=statusCard.querySelector('.md2-card-label');if(label)label.textContent='YOUR TEAM SHEET';
+    }
+    if(recCard){
+      const label=recCard.querySelector('.md2-card-label');if(label)label.textContent='WHY';
+      const head=$('#matchdayRecHeadline'),note=$('#matchdayRecNote');
+      if(selection){
+        if(head)head.textContent=`${selection.factors.ability} OVR · TRUST ${selection.factors.managerTrust}`;
+        if(note)note.textContent=`Fitness ${selection.factors.fitness}% · sharpness ${selection.factors.sharpness}% · tactical fit ${selection.factors.tacticalFit}%`;
+      }else{
+        if(head)head.textContent='NO MATCH TODAY';
+        if(note)note.textContent='The team sheet is published on matchday.';
+      }
+    }
+    if(intelCard){
+      const label=intelCard.querySelector('.md2-card-label');if(label)label.textContent='YOUR CONDITION';
+      const head=$('#matchdayIntelHeadline'),note=$('#matchdayIntelNote');
+      if(head)head.textContent=`${Math.round(Number(player.fitness||0))}% FIT · ${String(player.form||'AVERAGE').toUpperCase()}`;
+      if(note)note.textContent=matchdayUnavailable(player,fixture)?matchdayUnavailableReason(player,fixture):`${player.name} is available for selection.`;
+    }
+    const watch=$('#matchWatch');if(watch){const span=watch.querySelector('span');if(span)span.textContent=selection?.verdict==='STARTING'?'PLAY MATCH':selection?.verdict==='BENCH'?'FOLLOW FROM THE BENCH':'FOLLOW THE MATCH';}
+    // The line-up panels only publish the Starting Three. When the athlete is
+    // not in it, say where they are instead of leaving them off the page.
+    const side=fixture&&currentClub?(fixture.homeClubId===currentClub.id?'#matchdayHomeLineup':fixture.awayClubId===currentClub.id?'#matchdayAwayLineup':null):null;
+    const panel=side?$(side):null;
+    $('#screenMatchday')?.querySelectorAll?.('.pc-matchday-place')?.forEach?.(node=>node.remove());
+    if(panel&&selection&&selection.verdict!=='STARTING'){
+      const place=selection.verdict==='BENCH'?`SUBSTITUTE ${Math.max(1,selection.benchIds.indexOf(player.id)+1)}`:'NOT IN THE SQUAD';
+      panel.insertAdjacentHTML('afterend',`<div class="pc-matchday-place is-user-athlete"><span>YOUR PLACE</span><strong>${escapeHtml(player.name)}</strong><b>${escapeHtml(place)}</b></div>`);
+    }
+  }
+
+  // ---------- Player-career scenarios ----------
+  // Reuses the existing decision overlay, inbox routing and save format, so a
+  // player's dilemma is presented with the same weight as a manager's.
+  function pcGenerateDecision(date=currentCareerISO()){
+    const player=pcPlayer(),club=currentClub;
+    if(!player||!pcActive()||pendingDecisionEvent())return null;
+    const trust=Number(player.managerTrust||0),stats=player.seasonStats||{},lineup=club?ensureLineup(club):null;
+    const benched=!!lineup&&!lineup.starter.includes(player.id);
+    const manager=club?currentClubManager(club):null;
+    if(club&&benched&&trust<58&&Number(stats.apps||0)>=3&&eventCooldownReady('PC-MINUTES',date,40)){
+      return queueDecisionEvent({
+        id:`DEC-PC-MINUTES-${date}`,kind:'PC_MINUTES',category:'YOUR PLACE IN THE SIDE',sender:manager?.name||'HEAD COACH',clubId:club.id,
+        title:'The manager wants a word',
+        body:`${manager?.name||'The manager'} has pulled you aside. "You are training well, but you are not in the side. I want to know how you are handling it before it becomes a problem."`,
+        choices:[
+          {id:'patient',label:'I’LL KEEP WORKING',copy:'Accept the role for now. Professionalism is noticed.'},
+          {id:'ask',label:'I WANT TO PLAY',copy:'Ask directly for minutes. Honest, but it puts pressure on the relationship.'},
+          {id:'demand',label:'THEN LET ME LEAVE',copy:'Make it clear you will look elsewhere. Trust will fall sharply.'}
+        ]
+      });
+    }
+    if(club&&trust>=70&&Number(stats.starts||0)>=4&&eventCooldownReady('PC-MEDIA',date,55)){
+      return queueDecisionEvent({
+        id:`DEC-PC-MEDIA-${date}`,kind:'PC_MEDIA',category:'MEDIA REQUEST',sender:'PRESS OFFICE',clubId:club.id,
+        title:'The press want you',
+        body:`A broadcaster has asked for a sit-down interview after your recent run of form. The club will not stop you, but they would rather the focus stayed on the team.`,
+        choices:[
+          {id:'team',label:'CREDIT THE TEAM',copy:'Safe, generous, and the dressing room will hear about it.'},
+          {id:'ambition',label:'TALK ABOUT YOUR AMBITION',copy:'Raise your profile. Clubs notice. So does your manager.'},
+          {id:'decline',label:'DECLINE THE INTERVIEW',copy:'Keep your head down and let the performances speak.'}
+        ]
+      });
+    }
+    if(club&&Number(player.fitness||100)<74&&eventCooldownReady('PC-FITNESS',date,35)){
+      return queueDecisionEvent({
+        id:`DEC-PC-FITNESS-${date}`,kind:'PC_FITNESS',category:'MEDICAL',sender:'CLUB PHYSIO',clubId:club.id,
+        title:'You are carrying something',
+        body:`The physio is not happy with your readings. Nothing is torn, but you are below the level the staff want before a match week.`,
+        choices:[
+          {id:'rest',label:'TAKE THE REST',copy:'Protect your body. You will be fresher, but you miss training the manager watches.'},
+          {id:'manage',label:'MANAGE IT',copy:'Train lightly and hope it holds.'},
+          {id:'push',label:'PUSH THROUGH',copy:'Train fully. Sharpness rises, but so does the risk.'}
+        ]
+      });
+    }
+    if(club&&eventCooldownReady('PC-DRESSING-ROOM',date,70)){
+      const mate=getSquad(club).filter(p=>p.id!==player.id).sort((a,b)=>Number(b.ovr||0)-Number(a.ovr||0))[0];
+      if(mate&&hashString(`${worldSeed}-${date}-PC-ROOM`)%7===0){
+        return queueDecisionEvent({
+          id:`DEC-PC-ROOM-${date}`,kind:'PC_DRESSING_ROOM',category:'DRESSING ROOM',playerId:mate.id,clubId:club.id,
+          title:`${mate.name} wants you onside`,
+          body:`${mate.name} is unhappy with how the group is being run and is gathering support before speaking to the manager. He wants to know where you stand.`,
+          choices:[
+            {id:'back',label:'BACK YOUR TEAMMATE',copy:'Stand with the senior player. The room warms to you; the manager may not.'},
+            {id:'neutral',label:'STAY OUT OF IT',copy:'Keep your distance and let it pass.'},
+            {id:'manager',label:'TELL THE MANAGER',copy:'Protect your own standing at the cost of the dressing room.'}
+          ]
+        });
+      }
+    }
+    return null;
+  }
+
+  function pcResolveDecision(event,choiceId){
+    const player=pcPlayer(),club=currentClub;if(!player)return false;
+    const date=currentCareerISO();
+    const trust=delta=>adjustPlayerManagerTrust(player,delta,event.title||'Player career decision');
+    if(event.kind==='PC_MINUTES'){
+      setEventCooldown('PC-MINUTES',date);
+      if(choiceId==='patient'){trust(4);adjustPlayerMorale(player,-1);}
+      if(choiceId==='ask'){trust(-2);adjustPlayerMorale(player,1);player.playingTimeSatisfaction=clamp(Number(player.playingTimeSatisfaction||60)+6,0,100);}
+      if(choiceId==='demand'){trust(-14);adjustPlayerMorale(player,-2);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...playerCareerGenerateOffers(player)];}
+      return true;
+    }
+    if(event.kind==='PC_MEDIA'){
+      setEventCooldown('PC-MEDIA',date);
+      if(choiceId==='team'){trust(3);getSquad(club||{}).forEach?.(p=>adjustPlayerMorale(p,0));}
+      if(choiceId==='ambition'){trust(-3);playerCareerState.offers=[...playerCareerState.offers.filter(o=>o.status!=='OPEN'),...playerCareerGenerateOffers(player).slice(0,2)];}
+      if(choiceId==='decline')trust(1);
+      return true;
+    }
+    if(event.kind==='PC_FITNESS'){
+      setEventCooldown('PC-FITNESS',date);
+      if(choiceId==='rest'){player.fitness=clamp(Number(player.fitness||80)+9,0,100);trust(-2);}
+      if(choiceId==='manage')player.fitness=clamp(Number(player.fitness||80)+4,0,100);
+      if(choiceId==='push'){player.fitness=clamp(Number(player.fitness||80)+1,0,100);trust(2);if(hashString(`${worldSeed}-${date}-PC-PUSH`)%4===0&&typeof applyPlayerInjury==='function')applyPlayerInjury(player,10);}
+      return true;
+    }
+    if(event.kind==='PC_DRESSING_ROOM'){
+      setEventCooldown('PC-DRESSING-ROOM',date);
+      const mate=event.playerId?careerPlayerById(event.playerId):null;
+      if(choiceId==='back'){trust(-5);if(mate)adjustPlayerMorale(mate,2);adjustPlayerMorale(player,1);}
+      if(choiceId==='neutral')adjustPlayerMorale(player,0);
+      if(choiceId==='manager'){trust(6);if(mate)adjustPlayerMorale(mate,-2);adjustPlayerMorale(player,-1);}
+      return true;
+    }
+    if(event.kind==='PC_RENEWAL'){
+      const data=event.eventData||{},rise=Number(data.rise||0),years=Number(data.years||2);
+      if(choiceId==='sign'&&club){
+        setLivingPlayerContract(player,club,years,Number(player.wage||0)+rise,player.squadRole||'Rotation',date,'PLAYER_CAREER_RENEWAL');
+        adjustPlayerMorale(player,2);trust(3);
+        addCareerInboxMessage({id:`pc-renewal-signed-${club.id}-${date}`,type:'CONTRACTS',sender:'CLUB SECRETARY',subject:`New deal signed at ${club.name}`,preview:`${plural(years,'year')} at ${formatMoney(Number(player.wage||0))} per week.`,title:'Contract extension confirmed',body:[`${player.name} has signed a new ${plural(years,'year')} agreement with ${club.name}.`],signoff:'Club Secretary',date});
+        showToast(`New deal signed · ${club.name}`);
+      }
+      if(choiceId==='push'){
+        const generous=Number(player.managerTrust||0)>=72;
+        if(generous&&club){
+          const extra=Math.round(rise*1.5/25)*25;
+          setLivingPlayerContract(player,club,years,Number(player.wage||0)+extra,player.squadRole||'Rotation',date,'PLAYER_CAREER_RENEWAL');
+          adjustPlayerMorale(player,2);showToast('The club improved their offer');
+        }else{
+          trust(-4);setEventCooldown(`PC-TALKS-${club?.id}`,date);
+          showToast('The club have withdrawn the offer for now');
+        }
+      }
+      if(choiceId==='wait')setEventCooldown(`PC-TALKS-${club?.id}`,date);
+      return true;
+    }
+    return false;
+  }
+
+  function pcAdvance(days=1){
+    let result=null;
+    for(let i=0;i<Math.max(1,Number(days)||1);i++){
+      result=advanceCareerDay({silent:true});
+      if(!result.advanced||['MATCHDAY','DECISION'].includes(result.reason))break;
+    }
+    if(result?.reason==='MATCHDAY'){goCareerScreen('matchday');return result;}
+    refreshActiveCareerScreen();
+    if(result?.reason==='DECISION'&&result.decision)showCareerDecisionOverlay(result.decision);
+    return result;
+  }
+
   function goCareerScreen(name){
     ensureMenuMusic();
+    // V107: Player Career uses the same destinations as Manager Career. Only
+    // the transfer desk is genuinely not a player's to open.
+    if(pcActive()){
+      if(name==='playerHub'||name==='playerTeamsheet')name='central';
+      if(name==='transfers'){officeActiveTab='pcoffers';name='office';}
+      if(name==='matchday'){
+        swapSourceId=null;
+        const fixture=userFixtureOnDate(currentCareerISO());
+        if(!fixture){renderCentral();showScreen('central');showToast('There is no match today');return;}
+        ensurePlayerCareerSelection(fixture);
+        playerCareerState.acknowledgedTeamsheets[fixture.fixtureId]=true;
+        renderMatchday();showScreen('matchday');return;
+      }
+    }
     if(name==='central'){
       swapSourceId=null;
       renderCentral();
@@ -11038,7 +11738,7 @@
     return activeStarters(club).map((p,index)=>{
       const intel=seasonPlayerIntel(p,club),unavailable=matchdayUnavailable(p,fixture),availability=unavailable?matchdayUnavailableReason(p,fixture):'',status=unavailable?availability:(own?escapeHtml(p.morale||'Content'):escapeHtml(intel.stage.label)),ability=intel.ovr.kind==='unknown'?'ABILITY UNSCOUTED':intel.ovr.kind==='exact'?`${escapeHtml(intel.ovr.text)} OVR VERIFIED`:`${escapeHtml(intel.ovr.text)} OVR EST.`;
       const portrait=playerSpriteAssetUrl(p.avatar||v262StandingSprite(p));
-      return `<div class="match-lineup-player knowledge-${intel.stage.key}${unavailable?' is-unavailable':''}"><span class="matchday-lineup-number" aria-hidden="true">${String(index+1).padStart(2,'0')}</span><span class="matchday-lineup-portrait"><img class="matchday-lineup-avatar" src="${escapeHtml(portrait)}" alt="" decoding="async"></span><div><strong>${escapeHtml(p.name)}</strong><small class="matchday-player-role">${escapeHtml(p.role)}</small><small class="matchday-player-meta"><b>${own?`${escapeHtml(intel.ovr.text)} OVR`:ability}</b><span>${status}</span></small>${unavailable?`<em class="matchday-availability">${escapeHtml(availability)}</em>`:''}${intel.own||intel.full?`<span class="v48-lineup-traits">${window.VelmoraTraits.traits(p).map(t=>`<span title="${escapeHtml(t.name+': '+t.description)}">${window.VelmoraTraits.icon(t.id)}</span>`).join('')}</span>`:''}</div></div>`;
+      return `<div class="match-lineup-player knowledge-${intel.stage.key}${unavailable?' is-unavailable':''}${pcSelfClass(p)}" data-player-id="${escapeHtml(p.id)}"><span class="matchday-lineup-number" aria-hidden="true">${String(index+1).padStart(2,'0')}</span><span class="matchday-lineup-portrait"><img class="matchday-lineup-avatar" src="${escapeHtml(portrait)}" alt="" decoding="async"></span><div><strong>${escapeHtml(p.name)}</strong><small class="matchday-player-role">${escapeHtml(p.role)}</small><small class="matchday-player-meta"><b>${own?`${escapeHtml(intel.ovr.text)} OVR`:ability}</b><span>${status}</span></small>${unavailable?`<em class="matchday-availability">${escapeHtml(availability)}</em>`:''}${intel.own||intel.full?`<span class="v48-lineup-traits">${window.VelmoraTraits.traits(p).map(t=>`<span title="${escapeHtml(t.name+': '+t.description)}">${window.VelmoraTraits.icon(t.id)}</span>`).join('')}</span>`:''}</div></div>`;
     }).join('');
   }
   function matchdayClubOvrText(club){
@@ -11217,7 +11917,7 @@
   function simulateUserFixture(fixture,mode='QUICK SIM',liveEngineResult=null){
     if(!fixture||fixture.played)return null;
     const onlineGate=v104MatchGate(fixture);
-    if(onlineGate&&!onlineGate.allowed){showToast(onlineGate.message);return null;}const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
+    if(onlineGate&&!onlineGate.allowed){showToast(onlineGate.message);return null;}const {home,away}=fixtureClubs(fixture);if(!home||!away)return null;if(!liveEngineResult){const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:false});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before this match can begin.');return null;}playerCareerPrepareQuickParticipation(fixture);}const preRow=fixture.type==='LEAGUE'?leagueRowForClub(currentClub):null,occasion=matchOccasionProfile(fixture,currentClub),disciplineServing={home:disciplineServingSnapshot(home,fixture),away:disciplineServingSnapshot(away,fixture)};
     v37CaptureSelectionEligibility(fixture,home,away);
     const userShotProfiles=liveEngineResult?null:{
       home:v1042SyntheticShotProfile(home,fixture,v24ExpectedGoals(home,away,true,fixture).home,'HOME'),
@@ -11241,7 +11941,7 @@
     disciplineServeFixtureForClub(home,fixture,disciplineServing.home);disciplineServeFixtureForClub(away,fixture,disciplineServing.away);disciplineApplyEvents(fixture,disciplineEvents,home,away);
     applyBackgroundMatchEffects(home,fixture.homeScore,fixture.awayScore,fixture.fixtureId);applyBackgroundMatchEffects(away,fixture.awayScore,fixture.homeScore,fixture.fixtureId);
     const userHome=fixture.homeClubId===currentClub.id,userGoals=userHome?fixture.homeScore:fixture.awayScore,oppGoals=userHome?fixture.awayScore:fixture.homeScore,knockoutWinner=knockoutFixtureWinnerId(fixture),resultCode=userGoals>oppGoals?'W':userGoals<oppGoals?'L':knockoutWinner?(knockoutWinner===currentClub.id?'W':'L'):'D',isFriendly=fixture.type==='FRIENDLY';
-    if(!isFriendly){recordManagerRivalryForFixture(fixture,resultCode);evaluatePlayerPromisesAfterMatch(fixture);if(resultCode==='W'){shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?5:fixture.type==='CUP'?4:3,'Match victory');const spellKey=managerMarket?.playerSpell?.startedDate||jobSearchState?.appointedDate||managerName,firstWinOpponent=userHome?away:home;if(!careerMemoryEventsForClub(currentClub,'NOTABLE').some(e=>e.type==='MANAGER_FIRST_WIN'&&e.metadata?.spellKey===spellKey))recordCareerMemory({type:'MANAGER_FIRST_WIN',clubId:currentClub.id,opponentClubId:firstWinOpponent?.id||null,date:fixture.date,seasonId:careerTime.seasonId,competitionId:fixture.competitionId,matchId:fixture.fixtureId,importance:'NOTABLE',key:`V42-MANAGER-FIRST-WIN-${currentClub.id}-${spellKey}`,metadata:{managerName,spellKey,competition:fixture.competitionName||fixture.type,score:`${fixture.homeScore}–${fixture.awayScore}`}});}else if(resultCode==='L')shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?-3.5:fixture.type==='CUP'?-3:-2.5,'Match defeat');else shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?1:.5,'Draw');}
+    if(!isFriendly&&careerMode==='MANAGER'){recordManagerRivalryForFixture(fixture,resultCode);evaluatePlayerPromisesAfterMatch(fixture);if(resultCode==='W'){shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?5:fixture.type==='CUP'?4:3,'Match victory');const spellKey=managerMarket?.playerSpell?.startedDate||jobSearchState?.appointedDate||managerName,firstWinOpponent=userHome?away:home;if(!careerMemoryEventsForClub(currentClub,'NOTABLE').some(e=>e.type==='MANAGER_FIRST_WIN'&&e.metadata?.spellKey===spellKey))recordCareerMemory({type:'MANAGER_FIRST_WIN',clubId:currentClub.id,opponentClubId:firstWinOpponent?.id||null,date:fixture.date,seasonId:careerTime.seasonId,competitionId:fixture.competitionId,matchId:fixture.fixtureId,importance:'NOTABLE',key:`V42-MANAGER-FIRST-WIN-${currentClub.id}-${spellKey}`,metadata:{managerName,spellKey,competition:fixture.competitionName||fixture.type,score:`${fixture.homeScore}–${fixture.awayScore}`}});}else if(resultCode==='L')shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?-3.5:fixture.type==='CUP'?-3:-2.5,'Match defeat');else shiftBoardConfidence(fixture.type==='CHAMPIONS_CROWN'?1:.5,'Draw');}
     const scorers=[];if(liveEngineResult&&Array.isArray(liveEngineResult.goalEvents)){const playerMap=new Map(matchPlayers.map(p=>[String(p.id),p]));liveEngineResult.goalEvents.forEach(ev=>{const team=ev.team==='home'?home:away,player=playerMap.get(String(ev.playerId))||null;scorers.push({team,player,minute:clamp(Number(ev.minute)||1,1,90)});});}else{for(let i=0;i<fixture.homeScore;i++)scorers.push({team:home,player:weightedScorer(home,rng,fixture),minute:8+Math.floor(rng()*78)});for(let i=0;i<fixture.awayScore;i++)scorers.push({team:away,player:weightedScorer(away,rng,fixture),minute:8+Math.floor(rng()*78)});}scorers.sort((a,b)=>a.minute-b.minute);
     scorers.forEach(s=>{if(s.player&&!isFriendly)v43ApplyGoal(s.player,s.team,fixture);});
     const assistCounts=new Map();if(!isFriendly){if(liveEngineResult){matchPlayers.forEach(player=>{const es=liveEngineResult?.playerStats?.[player.id]||liveEngineResult?.playerStats?.[String(player.id)]||{},count=Math.max(0,Math.round(Number(es.assists||0)));if(!count)return;const team=matchdayParticipants(home,fixture).some(x=>String(x.id)===String(player.id))?home:away;v43ApplyAssist(player,team,fixture,count);assistCounts.set(player.id,count);});}else scorers.forEach((event,index)=>{const assistant=v43WeightedAssistant(event.team,event.player,fixture,`USER-${index}`);if(!assistant)return;v43ApplyAssist(assistant,event.team,fixture,1);assistCounts.set(assistant.id,Number(assistCounts.get(assistant.id)||0)+1);event.assistPlayerId=assistant.id;});}
@@ -11278,8 +11978,8 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const genericTitle=resultCode==='W'?`${currentClub.name.toUpperCase()} TAKE THE POINTS`:resultCode==='L'?`${opponent.name.toUpperCase()} DEFEAT ${currentClub.name.toUpperCase()}`:`${currentClub.name.toUpperCase()} HELD BY ${opponent.name.toUpperCase()}`;
     const storyBody=[`${home.name} ${fixture.homeScore}–${fixture.awayScore} ${away.name}${fixture.decidedOnPenalties?` (${fixture.penaltiesHome}–${fixture.penaltiesAway} pens)`:''}.`,resultMoment?.copy||null,postRow?`${currentClub.name} are now ${ordinal(postRow.pos)} with ${plural(postRow.pts,'point')}.`:isFriendly?'The result is non-competitive and is used for readiness, form and squad assessment only.':(continentalLine||'The knockout campaign moves on from another decisive night.')].filter(Boolean);
     addCareerNews({id:`news-match-${fixture.fixtureId}`,category:newsCategory,title:resultMoment?.newsTitle||(isFriendly?`${currentClub.name.toUpperCase()} CONTINUE PRE-SEASON PREPARATIONS`:genericTitle),body:storyBody,image:potm?.avatar,date:fixture.date});
-    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);generateContextualCareerDecision(fixture.date);v96CaptureLiveRecords(fixture);}saveCareerState();v104AfterUserFixture(fixture,mode);
-    return{saved:true,mode,fixture,home,away,homeScore:fixture.homeScore,awayScore:fixture.awayScore,potm,homeSquad:matchdayParticipants(home,fixture),awaySquad:matchdayParticipants(away,fixture),ratings,events:scorers,prePosition:preRow?.pos||null,postPosition:postRow?.pos||null,prePoints:preRow?.pts||0,postPoints:postRow?.pts||0,resultCode,opponent,occasion,resultMoment};
+    if(isFriendly)v2080AfterFriendlyResult(fixture,resultCode);else{championsCrownAfterFixture(fixture);ensureCupProgression(fixture.date);ensureChampionsCrownProgression(fixture.date);updateSeasonProgression(fixture.date);if(careerMode==='MANAGER')generateContextualCareerDecision(fixture.date);v96CaptureLiveRecords(fixture);}const result={saved:true,mode,fixture,home,away,homeScore:fixture.homeScore,awayScore:fixture.awayScore,potm,homeSquad:matchdayParticipants(home,fixture),awaySquad:matchdayParticipants(away,fixture),ratings,events:scorers,prePosition:preRow?.pos||null,postPosition:postRow?.pos||null,prePoints:preRow?.pts||0,postPoints:postRow?.pts||0,resultCode,opponent,occasion,resultMoment};playerCareerAfterFixture(result);saveCareerState();v104AfterUserFixture(fixture,mode);
+    return result;
   }
   function playCurrentUserFixture(mode='QUICK SIM'){
     const fixture=userFixtureOnDate(currentCareerISO());if(!fixture){const next=nextUserFixture(currentCareerISO(),true);showToast(next?`Next match is ${shortDateLabel(next.date)}`:'No playable fixture today');return;}
@@ -11295,7 +11995,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const st=player?.stats||{},form=({Excellent:.018,Good:.009,Average:0,'New Signing':.004,Poor:-.012,Terrible:-.022}[player?.form]||0),morale=({'Very Happy':.005,Happy:.009,Content:0,Unhappy:-.010,'Very Unhappy':-.020,Excellent:.005,Good:.009,Okay:0,Poor:-.010,Bad:-.020}[player?.morale]||0),ov=v210EngineStat(player?.ovr,65),fitness=clamp(Number(player?.fitness??82),45,100);const tune=(value,extra=0)=>clamp(value+form+morale+extra,.60,.99);const readiness=trainingRules.technicalModifier(player),ready=(value)=>tune(value,readiness);return{speed:tune(v210EngineStat(st.PAC,player?.ovr)),accel:tune(v210EngineStat(st.PAC,player?.ovr),.006),turn:tune((v210EngineStat(st.PAS,player?.ovr)+ov)/2),passing:ready(v210EngineStat(st.PAS,player?.ovr)),catching:ready(v210EngineStat(st.HAN,player?.ovr)),shooting:ready(v210EngineStat(st.SHO,player?.ovr)),interception:ready(v210EngineStat(st.DEF,player?.ovr)),awareness:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),positioning:ready((v210EngineStat(st.DEF,player?.ovr)+ov)/2),reaction:ready((v210EngineStat(st.PAC,player?.ovr)+ov)/2),anticipation:ready((v210EngineStat(st.DEF,player?.ovr)+v210EngineStat(st.PAS,player?.ovr))/2),decision:ready((v210EngineStat(st.PAS,player?.ovr)+ov)/2),composure:ready(ov),aggression:tune(.82),stamina:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/900),recovery:tune(v210EngineStat(st.STA,player?.ovr),(fitness-82)/950)};
   }
   function v210PlayerConfig(player,fixture=null,club=null){const n=v210AvatarNumber(player),key=String(n).padStart(3,'0'),owner=club||clubById(player?.clubId)||currentClub,role=v44DeployedRoleFor(player,owner,fixture)||player.role,roleModifier=v44RoleSuitabilityModifier(player,role);return{id:String(player.id),name:player.name,role,unavailable:matchdayUnavailable(player,fixture),standing:playerSpriteAssetUrl(`${V210_STANDING_ROOT}player-${key}.png`),riding:playerSpriteAssetUrl(`${V210_RIDER_ROOT}player-${key}.webp`),spriteMetrics:playerSpriteCatalog.frames[n],attributes:v210PlayerAttributes(player,roleModifier),playingTraits:[...(v49EnsureTraits(player)||[])],careerMeta:{sharpness:trainingRules.read(player).sharpness,ovr:Number(player.ovr||0),fitness:Number(player.fitness??100),form:player.form||'',morale:player.morale||'',primaryRole:player.role,deployedRole:role,roleFamiliarity:v44RoleFamiliarity(player,role),roleModifier}};}
-  function v210ClubTactics(club){if(club?.id===currentClub?.id){careerPreferences=normalizeCareerPreferences(careerPreferences);return v96NormalizeTactics(careerPreferences.tactics);}const manager=currentClubManager(club);if(manager&&manager.id!==PLAYER_MANAGER_ID)return v96NormalizeTactics(aiManagerTacticalProfile(manager,club));return v96NormalizeTactics({});}
+  function v210ClubTactics(club){if(careerMode==='MANAGER'&&club?.id===currentClub?.id){careerPreferences=normalizeCareerPreferences(careerPreferences);return v96NormalizeTactics(careerPreferences.tactics);}const manager=currentClubManager(club);if(manager&&manager.id!==PLAYER_MANAGER_ID)return v96NormalizeTactics(aiManagerTacticalProfile(manager,club));return v96NormalizeTactics({});}
   function v210KnockoutConfig(fixture){let knockoutDecider=['CUP','PLAYOFF'].includes(fixture?.type)||(fixture?.type==='CHAMPIONS_CROWN'&&fixture.ccStage==='FINAL'),aggregateHomeOffset=0,aggregateAwayOffset=0;if(fixture?.type==='CHAMPIONS_CROWN'&&['QUARTER_FINALS','SEMI_FINALS'].includes(fixture.ccStage)&&Number(fixture.ccLeg)===2){knockoutDecider=true;const otherLeg=fixtures.find(f=>f.type==='CHAMPIONS_CROWN'&&f.ccTieId===fixture.ccTieId&&f.fixtureId!==fixture.fixtureId&&f.played);if(otherLeg){aggregateHomeOffset=fixture.homeClubId===otherLeg.homeClubId?Number(otherLeg.homeScore||0):Number(otherLeg.awayScore||0);aggregateAwayOffset=fixture.awayClubId===otherLeg.homeClubId?Number(otherLeg.homeScore||0):Number(otherLeg.awayScore||0);}}return{knockoutDecider,aggregateHomeOffset,aggregateAwayOffset};}
   function ensureVelmoraQuidditchEngineLoaded(){if(window.VelmoraQuidditchEngine)return Promise.resolve(window.VelmoraQuidditchEngine);if(v210EngineLoadPromise)return v210EngineLoadPromise;v210EngineLoadPromise=new Promise((resolve,reject)=>{if(!document.querySelector(`link[href="${V210_ENGINE_CSS}"]`)){const link=document.createElement('link');link.rel='stylesheet';link.href=V210_ENGINE_CSS;document.head.appendChild(link);}const existing=document.querySelector(`script[src="${V210_ENGINE_JS}"]`);if(existing){existing.addEventListener('load',()=>window.VelmoraQuidditchEngine?resolve(window.VelmoraQuidditchEngine):reject(new Error('Quidditch engine API missing')),{once:true});existing.addEventListener('error',()=>reject(new Error('Quidditch engine failed to load')),{once:true});return;}const script=document.createElement('script');script.src=V210_ENGINE_JS;script.async=true;script.onload=()=>window.VelmoraQuidditchEngine?resolve(window.VelmoraQuidditchEngine):reject(new Error('Quidditch engine API missing'));script.onerror=()=>reject(new Error('Quidditch engine failed to load'));document.body.appendChild(script);});return v210EngineLoadPromise;}
   function v210ResumeCareerMusic(wasPlaying){document.body.classList.remove('vm-live-quidditch');if(wasPlaying&&menuMusic?.paused){try{const p=menuMusic.play();p?.catch?.(()=>{});}catch(_){}}v20731UpdateMusicMiniPlayer?.();}
@@ -11303,7 +12003,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     if(v210WatchActive)return;const {home,away}=fixtureClubs(fixture);if(!home||!away)return;const lineupReady=prepareFixtureLineupsForMatchday(fixture,{repairUser:true,notify:true});if(!lineupReady.ready){showToast(lineupReady.message||'Three eligible starters are required before Watch Match can begin.');return;}const homePlayers=activeStarters(home),awayPlayers=activeStarters(away);
     v210WatchActive=true;const wasMusicPlaying=!!(menuMusic&&!menuMusic.paused);if(wasMusicPlaying){try{menuMusic.pause();}catch(_){}}document.body.classList.add('vm-live-quidditch');v20731UpdateMusicMiniPlayer?.();
     try{
-      const engine=await ensureVelmoraQuidditchEngineLoaded(),stadium=window.VELMORA_STADIUMS.forHomeClub(home),ko=v210KnockoutConfig(fixture),occasion=matchOccasionProfile(fixture,currentClub),opened=await engine.open({careerMode:true,disableAudio:false,ballAsset:'assets/quidditch-engine/ball/velmora-quaffle.png?v=quaffle-1',...stadium,careerFixtureId:fixture.fixtureId,refStandingAsset:'assets/quidditch-engine/referee/whistleworth-standing.webp',refFlyingAsset:'assets/quidditch-engine/referee/whistleworth-flying.webp',homeName:home.name,awayName:away.name,homeAbbr:home.abbr||'',awayAbbr:away.abbr||'',homeBadge:home.badge||'',awayBadge:away.badge||'',homePlayerData:homePlayers.map(p=>v210PlayerConfig(p,fixture,home)),awayPlayerData:awayPlayers.map(p=>v210PlayerConfig(p,fixture,away)),homeBenchData:matchdayBench(home).map(p=>v210PlayerConfig(p,fixture,home)),awayBenchData:matchdayBench(away).map(p=>v210PlayerConfig(p,fixture,away)),managerSide:currentClub.id===home.id?'home':'away',homeTactics:v210ClubTactics(home),awayTactics:v210ClubTactics(away),stage:fixture.type==='FRIENDLY'?'PRE-SEASON FRIENDLY':fixture.type==='CHAMPIONS_CROWN'?`CHAMPIONS CROWN · ${championsCrownStageLabel(fixture.ccStage)}`:occasion.primaryLabel||fixture.competitionName||'MATCHDAY',seed:hashString(`${worldSeed}-V21-WATCH-${fixture.fixtureId}`),...ko,onClose:()=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);},onComplete:result=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);lastPresentationResult=simulateUserFixture(fixture,'WATCH MATCH',result);if(!lastPresentationResult){showToast('Unable to save live match result');return;}renderResults();showScreen('results');scheduleOverlaySync();}});if(!opened){v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast(engine.getStatus?.().lastOpenError||'Quidditch broadcast could not start');}
+      const engine=await ensureVelmoraQuidditchEngineLoaded(),stadium=window.VELMORA_STADIUMS.forHomeClub(home),ko=v210KnockoutConfig(fixture),occasion=matchOccasionProfile(fixture,currentClub),opened=await engine.open({careerMode:true,playerMode:careerMode==='PLAYER',controlledPlayerId:careerMode==='PLAYER'?playerCareerState.userPlayerId:null,disableAudio:false,ballAsset:'assets/quidditch-engine/ball/velmora-quaffle.png?v=quaffle-1',...stadium,careerFixtureId:fixture.fixtureId,refStandingAsset:'assets/quidditch-engine/referee/whistleworth-standing.webp',refFlyingAsset:'assets/quidditch-engine/referee/whistleworth-flying.webp',homeName:home.name,awayName:away.name,homeAbbr:home.abbr||'',awayAbbr:away.abbr||'',homeBadge:home.badge||'',awayBadge:away.badge||'',homePlayerData:homePlayers.map(p=>v210PlayerConfig(p,fixture,home)),awayPlayerData:awayPlayers.map(p=>v210PlayerConfig(p,fixture,away)),homeBenchData:matchdayBench(home).map(p=>v210PlayerConfig(p,fixture,home)),awayBenchData:matchdayBench(away).map(p=>v210PlayerConfig(p,fixture,away)),managerSide:currentClub.id===home.id?'home':'away',homeTactics:v210ClubTactics(home),awayTactics:v210ClubTactics(away),stage:careerMode==='PLAYER'?`PLAYER CAREER · ${occasion.primaryLabel||fixture.competitionName||'MATCHDAY'}`:fixture.type==='FRIENDLY'?'PRE-SEASON FRIENDLY':fixture.type==='CHAMPIONS_CROWN'?`CHAMPIONS CROWN · ${championsCrownStageLabel(fixture.ccStage)}`:occasion.primaryLabel||fixture.competitionName||'MATCHDAY',seed:hashString(`${worldSeed}-V21-WATCH-${fixture.fixtureId}`),...ko,onClose:()=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);},onComplete:result=>{v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);lastPresentationResult=simulateUserFixture(fixture,'WATCH MATCH',result);if(!lastPresentationResult){showToast('Unable to save live match result');return;}renderResults();showScreen('results');scheduleOverlaySync();}});if(!opened){v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast(engine.getStatus?.().lastOpenError||'Quidditch broadcast could not start');}
     }catch(error){console.error('[V21] Watch Match failed',error);v210WatchActive=false;v210ResumeCareerMusic(wasMusicPlaying);showToast('Watch Match engine failed to load');}
   }
 
@@ -11598,6 +12298,10 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     const keyAbility=topIntel?.ovr.kind==='unknown'?'ABILITY UNSCOUTED':topIntel?.ovr.kind==='exact'?`${escapeHtml(topIntel?.ovr.text||'?')} OVR VERIFIED`:`${escapeHtml(topIntel?.ovr.text||'?')} OVR EST.`;
     $('#matchdaySummary').innerHTML=`<div class="match-summary-card living-match-preview match-opposition-report-v2">${matchOccasionHTML(fixture,club)}<div class="match-report-overview"><div class="match-preview-header"><span>${isCC?'CONTINENTAL OPPONENT':'OPPOSITION REPORT'}</span><b class="match-scout-state ${scoutState.tone}">${escapeHtml(scoutState.label)}</b></div><div class="match-opponent-title"><strong>${escapeHtml(opponent.name)}</strong><small>${isCC?escapeHtml(clubWorldName(opponent)):oppRow?ordinal(oppRow.pos):'CUP OPPONENT'}</small><div class="match-preview-form">${form.length?form.map(x=>`<b class="is-${x.toLowerCase()}">${x}</b>`).join(''):'<em>NO RECENT FORM</em>'}</div></div>${championsCrownMatchContextHTML(fixture,club)}<p class="match-opponent-style"><b>${profile.name}</b><span>${escapeHtml(profile.note)}</span></p></div><div class="match-report-intelligence"><div class="match-intel-note"><span>SCOUTING INTELLIGENCE</span><strong>${escapeHtml(scoutState.copy)}</strong></div>${matchNarrativeContextHTML(fixture,club,opponent)}<div class="match-opposition-personnel">${opponentManagerHTML(opponent)}<div class="match-key-player">${top?`<img src="${escapeHtml(v262StandingSprite(top))}" alt="${escapeHtml(top.name)}" decoding="async">`:'<span class="match-key-player-placeholder">?</span>'}<span><small>PUBLIC KEY PLAYER · ${escapeHtml(topIntel?.stage.label||'UNSCOUTED')}</small><strong>${escapeHtml(top?.name||'TBC')}</strong><em>${keyAbility} · ${escapeHtml(top?.role||'')}</em></span></div></div></div></div><div class="match-readiness living-staff-note"><span>STAFF MATCH PLAN</span><p>${escapeHtml(rec.copy)}</p><div class="match-tactical-current"><small>CURRENT PLAN</small><strong>${escapeHtml((careerPreferences.tactics?.defensive||'Balanced').toUpperCase())} · ${escapeHtml((careerPreferences.tactics?.attacking||'Balanced').toUpperCase())}</strong></div><strong>RECOMMENDED: ${rec.label}</strong><button type="button" data-match-apply-tactic>APPLY RECOMMENDATION</button></div>`;
     $('#matchdaySummary [data-match-apply-tactic]')?.addEventListener('click',applyMatchStaffRecommendation);
+    if(playerCareerActive()){
+      const selection=ensurePlayerCareerSelection(fixture),player=playerCareerPlayer();
+      if(selection&&player)$('#matchdaySummary').insertAdjacentHTML('afterbegin',`<section class="pc-player-result"><span>PLAYER MATCH BRIEF · ${escapeHtml(selection.verdict.replace('_',' '))}</span><div><img src="${escapeHtml(player.avatar)}" alt=""><span><h3>${escapeHtml(player.name)}</h3><p>${escapeHtml(selection.reason)}</p></span><b>${selection.factors.managerTrust}<small>TRUST</small></b><b>${selection.factors.fitness}%<small>FITNESS</small></b><b>${selection.factors.tacticalFit}%<small>TACTICAL FIT</small></b><b>${selection.factors.selectionScore.toFixed(1)}<small>SELECTION</small></b></div></section>`);
+    }
     const lineupCanProceed=(userReadiness.ready||userReadiness.canAutoRepair)&&(opponentReadiness.ready||opponentReadiness.canAutoRepair),userIssue=userReadiness.unavailable[0]||null;
     screen?.classList.toggle('has-lineup-warning',!!userIssue||!lineupCanProceed);
     const actionStatus=$('#matchdayActionStatus');if(actionStatus)actionStatus.textContent=fixture.played?'This fixture has already been completed.':isLive&&!lineupCanProceed?(userIssue?`${userIssue.name} is ${matchdayUnavailableReason(userIssue,fixture).toLowerCase()}. Select an available replacement in Team & Tactics.`:'Three eligible starters are required before this fixture can begin.'):isLive&&userIssue?`${userIssue.name} is ${matchdayUnavailableReason(userIssue,fixture).toLowerCase()}. Edit the Starting Three, or the next eligible squad player will be selected automatically.`:isLive?'Matchday is live. Choose Watch Match or Quick Sim.':`Preview mode · ${days} day${days===1?'':'s'} until kick-off. Adjust tactics or complete scouting before matchday.`;
@@ -11655,6 +12359,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
       }
     }
 
+    if(pcActive())renderPlayerCareerMatchday(fixture);
     queueAvatarHydration(screen);
   }
 
@@ -12120,6 +12825,10 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     $$('#officeSubnav [data-office-tab]').forEach(b=>{const active=b.dataset.officeTab===officeActiveTab;b.classList.toggle('is-active',active);b.setAttribute('aria-selected',active?'true':'false');});
     $$('.office-pane[data-office-pane]').forEach(p=>{const active=p.dataset.officePane===officeActiveTab;p.classList.toggle('is-active',active);p.setAttribute('aria-hidden',active?'false':'true');try{p.inert=!active;}catch(_e){}});
     if(officeActiveTab==='inbox')renderOfficeInbox();
+    if(officeActiveTab==='pcstanding')renderPcStanding();
+    if(officeActiveTab==='pccontract')renderPcContract();
+    if(officeActiveTab==='pcoffers')renderPcOffers();
+    if(officeActiveTab==='pcrecord')renderPcRecord();
     if(officeActiveTab==='board')renderOfficeBoard();
     if(officeActiveTab==='finances')renderOfficeFinances();
     if(officeActiveTab==='staff')careerExpansion?.embed($('#officeStaffContent'),'staff');
@@ -12128,6 +12837,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   }
 
   function renderOffice(){
+    if(pcActive()){renderPlayerCareerOffice();return;}
     const club=currentClub||selectedClub||clubs[0];currentClub=club;
     setBadge($('#officeClubBadgeTop'),club);setBadge($('#officeHeadingBadge'),club);
     $('.office-screen')?.style.setProperty('--club-accent',club.accent||'#1bb5b6');
@@ -12224,7 +12934,10 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     $('#officeUnreadCount').textContent=unread.length;
     const filterWrap=$('#officeInboxFilters');
     if(filterWrap){
-      filterWrap.innerHTML=`<button type="button" ${officeInboxFilter==='all'?'class="is-active"':''} data-inbox-filter="all">BRIEFING</button><button type="button" ${officeInboxFilter==='action'?'class="is-active"':''} data-inbox-filter="action">DECISIONS</button><button type="button" ${officeInboxFilter==='unread'?'class="is-active"':''} data-inbox-filter="unread">UNREAD</button><button type="button" ${officeInboxFilter==='squad'?'class="is-active"':''} data-inbox-filter="squad">PEOPLE</button><button type="button" ${officeInboxFilter==='transfers'?'class="is-active"':''} data-inbox-filter="transfers">RECRUITMENT</button><button type="button" ${officeInboxFilter==='board'?'class="is-active"':''} data-inbox-filter="board">BOARD</button>`;
+      const filterSet=pcActive()
+        ?[['all','MAILBOX'],['action','DECISIONS'],['unread','UNREAD'],['squad','DRESSING ROOM'],['transfers','CONTRACTS']]
+        :[['all','BRIEFING'],['action','DECISIONS'],['unread','UNREAD'],['squad','PEOPLE'],['transfers','RECRUITMENT'],['board','BOARD']];
+      filterWrap.innerHTML=filterSet.map(([key,label])=>`<button type="button" ${officeInboxFilter===key?'class="is-active"':''} data-inbox-filter="${key}">${label}</button>`).join('');
     }
     const list=all.filter(m=>officeMessageMatchesFilter(m,officeInboxFilter)||(officeInboxFilter==='unread'&&m.id===selectedOfficeMessageId)),routine=list.filter(m=>notificationPriorityForMessage(m)==='ROUTINE'),featured=list.filter(m=>notificationPriorityForMessage(m)!=='ROUTINE'),collapseRoutine=['all','unread'].includes(officeInboxFilter);
     if(!selectedOfficeMessageId||!list.some(m=>m.id===selectedOfficeMessageId))selectedOfficeMessageId=(featured[0]||routine[0])?.id||null;
@@ -12488,6 +13201,21 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   $('#tutorialReturn')?.addEventListener('click',closeTutorial);
   $('#tutorialReplay')?.addEventListener('click',playTutorialFromStart);
   installTutorialExperience();
+  $('#careerModeBack')?.addEventListener('click',()=>{pendingNewCareerSlot=null;careerMode='MANAGER';showScreen('menu');});
+  $('#careerModeManager')?.addEventListener('click',()=>{careerMode='MANAGER';playerCareerState=normalizePlayerCareerState({});beginManagerCreator(true);});
+  $('#careerModePlayer')?.addEventListener('click',beginPlayerCareerSetup);
+  $('#playerSetupBack')?.addEventListener('click',()=>{if(playerSetupStage==='route'){playerCareerModeSelect();return;}playerSetupStage=['clubs','start'].includes(playerSetupStage)?'create':'route';renderPlayerCareerSetup();});
+  $('#playerSetupContent')?.addEventListener('input',e=>{if(e.target.id==='pcPlayerName'){pendingPlayerSetup.name=String(e.target.value||'').slice(0,30);}if(e.target.id==='pcPlayerAge')pendingPlayerSetup.age=clamp(Number(e.target.value||19),16,34);});
+  $('#playerSetupContent')?.addEventListener('click',e=>{
+    const route=e.target.closest('[data-pc-route]');if(route){pendingPlayerSetup.kind=route.dataset.pcRoute;playerSetupStage=route.dataset.pcRoute==='create'?'create':'existing';renderPlayerCareerSetup();return;}
+    if(e.target.closest('[data-pc-back-route]')){playerSetupStage='route';renderPlayerCareerSetup();return;}
+    const role=e.target.closest('[data-pc-role]');if(role){pendingPlayerSetup.role=role.dataset.pcRole;renderPlayerCareerSetup();return;}
+    const avatar=e.target.closest('[data-pc-avatar]');if(avatar){pendingPlayerSetup.avatar=avatar.dataset.pcAvatar;renderPlayerCareerSetup();return;}
+    if(e.target.closest('[data-pc-create-continue]')){pendingPlayerSetup.name=String($('#pcPlayerName')?.value||pendingPlayerSetup.name||'').trim().slice(0,30);pendingPlayerSetup.age=clamp(Number($('#pcPlayerAge')?.value||pendingPlayerSetup.age),16,34);if(pendingPlayerSetup.name.length<2){showToast('Enter a player name to continue');return;}playerSetupStage='start';renderPlayerCareerSetup();return;}
+    const start=e.target.closest('[data-pc-start]');if(start){if(start.dataset.pcStart==='club'){playerSetupStage='clubs';renderPlayerCareerSetup();}else startPlayerCareer(playerCareerCreatedPreview(null),null,'CREATED');return;}
+    const clubChoice=e.target.closest('[data-pc-club]');if(clubChoice){const club=clubById(clubChoice.dataset.pcClub);if(club)startPlayerCareer(playerCareerCreatedPreview(club),club,'CREATED');return;}
+    const existing=e.target.closest('[data-pc-existing]');if(existing){const club=clubById(existing.dataset.pcExistingClub),player=getSquad(club).find(p=>p.id===existing.dataset.pcExisting);if(player)startPlayerCareer(player,club,'EXISTING');}
+  });
   $('#btnBackToMenu').addEventListener('click',()=>{ensureMenuMusic();renderCareerStart();showScreen('careerStart');});
 
   $('#countrySelect').addEventListener('change',e=>{activeCountry=e.target.value;renderGrid();});
@@ -12626,6 +13354,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
         }
         launchMatchdayMode(fixture,mode);
       };
+      if(careerMode==='PLAYER'){launch();return true;}
       const opened=openFixturePressConference('pre',fixture,launch,mode==='WATCH'?'CONTINUE TO LIVE MATCH':'CONTINUE TO QUICK SIM');
       if(opened)matchdayActionBusy=false;
       return true;
@@ -12647,7 +13376,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   $('#resultsContinue')?.addEventListener('click',e=>runLockedAction('RESULTS_CONTINUE',e.currentTarget,()=>{
     const result=lastPresentationResult?{...lastPresentationResult}:null;
     if(!result?.saved||!result.fixture){finishResultsAndReturn(result);return true;}
-    openFixturePressConference('post',result.fixture,()=>finishResultsAndReturn(result),'RETURN TO CENTRAL');
+    if(careerMode==='PLAYER')finishResultsAndReturn(result);else openFixturePressConference('post',result.fixture,()=>finishResultsAndReturn(result),'RETURN TO CENTRAL');
     return true;
   },{releaseDelay:260,busyText:'CONTINUING…'}));
   $('#transferSubnav').addEventListener('click',e=>{const b=e.target.closest('[data-transfer-tab]');if(b&&b.dataset.transferTab!==transferActiveTab)setTransferTab(b.dataset.transferTab);});
@@ -13008,7 +13737,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     p.lastHappinessScore=Number.isFinite(Number(p.lastHappinessScore))?clamp(Math.round(Number(p.lastHappinessScore)),0,100):65;
     return p;
   }
-  function adjustPlayerManagerTrust(p,delta=0,reason=''){if(!p)return 0;ensurePlayerStoryMeta(p,currentClub);p.managerTrust=clamp(Math.round(Number(p.managerTrust||60)+Number(delta||0)),0,100);p.relationshipTrend=clamp(Number(p.relationshipTrend||0)+Math.sign(Number(delta||0)), -10,10);if(reason)p.lastTrustReason=reason;return p.managerTrust;}
+  function adjustPlayerManagerTrust(p,delta=0,reason=''){if(!p)return 0;ensurePlayerStoryMeta(p,currentClub);p.managerTrust=clamp(Math.round(Number(p.managerTrust??60)+Number(delta||0)),0,100);p.relationshipTrend=clamp(Number(p.relationshipTrend||0)+Math.sign(Number(delta||0)), -10,10);if(reason)p.lastTrustReason=reason;return p.managerTrust;}
   function playerMinutesScore(p,club){return livingRoleSatisfaction(p,club);}
   function playerHappinessBreakdown(p,club=currentClub){
     ensurePlayerStoryMeta(p,club);const traits=playerStoryTraits(p),minutes=playerMinutesScore(p,club),formScore=({Excellent:90,Good:78,Average:64,Poor:43,Terrible:25,'New Signing':68,'Newly Promoted':76}[p.form]??62),recent=recentClubForm(club,6),formPts=recent.reduce((s,r)=>s+(r==='W'?3:r==='D'?1:0),0),results=recent.length?clamp(Math.round(42+(formPts/(recent.length*3))*48),30,92):65,days=p.contractEndDate?Math.max(0,diffDaysISO(currentCareerISO(),p.contractEndDate)):800,contract=p.freeAgent?55:days<=180?38:days<=365?50:days>=1095?82:68,young=Number(p.age||99)<=23,development=young?clamp(Math.round(48+Number(p.developmentProgress||0)*28+Math.min(14,Number(p.careerGrowthThisSeason||0)*7)+(Number(p.potential||p.ovr)-Number(p.ovr||0))*.6),35,92):66,future=p.transferRequested?18:p.transferStatus==='TRANSFER_LISTED'?36:p.loanListed?58:clamp(62+(Number(traits.loyalty||60)-60)*.18-(Number(traits.ambition||60)>82&&Number(p.ovr||0)>backgroundClubStrength(club)+6?12:0),35,88),manager=Number(p.managerTrust||60),integration=Number(p.integration||100),overall=clamp(Math.round(minutes*.25+formScore*.12+results*.14+contract*.10+development*.11+future*.10+manager*.13+integration*.05),0,100);
@@ -13345,7 +14074,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   }
   function livingRoleSatisfaction(p,club){const w=v37PlayingTimeWindow(p,club,10),expected=({Crucial:.75,Important:.55,Rotation:.30,Prospect:.15,Reserve:.05}[p.squadRole]??.3),share=w.total?Math.max(w.starts/w.total,w.minutes/(w.total*90)):expected;return clamp(Math.round(75+(share-expected)*85),0,100);}
   function maybeLivingTransferRequest(p,club,date){if(!p||p.transferRequested||p.captain||p.onLoan||Number(p.age||0)<19)return null;ensurePlayerStoryMeta(p,club);const sat=livingRoleSatisfaction(p,club),h=playerHappinessBreakdown(p,club),traits=playerStoryTraits(p);p.playingTimeSatisfaction=Math.round(Number(p.playingTimeSatisfaction||70)*.72+sat*.28);const ambitious=Number(p.ovr||0)>backgroundClubStrength(club)+7&&divisionLevel(club)<=2&&Number(traits.ambition||60)>=70,unhappy=moraleIndex(p.morale)<=1||h.overall<36,trustBroken=Number(p.managerTrust||60)<30,trigger=p.playingTimeSatisfaction<26||unhappy||ambitious||trustBroken;if(!trigger||!eventCooldownReady(`MOVE-${p.id}`,date,100))return null;const threshold=clamp(10+(100-Number(traits.loyalty||60))*.18+(100-Number(traits.patience||60))*.12+(h.overall<32?10:0)+(ambitious?7:0),10,38),roll=hashString(`${worldSeed}-MOVE-REQUEST-${date}-${p.id}`)%100;if(roll>threshold)return null;setEventCooldown(`MOVE-${p.id}`,date);p.transferRequested=true;recordPlayerStory(p,'TRANSFER_REQUEST',date,{reason:ambitious?'AMBITION':trustBroken?'TRUST':'HAPPINESS'});if(Number(p.playerReputation||0)>=45||['Crucial','Important'].includes(p.squadRole))addCareerNews({id:`player-future-${p.id}-${date}`,category:'PLAYER FUTURE',world:clubWorldName(club),clubId:club.id,relatedClubIds:[club.id],title:`${p.name.toUpperCase()} FUTURE IN DOUBT AT ${club.name.toUpperCase()}`,body:[`${p.name} has asked for clarity over the next stage of their career.`,ambitious?'The player believes the time may be right to test themselves at a higher level.':'The situation follows a period of frustration around role, form or the relationship with the manager.'],image:p.avatar,date});return queueDecisionEvent({id:`DEC-MOVE-${p.id}-${date}`,kind:'TRANSFER_REQUEST',category:'PLAYER FUTURE',playerId:p.id,cooldownKey:`MOVE-${p.id}`,title:'I want to discuss my future',body:ambitious?'I feel ready to test myself at a higher level and I want the club to consider serious offers.':trustBroken?'I do not think the relationship between us is working. I need to think seriously about a move.':'I am not happy with how my situation is developing and I think a move may be best.',choices:[{id:'convince',label:'CONVINCE TO STAY',copy:'Explain the project and ask the player to remain.'},{id:'role-talk',label:'PROMISE A ROLE',copy:'Offer an immediate playing-time pathway.'},{id:'accept-request',label:'ACCEPT REQUEST',copy:'Place the player on the transfer list.'}]});}
-  function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processDressingRoomIncidentFollowUps(date);processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
+  function processLivingSquadDay(date=currentCareerISO()){if(livingSquad.lastDailyProcess===date)return;livingSquad.lastDailyProcess=date;livingSquad=normalizeLivingSquadState(livingSquad);livingSquad.incomingOffers.forEach(o=>{if(['OPEN','COUNTERED','FINAL_OFFER'].includes(o.status)&&o.expiresDate<date)o.status='EXPIRED';});livingSquad.loanOffers.forEach(o=>{if(o.status==='OPEN'&&o.expiresDate<date)o.status='EXPIRED';});processLivingLoanReturns(date);clubs.forEach(club=>getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);syncLivingContractYears(p,date);recordLivingInjuryState(p,date);if(careerMode==='MANAGER'&&club.id===currentClub?.id&&date.endsWith('-07')){maybeLivingTransferRequest(p,club,date);v2075RefreshRenewalState(p,club,date,true);}}));processDressingRoomIncidentFollowUps(date);processPlayerStoryDay(date);processOutgoingTransferMarket(date);if(careerMode==='MANAGER'&&isTransferWindowOpen(date)&&currentClub){maybeGenerateLivingSquadLoanOffer(date);}if(date.endsWith('-08-01'))processLivingContractExpiries(date);}
   function processLivingSquadMonthly(date=currentCareerISO()){if(livingSquad.lastMonthlyProcess===date.slice(0,7))return;livingSquad.lastMonthlyProcess=date.slice(0,7);processLivingLoanMonth(date);clubs.forEach(club=>{getSquad(club).forEach(p=>{ensureLivingPlayerMeta(p,club);p.playerReputation=Math.round(Number(p.playerReputation||50)*.65+livingPlayerReputationScore(p,club)*.35);});if(!v104HumanControlledClub(club))livingAiSquadPlan(club,date);});recordMonthlyAwards(date);}
   function processLivingContractExpiries(date){careerExpansion?.processPrecontracts(date);const free=getFreeAgents();livingSquad.loanHistory.filter(l=>l.status==='ACTIVE').forEach(l=>{const p=careerPlayerById(l.playerId);if(p?.contractEndDate&&p.contractEndDate<date)returnLivingLoan(l,date);});clubs.forEach(club=>{const squad=getSquad(club);for(let i=squad.length-1;i>=0;i--){const p=squad[i];if(p.onLoan||p.retiringAtEnd||!p.contractEndDate||p.contractEndDate>=date)continue;if(!v104HumanControlledClub(club)){const plan=aiClubSquadPlanReview(club,date,true),status=plan?.playerStatuses?.[p.id]?.status||'ROTATION',keep=v2075AiRenewalScore(p,club,status)>=55&&v25CanAffordWage(club,p,Math.max(p.wage,expectedWage(p)));if(keep){const yrs=p.age>=32?1:2+(hashString(`${worldSeed}-AI-RENEW-${date}-${p.id}`)%3);setLivingPlayerContract(p,club,yrs,Math.max(p.wage,expectedWage(p)),p.squadRole,date,'AI_RENEWAL');continue;}}removePlayerFromLineup(club,p.id);squad.splice(i,1);p.freeAgent=true;p.ownerClubId=null;p.clubId=null;p.clubName='FREE AGENT';p.contractStatus='EXPIRED';p.contractYears=0;p.lastWage=Math.max(Number(p.lastWage||0),Number(p.wage||0));p.wage=0;p.morale='Content';free.push(p);recordLivingCareerEvent(p,'CONTRACT_EXPIRED',club,null,0,currentCareerISO());if(club.id===currentClub?.id)addCareerInboxMessage({id:`player-expired-${p.id}-${date}`,type:'CONTRACT',sender:'CLUB SECRETARY',subject:`Contract expired: ${p.name}`,preview:'The player has left the club as a free agent.',title:`${p.name} leaves at the end of their contract`,body:[`No renewal was agreed before the contract expired.`,`The player is now available on the free-agent market.`],signoff:'Club Secretary',date});}});}
   function recordLivingInjuryState(p,date){if(!p)return;const active=Number(p.injuryDaysRemaining||0)>0;if(active){const last=p.injuryHistory.at(-1);if(!last||last.endDate){p.injuryHistory.push({startDate:date,endDate:null,type:p.injury||'Injury',initialDays:Number(p.injuryDaysRemaining||0)});p.injuryHistory=p.injuryHistory.slice(-10);}}else{const last=p.injuryHistory.at(-1);if(last&&!last.endDate)last.endDate=date;}}
@@ -13364,7 +14093,7 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
     }
     const priority=(plan?.priorityRoles||[])[0],need=Number(priority?.score||0);
     if(squad.length<AI_SENIOR_SQUAD_CAP&&need>=46){
-      const role=priority.role,candidates=getFreeAgents().filter(p=>p.role===role&&Math.abs(Number(p.ovr||0)-avg)<=9&&p.age<=34).map(p=>({p,score:Number(p.ovr||0)*1.3+Math.max(0,Number(p.potential||p.ovr)-Number(p.ovr||0))*.25+aiPlayerTacticalFitScore(p,club,plan.tacticalProfile,manager)*.22-(p.age>30?3:0)})).sort((a,b)=>b.score-a.score),candidate=candidates[0]?.p;
+      const role=priority.role,candidates=getFreeAgents().filter(p=>!p.isUserPlayer&&p.role===role&&Math.abs(Number(p.ovr||0)-avg)<=9&&p.age<=34).map(p=>({p,score:Number(p.ovr||0)*1.3+Math.max(0,Number(p.potential||p.ovr)-Number(p.ovr||0))*.25+aiPlayerTacticalFitScore(p,club,plan.tacticalProfile,manager)*.22-(p.age>30?3:0)})).sort((a,b)=>b.score-a.score),candidate=candidates[0]?.p;
       if(candidate&&hashString(`${worldSeed}-AI-FREE-PLAN-${date}-${club.id}`)%100<58){const fi=getFreeAgents().findIndex(x=>x.id===candidate.id);if(fi>=0)getFreeAgents().splice(fi,1);candidate.freeAgent=false;candidate.clubId=club.id;candidate.clubName=club.name;candidate.ownerClubId=club.id;setLivingPlayerContract(candidate,club,candidate.age>=31?1:2+(hashString(`${candidate.id}-${date}-TERM`)%2),Math.max(700,expectedWage(candidate)),need>=70?'Important':'Rotation',date,'AI_FREE_AGENT');squad.push(candidate);recordLivingTransfer(candidate,null,club,0,{type:'FREE_AGENT',source:'AI_PLAN'});addPlayerToLineup(club,candidate.id,'bench');markAiClubPlanDirty(club);}
     }
     aiClubSquadPlanReview(club,date,true);normalizeSquadRoles(club);
@@ -14534,6 +15263,12 @@ const liveAdvanced=liveEngineResult?{chancesCreated:Number(es.chancesCreated??es
   };
 
   window.VELMORA_MANAGER_DEBUG={
+    v106SetWorldSeedForTest:seed=>{worldSeed=String(seed||'VELMORA-V106-VISUAL-QA');avatarOrder=null;fullAvatarOrder=null;if(pendingPlayerSetup)pendingPlayerSetup.avatar=playerCareerAvatarOptions()[0];return worldSeed;},
+    v106StartPlayerCareerForTest:(start='CLUB',seed='VELMORA-V106-QA')=>{beginPlayerCareerSetup();window.VELMORA_MANAGER_DEBUG.v106SetWorldSeedForTest(seed);const club=playerCareerClubCandidates(playerCareerCreatedPreview())[0]?.club||clubs[0],unsigned=String(start).toUpperCase()==='UNSIGNED',player=playerCareerCreatedPreview(unsigned?null:club);startPlayerCareer(player,unsigned?null:club,'CREATED');return deepClone({careerMode,status:playerCareerState.status,playerId:playerCareerState.userPlayerId,clubId:currentClub?.id||null,offers:playerCareerState.offers});},
+    v106AcceptFirstOfferForTest:()=>{const offer=playerCareerState.offers.find(row=>row.status==='OPEN');return offer?acceptPlayerCareerOffer(offer.id):false;},
+    v106PrepareTeamsheetForTest:(target='AUTO')=>{if(!playerCareerActive()||!currentClub)return null;let fixture=nextUserFixture(currentCareerISO(),true);if(!fixture)return null;setCareerDate(fixture.date);const player=playerCareerPlayer(),wanted=String(target||'AUTO').toUpperCase();if(wanted!=='AUTO'&&player){const profiles={STARTING:{ovr:99,fitness:100,trust:100,form:'Excellent'},NOT_SELECTED:{ovr:30,fitness:35,trust:0,form:'Terrible'},BENCH:{ovr:66,fitness:88,trust:54,form:'Average'}};const profile=profiles[wanted]||profiles.BENCH;Object.assign(player,{ovr:profile.ovr,fitness:profile.fitness,managerTrust:profile.trust,form:profile.form});for(let attempt=0;attempt<18;attempt++){delete playerCareerState.selections[fixture.fixtureId];const selection=ensurePlayerCareerSelection(fixture);if(selection?.verdict===wanted)break;if(wanted==='BENCH')player.ovr+=selection?.verdict==='NOT_SELECTED'?2:-2;else break;}}
+      delete playerCareerState.acknowledgedTeamsheets[fixture.fixtureId];const selection=ensurePlayerCareerSelection(fixture);renderPlayerCareerTeamsheet(fixture);return deepClone(selection);},
+    v106PlayerCareerSnapshotForTest:()=>{const player=playerCareerPlayer(),fixture=currentClub?nextUserFixture(currentCareerISO(),true):null,selection=fixture?playerCareerState.selections[fixture.fixtureId]||null:null,manager=currentClub?currentClubManager(currentClub):null;return deepClone({version:'V106',saveSchema:Number(window.VELMORA_RELEASE?.saveSchema||87),careerMode,status:playerCareerState.status,playerId:player?.id||null,isUserPlayer:!!player?.isUserPlayer,clubId:currentClub?.id||null,managerId:manager?.id||null,managerIsAi:!!manager&&manager.id!==PLAYER_MANAGER_ID,managerTrust:Number(player?.managerTrust||0),offers:playerCareerState.offers,fixtureId:fixture?.fixtureId||null,selection,lastReview:playerCareerState.lastReview,playerModeEngineSupported:String(v210OpenCareerMatch).includes('playerMode'),screens:{mode:!!screens.careerMode,setup:!!screens.playerSetup,central:!!screens.central,office:!!screens.office,matchday:!!screens.matchday},managerOnlyRoutesBlocked:String(goCareerScreen).includes("name==='transfers'")&&String(goCareerScreen).includes('pcActive()'),persistentSave:String(buildCareerSaveData).includes('playerCareerState')&&String(applyCareerSaveData).includes('playerCareerState')});},
     v1041DealFormForTest:(playerId,kind='TRANSFER')=>{if(!careerExpansion)return'';careerExpansion.setDealTarget(playerId,kind);return careerExpansion.dealsHTML();},
     v1041ProposeForTest:(playerId,kind,input)=>careerExpansion?careerExpansion.proposeDeal(playerId,kind,input):null,
     v1041LoanGateForTest:(playerId,ownerClubId)=>loanRegistrationEligibility(careerPlayerById(playerId),clubById(ownerClubId),currentClub),
